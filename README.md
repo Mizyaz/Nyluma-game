@@ -70,7 +70,7 @@ yerel sunucu için: `npx serve dist` ya da `node scripts/serve.mjs dist 4173 /`.
 | `npm run typecheck` | TypeScript (strict) denetimi |
 | `npm run test` | Birim testleri (Vitest): kayıt, durum normalizasyonu, girdi bağlamları, yetenekler, Güneş karşılaşması, oda verisi doğrulaması |
 | `npm run test:e2e` | Üretim ve e2e derlemelerini alır, Playwright tarayıcı testlerini çalıştırır: kök ve `/kristaller-dunyasi/` alt yolunda açılış (WebGL), oynanış akışları (hareket, etkileşim, duraklatma, odak kaybı, kontrol noktası + Devam Et, ayarlar, bozuk/erişilemeyen kayıt, bölüm seçimi, son), çoklu dokunma, dikey ve yatay ekran düzeni, menülerin her boyutta ekrana sığması, dokunmatik düğmelerin çakışmaması ve telefon boyutlu ekranda yalnızca dokunmatikle ilk oda (`PHONE_UPRIGHT=1` ile telefon dik tutulmuş olarak) |
-| `npm run test:campaign` | Yeni Oyun'dan son karta kadar tüm kampanyayı oynayan iki uzun test: masaüstünde yalnızca klavyeyle ve telefon boyutlu ekranda yalnızca dokunmatikle (bu depodaki ölçümde her biri yaklaşık 12 dakika) |
+| `npm run test:campaign` | Yeni Oyun'dan son karta kadar tüm kampanyayı oynayan iki uzun test: masaüstünde yalnızca klavyeyle ve yatay tutulan telefon boyutlu ekranda yalnızca dokunmatikle (bu depodaki ölçümde her biri yaklaşık 12 dakika). `PHONE_UPRIGHT=1 npx playwright test mobile --grep @campaign` dokunmatik koşuyu telefon dik tutulmuş olarak oynar |
 | `npm run package` | Kaynak ve `dist` arşivlerini `release/` altına üretir |
 
 Tarayıcı testleri için Chromium gerekir (`npx playwright install chromium`).
@@ -151,7 +151,10 @@ ve her harekete, darbeye, keşfe ve konuşmaya tepki veren kaşlarla taşınır.
 **English summary.** A complete Turkish-language 2D surreal adventure built
 with Phaser 3.90, TypeScript (strict) and Vite. Run `npm ci && npm run dev`
 (Node 22). `npm run build` produces a static `dist/` that works at a domain
-root or any sub-path (GitHub Pages project sites). Deploy with the included
-GitHub Actions workflow after setting *Settings → Pages → Source → GitHub
-Actions*. Serve over HTTP(S); `file://` is not supported. Story rights remain
-with the original author.
+root or any sub-path (GitHub Pages project sites). The included workflow
+tests every push to `main` and publishes `dist/` to the `gh-pages` branch,
+which GitHub Pages serves (*Settings → Pages → Source → Deploy from a branch →
+`gh-pages`*); live at https://mizyaz.github.io/Nyluma-game/. Playable with a
+keyboard, a mouse for menus, or touch alone, held upright or sideways. Serve
+over HTTP(S); `file://` is not supported. Story rights remain with the
+original author.

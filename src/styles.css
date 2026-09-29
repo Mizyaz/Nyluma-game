@@ -385,6 +385,53 @@ button {
   font-size: max(14px, calc(var(--s) * 18px));
 }
 
+/* Portrait main menu: the picture fades into the page at its edges, and
+   when there is room under it the title sits on the picture and the buttons
+   below it, so the picture's edge never runs through a button. */
+#app.portrait .title-screen {
+  isolation: isolate;
+}
+
+#app.portrait .title-screen::before,
+#app.portrait .title-screen::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+#app.portrait .title-screen::before {
+  top: calc(var(--gy) - 1px);
+  height: calc(var(--gh) * 0.22);
+  background: linear-gradient(to bottom, #0f0d18, rgba(15, 13, 24, 0));
+}
+
+#app.portrait .title-screen::after {
+  top: calc(var(--gy) + var(--gh) * 0.6);
+  height: calc(var(--gh) * 0.4 + 1px);
+  background: linear-gradient(to bottom, rgba(15, 13, 24, 0), #0f0d18);
+}
+
+#app.portrait.roomy .title-screen {
+  justify-content: flex-start;
+  padding-top: var(--gy);
+}
+
+#app.portrait.roomy .title-screen .title-block {
+  flex: none;
+  min-height: var(--gh);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+#app.portrait.roomy .title-screen .menu {
+  margin-block: auto;
+}
+
 /* Portrait: forms and memory pages in one column. */
 #app.portrait .settings,
 #app.portrait .mem-view {

@@ -115,9 +115,13 @@ export class Menus {
     );
     const screen = h(
       'section',
-      { class: 'screen', 'aria-label': 'Kristaller Dünyası' },
-      h('h1', { class: 'title', text: 'Kristaller Dünyası' }),
-      h('p', { class: 'subtitle', text: '14. Oda' }),
+      { class: 'screen title-screen', 'aria-label': 'Kristaller Dünyası' },
+      h(
+        'header',
+        { class: 'title-block' },
+        h('h1', { class: 'title', text: 'Kristaller Dünyası' }),
+        h('p', { class: 'subtitle', text: '14. Oda' }),
+      ),
       menu,
       this.noticeText ? h('p', { class: 'notice', text: this.noticeText }) : null,
     );

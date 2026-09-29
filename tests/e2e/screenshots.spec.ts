@@ -93,3 +93,25 @@ test.describe('reference screenshots', () => {
     expect(st.docOpen).toBe(true);
   });
 });
+
+test.describe('reference screenshots, phone held upright', () => {
+  test.skip(!process.env.SHOTS, 'SHOTS not set');
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+  test.setTimeout(300_000);
+
+  test('main menu (upright phone)', async ({ page }) => {
+    await page.goto(E2E);
+    await expect(page.getByRole('button', { name: 'Yeni Oyun' })).toBeVisible({ timeout: 90_000 });
+    await page.waitForTimeout(2500);
+    await shot(page, '09-phone-menu');
+  });
+
+  test('first room with subtitles (upright phone)', async ({ page }) => {
+    await page.goto(`${E2E}?room=r01`);
+    await waitState(page, (s) => s.room === 'r01' && !!s.player, 90_000, 'room r01');
+    await expect(page.locator('.caption.show')).toBeVisible({ timeout: 60_000 });
+    await page.waitForTimeout(1200);
+    await shot(page, '10-phone-game');
+  });
+});
+

@@ -310,6 +310,15 @@ test.describe('layout', () => {
       );
       expect(off, `${w}×${h}`).toEqual([]);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      if (h > w * 0.9) {
+        // Held upright: the buttons sit below the picture, not across its edge.
+        const across = await page.evaluate(() => {
+          if (!document.getElementById('app')!.classList.contains('roomy')) return null;
+          const bottom = document.querySelector('#game canvas')!.getBoundingClientRect().bottom;
+          return [...document.querySelectorAll('.screen .btn')].filter((e) => e.getBoundingClientRect().top < bottom - 1).map((e) => e.textContent);
+        });
+        expect(across, `${w}×${h}`).toEqual([]);
+      }
     }
   });
 });

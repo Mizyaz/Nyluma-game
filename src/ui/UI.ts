@@ -73,6 +73,8 @@ export class UI {
     const canvas = this.game.canvas;
     const r = canvas ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: W, height: H };
     const box = portrait ? { left: 0, top: 0, width: W, height: H } : r;
+    // Room for the whole main menu under the game view (see .title-screen).
+    root?.classList.toggle('roomy', portrait && H - (r.top + r.height) >= 300);
     const s = this.stage.style;
     s.left = `${box.left}px`;
     s.top = `${box.top}px`;
