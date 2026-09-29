@@ -6,6 +6,8 @@ import type { MusicId } from '../data/roomTypes';
 // Nothing streams at runtime; no external audio files are needed.
 
 export type Sfx =
+  | 'whoosh'
+  | 'sprout'
   | 'step'
   | 'stepWood'
   | 'stepMetal'
@@ -413,6 +415,14 @@ export class AudioSystem {
         break;
       case 'rumble':
         this.noiseBurst(t, 1.6, 0.2 * v, out, { type: 'lowpass', f0: 120, f1: 80 }, 0.3);
+        break;
+      case 'whoosh':
+        // Crystal tunnel: rising airy sweep with glassy sparkle on top.
+        this.noiseBurst(t, 1.3, 0.16 * v, out, { type: 'bandpass', f0: 220, f1: 2600, q: 0.9 }, 0.45);
+        [880, 1175, 1568, 1976].forEach((f, i) => this.chime(t + 0.35 + i * 0.09, f * p, 0.022 * v, out, 1.1));
+        break;
+      case 'sprout':
+        this.chime(t, (1900 + Math.random() * 500) * p, 0.012 * v, out, 0.35);
         break;
       case 'sunhit':
         this.osc('sine', 70, t, 0.8, 0.25 * v, out, { f1: 45 });

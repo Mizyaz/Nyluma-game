@@ -26,6 +26,126 @@ export interface PoseParams {
   vy?: number;
   /** 0..1 progress for one-shot poses. */
   k?: number;
+  /** Momentary emotion layered over the animation (drives the brows). */
+  emote?: Emote;
+  /** 0..1 strength of the emote (fades out). */
+  emoteK?: number;
+}
+
+export type Emote = 'surprise' | 'pain' | 'joy' | 'anger' | 'talk' | 'listen' | 'relief' | 'worry' | 'effort';
+
+/** Brow state: raise (px, negative = up), knit (rad, + = angry, - = sad), asym (px on the near brow). */
+interface BrowSet {
+  raise: number;
+  knit: number;
+  asym: number;
+}
+
+const EMOTES: Record<Emote, (t: number) => BrowSet> = {
+  surprise: () => ({ raise: -6.5, knit: -0.2, asym: -1.5 }),
+  pain: (t) => ({ raise: 2.2, knit: -0.62 + 0.06 * S(t * 30), asym: 1.2 }),
+  joy: (t) => ({ raise: -4.5 - 1.5 * Math.abs(S(t * 9)), knit: -0.3, asym: 0 }),
+  anger: () => ({ raise: 2.5, knit: 0.8, asym: 0 }),
+  talk: (t) => ({ raise: -2.2 * Math.abs(S(t * 8.5)), knit: 0.14 * S(t * 3.7), asym: -1.2 * Math.max(0, S(t * 2.3)) }),
+  listen: (t) => ({ raise: -2.6, knit: -0.14, asym: -1.6 * Math.max(0, S(t * 0.8)) }),
+  relief: () => ({ raise: -3, knit: -0.38, asym: 0 }),
+  worry: (t) => ({ raise: -1.5, knit: -0.55 + 0.05 * S(t * 6), asym: 0.8 }),
+  effort: (t) => ({ raise: 2, knit: 0.55 + 0.05 * S(t * 20), asym: 0 }),
+};
+
+/** What the brows do during each animation: big, readable reactions. */
+function browsFor(anim: string, t: number, prm: PoseParams, st: HumanoidStyle): BrowSet {
+  let b: BrowSet = { raise: 0, knit: 0, asym: 0 };
+  switch (anim) {
+    case 'idle': {
+      // Alive at rest: brief lifts and a quizzical twitch now and then.
+      const lift = Math.max(0, S(t * 0.9) - 0.82) * 22;
+      const twitch = Math.max(0, S(t * 0.37 + 1) - 0.9) * 26;
+      b = { raise: -lift, knit: 0.04 * S(t * 0.5), asym: -twitch };
+      if (st === 'suit') b = { raise: 1.4, knit: -0.32, asym: 0 };
+      break;
+    }
+    case 'walk':
+      b = { raise: 0, knit: st === 'suit' ? -0.3 : 0.1, asym: 0 };
+      break;
+    case 'run':
+      b = { raise: 0.8, knit: 0.3, asym: 0 };
+      break;
+    case 'push':
+      b = EMOTES.effort(t);
+      break;
+    case 'rise':
+      b = { raise: -5, knit: -0.12, asym: -1.2 };
+      break;
+    case 'fall': {
+      const f = Math.min(1, Math.max(0, (prm.vy ?? 300) / 700));
+      b = { raise: -3.5 - 3 * f, knit: -0.35 * f, asym: -1.5 * f };
+      break;
+    }
+    case 'land': {
+      const u = Math.min(1, t / 0.28);
+      b = { raise: 2.6 * (1 - u), knit: 0.5 * (1 - u), asym: 0 };
+      break;
+    }
+    case 'interact':
+      b = { raise: -3, knit: -0.08, asym: -2.6 };
+      break;
+    case 'reach':
+    case 'pull':
+      b = { raise: 1, knit: 0.45, asym: 0 };
+      break;
+    case 'song':
+      b = { raise: -2.4 - 1.4 * S(t * 3.2), knit: -0.2, asym: 1 * S(t * 1.6) };
+      break;
+    case 'breath':
+      b = { raise: 1.6, knit: 0.36 + 0.05 * S(t * 5), asym: 0 };
+      break;
+    case 'transform':
+      b = { raise: -5.5, knit: -0.35 + 0.18 * S(t * 18), asym: -1 };
+      break;
+    case 'hurt':
+      b = EMOTES.pain(t);
+      break;
+    case 'collapse':
+      b = { raise: 1.8, knit: -0.55, asym: 0 };
+      break;
+    case 'kneel':
+    case 'sit':
+      b = { raise: 0.6, knit: -0.45, asym: 0 };
+      break;
+    case 'shout':
+      b = EMOTES.anger(t);
+      break;
+    case 'ride':
+      b = { raise: -3 - 1 * S(t * 7), knit: 0.12, asym: 0 };
+      break;
+    case 'point':
+      b = { raise: 0.8, knit: 0.55, asym: 0 };
+      break;
+    case 'look':
+      b = { raise: -3.5, knit: -0.12, asym: -3 };
+      break;
+    default:
+      break;
+  }
+  const k = Math.max(0, Math.min(1, prm.emoteK ?? 0));
+  if (prm.emote && k > 0) {
+    const e = EMOTES[prm.emote](t);
+    b = { raise: b.raise + (e.raise - b.raise) * k, knit: b.knit + (e.knit - b.knit) * k, asym: b.asym + (e.asym - b.asym) * k };
+  }
+  return b;
+}
+
+/**
+ * The brow tilts (knit: inner end down = anger/effort, up = pain/sadness),
+ * rises and drops. The root head is small and crowned with branches, so its
+ * brow travels less vertically and leans harder instead.
+ */
+function applyBrows(p: PoseOut, b: BrowSet, st: HumanoidStyle): void {
+  const lift = st === 'root' ? 0.45 : 1;
+  const lean = st === 'root' ? 1.35 : 1.15;
+  p.angles.browN = b.knit * lean;
+  p.offsets.browN = { x: b.knit * 1.4, y: (b.raise + b.asym * 0.6) * lift };
 }
 
 const S = Math.sin;
@@ -392,6 +512,7 @@ export function humanoidPose(rigId: string, anim: string, t: number, prm: PosePa
     a.torch = -((a.torso ?? 0) + (a.armR ?? 0) + (a.foreR ?? 0)) + (anim === 'torchUp' ? 0 : 0.12);
     a.flame = 0.05 * Math.sin(t * 17);
   }
+  if (st === 'root' || st === 'human' || st === 'suit') applyBrows(p, browsFor(anim, t, prm, st), st);
   return p;
 }
 

@@ -1258,17 +1258,6 @@ function portraitBg(seed: number, disc = '#322d4b'): string {
   return rect(0, 0, 160, 160, '#2a2640') + dot(80, 80, 70, disc) + specks(rng, 16, [8, 8, 152, 152], '#e6e9f3', [0.4, 0.9], [0.1, 0.35]);
 }
 
-/** Luminous vein cluster in place of an eye. */
-function veinEye(x: number, y: number, r: number): string {
-  let s = fillPath(ellipsePath(x, y, r * 1.1, r * 0.8), P.violetDark);
-  for (let i = 0; i < 9; i++) {
-    const a = (i / 9) * Math.PI * 2 + 0.2;
-    const len = r * (i % 2 ? 1.25 : 1.6);
-    s += line(`M${n2(x)} ${n2(y)}L${n2(x + Math.cos(a) * len)} ${n2(y + Math.sin(a) * len * 0.8)}`, P.vein, r * 0.2);
-  }
-  return s + dot(x, y, r * 0.45, '#f4e8ff');
-}
-
 function portraitRoot(): string {
   let s = portraitBg(3101);
   const bark = { fill: P.bark, shade: P.barkDark, light: P.barkLight, sx: 2.2, sy: 2, hx: 1.2, hy: 1.2, stroke: 2.8 };
@@ -1303,7 +1292,8 @@ function portraitRoot(): string {
     line('M84 76Q76 86 78 98M84 76Q92 64 90 52', P.vein, 0.8, 0.9) +
     line('M92 104Q98 101 104 103', P.gortiBarkDark, 1.8) +
     line('M108 78q4 3 5 7', P.gortiBarkDark, 1.3) +
-    line('M74 66Q88 60 104 64', P.gortiBarkDark, 2.4) + line('M76 64Q88 58.5 102 62', P.gortiBarkLight, 1, 0.8) +
+    line('M72 66Q81 59.5 92 63', '#2d1f3f', 4.6) + line('M74 63.8Q82 59 90 61.2', '#b9a3d6', 1, 0.7) +
+    line('M98 63.5Q104 60.5 110 62.5', '#2d1f3f', 3.6) +
     fillPath(smooth([[74, 90], [86, 94], [96, 92], [88, 100], [78, 99]]), P.gortiBarkDark, 0.7) +
     line('M56 58q-4 10 -2 20M60 86q-3 8 0 16M84 50q-4 4 -4 9M96 50q4 5 4 10M68 110q6 2 12 1', P.gortiBarkDark, 1.3) +
     line(ellipsePath(96, 56, 1.8, 2.6), P.gortiBarkDark, 1.1);
@@ -1311,8 +1301,8 @@ function portraitRoot(): string {
   for (const [pts, w] of [[[[70, 113], [68, 122], [70, 130]], 3.4], [[[80, 116], [81, 126], [78, 134]], 3.8], [[[92, 114], [95, 123], [94, 131]], 3.2], [[[101, 108], [106, 116], [106, 124]], 2.8]] as const) {
     s += cel(taper(pts.map((p) => [p[0], p[1]] as Pt), w, 1), { fill: P.gortiBark, shade: P.gortiBarkDark, sx: 1, sy: 0, stroke: 2 });
   }
-  s += glow(84, 76, 26, P.vein, 0.55) + glow(104, 74, 16, P.vein, 0.45);
-  s += veinEye(84, 76, 6.5) + veinEye(104, 74, 4.4);
+  // The eyes are black hollows.
+  s += fillPath(ellipsePath(84, 76, 7.2, 5.6), '#07060b') + fillPath(ellipsePath(104, 74, 4.8, 3.9), '#07060b');
   return s;
 }
 
@@ -1332,14 +1322,13 @@ function portraitAmca(): string {
     return cel(smooth(pts), { ...skin, sx: 1.5, sy: 1.5, stroke: 2.6, over: line(open(xf([[-3, 2], [-5.5, 7], [-3, 12]], flip ? 114 : 46, 70, 1, 0, flip)), P.skinDark, 1.4) });
   };
   const eye = (cx: number): string =>
-    fillPath(smooth([[cx - 7.5, 73], [cx - 3.5, 70.2], [cx + 3.5, 70.2], [cx + 7.5, 73], [cx + 3.5, 75.4], [cx - 3.5, 75.4]]), '#efe6d6') +
-    dot(cx + 0.6, 73.4, 2.6, '#3a2f2c') + dot(cx + 1.3, 72.4, 0.7, '#f4efe6') +
+    fillPath(smooth([[cx - 7.5, 73], [cx - 3.5, 70.2], [cx + 3.5, 70.2], [cx + 7.5, 73], [cx + 3.5, 75.6], [cx - 3.5, 75.6]]), '#07060b') +
     fillPath(smooth([[cx - 8.5, 72.4], [cx - 4, 67.5], [cx + 4, 67.5], [cx + 8.5, 72.4], [cx + 4, 72.2], [cx - 4, 72.2]]), P.skinDark) +
     line(open([[cx - 8, 73], [cx - 3.5, 71.8], [cx + 3.5, 71.8], [cx + 8, 73]]), INK, 2) +
     line(open([[cx - 6.5, 77.6], [cx, 79.2], [cx + 6.5, 77.6]]), P.skinDark, 1.3) +
     line(open([[cx - 5, 81], [cx, 82.2], [cx + 5, 81]]), P.skinDark, 1, 0.7);
   const face =
-    line('M55 63Q63 59.5 73 61.5M87 61.5Q97 59.5 105 63', '#8d8790', 3.4) +
+    line('M54 63.5Q63 58.5 73.5 61.5M86.5 61.5Q97 58.5 106 63.5', '#3b3740', 4.6) +
     eye(64) + eye(96) +
     line('M78 70Q76 80 75.5 87', P.skinDark, 1.6) +
     line('M70 88Q73 93.5 80 94.5Q87 93.5 90 88', INK, 2) + line('M74.5 90.6q1.5 1 3 0.4M82.5 91q1.5 0.6 3 -0.4', INK, 1.4) +

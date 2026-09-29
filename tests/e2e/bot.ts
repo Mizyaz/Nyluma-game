@@ -33,8 +33,19 @@ export class Bot {
     this.touch = mode === 'touch';
   }
 
+  private lastState: (ProbeState & { extra: Record<string, unknown>; prompts: string[] }) | null = null;
+  private lastAt = 0;
+
   async s(): Promise<ProbeState & { extra: Record<string, unknown>; prompts: string[] }> {
-    return (await probe(this.page)) as ProbeState & { extra: Record<string, unknown>; prompts: string[] };
+    const st = (await probe(this.page)) as ProbeState & { extra: Record<string, unknown>; prompts: string[] };
+    this.lastState = st;
+    this.lastAt = Date.now();
+    return st;
+  }
+
+  /** The state just read by the caller, if fresh (saves a round trip per touch). */
+  private async recent(): Promise<ProbeState & { extra: Record<string, unknown>; prompts: string[] }> {
+    return this.lastState && Date.now() - this.lastAt < 120 ? this.lastState : this.s();
   }
 
   note(msg: string): void {
@@ -132,7 +143,7 @@ export class Bot {
   }
 
   private async touchDown(k: Key): Promise<void> {
-    const st = await this.s();
+    const st = await this.recent();
     // Panels and dialogue are touched directly.
     if (st.songOpen && (k === 'ArrowLeft' || k === 'ArrowDown' || k === 'ArrowRight' || k === 'KeyA' || k === 'KeyD')) {
       const idx = k === 'ArrowLeft' || k === 'KeyA' ? 0 : k === 'ArrowDown' ? 1 : 2;
@@ -233,14 +244,16 @@ export class Bot {
         continue;
       }
       const dx = x - p.x;
-      const brake = Math.min(28, (p.vx * p.vx) / (2 * 2000) + 4);
-      if (Math.abs(dx) <= tol) {
+      // Touch presses travel through an extra hop: brake a little earlier.
+      const lag = this.touch ? Math.abs(p.vx) * 0.09 : 0;
+      const brake = Math.min(28, (p.vx * p.vx) / (2 * 2000) + 4) + lag;
+      if (Math.abs(dx) <= Math.max(tol, this.touch ? 9 : 0)) {
         await this.keyUp('KeyD');
         await this.keyUp('KeyA');
         if (Math.abs(p.vx) < 20) return;
       } else if (Math.abs(dx) <= brake && Math.abs(p.vx) < 20) {
         // Standing just short of the target: nudge with a short press.
-        await this.tap(dx > 0 ? 'KeyD' : 'KeyA', 30);
+        await this.tap(dx > 0 ? 'KeyD' : 'KeyA', this.touch ? 70 : 30);
         await this.wait(60);
         continue;
       } else if (dx > 0) {

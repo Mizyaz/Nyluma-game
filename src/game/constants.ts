@@ -106,3 +106,6 @@ export const DEPTH = {
   fg: 80,
   overlay: 100,
 } as const;
+
+/** Default camera zoom: Gorti fills more of the screen. */
+export const CAMERA_ZOOM = 1.5;

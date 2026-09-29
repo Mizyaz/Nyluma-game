@@ -403,6 +403,99 @@ function topDecor(ctx: CanvasRenderingContext2D, style: SolidStyle, w: number, c
  * Paints the part of a solid that falls inside a chunk canvas. `seed`
  * keeps decoration identical across chunks and reloads.
  */
+/** Lightens (k > 0) or darkens (k < 0) a #rrggbb colour. */
+function tone(hex: string, k: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const ch = (v: number): number => Math.round(k >= 0 ? v + (255 - v) * k : v * (1 + k));
+  const r = ch((n >> 16) & 255);
+  const g = ch((n >> 8) & 255);
+  const b = ch(n & 255);
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+}
+
+/**
+ * 2.5D surface: the walkable top is a receding band that straddles the
+ * collider line, so feet stand in the middle of the surface rather than on
+ * a flat edge. The far edge is shorter (perspective toward a vanishing point
+ * above the view) and a little hazier; the front lip carries the light.
+ */
+function topFace(ctx: CanvasRenderingContext2D, w: number, style: SolidStyle, c: StyleColors, thin: boolean, rng: Rng): void {
+  const depth = thin ? 9 : 20;
+  const back = -depth * 0.55;
+  const front = depth * 0.45;
+  const inset = Math.min(depth * 0.85, w * 0.08);
+  const face = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(inset, back);
+    ctx.lineTo(w - inset, back);
+    ctx.lineTo(w + 0.5, front);
+    let x = w;
+    while (x > 18) {
+      const nx = x - rng.range(22, 46);
+      ctx.lineTo(Math.max(0, nx), front + rng.range(-0.8, 0.8));
+      x = nx;
+    }
+    ctx.lineTo(-0.5, front);
+    ctx.closePath();
+  };
+  const top = style === 'crystal' ? c.light : c.top;
+  face();
+  const g = ctx.createLinearGradient(0, back, 0, front);
+  g.addColorStop(0, tone(top, -0.22));
+  g.addColorStop(0.6, top);
+  g.addColorStop(1, tone(top, 0.12));
+  ctx.fillStyle = g;
+  ctx.fill();
+  // Surface texture: short strokes converging toward the vanishing point
+  // and a few speckles, clipped to the surface.
+  ctx.save();
+  face();
+  ctx.clip();
+  ctx.strokeStyle = tone(top, -0.3);
+  ctx.globalAlpha = 0.5;
+  ctx.lineWidth = 1.2;
+  const n = Math.max(2, Math.round(w / 34));
+  for (let i = 0; i < n; i++) {
+    const fx = rng.range(6, w - 6);
+    const lean = (fx - w / 2) / Math.max(1, w) * 6;
+    ctx.beginPath();
+    ctx.moveTo(fx, front - 1);
+    ctx.lineTo(fx - lean - rng.range(-2, 2), back + rng.range(1, depth * 0.4));
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 0.35;
+  ctx.fillStyle = tone(top, 0.35);
+  for (let i = 0; i < n * 2; i++) {
+    ctx.beginPath();
+    ctx.ellipse(rng.range(4, w - 4), rng.range(back + 2, front - 2), rng.range(1, 2.4), rng.range(0.5, 1.1), 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+  ctx.globalAlpha = 1;
+  // Lit front lip, then ink: thin on the far edge, full on the lip.
+  ctx.strokeStyle = tone(top, 0.4);
+  ctx.lineWidth = 1.6;
+  ctx.globalAlpha = 0.85;
+  ctx.beginPath();
+  ctx.moveTo(2, front - 1.5);
+  ctx.lineTo(w - 2, front - 1.5);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = P.ink;
+  ctx.lineWidth = thin ? 1.6 : 2;
+  ctx.beginPath();
+  ctx.moveTo(0, front);
+  ctx.lineTo(inset, back);
+  ctx.lineTo(w - inset, back);
+  ctx.lineTo(w, front);
+  ctx.stroke();
+  ctx.lineWidth = thin ? 2.6 : 3.4;
+  ctx.beginPath();
+  ctx.moveTo(-0.5, front);
+  ctx.lineTo(w + 0.5, front);
+  ctx.stroke();
+}
+
 export function paintSolid(
   canvas: HTMLCanvasElement,
   solid: SolidDef,
@@ -469,6 +562,7 @@ export function paintSolid(
   ctx.strokeStyle = P.ink;
   ctx.lineWidth = thin ? 3 : 4;
   ctx.stroke();
+  topFace(ctx, solid.w, solid.style, c, thin, new Rng(seed ^ 0x3c1));
   topDecor(ctx, solid.style, solid.w, c, new Rng(seed ^ 0x77));
   ctx.restore();
 }

@@ -1,6 +1,8 @@
 import * as Phaser from 'phaser';
 import { app, persist } from '../App';
 import { enterFullscreen } from '../../ui/fullscreen';
+import { warpLook } from '../fx/crystalFx';
+import type { WarpData } from './WarpScene';
 import { DEPTH, VIEW_H, VIEW_W } from '../constants';
 import { hex, P } from '../art/palette';
 import { frameRef, hasFrame } from '../art/TextureFactory';
@@ -118,10 +120,12 @@ export class MenuScene extends Phaser.Scene {
     app.ui.menus.closeAll();
     const def = roomDef(progress.room);
     const cp = def.checkpoints.find((c) => c.id === progress.checkpoint) ?? def.checkpoints[0]!;
-    this.cameras.main.fadeOut(400, 15, 13, 24);
-    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      this.scene.start('world', { room: progress.room, checkpoint: cp.id } satisfies WorldData);
-    });
+    // Into the world through the crystal tunnel.
+    this.scene.launch('warp', {
+      strength: 1,
+      look: warpLook(def.theme),
+      onPeak: () => this.scene.start('world', { room: progress.room, checkpoint: cp.id } satisfies WorldData),
+    } satisfies WarpData);
   }
 
   override update(_t: number, dt: number): void {

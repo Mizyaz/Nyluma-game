@@ -63,6 +63,7 @@ export const R07: RoomDef = {
   music: 'ride',
   player: 'horse',
   entryForm: 'human',
+  zoom: 1.12,
   objective: 'r07.ride',
   killY: 1060,
   checkpoints: [

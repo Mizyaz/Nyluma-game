@@ -1,9 +1,9 @@
 import * as Phaser from 'phaser';
-import { DEPTH, LATENT_GRACE_S, VIEW_H, VIEW_W } from '../constants';
+import { CAMERA_ZOOM, DEPTH, LATENT_GRACE_S, VIEW_H, VIEW_W } from '../constants';
 import { hex, P } from '../art/palette';
 import { hashSeed } from '../art/svg';
 import { paintSolid, TERRAIN_MARGIN } from '../art/terrain';
-import { themeDef } from '../art/backgrounds';
+import { paintForeground, themeDef } from '../art/backgrounds';
 import { frameRef, hasFrame, registerCanvas, unregister } from '../art/TextureFactory';
 import { Rng } from '../art/svg';
 import type {
@@ -55,6 +55,8 @@ export interface Marker<T> {
 
 const CHUNK = 1024;
 const STREAM_THRESHOLD = 6000;
+/** Terrain texture resolution (logical px → texels). */
+const TERRAIN_RES = 1.5;
 
 /**
  * Builds a room from data: parallax layers, collision-aligned terrain,
@@ -72,6 +74,7 @@ export class RoomRuntime {
   nodes: Marker<SongNodeDef>[] = [];
   sites: Marker<SiteDef>[] = [];
   interacts: Marker<InteractDef>[] = [];
+  private fgImages: Phaser.GameObjects.Image[] = [];
   memories: (Marker<MemoryPickupDef> & { taken: boolean })[] = [];
   checkpoints: (Marker<CheckpointDef> & { lit: boolean })[] = [];
   exits: Marker<ExitDef>[] = [];
@@ -161,9 +164,48 @@ export class RoomRuntime {
       }
     });
     void rng;
+    this.buildForeground();
+  }
+
+  /**
+   * Out-of-focus silhouettes in front of the world (2.5D depth): they scroll
+   * faster than the terrain and stay pinned to the bottom of the view.
+   */
+  private buildForeground(): void {
+    const sf = 1.35;
+    const h = 150;
+    const res = 0.5;
+    const x0 = -400;
+    const lw = Math.ceil(this.def.width * sf + VIEW_W + 800);
+    const zoom = this.def.zoom ?? CAMERA_ZOOM;
+    // Screen-pinned vertically; camera zoom scales about the view centre.
+    const bottom = VIEW_H / 2 + (VIEW_H + 12 - VIEW_H / 2) / zoom;
+    const maxW = 2040;
+    const pieces = Math.ceil((lw * res) / maxW);
+    const pieceW = Math.ceil(lw / pieces);
+    for (let pi = 0; pi < pieces; pi++) {
+      const cw = Math.min(pieceW, lw - pi * pieceW);
+      const c = document.createElement('canvas');
+      c.width = Math.max(2, Math.ceil(cw * res));
+      c.height = Math.ceil(h * res);
+      const ctx = c.getContext('2d')!;
+      ctx.scale(res, res);
+      ctx.translate(-pi * pieceW, 0);
+      paintForeground(ctx, lw, h, this.def.theme, new Rng(hashSeed(`${this.def.id}:fg`)));
+      const key = `fg:${this.def.id}:${pi}`;
+      registerCanvas(this.scene.textures, key, c, { w: cw, h, px: 0, py: 0 }, res);
+      this.texKeys.add(key);
+      const img = this.scene.add.image(x0 + pi * pieceW, bottom, key).setOrigin(0, 1).setScale(1 / res);
+      img.setScrollFactor(sf, 0);
+      img.setDepth(DEPTH.fg);
+      img.setAlpha(0.92);
+      this.layerImages.push(img);
+      this.fgImages.push(img);
+    }
   }
 
   setParallaxReduced(reduced: boolean): void {
+    for (const img of this.fgImages) img.setScrollFactor(reduced ? 1 : 1.35, 0);
     // Reduced motion: flatten parallax differences (layers move with the world
     // at a single gentle factor instead of several speeds).
     const theme = themeDef(this.def.theme);
@@ -214,14 +256,17 @@ export class RoomRuntime {
 
   private materialize(c: ChunkDesc): void {
     if (c.image) return;
+    // Painted above 1:1 so terrain stays crisp under the zoomed-in camera.
+    const res = TERRAIN_RES;
     const canvas = document.createElement('canvas');
-    canvas.width = c.w;
-    canvas.height = c.h;
+    canvas.width = Math.ceil(c.w * res);
+    canvas.height = Math.ceil(c.h * res);
+    canvas.getContext('2d')!.scale(res, res);
     const theme = themeDef(this.def.theme);
     paintSolid(canvas, c.solid.def, { x: c.x, y: c.y }, theme.terrain, hashSeed(`${this.def.id}:${c.solid.index}`));
-    registerCanvas(this.scene.textures, c.key, canvas, { w: c.w, h: c.h, px: 0, py: 0 });
+    registerCanvas(this.scene.textures, c.key, canvas, { w: c.w, h: c.h, px: 0, py: 0 }, res);
     this.texKeys.add(c.key);
-    const img = this.scene.add.image(c.x, c.y, c.key).setOrigin(0, 0);
+    const img = this.scene.add.image(c.x, c.y, c.key).setOrigin(0, 0).setScale(1 / res);
     img.setDepth(c.solid.def.latent ? DEPTH.terrain + 2 : DEPTH.terrain);
     c.image = img;
     c.solid.images.push(img);
@@ -236,6 +281,18 @@ export class RoomRuntime {
     c.image = null;
     unregister(this.scene.textures, c.key);
     this.texKeys.delete(c.key);
+  }
+
+  /** Top of the nearest solid surface at or below (x, y), or null. */
+  groundBelow(x: number, y: number): number | null {
+    let best: number | null = null;
+    for (const s of this.solids) {
+      if (!s.active || !s.body.enable) continue;
+      const d = s.def;
+      if (x < d.x || x > d.x + d.w || d.y < y - 3) continue;
+      if (best === null || d.y < best) best = d.y;
+    }
+    return best;
   }
 
   /** Streams terrain chunks around the camera for very long rooms. */

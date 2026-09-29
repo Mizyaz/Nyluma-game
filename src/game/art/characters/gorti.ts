@@ -32,6 +32,35 @@ function part(key: string, box: Box, draw: (ox: number, oy: number) => string, e
   };
 }
 
+/** A solid black eye hollow (no white, no pupil, no glint). */
+function blackEye(cx: number, cy: number, rx: number, ry: number): string {
+  return `<path d="${ellipsePath(cx, cy, rx, ry)}" fill="#07060b"/>`;
+}
+
+/**
+ * Eyebrow parts. Pivot at the brow's middle; authored for a right-facing
+ * head. The near brow's inner end (toward the nose) is on the right; the far
+ * brow, seen past the nose, is mirrored and smaller.
+ */
+function brow(key: string, fill: string, len: number, thick: number, far: boolean): PartArt {
+  const hl = len / 2;
+  return part(key, { x0: -hl - 1, y0: -thick - 2, x1: hl + 1, y1: thick + 1 }, (ox, oy) => {
+    const dir = far ? -1 : 1;
+    // Thick at the inner end, tapering outward, gently arched.
+    const pts: Pt[] = [
+      [-hl * dir, 0.8],
+      [-hl * 0.3 * dir, -0.9],
+      [hl * 0.4 * dir, -0.6],
+      [hl * dir, 0.4],
+    ];
+    const shape = taper(tr(pts, ox, oy), thick * 0.45, thick);
+    // A thin lilac sheen on the upper edge keeps the brow readable against
+    // dark branches and night skies.
+    const sheen = line(smooth(tr([[-hl * 0.7 * dir, -thick * 0.28], [0, -thick * 0.52], [hl * 0.55 * dir, -thick * 0.4]], ox, oy), 1, false), '#b9a3d6', 1, 0.75);
+    return cel(shape, { fill, shade: P.ink, sx: 0.6, sy: 0.6, stroke: 1.5, over: sheen });
+  });
+}
+
 // ---------------------------------------------------------------- root form
 
 function rootHead(key: string, giant = false): PartArt {
@@ -60,13 +89,9 @@ function rootHead(key: string, giant = false): PartArt {
       line(smooth(tr([[9, -17], [8, -12], [5, -7], [3, -3]], ox, oy), 1, false), P.violet, 1.4) +
       line(smooth(tr([[6, -21], [1, -23], [-4, -26]], ox, oy), 1, false), P.violet, 1.2) +
       line(smooth(tr([[8, -15], [11, -11]], ox, oy), 1, false), P.violet, 1);
-    // Luminous vein cluster in place of eyes.
-    const ex = 9 + ox;
-    const ey = -20 + oy;
-    let eye = `<path d="${ellipsePath(ex, ey, 4.2, 3)}" fill="${P.violetDark}"/>`;
-    const rays: Pt[] = [[5, -2], [5.5, 1.5], [3, 4], [-1, 4.5], [-4, 2], [-4.5, -1.5], [-1, -4.2], [3, -4]];
-    for (const [dx, dy] of rays) eye += line(`M${ex} ${ey}L${ex + dx} ${ey + dy}`, P.vein, 1.1);
-    eye += `<circle cx="${ex + 0.5}" cy="${ey}" r="1.8" fill="#f4e8ff"/>`;
+    // The eyes are pure black hollows: nothing to read in them. All the
+    // expression lives in the separate, very mobile brows.
+    const eye = blackEye(9 + ox, -20 + oy, 4.6, 3.6);
     s += cel(smooth(tr(skull, ox, oy)), {
       fill: P.gortiBark,
       shade: P.gortiBarkDark,
@@ -229,9 +254,7 @@ function humanHead(key: string, suit = false): PartArt {
       fill: '#9a969e', shade: '#77737e', sx: 1, sy: 1.5, stroke: 1.8,
     });
     const face =
-      line(smooth(o([[5, -25], [9, -26], [13, -24]]), 1, false), '#8d8790', 2) + // brow
-      `<path d="${smooth(o([[8, -21], [11, -22], [13.5, -20.5], [11, -19.2]]))}" fill="${P.ink}"/>` + // eye
-      line(smooth(o([[7, -23], [10.5, -23.5], [14, -21.5]]), 1, false), P.skinDark, 1.4) + // heavy lid
+      blackEye(11 + ox, -20.8 + oy, 3.4, 2.5) + // eye: a black hollow
       line(smooth(o([[10, -17], [8, -12]]), 1, false), P.skinDark, 1) + // cheek fold
       line(smooth(o([[12, -7], [15, -7.5]]), 1, false), '#7c5046', 1.2) + // mouth
       line(smooth(o([[2, -29], [0, -25], [-1, -21]]), 1, false), P.violet, 1, 0.75) + // faint temple vein
@@ -400,6 +423,8 @@ export interface HumanoidDims {
   hipX: number;
   headX: number;
   eye?: Pt;
+  /** Separate expressive eyebrow (part key, offset above the eye). */
+  brow?: { part: string; up: number; dx: number };
 }
 
 export function humanoidRig(id: string, prefix: string, d: HumanoidDims, withWatch: boolean, glowKey?: string): RigDef {
@@ -421,6 +446,10 @@ export function humanoidRig(id: string, prefix: string, d: HumanoidDims, withWat
   ];
   if (withWatch) j.push({ id: 'watch', parent: 'shinL', x: 0, y: d.shin - 4, part: 'gorti.watch', side: 'L', z: 43 });
   if (glowKey && d.eye) j.push({ id: 'eyeGlow', parent: 'head', x: d.eye[0], y: d.eye[1], part: glowKey, z: 65, additive: true });
+  if (d.brow && d.eye) {
+    // Profile head: one strong brow on the skin above the black eye.
+    j.push({ id: 'browN', parent: 'head', x: d.eye[0] + d.brow.dx, y: d.eye[1] - d.brow.up, part: d.brow.part, z: 66 });
+  }
   return {
     id,
     joints: j,
@@ -440,9 +469,11 @@ export function humanoidRig(id: string, prefix: string, d: HumanoidDims, withWat
 
 export const GORTI_ROOT_DIMS: HumanoidDims = {
   hip: 48, thigh: 23, shin: 23, torso: 37, shoulderY: 33, shoulderX: 3, upper: 20, hipX: 3, headX: 1, eye: [9, -20],
+  brow: { part: 'gorti.root.brow', up: 5.6, dx: -1 },
 };
 export const GORTI_HUMAN_DIMS: HumanoidDims = {
   hip: 43, thigh: 21, shin: 18, torso: 40, shoulderY: 36, shoulderX: 2, upper: 20, hipX: 4, headX: 2, eye: [11, -21],
+  brow: { part: 'gorti.human.brow', up: 5.2, dx: -0.5 },
 };
 
 export function gortiParts(): PartArt[] {
@@ -456,6 +487,8 @@ export function gortiParts(): PartArt[] {
     rootFoot('gorti.root.foot'),
     watch('gorti.watch'),
     eyeGlow('gorti.eyeglow', P.vein),
+    brow('gorti.root.brow', '#2d1f3f', 15, 6.2, false),
+    brow('gorti.human.brow', '#2a262e', 14, 5.2, false),
     humanHead('gorti.human.head'),
     humanTorso('gorti.human.torso'),
     humanUpperArm('gorti.human.arm'),
@@ -473,7 +506,7 @@ export function gortiParts(): PartArt[] {
   ];
 }
 
-export const RIG_GORTI_ROOT = humanoidRig('gorti.root', 'gorti.root', GORTI_ROOT_DIMS, true, 'gorti.eyeglow');
+export const RIG_GORTI_ROOT = humanoidRig('gorti.root', 'gorti.root', GORTI_ROOT_DIMS, true);
 export const RIG_GORTI_HUMAN = humanoidRig('gorti.human', 'gorti.human', GORTI_HUMAN_DIMS, true);
 export const RIG_GORTI_SUIT = (() => {
   const r = humanoidRig('gorti.suit', 'gorti.suit', GORTI_HUMAN_DIMS, true);

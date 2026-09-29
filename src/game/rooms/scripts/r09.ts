@@ -46,7 +46,7 @@ export function r09(w: WorldScene): RoomScript {
         app.audio.sfx('paper');
         const cam = w.cameras.main;
         if (!app.settings.reducedMotion) {
-          cam.zoomTo(1.25, 1600);
+          cam.zoomTo(w.baseZoom * 1.25, 1600);
           cam.rotateTo(0.04, false, 1600);
         }
         await Promise.all(strips.map((s, i) => cs.tween({ targets: s, x: VIEW_W / 2, duration: 900 + i * 120, ease: 'Cubic.easeInOut' })));

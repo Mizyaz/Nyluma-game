@@ -162,6 +162,8 @@ export interface RoomDef {
   triggers?: TriggerDef[];
   props?: PropDef[];
   killY?: number;
+  /** Camera zoom (default CAMERA_ZOOM); arenas and the ride show more. */
+  zoom?: number;
   /** Objective key shown on entry. */
   objective: string;
 }

@@ -1,11 +1,14 @@
 import * as Phaser from 'phaser';
 import { app, persist } from '../App';
-import { DEPTH, HULL_H, HULL_W, PULSE_RADIUS, PULSE_COOLDOWN_MS, PULSE_WINDUP_MS, HINT_DELAY_MS, VIEW_W, VIEW_H } from '../constants';
+import { DEPTH, HULL_H, HULL_W, PULSE_RADIUS, PULSE_COOLDOWN_MS, PULSE_WINDUP_MS, HINT_DELAY_MS, VIEW_W, VIEW_H, CAMERA_ZOOM } from '../constants';
 import { hex, P } from '../art/palette';
 import { frameRef, hasFrame } from '../art/TextureFactory';
 import { themeDef } from '../art/backgrounds';
 import { roomDef } from '../data/rooms';
 import { OBJECTIVES } from '../data/objectives.tr';
+import { NAMES } from '../data/dialogue.tr';
+import { CrystalWarp, StepCrystals, warpLook } from '../fx/crystalFx';
+import type { WarpData } from './WarpScene';
 import { memoryDef } from '../data/memories';
 import type { RoomDef } from '../data/roomTypes';
 import { Player } from '../entities/Player';
@@ -58,14 +61,23 @@ export class WorldScene extends Phaser.Scene {
   transitioning = false;
   private objectiveKey = '';
   private lastProgress = 0;
+  /** One clock for the hint timer (the scene clock re-bases after create). */
+  private get progressClock(): number {
+    return this.game.loop.time;
+  }
   private reachGfx!: Phaser.GameObjects.Graphics;
   private hintGlyph!: Phaser.GameObjects.Image;
   private focusVignette!: Phaser.GameObjects.Image;
   private particles!: Phaser.GameObjects.Particles.ParticleEmitter;
+  private warpBg: CrystalWarp | null = null;
+  private steps: StepCrystals | null = null;
+  private contact: Phaser.GameObjects.Image | null = null;
   private ambient: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private target: ActionTarget | null = null;
   private pulseWind = 0;
   private camLook = 0;
+  /** This room's resting camera zoom (cutscenes zoom relative to it). */
+  baseZoom = 1;
   private offFocusLost: (() => void) | null = null;
   private cleanups: (() => void)[] = [];
   private camTarget = { x: 0, y: 0 };
@@ -149,10 +161,28 @@ export class WorldScene extends Phaser.Scene {
     });
     this.particles.setDepth(DEPTH.fx);
     this.buildAmbient();
+    // 2.5D depth: crystal tube behind the room, crystals under each step,
+    // a contact shadow that stays on the surface while Gorti is airborne.
+    const look = warpLook(this.def.theme);
+    this.warpBg = new CrystalWarp(this, app.settings.reducedMotion ? { ...look, speed: look.speed * 0.3, alpha: look.alpha * 0.6 } : look, DEPTH.sky + 5);
+    this.steps = new StepCrystals(this, look.colors);
+    if (hasFrame('fx.shadow')) {
+      const sh = frameRef('fx.shadow');
+      this.contact = this.add.image(0, 0, sh.atlas, sh.frame).setDepth(DEPTH.player - 3).setVisible(false);
+    }
+    this.cleanups.push(() => {
+      this.warpBg?.destroy();
+      this.steps?.destroy();
+      this.warpBg = null;
+      this.steps = null;
+      this.contact = null;
+    });
 
     // Camera
     const cam = this.cameras.main;
     cam.setBounds(0, 0, this.def.width, this.def.height);
+    this.baseZoom = this.def.zoom ?? CAMERA_ZOOM;
+    cam.setZoom(this.baseZoom);
     this.camTarget = { x: this.player.x, y: this.player.zone.y };
     const followObj = this.add.zone(this.player.x, this.player.zone.y, 2, 2);
     this.camFollow = followObj;
@@ -192,9 +222,12 @@ export class WorldScene extends Phaser.Scene {
     this.events.on('player-land', (x: number, y: number, v: number) => {
       if (v > 500) this.shake(0.003, 90);
       this.dust(x, y, 6);
+      if (v > 260) this.steps?.land(x, y, Math.min(1, (v - 260) / 600));
     });
     this.events.on('player-step', (x: number, y: number) => {
       if (Math.random() < 0.35) this.dust(x, y, 2);
+      this.steps?.step(x, y);
+      if (Math.random() < 0.4) app.audio.sfx('sprout', { vol: 0.6 });
     });
 
     this.script = createScript(this.def.id, this);
@@ -202,9 +235,9 @@ export class WorldScene extends Phaser.Scene {
     this.script.setup();
     this.room.refresh(false);
     this.hazards.refresh();
-    this.lastProgress = this.time.now;
+    this.lastProgress = this.progressClock;
     const offQuest = quest.onChange((kind) => {
-      if (kind === 'flag' || kind === 'memory') this.lastProgress = this.time.now;
+      if (kind === 'flag' || kind === 'memory') this.lastProgress = this.progressClock;
     });
     this.cleanups.push(() => offQuest());
 
@@ -382,7 +415,7 @@ export class WorldScene extends Phaser.Scene {
     this.tweens.add({ targets: img, scale: (PULSE_RADIUS * 2) / 128, alpha: 0, duration: 380, ease: 'Cubic.easeOut', onComplete: () => img.destroy() });
     const n = this.hazards.pulse(c.x, c.y, PULSE_RADIUS);
     const handled = this.script.onPulse?.(c.x, c.y, PULSE_RADIUS) ?? false;
-    if (n > 0 || handled) this.lastProgress = this.time.now;
+    if (n > 0 || handled) this.lastProgress = this.progressClock;
   }
 
   private defaultInteract(id: string): void {
@@ -423,7 +456,8 @@ export class WorldScene extends Phaser.Scene {
       .then((r) => {
         if (p.state === 'song') p.state = 'normal';
         if (r === 'done') {
-          this.lastProgress = this.time.now;
+          this.lastProgress = this.progressClock;
+          p.emote('joy', 1600);
           this.script.onSong?.(nodeId);
         }
       });
@@ -482,6 +516,7 @@ export class WorldScene extends Phaser.Scene {
       if (!silent && !this.def.checkpoints.find((c) => c.id === id)?.silent) {
         app.audio.sfx('checkpoint');
         app.ui.hud.toast('Kontrol noktası');
+        this.player.emote('relief', 1200);
       }
     }
     persist();
@@ -493,6 +528,7 @@ export class WorldScene extends Phaser.Scene {
     if (!def) return;
     if (this.quest.collectMemory(id)) {
       app.audio.sfx('pickup');
+      this.player.emote('surprise', 1400);
       app.ui.hud.toast(`Anı bulundu: ${def.title}  (M: Anılar)`, 4200);
       persist();
     }
@@ -503,7 +539,7 @@ export class WorldScene extends Phaser.Scene {
     this.objectiveKey = key;
     const o = OBJECTIVES[key];
     if (o) app.ui.hud.setObjective(o.text, flash);
-    this.lastProgress = this.time.now;
+    this.lastProgress = this.progressClock;
   }
 
   get objective(): string {
@@ -525,7 +561,7 @@ export class WorldScene extends Phaser.Scene {
     const dmg = halves ?? (this.assist ? 1 : 2);
     if (!this.player.hurt(fromX, dmg)) return;
     this.shake(0.006, 160);
-    this.lastProgress = Math.max(this.lastProgress, this.time.now - HINT_DELAY_MS + 8000);
+    this.lastProgress = Math.max(this.lastProgress, this.progressClock - HINT_DELAY_MS + 8000);
     if (this.player.halves <= 0) this.reform(true);
   }
 
@@ -564,11 +600,13 @@ export class WorldScene extends Phaser.Scene {
     this.quest.setCheckpoint(to, next.checkpoints[0]!.id);
     persist();
     app.input.freeze();
-    const cam = this.cameras.main;
-    cam.fadeOut(520, 15, 13, 24);
-    cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      this.scene.restart({ room: to, checkpoint: next.checkpoints[0]!.id } satisfies WorldData);
-    });
+    // Crystal tunnel between rooms; a full, dense one between chapters.
+    const chapter = next.chapter !== this.def.chapter;
+    this.scene.launch('warp', {
+      strength: chapter ? 1 : 0.45,
+      look: warpLook(next.theme),
+      onPeak: () => this.scene.restart({ room: to, checkpoint: next.checkpoints[0]!.id } satisfies WorldData),
+    } satisfies WarpData);
   }
 
   // ------------------------------------------------------------ pause
@@ -622,6 +660,9 @@ export class WorldScene extends Phaser.Scene {
       }
     }
     if (this.paused) return;
+    // Gorti's brows talk along with his lines; listening, they react less.
+    const dlg = app.ui.dialogue;
+    if (dlg.isOpen) this.player.emote(dlg.speaker === NAMES.gorti ? (dlg.typing ? 'talk' : 'worry') : 'listen', 260);
     this.player.visual(dt);
     this.room.animateMarkers(time);
     this.hazards.visual(dt, time);
@@ -629,7 +670,28 @@ export class WorldScene extends Phaser.Scene {
     this.script.onUpdate?.(dt, time);
     this.updateCamera(dt);
     this.room.stream(this.cameras.main.scrollX);
+    this.warpBg?.update(dt);
+    this.updateContactShadow();
     this.updateHud(time);
+  }
+
+  /** Soft shadow on the surface below Gorti, shrinking with height. */
+  private updateContactShadow(): void {
+    const sh = this.contact;
+    if (!sh) return;
+    const p = this.player;
+    if (p.state === 'hidden' || !p.rig.container.visible) {
+      sh.setVisible(false);
+      return;
+    }
+    const ground = this.room.groundBelow(p.x, p.feetY);
+    if (ground === null) {
+      sh.setVisible(false);
+      return;
+    }
+    const hgt = Math.max(0, ground - p.feetY);
+    const k = Math.max(0, 1 - hgt / 320);
+    sh.setVisible(k > 0.02).setPosition(p.x, ground + 1).setScale(0.62 * (0.55 + 0.45 * k), 0.62 * (0.55 + 0.45 * k)).setAlpha(0.85 * k);
   }
 
   private updateCamera(dt: number): void {
@@ -699,7 +761,7 @@ export class WorldScene extends Phaser.Scene {
     app.ui.touch.setAvail({ focus: hasFocus && p.kind !== 'suit', form: !!site, song: !!node, actionLabel, jump: p.canJump });
     // Hints after a long stretch without progress.
     const o = OBJECTIVES[this.objectiveKey];
-    hud.setHint(o?.hint ?? '', !!o && this.time.now - this.lastProgress > HINT_DELAY_MS);
+    hud.setHint(o?.hint ?? '', !!o && this.progressClock - this.lastProgress > HINT_DELAY_MS);
   }
 
   private drawReachPreview(x: number, y: number, time: number): void {

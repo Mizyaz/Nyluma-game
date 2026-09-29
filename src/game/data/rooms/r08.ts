@@ -11,6 +11,7 @@ export const R08: RoomDef = {
   music: 'sun',
   player: 'gorti',
   entryForm: 'human',
+  zoom: 1,
   objective: 'r08.p1',
   checkpoints: [
     { id: 'r08_start', x: 110, y: 640, facing: 1, silent: true },

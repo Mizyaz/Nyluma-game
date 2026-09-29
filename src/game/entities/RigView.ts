@@ -13,6 +13,8 @@ const RATE: Record<string, number> = {
   foreR: 12,
   foreL: 11,
   head: 14,
+  // Brows snap: reactions must read instantly.
+  browN: 30,
 };
 
 /**

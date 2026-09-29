@@ -21,7 +21,7 @@ import { RIG_GORTI_HUMAN, RIG_GORTI_ROOT, RIG_GORTI_SUIT } from '../art/characte
 import { RIG_COWARD, RIG_MECH } from '../art/characters/forms';
 import { FocusMeter, bezier } from '../systems/AbilitySystem';
 import type { FormId, PlayerKind } from '../state/types';
-import { humanoidPose } from './animPoses';
+import { humanoidPose, type Emote, type PoseParams } from './animPoses';
 import { RigView } from './RigView';
 
 export type PState = 'normal' | 'reach' | 'song' | 'locked' | 'transform' | 'reform' | 'hidden';
@@ -356,12 +356,22 @@ export class Player {
       this.groundLock = 0.05;
     }
     this.rootLine.clear();
+    this.emote('pain', 1100);
     app.audio.sfx('hurt');
     return true;
   }
 
   heal(): void {
     this.halves = this.maxHalves;
+  }
+
+  private emoteName: Emote = 'surprise';
+  private emoteT = 0;
+
+  /** Shows an emotion on the brows for a moment (layered over any pose). */
+  emote(e: Emote, ms = 900): void {
+    this.emoteName = e;
+    this.emoteT = ms;
   }
 
   // ------------------------------------------------------------ visuals
@@ -376,7 +386,13 @@ export class Player {
     this.rig.squashY += (1 - this.rig.squashY) * k;
     const speed = Math.abs(b.velocity.x) / Math.max(1, this.tuning.speed);
     let anim = 'idle';
-    const prm: Record<string, number> = {};
+    const prm: PoseParams = {};
+    // Momentary emotion (brows) fading over its duration.
+    if (this.emoteT > 0) {
+      this.emoteT -= dtMs;
+      prm.emote = this.emoteName;
+      prm.emoteK = Math.min(1, this.emoteT / 250);
+    }
     if (this.forceAnim) anim = this.forceAnim;
     else if (this.state === 'reach') anim = this.reach?.phase === 0 ? 'reach' : 'pull';
     else if (this.state === 'song') anim = 'song';

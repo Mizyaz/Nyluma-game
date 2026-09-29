@@ -598,6 +598,69 @@ const THEMES: Record<ThemeId, ThemeDef> = {
   },
 };
 
+/**
+ * Foreground strip (2.5D): soft, dark silhouettes that pass in front of the
+ * world faster than it, along the bottom edge of the view. Underground and
+ * interior rooms get crystal clusters and root knots; outdoors, grass and
+ * fern clumps. Painted blurred, as if out of focus close to the lens.
+ */
+export function paintForeground(ctx: CanvasRenderingContext2D, w: number, h: number, theme: ThemeId, rng: Rng): void {
+  const outdoor = theme === 'surface' || theme === 'hill' || theme === 'forest' || theme === 'clearing' || theme === 'ride' || theme === 'sun';
+  const dark = theme === 'clearing' ? '#2b2f33' : theme === 'sun' || theme === 'ride' ? '#1d1420' : '#0c0a13';
+  const rims = theme === 'sun' || theme === 'ride' ? ['#ef9a47', '#f0c46a'] : theme === 'dorm' ? ['#ef9a47', '#53bfaf'] : ['#548cd6', '#53bfaf', '#9459d8'];
+  ctx.save();
+  ctx.filter = 'blur(2.5px)';
+  let x = rng.range(-40, 120);
+  while (x < w) {
+    const hgt = rng.range(0.35, 0.95) * h;
+    if (outdoor) {
+      // A clump of grass blades / fern fronds.
+      const n = 5 + Math.floor(rng.range(0, 7));
+      for (let i = 0; i < n; i++) {
+        const bx = x + rng.range(-38, 38);
+        const bh = hgt * rng.range(0.45, 1);
+        const lean = rng.range(-0.45, 0.45);
+        ctx.beginPath();
+        ctx.moveTo(bx - 6, h + 4);
+        ctx.quadraticCurveTo(bx + lean * bh * 0.4, h - bh * 0.6, bx + lean * bh, h - bh);
+        ctx.quadraticCurveTo(bx + lean * bh * 0.4 + 4, h - bh * 0.55, bx + 6, h + 4);
+        ctx.closePath();
+        ctx.fillStyle = dark;
+        ctx.fill();
+      }
+    } else {
+      // Crystal cluster with a faint coloured rim, and a rounded root knot.
+      ctx.fillStyle = dark;
+      ctx.beginPath();
+      ctx.ellipse(x, h + 6, rng.range(40, 90), rng.range(14, 30), 0, Math.PI, 0);
+      ctx.fill();
+      const n = 2 + Math.floor(rng.range(0, 4));
+      for (let i = 0; i < n; i++) {
+        const cx = x + rng.range(-40, 40);
+        const ch = hgt * rng.range(0.4, 1);
+        const cw = ch * rng.range(0.22, 0.34);
+        const lean = rng.range(-0.3, 0.3);
+        ctx.beginPath();
+        ctx.moveTo(cx - cw / 2, h + 4);
+        ctx.lineTo(cx - cw / 2 + lean * ch * 0.7, h - ch * 0.75);
+        ctx.lineTo(cx + lean * ch, h - ch);
+        ctx.lineTo(cx + cw / 2 + lean * ch * 0.7, h - ch * 0.75);
+        ctx.lineTo(cx + cw / 2, h + 4);
+        ctx.closePath();
+        ctx.fillStyle = dark;
+        ctx.fill();
+        ctx.strokeStyle = rims[Math.floor(rng.range(0, rims.length))]!;
+        ctx.globalAlpha = 0.35;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+    }
+    x += rng.range(220, 520);
+  }
+  ctx.restore();
+}
+
 export function themeDef(id: ThemeId): ThemeDef {
   return THEMES[id];
 }

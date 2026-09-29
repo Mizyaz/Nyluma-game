@@ -1,0 +1,15 @@
+import { chromium } from '@playwright/test';
+const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 3 });
+await page.goto('http://localhost:4176/?room=r04&canvas=1&flags=r04.focusTut&cp=r04_start');
+await page.waitForFunction(() => window.__kd && window.__kd.state().room === 'r04' && window.__kd.state().context === 'gameplay', undefined, { timeout: 90000 });
+await page.waitForTimeout(2500);
+const clip = { x: 205, y: 290, width: 140, height: 110 };
+await page.screenshot({ path: '/tmp/claude-0/h-idle.png', clip });
+await page.keyboard.down('Space'); await page.waitForTimeout(120);
+await page.screenshot({ path: '/tmp/claude-0/h-rise.png', clip: { ...clip, y: clip.y - 60 } });
+await page.keyboard.up('Space'); await page.waitForTimeout(900);
+await page.keyboard.down('KeyQ'); await page.waitForTimeout(500);
+await page.screenshot({ path: '/tmp/claude-0/h-breath.png', clip });
+await page.keyboard.up('KeyQ');
+await browser.close();

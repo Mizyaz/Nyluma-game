@@ -64,6 +64,16 @@ export class Dialogue {
     return this.open_;
   }
 
+  /** Who is speaking the current line ('' for narration). */
+  get speaker(): string {
+    return this.open_ ? (this.lines[this.idx]?.who ?? '') : '';
+  }
+
+  /** True while the current line is still being typed out. */
+  get typing(): boolean {
+    return this.open_ && this.shown < this.full.length;
+  }
+
   open(lines: Line[]): Promise<void> {
     if (this.open_) this.finish();
     this.lines = lines.filter((l) => l.text.length > 0);

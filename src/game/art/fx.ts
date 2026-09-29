@@ -94,4 +94,44 @@ export function makeFxTextures(tex: Phaser.Textures.TextureManager): void {
     x.fillRect(0, 0, 4, 4);
     reg('fx.white', c);
   }
+  {
+    // Faceted crystal (white, tinted at runtime): warp tube, step sprouts.
+    const [c, x] = canvas(40, 96);
+    const facet = (pts: [number, number][], fill: string): void => {
+      x.beginPath();
+      x.moveTo(pts[0]![0], pts[0]![1]);
+      for (const [px, py] of pts.slice(1)) x.lineTo(px, py);
+      x.closePath();
+      x.fillStyle = fill;
+      x.fill();
+    };
+    facet([[20, 2], [36, 30], [30, 94], [10, 94], [4, 30]], '#d9d9e8');
+    facet([[20, 2], [4, 30], [10, 94], [17, 94], [15, 30]], '#ffffff');
+    facet([[20, 2], [36, 30], [30, 94], [25, 94], [27, 32]], '#9d9db4');
+    facet([[20, 2], [15, 30], [27, 32]], '#f3f3ff');
+    x.strokeStyle = 'rgba(25,23,40,0.85)';
+    x.lineWidth = 2.5;
+    x.lineJoin = 'round';
+    x.beginPath();
+    x.moveTo(20, 2);
+    x.lineTo(36, 30);
+    x.lineTo(30, 94);
+    x.lineTo(10, 94);
+    x.lineTo(4, 30);
+    x.closePath();
+    x.stroke();
+    registerCanvas(tex, 'fx.crystal', c, { w: 40, h: 96, px: 20, py: 94 });
+  }
+  // Soft contact shadow (2.5D grounding).
+  {
+    const [c, x] = canvas(128, 40);
+    const g = x.createRadialGradient(64, 20, 0, 64, 20, 64);
+    g.addColorStop(0, 'rgba(8,6,14,0.75)');
+    g.addColorStop(0.55, 'rgba(8,6,14,0.35)');
+    g.addColorStop(1, 'rgba(8,6,14,0)');
+    x.setTransform(1, 0, 0, 40 / 128, 0, 0);
+    x.fillStyle = g;
+    x.fillRect(0, 0, 128, 128);
+    reg('fx.shadow', c);
+  }
 }
