@@ -1,6 +1,6 @@
 import { Rng } from './rng';
 import { chordPcs, pc, stepPitch } from './theory';
-import type { Bar, LeftHand, Mood, NoteEvent, SectionKind } from './types';
+import type { Bar, BarSource, LeftHand, Mood, NoteEvent, SectionKind } from './types';
 
 // Generative piano composer. It writes an endless piece bar by bar in a
 // simple song form, A A' B A'' plus a short interlude, then starts over with
@@ -43,7 +43,8 @@ const RHYTHMS: { 3: number[][]; 4: number[][] } = {
   3: [[3], [2, 1], [1, 1, 1], [1, 2], [1.5, 0.5, 1], [0.5, 0.5, 2]],
 };
 
-const FORM: { kind: SectionKind; bars: number }[] = [
+/** The song form: A A′ B A″ and a short interlude, then again with new material. */
+export const FORM: readonly { kind: SectionKind; bars: number }[] = [
   { kind: 'A', bars: 8 },
   { kind: 'A2', bars: 8 },
   { kind: 'B', bars: 8 },
@@ -51,7 +52,7 @@ const FORM: { kind: SectionKind; bars: number }[] = [
   { kind: 'interlude', bars: 2 },
 ];
 
-export class Composer {
+export class Composer implements BarSource {
   private readonly rng: Rng;
   private formIndex = 0;
   private barInSection = 0;

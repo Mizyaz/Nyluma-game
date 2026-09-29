@@ -7,6 +7,8 @@ export const SCALES = {
   dorian: [0, 2, 3, 5, 7, 9, 10],
   lydian: [0, 2, 4, 6, 7, 9, 11],
   mixolydian: [0, 2, 4, 5, 7, 9, 10],
+  /** Minor with a lowered second: the dark bII chord a semitone above the tonic. */
+  phrygian: [0, 1, 3, 5, 7, 8, 10],
 } as const;
 
 export const midiToHz = (m: number): number => 440 * Math.pow(2, (m - 69) / 12);

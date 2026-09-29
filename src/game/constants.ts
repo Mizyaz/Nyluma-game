@@ -76,7 +76,6 @@ export const HULL_H = 84;
 
 export const REACH_RANGE = 240;
 export const PULSE_RADIUS = 115;
-export const PULSE_COOLDOWN_MS = 700;
 export const PULSE_WINDUP_MS = 120;
 
 export const FOCUS_MAX_S = 3;

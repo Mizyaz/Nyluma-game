@@ -4,7 +4,7 @@ import { DEPTH } from '../constants';
 import { HUE_STEPS } from '../art/fx';
 
 // Colour bursts. `burst()` sheds crystals in random colours around a point
-// (Gorti's "Parılda"). The bombardment comes by itself now and then: the
+// (the Rezonans moves). The bombardment comes by itself now and then: the
 // view fills with colour clouds and a colour wave (DOM, see ui/ColorStorm),
 // and crystals in every colour rain and spray through the room. Colours are
 // painted into the textures (`fx.hues`), so they show in both renderers.

@@ -102,7 +102,7 @@ export function r10(w: WorldScene): RoomScript {
         cs.caption(CAPTIONS.drips, 4200);
         for (let i = 0; i < 6; i++) w.time.delayedCall(i * 520 + Math.random() * 200, () => app.audio.sfx('drip', { pitch: 0.8 + Math.random() * 0.5 }));
         await cs.wait(2600);
-        await cs.say(DIALOGUE.ward!);
+        await cs.talk(DIALOGUE.ward!, ['coward', 'forms', 'voice']);
         cs.caption(CAPTIONS.whoIs, 5200);
         await cs.wait(2200);
         cs.caption(CAPTIONS.formsLean, 4200);
@@ -110,11 +110,11 @@ export function r10(w: WorldScene): RoomScript {
         await cs.wait(2000);
         app.audio.sfx('clock');
         w.shake(0.002, 300);
-        await cs.say([DIALOGUE.late![0]!]);
+        await cs.talk([DIALOGUE.late![0]!], ['coward', 'forms', 'voice']);
         for (const f of forms) f.setTint(0xd8c0c0);
-        await cs.say([DIALOGUE.late![1]!]);
+        await cs.talk([DIALOGUE.late![1]!], ['coward', 'forms', 'voice']);
         w.player.lock(true, 'breath');
-        await cs.say([DIALOGUE.late![2]!]);
+        await cs.talk([DIALOGUE.late![2]!], ['coward', 'forms', 'voice']);
       },
       () => {
         if (!forms.length) spawnForms();

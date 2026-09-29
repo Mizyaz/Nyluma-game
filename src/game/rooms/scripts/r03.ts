@@ -47,9 +47,9 @@ export function r03(w: WorldScene): RoomScript {
         if (shaft) await cs.tween({ targets: shaft, alpha: 0.35, duration: 400 });
         cs.caption(CAPTIONS.r03enter, 4200);
         await cs.wait(900);
-        await cs.say([DIALOGUE.moon![0]!]);
+        await cs.talk([DIALOGUE.moon![0]!], ['gorti', 'babyMoon']);
         moon.say(2600);
-        await cs.say([DIALOGUE.moon![1]!]);
+        await cs.talk([DIALOGUE.moon![1]!], ['gorti', 'babyMoon']);
         await cs.tween({ targets: moon.c, alpha: 0, duration: 1000 });
         shaft?.setAlpha(0);
         w.flag('r03.moon', false);
@@ -61,9 +61,9 @@ export function r03(w: WorldScene): RoomScript {
         await cs.tween({ targets: sun.c, alpha: 1, duration: 1200 });
         sun.cough();
         await cs.wait(700);
-        await cs.say(DIALOGUE.sun!.slice(0, 2));
+        await cs.talk(DIALOGUE.sun!.slice(0, 2), ['gorti', 'sun']);
         sun.say(3000);
-        await cs.say(DIALOGUE.sun!.slice(2));
+        await cs.talk(DIALOGUE.sun!.slice(2), ['gorti', 'sun']);
         await cs.tween({ targets: sun.c, alpha: 0, duration: 1000 });
         w.flag('r03.sun', false);
         showStar();

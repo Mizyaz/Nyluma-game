@@ -1,6 +1,8 @@
 import type * as Phaser from 'phaser';
 import { app } from '../App';
 import type { Line } from '../../ui/Dialogue';
+import type { CastId } from '../cinematics/castNames';
+import { FaceDialogue } from '../cinematics/FaceDialogue';
 
 const SKIP_HOLD_MS = 800;
 
@@ -62,6 +64,12 @@ export class Cutscene {
     return app.ui.dialogue.open(lines);
   }
 
+  /** Like `say`, as a face-animated scene with the speakers up close. */
+  talk(lines: Line[], cast: readonly CastId[]): Promise<void> {
+    if (this.skipped) return Promise.resolve();
+    return FaceDialogue.play(this.scene, lines, cast);
+  }
+
   caption(text: string, ms = 4200): void {
     if (!this.skipped) app.ui.hud.caption(text, ms);
   }
@@ -81,6 +89,7 @@ export class Cutscene {
       w.done();
     }
     if (app.ui.dialogue.isOpen) app.ui.dialogue.finish();
+    FaceDialogue.end(this.scene);
     app.ui.hud.clearCaption();
   }
 }

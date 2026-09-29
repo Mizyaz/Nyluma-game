@@ -2,7 +2,10 @@ import { app } from '../game/App';
 import type { Action } from '../game/systems/InputSystem';
 import { h, noClickFocus } from './dom';
 
-/** A single document page shown over the game (final chapter). */
+/** How a page is presented: a paper document, or a painting in a gallery. */
+export type DocKind = 'paper' | 'painting';
+
+/** A single page shown over the game: a document or a painting. */
 export class DocView {
   private el: HTMLElement;
   private body: HTMLElement;
@@ -23,9 +26,11 @@ export class DocView {
     return this.resolve !== null;
   }
 
-  open(content: HTMLElement, closeLabel = 'Bırak'): Promise<void> {
+  open(content: HTMLElement, closeLabel = 'Bırak', kind: DocKind = 'paper'): Promise<void> {
     this.body.innerHTML = '';
     this.body.append(content);
+    this.el.classList.toggle('painting', kind === 'painting');
+    this.el.setAttribute('aria-label', kind === 'painting' ? 'Tablo' : 'Belge');
     (this.el.querySelector('.close') as HTMLElement).innerHTML = `<b class="key">E</b>${closeLabel}`;
     this.el.classList.remove('hidden');
     this.opened = performance.now();

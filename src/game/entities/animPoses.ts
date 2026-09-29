@@ -46,7 +46,7 @@ export interface PoseParams {
   idleT?: number;
 }
 
-export type Emote = 'surprise' | 'pain' | 'joy' | 'anger' | 'talk' | 'listen' | 'relief' | 'worry' | 'effort';
+export type Emote = 'surprise' | 'pain' | 'joy' | 'anger' | 'talk' | 'listen' | 'relief' | 'worry' | 'effort' | 'shout';
 
 /** Brow state: raise (px, negative = up), knit (rad, + = angry, - = sad), asym (px on the near brow). */
 interface BrowSet {
@@ -65,6 +65,7 @@ const EMOTES: Record<Emote, (t: number) => BrowSet> = {
   relief: () => ({ raise: -3, knit: -0.38, asym: 0 }),
   worry: (t) => ({ raise: -1.5, knit: -0.55 + 0.05 * S(t * 6), asym: 0.8 }),
   effort: (t) => ({ raise: 2, knit: 0.55 + 0.05 * S(t * 20), asym: 0 }),
+  shout: (t) => ({ raise: 2.4, knit: 0.8 + 0.06 * S(t * 26), asym: 0 }),
 };
 
 /** What the brows do during each animation: big, readable reactions. */
@@ -94,6 +95,12 @@ function browsFor(anim: string, t: number, prm: PoseParams, st: HumanoidStyle): 
     }
     case 'dance':
       b = { raise: -5 - 1.5 * Math.abs(S(t * 8)), knit: -0.3, asym: 0 };
+      break;
+    case 'conjure':
+      b = { raise: -5, knit: -0.28, asym: -1 };
+      break;
+    case 'stomp':
+      b = t < 0.26 ? { raise: 1.5, knit: 0.55, asym: 0 } : { raise: 2.8, knit: 0.75, asym: 0 };
       break;
     case 'walk':
       b = { raise: 0, knit: st === 'suit' ? -0.3 : 0.1, asym: 0 };
@@ -371,8 +378,13 @@ function faceFor(anim: string, t: number, prm: PoseParams, st: HumanoidStyle, id
       f.mouth = 'grin';
       break;
     case 'dance':
+    case 'conjure':
       f.eye = 'happy';
       f.mouth = 'grin';
+      break;
+    case 'stomp':
+      f.ey = 0.55;
+      f.mouth = 'grit';
       break;
     case 'torchUp':
       f.ey = 1.1;
@@ -439,6 +451,12 @@ function faceFor(anim: string, t: number, prm: PoseParams, st: HumanoidStyle, id
         f.eye = '';
         f.ey = 0.5;
         f.mouth = 'grit';
+        break;
+      case 'shout':
+        f.eye = '';
+        f.ey = 0.8;
+        f.mouth = 'open';
+        f.ms = 1.55 + 0.12 * S(t * 28);
         break;
     }
   }
@@ -735,6 +753,57 @@ export function humanoidPose(rigId: string, anim: string, t: number, prm: PosePa
         a.foreR = -0.2 - 0.5 * d;
         a.armL = -0.65 * d;
         a.foreL = -0.2 - 0.4 * d;
+      }
+      break;
+    }
+    case 'conjure': {
+      // Arms open forward and up, palms to the sky: the flowers come.
+      const u = Math.min(1, t / 0.25);
+      a.armR = -0.3 - 1.7 * u;
+      a.foreR = -0.5 * u;
+      a.armL = -0.2 - 1.4 * u;
+      a.foreL = -0.45 * u;
+      a.torso = k.torsoBase - 0.12 * u;
+      a.head = k.headBase - 0.22 * u;
+      a.legR = -0.12;
+      a.shinR = 0.18 + k.kneeBase;
+      a.legL = 0.1;
+      a.shinL = 0.12 + k.kneeBase;
+      a.footR = -(a.legR + a.shinR);
+      a.footL = -(a.legL + a.shinL);
+      break;
+    }
+    case 'stomp': {
+      // One knee comes up, then the foot slams down.
+      if (t < 0.26) {
+        const u = Math.min(1, t / 0.2);
+        a.legR = -1.3 * u;
+        a.shinR = 1.45 * u + k.kneeBase;
+        a.footR = -(a.legR + a.shinR) + 0.2;
+        a.legL = 0.05;
+        a.shinL = 0.15 + k.kneeBase;
+        a.footL = -(a.legL + a.shinL);
+        a.torso = k.torsoBase - 0.1 * u;
+        a.head = k.headBase - 0.2 * u;
+        a.armR = -2.3 * u;
+        a.foreR = -0.4 * u;
+        a.armL = -2.0 * u;
+        a.foreL = -0.3 * u;
+      } else {
+        const u = Math.min(1, (t - 0.26) / 0.08);
+        a.legR = -0.35 * (1 - u) - 0.05;
+        a.shinR = 0.35 * (1 - u) + 0.45;
+        a.footR = -(a.legR + a.shinR);
+        a.legL = -0.2;
+        a.shinL = 0.55;
+        a.footL = -(a.legL + a.shinL);
+        p.offsets.hips = { x: 0, y: 9 + k.kneeBase * 10 };
+        a.torso = k.torsoBase + 0.32;
+        a.head = k.headBase - 0.15;
+        a.armR = -0.6;
+        a.foreR = -0.9;
+        a.armL = -0.35;
+        a.foreL = -0.8;
       }
       break;
     }

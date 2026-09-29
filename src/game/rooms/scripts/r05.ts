@@ -59,13 +59,13 @@ export function r05(w: WorldScene): RoomScript {
         moon = old;
         cs.caption(CAPTIONS.oldMoon, 4600);
         await cs.wait(1800);
-        await cs.say([DIALOGUE.oldMoon![0]!]);
+        await cs.talk([DIALOGUE.oldMoon![0]!], ['gorti', 'oldMoon']);
         moon.laughing = true;
         app.audio.sfx('rumble', { vol: 0.3 });
-        await cs.say([DIALOGUE.oldMoon![1]!]);
+        await cs.talk([DIALOGUE.oldMoon![1]!], ['gorti', 'oldMoon']);
         moon.laughing = false;
         moon.say(3000);
-        await cs.say(DIALOGUE.oldMoon!.slice(2));
+        await cs.talk(DIALOGUE.oldMoon!.slice(2), ['gorti', 'oldMoon']);
         await cs.wait(600);
       },
       () => {

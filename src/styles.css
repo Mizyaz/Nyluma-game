@@ -861,6 +861,61 @@ button {
   margin-top: 1em;
 }
 
+/* A painting shown large (paintings at chapter starts). */
+.doc.painting {
+  transform: translate(-50%, -50%);
+  width: min(94%, calc(var(--s) * 620px));
+  background: #1d1a26;
+  color: var(--paper);
+  border-color: #0c0b12;
+  box-shadow: 0 calc(var(--s) * 10px) 0 rgba(10, 9, 16, 0.5), inset 0 0 60px rgba(0, 0, 0, 0.45);
+  text-align: center;
+}
+
+.painting-card {
+  margin: 0;
+}
+
+.painting-card .frame {
+  display: inline-block;
+  padding: max(6px, calc(var(--s) * 12px));
+  background: linear-gradient(135deg, #86603c, #5b3b24 45%, #3a2416);
+  border: 2px solid #0c0b12;
+  box-shadow: inset 0 0 0 max(2px, calc(var(--s) * 3px)) #c9a45a;
+}
+
+.painting-card img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: min(58vh, calc(var(--s) * 470px));
+  aspect-ratio: 1;
+  object-fit: contain;
+}
+
+.painting-card figcaption {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15em;
+  margin-top: 0.7em;
+}
+
+.painting-card figcaption b {
+  font-size: 1.1em;
+  letter-spacing: 0.04em;
+}
+
+.painting-card figcaption span {
+  opacity: 0.8;
+  font-size: 0.9em;
+}
+
+.painting-card .line {
+  margin: 0.8em 0 0;
+  font-style: italic;
+  color: #d7b3ff;
+}
+
 /* ------------------------------------------------------------ ending */
 
 .ending {

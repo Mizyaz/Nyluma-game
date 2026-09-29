@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
 import { app, persist } from '../App';
-import { DEPTH, HULL_H, HULL_W, PULSE_RADIUS, PULSE_COOLDOWN_MS, PULSE_WINDUP_MS, VIEW_W, VIEW_H, CAMERA_ZOOM } from '../constants';
+import { DEPTH, HULL_H, HULL_W, PULSE_RADIUS, PULSE_WINDUP_MS, VIEW_W, VIEW_H, CAMERA_ZOOM } from '../constants';
 import { hex, P } from '../art/palette';
 import { frameRef, hasFrame } from '../art/TextureFactory';
 import { themeDef } from '../art/backgrounds';
@@ -18,6 +18,10 @@ import type { FormId, RoomId } from '../state/types';
 import { RoomRuntime } from '../rooms/RoomRuntime';
 import { createScript } from '../rooms/scripts';
 import type { ExtraInteract, RoomScript } from '../rooms/scripts/types';
+import type { Interactable } from '../world/Interactable';
+import { PaintingGallery } from '../world/PaintingGallery';
+import { MoveSystem } from '../moves/MoveSystem';
+import { FaceDialogue } from '../cinematics/FaceDialogue';
 import { ROMAN } from '../../ui/Menus';
 import type { AmbienceId } from '../systems/AudioSystem';
 
@@ -26,7 +30,7 @@ export interface WorldData {
   checkpoint: string;
 }
 
-type ActionTarget = { kind: 'interact'; id: string; label: string; x: number; y: number } | { kind: 'sparkle'; label: string };
+type ActionTarget = { kind: 'interact'; id: string; label: string; x: number; y: number } | { kind: 'move'; label: string };
 
 const AMBIENCE: Record<string, AmbienceId> = {
   nursery: 'room',
@@ -56,7 +60,7 @@ export class WorldScene extends Phaser.Scene {
   private hintGlyph!: Phaser.GameObjects.Image;
   private particles!: Phaser.GameObjects.Particles.ParticleEmitter;
   private warpBg: CrystalWarp | null = null;
-  /** Colour bursts: "Parılda" and the bombardment that comes now and then. */
+  /** Colour bursts: the Rezonans moves and the bombardment that comes now and then. */
   bursts!: ColorBursts;
   private steps: StepCrystals | null = null;
   private contact: Phaser.GameObjects.Image | null = null;
@@ -78,6 +82,11 @@ export class WorldScene extends Phaser.Scene {
   probeExtra: Record<string, unknown> = {};
   /** This physics step's gameplay input (scripts that drive their own actor read it). */
   stepInput = { axis: 0, jumpPressed: false, jumpHeld: false };
+  /** Self-contained things to inspect (paintings…), besides the room's interacts. */
+  private features: Interactable[] = [];
+  gallery: PaintingGallery | null = null;
+  /** The Rezonans button's moves (flowers and birds, the earth, crystals). */
+  moves!: MoveSystem;
 
   constructor() {
     super('world');
@@ -85,6 +94,7 @@ export class WorldScene extends Phaser.Scene {
 
   init(data: WorldData): void {
     this.data0 = data;
+    this.features = [];
     this.paused = false;
     this.transitioning = false;
     this.target = null;
@@ -92,6 +102,21 @@ export class WorldScene extends Phaser.Scene {
     this.camMode = 'player';
     this.elapsed = 0;
     this.probeExtra = {};
+  }
+
+  /** Loads what this room needs beyond the atlases (painting artwork). */
+  preload(): void {
+    PaintingGallery.preload(this, this.data0.room);
+  }
+
+  /** Registers something Gorti can inspect that handles itself. */
+  addFeature(f: Interactable): void {
+    this.features.push(f);
+  }
+
+  /** Ids of the self-handling things in this room (paintings…). */
+  get featureIds(): string[] {
+    return this.features.map((f) => f.id);
   }
 
   create(): void {
@@ -139,6 +164,15 @@ export class WorldScene extends Phaser.Scene {
       emitting: false,
     });
     this.particles.setDepth(DEPTH.fx);
+    this.gallery = new PaintingGallery(this);
+    this.moves = new MoveSystem(this);
+    this.cleanups.push(() => this.moves.destroy());
+    this.cleanups.push(() => {
+      this.gallery?.destroy();
+      this.gallery = null;
+      for (const f of this.features) f.destroy();
+      this.features = [];
+    });
     this.bursts = new ColorBursts(
       this,
       {
@@ -308,6 +342,7 @@ export class WorldScene extends Phaser.Scene {
   private interactList(): ExtraInteract[] {
     const out: ExtraInteract[] = [];
     for (const it of this.room.interacts) if (it.active) out.push({ id: it.def.id, x: it.def.x, y: it.def.y, r: it.def.r ?? 70, prompt: it.def.prompt });
+    for (const f of this.features) if (f.isActive()) out.push({ id: f.id, x: f.x, y: f.y, r: f.r, prompt: f.prompt });
     if (this.script.extraInteracts) out.push(...this.script.extraInteracts());
     return out;
   }
@@ -320,6 +355,7 @@ export class WorldScene extends Phaser.Scene {
     const spots: { x: number; y: number }[] = [];
     for (const m of this.room.memories) if (m.active && !m.taken) spots.push({ x: m.def.x, y: m.def.y - 34 });
     for (const it of this.room.interacts) if (it.active) spots.push({ x: it.def.x, y: it.def.y - 30 });
+    for (const f of this.features) if (f.isActive()) spots.push(f.lookAt ?? { x: f.x, y: f.y - 30 });
     let best: { x: number; y: number } | null = null;
     let bestD = 280;
     for (const s of spots) {
@@ -346,8 +382,8 @@ export class WorldScene extends Phaser.Scene {
       }
     }
     if (best) return { kind: 'interact', id: best.id, label: best.prompt, x: best.x, y: best.y };
-    // 2) Nothing to look at: a little burst of joy.
-    return { kind: 'sparkle', label: 'Parılda' };
+    // 2) Nothing to look at: the Rezonans move.
+    return { kind: 'move', label: 'Rezonans' };
   }
 
   private doAction(): void {
@@ -358,23 +394,21 @@ export class WorldScene extends Phaser.Scene {
       p.interactT = 0.35;
       p.setFacing(t.x >= p.x ? 1 : -1);
       p.body.setVelocityX(0);
-      if (!this.script.onInteract?.(t.id)) this.defaultInteract(t.id);
+      const feature = this.features.find((f) => f.id === t.id);
+      if (feature) feature.interact(this);
+      else if (!this.script.onInteract?.(t.id)) this.defaultInteract(t.id);
       return;
     }
-    if (p.pulseCd <= 0 && this.pulseWind <= 0) {
+    if (this.moves.ready && this.pulseWind <= 0) {
       this.pulseWind = PULSE_WINDUP_MS;
-      p.pulseCd = PULSE_COOLDOWN_MS;
       p.interactT = 0.25;
     }
   }
 
-  /** "Parılda": Gorti glows with joy and sheds crystals in random colours. */
+  /** Rezonans: the move that fits Gorti's form and the story so far. */
   private firePulse(): void {
-    const p = this.player;
-    const c = p.chest();
-    app.audio.sfx('pulse', { vol: 0.7, pitch: 0.9 + Math.random() * 0.3 });
-    p.emote('joy', 1400);
-    this.bursts.burst(c.x, c.y, 26);
+    this.moves.use();
+    const c = this.player.chest();
     this.script.onPulse?.(c.x, c.y, PULSE_RADIUS);
   }
 
@@ -547,6 +581,8 @@ export class WorldScene extends Phaser.Scene {
     this.room.stream(this.cameras.main.scrollX);
     this.warpBg?.update(dt);
     this.bursts.update(dt);
+    this.gallery?.update(dt);
+    this.moves.update(dt);
     this.updateContactShadow();
     this.updateHud(time);
   }
@@ -633,6 +669,11 @@ export class WorldScene extends Phaser.Scene {
     this.particles.emitParticleAt(x, y, n);
   }
 
+  /** A crown of crystals out of the ground (landings, stomps). */
+  crystalCrown(x: number, y: number, strength: number): void {
+    this.steps?.land(x, y, strength);
+  }
+
   dust(x: number, y: number, n: number): void {
     const theme = this.def.theme;
     const col = theme === 'office' ? 0xb8ab92 : theme === 'mech' ? 0x727a8c : 0x8a7f99;
@@ -710,6 +751,7 @@ export class WorldScene extends Phaser.Scene {
     this.room?.destroy();
     app.input.releaseAll();
     app.ui.doc.close();
+    FaceDialogue.end(this);
     if (app.ui.dialogue.isOpen) app.ui.dialogue.finish();
     app.ui.hud.setSkip(null);
     app.ui.hud.clearCaption();

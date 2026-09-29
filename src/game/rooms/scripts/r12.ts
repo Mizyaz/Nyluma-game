@@ -83,7 +83,7 @@ export function r12(w: WorldScene): RoomScript {
         await cs.wait(900);
         attendees.forEach((a) => a.setFlipX(false));
         app.audio.sfx('paper', { vol: 0.5 });
-        await cs.say(DIALOGUE.table!);
+        await cs.talk(DIALOGUE.table!, ['one', 'two', 'three']);
         // They rise and leave; only documents and chairs remain.
         for (const a of attendees) {
           const f = frameRef('attendee.stand');

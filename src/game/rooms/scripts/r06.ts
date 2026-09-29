@@ -52,11 +52,11 @@ export function r06(w: WorldScene): RoomScript {
         w.camTo(620, 760);
         cs.caption(CAPTIONS.holdBreath, 3200);
         await cs.wait(1600);
-        await cs.say(DIALOGUE.shout!.slice(0, 2));
+        await cs.talk(DIALOGUE.shout!.slice(0, 2), ['gorti']);
         p.lock(true, 'shout');
         app.audio.sfx('shout');
         w.shake(0.008, 900);
-        await cs.say(DIALOGUE.shout!.slice(2));
+        await cs.talk(DIALOGUE.shout!.slice(2), ['gorti']);
         app.audio.sfx('rumble');
         w.shake(0.006, 1400);
         cs.caption(CAPTIONS.shake, 5200);
@@ -128,8 +128,8 @@ export function r06(w: WorldScene): RoomScript {
         app.audio.sfx('neigh');
         await cs.wait(900);
         horse!.play('idle');
-        await cs.say([DIALOGUE.horse![0]!]);
-        await cs.say(DIALOGUE.horse!.slice(1));
+        await cs.talk([DIALOGUE.horse![0]!], ['gorti', 'horse']);
+        await cs.talk(DIALOGUE.horse!.slice(1), ['gorti', 'horse']);
         horse!.play('kneel');
         await cs.wait(900);
       },

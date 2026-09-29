@@ -319,8 +319,9 @@ test.describe('music', () => {
     const before = (await probe(page)).music.notes;
     await page.waitForTimeout(3000);
     expect((await probe(page)).music.notes).toBeGreaterThan(before);
-    // Every cue is audible at the default volume and never clips.
-    for (const cue of ['menu', 'roots', 'forest', 'ride', 'sun', 'inner', 'final']) {
+    // Every cue (the piano ones and the strings of the dialogue scenes) is
+    // audible at the default volume and never clips.
+    for (const cue of ['menu', 'roots', 'forest', 'ride', 'sun', 'inner', 'final', 'tension']) {
       const r = await page.evaluate(([c]) => (window as unknown as { __kd: { renderMusic(c: string, s: number): Promise<{ peak: number; rms: number; notes: number }> } }).__kd.renderMusic(c!, 8), [cue]);
       expect(r.rms, cue).toBeGreaterThan(0.008);
       expect(r.peak, cue).toBeLessThan(0.9);

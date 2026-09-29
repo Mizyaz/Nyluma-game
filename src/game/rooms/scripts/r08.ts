@@ -212,11 +212,11 @@ export function r08(w: WorldScene): RoomScript {
         sun?.cough();
         cs.caption(CAPTIONS.sunEyes, 5600);
         await cs.wait(2600);
-        await cs.say([DIALOGUE.sunCall![0]!]);
+        await cs.talk([DIALOGUE.sunCall![0]!], ['gorti', 'sun']);
         p.lock(true, 'shout');
         app.audio.sfx('shout');
         w.shake(0.006, 600);
-        await cs.say([DIALOGUE.sunCall![1]!]);
+        await cs.talk([DIALOGUE.sunCall![1]!], ['gorti', 'sun']);
         p.lock(true, 'idle');
         cs.caption(CAPTIONS.resolve, 4200);
         await cs.wait(1500);

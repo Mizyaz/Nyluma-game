@@ -187,6 +187,11 @@ export class CreaturePool {
     return this.items.length;
   }
 
+  /** How many are flying or swimming on their own right now. */
+  get flying(): number {
+    return this.items.reduce((n, m) => n + (m.alive ? 1 : 0), 0);
+  }
+
   update(dtMs: number): void {
     const dt = dtMs / 1000;
     for (const m of this.items) {

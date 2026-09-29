@@ -1,6 +1,6 @@
 import type { Settings } from '../state/types';
 import type { MusicId } from '../data/roomTypes';
-import { MusicPlayer, loadLibrary, type MusicState, type Track } from '../../music';
+import { MusicPlayer, loadLibrary, type MusicCue, type MusicState, type Track } from '../../music';
 
 // Original synthesized soundscape (Web Audio). One audio graph, three buses,
 // voice limits, short gain ramps, and nodes disconnected when they end.
@@ -58,6 +58,9 @@ export type Sfx =
 
 export type AmbienceId = 'wind' | 'cave' | 'river' | 'room' | 'none';
 
+/** Crossfade (seconds) into and out of a scene's music override: quick, without clicks. */
+const OVERRIDE_FADE = 0.8;
+
 interface Voice {
   stopAt: number;
 }
@@ -70,7 +73,10 @@ export class AudioSystem {
   private ambBus!: GainNode;
   private noise!: AudioBuffer;
   private voices: Voice[] = [];
+  /** The room's cue (what currentMusic() reports). */
   private theme: MusicId = 'none';
+  /** A scene's cue playing over the room's, e.g. 'tension' during a dialogue. */
+  private override: MusicCue | null = null;
   private player: MusicPlayer | null = null;
   private ambience: AmbienceId = 'none';
   private ambNodes: { src: AudioScheduledSourceNode[]; gain: GainNode } | null = null;
@@ -141,7 +147,7 @@ export class AudioSystem {
         this.player = player;
         void loadLibrary().then((tracks) => player.setLibrary(tracks));
       }
-      this.player.play(this.theme);
+      this.player.play(this.override ?? this.theme);
       const amb = this.ambience;
       if (amb !== 'none' && !this.ambNodes) {
         this.ambience = 'none';
@@ -519,18 +525,31 @@ export class AudioSystem {
 
   // ------------------------------------------------------------ music
 
+  /** The room's music. During an override it is only remembered, and returns when the override ends. */
   music(id: MusicId): void {
     if (id === this.theme) return;
     this.theme = id;
-    this.player?.play(id);
+    if (this.override === null) this.player?.play(id);
   }
 
+  /**
+   * Plays `cue` over the room's music (e.g. 'tension' while a dialogue scene
+   * runs), crossfading quickly; null crossfades back to the room's cue.
+   */
+  setMusicOverride(cue: MusicCue | null): void {
+    if (cue === this.override) return;
+    this.override = cue;
+    this.player?.play(cue ?? this.theme, OVERRIDE_FADE);
+  }
+
+  /** The room's cue, even while an override plays. */
   currentMusic(): MusicId {
     return this.theme;
   }
 
+  /** What actually plays (the override while one is set). */
   musicState(): MusicState {
-    return this.player?.state() ?? { cue: this.theme, source: 'none', track: null, bars: 0, notes: 0 };
+    return this.player?.state() ?? { cue: this.override ?? this.theme, source: 'none', track: null, bars: 0, notes: 0 };
   }
 
   /** Library recordings in use (for the credits). */

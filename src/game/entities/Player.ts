@@ -81,7 +81,6 @@ export class Player {
   private walkPhase = 0;
   private stepAcc = 0;
   readonly focus = new FocusMeter();
-  pulseCd = 0;
   interactT = 0;
   /** Scripted pose override while locked (e.g. 'kneel', 'shout'). */
   forceAnim: string | null = null;
@@ -182,7 +181,6 @@ export class Player {
 
   fixed(dt: number, input: { axis: number; jumpPressed: boolean; jumpHeld: boolean }): void {
     const b = this.body;
-    if (this.pulseCd > 0) this.pulseCd -= dt * 1000;
     if (this.interactT > 0) this.interactT -= dt;
     if (this.state === 'reach') {
       this.stepReach(dt);
@@ -203,7 +201,8 @@ export class Player {
     this.coyote = this.onGround ? COYOTE_MS / 1000 : this.coyote - dt;
     if (this.landT > 0) this.landT -= dt;
     if (this.jumpT >= 0) this.jumpT += dt;
-    const canMove = this.state === 'normal';
+    if (this.actionT > 0) this.actionT -= dt;
+    const canMove = this.state === 'normal' && !(this.actionHold && this.actionT > 0);
     const axis = canMove ? input.axis : 0;
     if (input.jumpPressed && canMove) this.jumpBuffer = JUMP_BUFFER_MS / 1000;
     else this.jumpBuffer -= dt;
@@ -369,6 +368,21 @@ export class Player {
     this.emoteT = ms;
   }
 
+  private actionAnim: string | null = null;
+  private actionT = 0;
+  private actionHold = false;
+
+  /**
+   * Plays a short move pose (Rezonans) for `seconds`; `hold` keeps Gorti in
+   * place meanwhile (a stomp).
+   */
+  pose(anim: string, seconds: number, hold = false): void {
+    this.actionAnim = anim;
+    this.actionT = seconds;
+    this.actionHold = hold;
+    if (hold) this.body.setVelocityX(0);
+  }
+
   /** A little dance while standing (e.g. in the colour storm). */
   dance(ms: number): void {
     this.danceT = Math.max(this.danceT, ms / 1000);
@@ -424,6 +438,7 @@ export class Player {
     else if (this.state === 'song') anim = 'song';
     else if (this.state === 'transform') anim = 'transform';
     else if (this.state === 'reform') anim = 'collapse';
+    else if (this.actionT > 0 && this.actionAnim && this.onGround) anim = this.actionAnim;
     else if (!this.onGround) {
       const vy = b.velocity.y;
       prm.vy = vy;

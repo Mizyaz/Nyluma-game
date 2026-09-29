@@ -15,8 +15,41 @@ sunucu, hesap, çevrim içi hizmet ya da dış kaynak (CDN, yazı tipi, ses) yok
 Oyun bir deneyimdir: can değeri, diken ya da tehlike, görev, hedef ya da
 bulmaca yoktur; her odada hep ilerlenebilir. Yürümek ve zıplamak yeter;
 hikâyenin sahneleri Gorti bir yere vardığında kendiliğinden başlar. Bazı
-şeylerin yanında E ile incelemek mümkündür ama zorunlu değildir; başka bir
-yerde E, Gorti'nin etrafına rastgele renklerde kristaller saçar ("Parılda").
+şeylerin yanında E ile incelemek mümkündür ama zorunlu değildir.
+
+Başka bir yerde E, **Rezonans** hareketini yapar. Hareket Gorti'nin biçimine
+göre değişir ve hikâye ilerledikçe büyür:
+
+- Kök biçimindeki Gorti topraktan çiçekler açtırır, çiçeklerden kuşlar uçar.
+  İlk odada bir çiçek ve bir kuştur. Ay ile Güneş'in ağacından (Bölüm I'in
+  sonu) itibaren bir çiçek yelpazesi ve küçük bir sürü olur. Mor atın doğduğu
+  ormandan (Bölüm II'nin sonu) itibaren bir çiçek tarhı, büyük bir sürü ve
+  renkli kristaller olur.
+- Sivaslı amca biçimindeki Gorti yere basar: zemin sarsılır, parlayan
+  çatlaklar yayılır. Ulu Ay'ın odasından itibaren arkasında Ay yükselir ve
+  ona bakar. Mor atın doğduğu ormandan itibaren yerden bir mor at çıkar,
+  şahlanır ve dörtnala uzaklaşır.
+- Diğer formlar etrafa her renkte kristaller saçar.
+
+Her bölümün başında duvarda ya da bir şövalede Gorti'nin hayatından bir
+**tablo** durur (at yolculuğu durmadığı için Bölüm III'te Güneş'in alanında):
+
+- yer altındaki 14. Oda (House of The Stranger);
+- Sivaslı amcanın ay hâli;
+- ergenliği (Late to Work);
+- savaşçı hâli.
+
+Son bölümde dördü birden ofis koridorunun duvarında asılıdır. Tablonun
+önünde E'ye basınca resim büyük gösterilir. Altında "Gorti geleceğine ve
+geçmişine bakış attı." yazar.
+
+Hikâyenin önemli konuşmaları **yüz animasyonlu sahnelerle** oynanır: siyah
+bantlar kapanır, oda kararır ve konuşanlar diyalog kutusunun üstündeki
+çerçevelerde yakından görünür. Konuşanın çerçevesi aydınlanır; ağzı, gözleri
+ve kaşları sözlerle birlikte oynar, ünlemle biten satırlarda bağırır.
+Dinleyenler karanlıkta kalır. Bu sahnelerde müzik gergin yaylılara döner
+(bkz. Müzik).
+
 Arada bir, kendiliğinden bir **renk bombardımanı** başlar: görüntü birkaç
 saniye renk bulutları ve bir renk dalgasıyla dolar, her renkte kristaller
 yağar, Gorti yukarı bakar ve sevinçle dans eder. (Ani yanıp sönme yoktur; her
@@ -38,7 +71,7 @@ incelenebilecek şeylere göz atar.
 | --- | --- | --- |
 | Yürü | A / D ya da ← / → | Sol alttaki yön tuşları |
 | Zıpla (bırakınca kısa zıplar) | Boşluk | Zıpla |
-| İncele (yakında bir şey varsa) / Parılda | E | Eylem |
+| İncele (yakında bir şey varsa) / Rezonans | E | Eylem |
 | Duraklat / geri | Esc | Sağ üstteki ⏸ |
 | Anılar | M | Duraklatma menüsü |
 | Menü seçimi | Enter | Dokun |
@@ -83,9 +116,9 @@ yerel sunucu için: `npx serve dist` ya da `node scripts/serve.mjs dist 4173 /`.
 | Komut | Ne yapar |
 | --- | --- |
 | `npm run typecheck` | TypeScript (strict) denetimi |
-| `npm run test` | Birim testleri (Vitest): kayıt, durum normalizasyonu, girdi bağlamları, yetenekler, Güneş karşılaşması, oda verisi doğrulaması, müzik bestecisi ve müzik kütüphanesi |
-| `npm run music:check` | Yalnızca müzik testleri: bestecinin kuralları ve `music/tracks.json` ile lisans notlarının denetimi |
-| `npm run test:e2e` | Üretim ve e2e derlemelerini alır, Playwright tarayıcı testlerini çalıştırır: kök ve `/kristaller-dunyasi/` alt yolunda açılış (WebGL), oynanış akışları (hareket, etkileşim, duraklatma, odak kaybı, kontrol noktası + Devam Et, ayarlar, bozuk/erişilemeyen kayıt, bölüm seçimi, son), çoklu dokunma, dikey ve yatay ekran düzeni, menülerin her boyutta ekrana sığması, dokunmatik düğmelerin çakışmaması ve telefon boyutlu ekranda yalnızca dokunmatikle ilk oda (`PHONE_UPRIGHT=1` ile telefon dik tutulmuş olarak) |
+| `npm run test` | Birim testleri (Vitest): kayıt, durum normalizasyonu, girdi bağlamları, yetenekler, Güneş karşılaşması, oda verisi doğrulaması, animasyon, Rezonans hareketlerinin büyümesi, tabloların yerleri, yüz sahnelerinin kadrosu, müzik bestecileri (piyano, yaylılar), diyalog müziğine geçiş ve müzik kütüphanesi |
+| `npm run music:check` | Yalnızca müzik testleri: bestecilerin kuralları, diyalog müziğine geçiş ve `music/tracks.json` ile lisans notlarının denetimi |
+| `npm run test:e2e` | Üretim ve e2e derlemelerini alır, Playwright tarayıcı testlerini çalıştırır: kök ve `/kristaller-dunyasi/` alt yolunda açılış (WebGL), oynanış akışları (hareket, etkileşim, duraklatma, odak kaybı, kontrol noktası + Devam Et, ayarlar, bozuk/erişilemeyen kayıt, bölüm seçimi, son), tabloyu inceleme, Rezonans hareketleri (çiçek ve kuşlar, yeri sarsma, Ay ve mor at), yüz animasyonlu diyalog sahnesi ve yaylılar, çoklu dokunma, dikey ve yatay ekran düzeni, menülerin her boyutta ekrana sığması, dokunmatik düğmelerin çakışmaması ve telefon boyutlu ekranda yalnızca dokunmatikle ilk oda (`PHONE_UPRIGHT=1` ile telefon dik tutulmuş olarak) |
 | `npm run test:campaign` | Yeni Oyun'dan son karta kadar tüm kampanyayı oynayan iki uzun test: masaüstünde yalnızca klavyeyle ve yatay tutulan telefon boyutlu ekranda yalnızca dokunmatikle (bu depodaki ölçümde her biri yaklaşık 11 dakika). `PHONE_UPRIGHT=1 npx playwright test mobile --grep @campaign` dokunmatik koşuyu telefon dik tutulmuş olarak oynar |
 | `npm run package` | Kaynak ve `dist` arşivlerini `release/` altına üretir |
 
@@ -129,14 +162,18 @@ index.html                  Giriş sayfası
 src/main.ts                 Hizmetlerin kurulumu ve Phaser oyunu
 src/game/config.ts          1280×720 tasarım alanı, FIT ölçekleme, Arcade Physics (60 Hz sabit adım)
 src/game/scenes/            BootScene (çizimleri bir kez rasterleştirir), MenuScene, WorldScene, EndingScene
-src/game/entities/          Oyuncu, iskelet (cutout) çalışma zamanı ve pozlar (zıplama, yüz, bekleme hareketleri), at, yaratıklar, Ay/Güneş yüzleri, anı taşı
-src/game/fx/                Kristal tünel ve adım efektleri, renk patlamaları ve renk bombardımanı
+src/game/entities/          Oyuncu, iskelet (cutout) çalışma zamanı ve pozlar (zıplama, yüz, bekleme hareketleri), at, yaratıklar, Ay/Güneş yüzleri, anı taşı, tablo
+src/game/moves/             Rezonans hareketleri: hareket arayüzü, bölümlere göre büyüme tablosu, efektler (çiçek, çatlak, Ay, at) ve hareket sistemi
+src/game/cinematics/        Yüz animasyonlu diyalog sahneleri: portreler (iskelet, Ay/Güneş yüzü, resim), kadro ve sahne yöneticisi
+src/game/world/             Kendi etkileşimini yöneten nesneler için arayüz, tablo galerisi, zemin geometrisi
+src/game/fx/                Pastel mücevher tüneli (çizim, çerçeve düzeni, bölüm görünümleri) ve adım efektleri, renk patlamaları ve renk bombardımanı
 src/game/systems/           Girdi bağlamları, kayıt, ses (Web Audio), anlatı/ara sahne
 src/game/data/              12 odanın verisi, diyaloglar, anılar, Güneş karşılaşması durum makinesi
 src/game/rooms/             Oda kurucu (arazi, kapılar/bayraklar) ve oda betikleri
 src/game/art/               Palet, SVG çizim araçları, karakter/prop/anı çizimleri, arazi ve arka plan ressamları, atlas üretimi
-src/ui/                     DOM arayüzü: menüler, HUD, diyalog, belge görünümü, renk bombardımanı katmanı, dokunmatik kontroller
-src/music/                  Bağımsız müzik modülü: üretken piyano bestecisi, sentez piyano, lisanslı parça kütüphanesi, oynatıcı
+src/ui/                     DOM arayüzü: menüler, HUD, diyalog, belge ve tablo görünümü, renk bombardımanı katmanı, dokunmatik kontroller
+src/assets/paintings/       Tablolardaki dört resim (JPEG)
+src/music/                  Bağımsız müzik modülü: piyano ve yaylılar bestecileri, sentez piyano ve yaylılar, lisanslı parça kütüphanesi, oynatıcı
 music/                      Müzik kütüphanesi: tracks.json, tracks/ (ses dosyaları), licenses/ (her parçanın lisans notu)
 tests/unit, tests/e2e       Vitest ve Playwright testleri
 scripts/                    Test sunucusu, paketleme ve geliştirme yardımcıları
@@ -150,7 +187,8 @@ Ses efektleri Web Audio ile sentezlenir.
 
 ## Müzik
 
-Arka plan müziği piyanodur ve ayrı bir modülden (`src/music/`) gelir:
+Arka plan müziği ayrı bir modülden (`src/music/`) gelir. Odalarda piyano,
+yüz animasyonlu diyalog sahnelerinde yaylılar çalar:
 
 - **Üretilen piyano:** Müzik oyun sırasında tarayıcıda bestelenir ve çalınır;
   kayıt ya da örnek ses kullanılmaz. Her bölümün kendi karakteri vardır, örneğin
@@ -158,6 +196,14 @@ Arka plan müziği piyanodur ve ayrı bir modülden (`src/music/`) gelir:
   miksolidya, Güneş Do armonik minör. Besteci her bölümde tanınır bir motifle
   başlar, sonra her seferinde biraz farklı akar. Nasıl çalıştığı ve nasıl
   ayarlanacağı `src/music/README.md` dosyasında anlatılıyor.
+- **Diyalog müziği (yaylılar):** Diyalog sahnesi başlarken oda müziği kısa bir
+  geçişle (`app.audio.setMusicOverride('tension')`) gergin bir yaylılar
+  topluluğuna döner. Sahne bitince (`setMusicOverride(null)`) odanın müziği
+  geri gelir. Bu müzik de tarayıcıda bestelenir ve sentezlenir. Re frig
+  dizisindedir: alt yaylılarda hiç durmayan bir ostinato, üstte kabararak
+  yükselen keman çizgileri, bir adım aşağı çözülen gecikmeler ve marcato
+  vuruşlar. The Boys'taki Homelander müziğinin yalnızca karakteri örnek
+  alındı; melodisi ya da motifi kullanılmadı.
 - **Parça kütüphanesi:** `music/` klasörüne mp3 (ya da ogg, m4a, wav) ve her
   parça için bir lisans notu eklenir, parça `music/tracks.json` listesinde
   hangi bölümlerde çalacağıyla birlikte tanımlanır. Kütüphanede parçası olan
@@ -171,9 +217,11 @@ menüde ilk dokunuşla başlar. Ses düzeyi Ayarlar → Müzik'ten değiştirili
 
 Görünüm 2.5D'dir: platformların üst yüzeyi derinlikli çizilir, arka katmanlar
 farklı hızlarda kayar, ön planda odak dışı siluetler geçer ve karakter yere
-gölge düşürür. Her odanın arkasında, kristal halkalarının bükülerek izleyiciye
-doğru aktığı bir tünel katmanı vardır; oda ve bölüm geçişleri aynı tünelin tam
-ekran, hızlanan bir sürümüyle yapılır. Her adımda zeminden parlayan kristaller
+gölge düşürür. Her odanın arkasında, iç içe kare çerçevelere dizilmiş, fırçayla
+boyanmış pastel mücevherlerin yavaşça dönerek izleyiciye doğru aktığı bir
+tünel katmanı vardır. Oda ve bölüm geçişleri aynı tünelin tam ekran sürümüyle
+yapılır; geçişin en yoğun anında tünelin ortasında boyanmış bir yüz (göz,
+dudaklar, pembe bir girdap) belirir. Her adımda zeminden parlayan kristaller
 filizlenir, inişlerde kristal bir taç açılır. Oynanan her formun (Gorti'nin kök
 ve insan biçimleri, Korkak ve Mekanik form) gözleri siyahtır; Mekanik formun
 anahtar ve kilit gözleri de siyah silüetlerdir. Duygular ayrı birer parça olan
@@ -185,6 +233,8 @@ gecikerek hareketi izler.
 
 - "Kristaller Dünyası" hikâyesi ve dünyası özgün metnin yazarına aittir; tüm
   hakları saklıdır. Bu depo için açık kaynak lisansı seçilmemiştir.
+- Tablolardaki dört resim (`src/assets/paintings/`) proje sahibinin sağladığı
+  çizimlerdir; açık bir lisansla sunulmaz, tüm hakları sahiplerine aittir.
 - Üçüncü taraf bağımlılıkların lisansları: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 - Test ve doğrulama notları: [QA_REPORT.md](QA_REPORT.md).
 
@@ -200,9 +250,16 @@ which GitHub Pages serves (*Settings → Pages → Source → Deploy from a bran
 keyboard, a mouse for menus, or touch alone, held upright or sideways. It is
 an experience rather than a challenge: no health, hazards, quests or puzzles;
 story scenes start as Gorti walks on, a colour bombardment breaks out now and
-then, and Gorti's jump and face are fully animated. The
+then, and Gorti's jump and face are fully animated. The action key's
+"Rezonans" move grows with the story: flowers that release birds, or, in
+Gorti's human form, a ground stomp that raises the Moon and a purple horse.
+Paintings of Gorti's life hang at the chapter starts, key conversations
+play as face-animated close-up scenes, and room transitions fly through a
+pastel tunnel of painted gems with a face at its centre. The
 background music is piano composed live in the browser by a separate module
-(`src/music/`), with an optional library of recorded pieces (`music/`) that
-only ships with an allowed license and a license note per piece. Serve
+(`src/music/`); face-animated dialogue scenes switch to a tense, original
+string-ensemble cue composed and synthesized the same way. An optional
+library of recorded pieces (`music/`) only ships with an allowed license and
+a license note per piece. Serve
 over HTTP(S); `file://` is not supported. Story rights remain with the
 original author.

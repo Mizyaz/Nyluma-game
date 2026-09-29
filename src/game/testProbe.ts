@@ -1,6 +1,6 @@
 import { app } from './App';
 import type { WorldScene } from './scenes/WorldScene';
-import { Composer, MOODS, Piano, type MusicCue } from '../music';
+import { Ensemble, composeCue, type MusicCue } from '../music';
 
 // E2E-only read-only state probe (compiled out of production builds).
 export function installProbe(): void {
@@ -46,14 +46,25 @@ export function installProbe(): void {
         renderer: app.game.renderer.type === 2 ? 'webgl' : 'canvas',
         music: app.audio.musicState(),
         bursts: active ? { count: world.bursts.count, active: world.bursts.active } : null,
+        moves: active
+          ? {
+              count: world.moves.count,
+              last: world.moves.last,
+              ready: world.moves.ready,
+              next: world.moves.pick()?.id ?? null,
+              running: world.moves.running,
+              birds: world.moves.birdsFlying,
+            }
+          : null,
+        features: active ? world.featureIds : [],
         view: active
           ? (({ x, y, width, height }) => ({ x, y, w: width, h: height }))(world.cameras.main.worldView)
           : null,
       };
     },
     /**
-     * Renders `seconds` of the generated piano for a cue offline at the
-     * default music volume and reports the mix's peak and RMS level.
+     * Renders `seconds` of a cue's generated music (piano or strings) offline
+     * at the default music volume and reports the mix's peak and RMS level.
      */
     async renderMusic(cue: MusicCue, seconds: number, seed = 1): Promise<{ peak: number; rms: number; notes: number }> {
       const { buf, notes } = await renderOffline(cue, seconds, seed);
@@ -99,21 +110,21 @@ export function installProbe(): void {
   };
 }
 
-/** Plays a cue's generated piano into an OfflineAudioContext. */
+/** Plays a cue's generated music into an OfflineAudioContext. */
 async function renderOffline(cue: MusicCue, seconds: number, seed: number): Promise<{ buf: AudioBuffer; notes: number }> {
   const rate = 44100;
   const ctx = new OfflineAudioContext(2, Math.ceil(rate * seconds), rate);
-  const piano = new Piano(ctx);
+  const band = new Ensemble(ctx);
   const bus = ctx.createGain();
   bus.gain.value = 0.6 * 0.55; // default music volume through the music bus
-  piano.output.connect(bus);
+  band.output.connect(bus);
   bus.connect(ctx.destination);
-  const composer = new Composer(MOODS[cue], seed);
+  const composer = composeCue(cue, seed);
   let t = 0.05;
   while (t < seconds) {
     const bar = composer.next();
-    for (const e of bar.notes) if (t + e.t < seconds) piano.note(t + e.t, e.midi, e.vel, t + e.off);
+    band.play(bar, t, seconds);
     t += bar.len;
   }
-  return { buf: await ctx.startRendering(), notes: piano.struck };
+  return { buf: await ctx.startRendering(), notes: band.struck };
 }

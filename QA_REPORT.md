@@ -2,8 +2,93 @@
 
 Bu rapor yalnızca gerçekten çalıştırılan kontrolleri ve bunların sonuçlarını
 listeler. Ölçümler aşağıdaki test ortamında alınmıştır; gerçek cihaz
-performansını temsil etmez. Sonuçlar `22d984d` commit'indeki oyun kodu
-içindir. Bu raporu ekleyen commit yalnızca bu dosyayı değiştirir.
+performansını temsil etmez. İlk bölüm bu sürümün kontrolleridir. Sonraki
+bölümlerdeki sonuçlar önceki sürümün (`22d984d`) oyun kodu içindir.
+
+## Bu sürüm: tablolar, Rezonans, yüz sahneleri, yaylılar, pastel tünel
+
+Bu sürümde eklenenler:
+
+- bölüm başlarında Gorti'nin hayatından dört tablo ve incelenince açılan
+  tablo görünümü;
+- hikâyeyle büyüyen Rezonans hareketleri (çiçek ve kuşlar; yeri sarsma, Ay ve
+  mor at; kristaller);
+- yüz animasyonlu diyalog sahneleri;
+- bu sahnelerde çalan, tarayıcıda bestelenen yaylılar müziği ('tension');
+- kristal tünel beşinci resim gibi pastel, boyanmış mücevher çerçevelerine
+  dönüştü; geçişin en yoğun anında ortada bir yüz belirir.
+
+Kullanıcının isteğiyle bu sürümde kısa bir kontrol seti çalıştırıldı:
+
+| Kontrol | Sonuç |
+| --- | --- |
+| `npm run typecheck` | Hatasız |
+| `npm test` (Vitest) | 13 dosya, 122 test geçti. 40'ı yeni: Rezonans kademeleri 5, tablolar 4, yüz sahnelerinin kadrosu ve ses tonu 4, müzik 17, tünel düzeni 10 |
+| `npm run build` | Başarılı. Oyun kodu 515,00 kB (gzip 182,28 kB), CSS 18,54 kB; dört tablo resmi 147–182 kB |
+| Tarayıcı testleri (`--grep-invert @campaign`), müzik ve tünel birleştirilmeden önce | 24/24 geçti, 4,5 dk |
+| Müzik birleştirildikten sonra: yeni deneyim testleri (6) ve müzik testleri (2) | 8/8 geçti, 1,1 dk |
+| Tünel de birleştirildikten sonra, son derlemeyle: açılış (kök ve alt yol, WebGL) ve deneyim testleri | İlk koşuda 7/8. Yüz sahnesi testi kaldı (aşağıda); düzeltmeden sonra 5 tekrarda 5/5 geçti |
+
+Yeni tarayıcı testleri (`tests/e2e/experience.spec.ts`) şunları doğrular:
+
+- ilk odadaki tabloyu incelemek resmi ve "Gorti geleceğine ve geçmişine bakış
+  attı." satırını gösterir; resim yüklenir, kapatınca oyun sürer;
+- son odada dört tablo birden vardır;
+- Rezonans ilk odada bir çiçek açtırır ve çiçekten bir kuş uçar, sonra her
+  efekt temizlenir;
+- Rezonans r09'da en az üç çiçek ve en az dört kuş çıkarır;
+- insan biçiminde yeri sarsma; ardından Ay ve mor at çıkar, efektlerin hepsi
+  biter;
+- Ulu Ay sahnesinde yüz sahnesi açılır ve müzik 'tension'a döner; sahne
+  bitince kapanır ve odanın müziği geri gelir.
+
+Yüz sahnesi testi ilk koşuda ve 4 tekrarın 1'inde kaldı. Diyalog kutusu
+açıldığı anda sahnenin açık olmasını bekliyordu; oysa sahne oyunun bir sonraki
+karesinde başlar. Test bu kareyi bekleyecek biçimde düzeltildi. Oyun kodu
+değişmedi.
+
+Müzik testlerinde 'tension' dahil her cue duyulur seviyede kalır ve
+kırpılmaz. Müzik modülünün Chromium'daki 30 sn'lik çevrimdışı çıktısı (tohum
+1 / 2) ölçüldü: 'tension' tepe 0,239 / 0,233, RMS −30,2 / −30,1 dBFS. Piyano
+cue'ları tepe 0,145–0,261, RMS −29,2 ile −37,8 dBFS arasıdır. Piyano
+cue'larının örnekleri değişiklikten önceki çıktıyla aynıdır (en fazla 1 LSB
+fark). Müzik bu ortamda **dinlenmedi**; ses çıkışı yoktur.
+
+Yüz sahneleri ve hareketler geliştirme sunucusunda Canvas çiziciyle ekran
+görüntüsü alınarak gözle kontrol edildi:
+
+- r03 (Bebek Ay'dan Güneş'e geçiş), r05 (Ulu Ay), r06, r08 (Güneş), r10 (üç
+  pencere) ve r12 sahneleri;
+- r01, r04, r08, r09 ve r12'deki tablolar ve tablo görünümü;
+- kök biçimde çiçek yelpazesi ve sürü; insan biçiminde yeri sarsma, Ay ve mor
+  at.
+
+Her sahne bittiğinde yalnızca oyun sahnesi açık kaldı.
+
+Pastel tünel, referans resimle yan yana, geçişin en yoğun anında (WebGL)
+ekran görüntüsüyle karşılaştırıldı. Aynı protokolle önce/sonra dönüşümlü
+ölçülen kare hızları (1280×720, 5 sn boyunca sayılan kareler):
+
+| Çizici | Oda | Önce | Sonra |
+| --- | --- | --- | --- |
+| Canvas | r03 | 57,8 fps | 59,6 fps |
+| Canvas | r06 | 59,7 fps | 59,8 fps |
+| WebGL (SwiftShader, GPU yok) | r03 | 7,7 fps | 7,4 fps |
+| WebGL (SwiftShader, GPU yok) | r06 | 7,9 fps | 7,5 fps |
+
+SwiftShader'daki farklar ölçüm gürültüsü içindedir. Canvas'ta menüden r05'e
+geçiş öncekinden yavaştır: ortalama 35–38 fps, önce 43 fps. Bu ölçüm son
+ayardan bir önceki sürümle alındı; son ayar Canvas'taki geçiş mücevherlerini
+yaklaşık %10 büyüttü, bu yüzden son değer biraz daha düşük olabilir.
+Geçişin ortasındaki ~550 ms'lik takılma oda kurulumudur ve önceden de vardı.
+
+Bu sürüm için **çalıştırılmayanlar:**
+
+- üç tam kampanya koşusu (en son `22d984d` için geçti);
+- referans ekran görüntüleri;
+- temiz klon denetimi;
+- performans ölçümleri.
+
 
 ## Test ortamı
 
@@ -18,7 +103,7 @@ içindir. Bu raporu ekleyen commit yalnızca bu dosyayı değiştirir.
 Gerçek telefon/tablet, Safari, Firefox, fiziksel dokunmatik ekran ve
 hoparlörden dinleme bu ortamda **test edilmedi**.
 
-## Özet
+## Önceki sürümün özeti (`22d984d`)
 
 | Kontrol | Sonuç |
 | --- | --- |
@@ -33,7 +118,7 @@ hoparlörden dinleme bu ortamda **test edilmedi**.
 | Temiz klon: `npm ci` → typecheck → test → build | Geçti (ayrıntı aşağıda) |
 | GitHub Pages yayını | `22d984d` için "Deploy to GitHub Pages" (#6) ve "pages build and deployment" (#5, "Publish 22d984d") iş akışları başarılı; site bu kapsayıcıdan açılamadı (ağ politikası) |
 
-## Bu sürümde değişenler
+## Önceki sürümde değişenler (`22d984d`)
 
 Oyun bir deneyime dönüştü (kullanıcı geri bildirimi, aşağıda):
 

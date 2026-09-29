@@ -1,168 +1,267 @@
 import * as Phaser from 'phaser';
+import { app } from '../App';
 import { frameRef, hasFrame } from '../art/TextureFactory';
-import { hex, P } from '../art/palette';
-import type { ThemeId } from '../data/roomTypes';
+import { Rng } from '../art/svg';
 import { DEPTH, VIEW_H, VIEW_W } from '../constants';
+import { GemArt, type GemHue } from './gemArt';
+import { frameSlots, ZoomTunnel, type FrameSlot, type FrameSpec } from './tunnelLayout';
+import { huesOf, type WarpLook } from './warpLook';
 
-// Crystal effects that give the world depth: a "warping tube" of crystals
-// streaming out of a vanishing point behind each room, crystals sprouting
-// under Gorti's steps, and the full-screen tunnel used between chapters.
+export { warpLook, type WarpLook } from './warpLook';
 
-export interface WarpLook {
-  count: number;
-  /** Shards per ring of the tube. */
-  perRing?: number;
-  /** Shard size multiplier. */
-  size?: number;
-  /** Opacity of the glowing ribs that outline each ring (0 = none). */
-  ribs?: number;
+// Crystal effects that give the world depth: a tunnel of painted gem frames
+// zooming out of a vanishing point behind each room (and full-screen between
+// rooms), and crystals sprouting under Gorti's steps.
+
+const smooth = (v: number): number => {
+  const c = Math.min(1, Math.max(0, v));
+  return c * c * (3 - 2 * c);
+};
+
+interface Piece {
+  img: Phaser.GameObjects.Image;
+  slot: FrameSlot;
+  /** Texture pixels along the long axis (the slot's length maps onto them). */
+  span: number;
+  /** Width of a rib's painted line in texture pixels: ribs keep a thin line at any size (0 = scale uniformly). */
+  line: number;
+  /** Opacity relative to the frame's. */
   alpha: number;
-  /** Depth units per second (1 = the whole tube in one second). */
-  speed: number;
-  colors: number[];
 }
 
-const CRYSTALS = [hex(P.crystalBlue), hex(P.crystalTeal), hex(P.crystalOrange), hex(P.violet)];
+/** One square frame of the tunnel: its side pieces and gems, moved as a unit. */
+class TunnelFrame {
+  private readonly pieces: Piece[] = [];
+  private hidden = false;
 
-/** Background tube per theme: stronger underground, a faint stream outdoors. */
-export function warpLook(theme: ThemeId): WarpLook {
-  switch (theme) {
-    case 'nursery':
-    case 'roots':
-    case 'chamber':
-      return { count: 49, perRing: 7, size: 1.25, ribs: 0.3, alpha: 0.5, speed: 0.07, colors: CRYSTALS };
-    case 'surface':
-    case 'hill':
-    case 'forest':
-      return { count: 36, perRing: 6, size: 1.2, ribs: 0.25, alpha: 0.32, speed: 0.05, colors: [hex(P.crystalBlue), hex(P.violet), hex('#d7b3ff')] };
-    case 'ride':
-      return { count: 49, perRing: 7, size: 1.2, ribs: 0.25, alpha: 0.36, speed: 0.16, colors: [hex(P.crystalOrange), hex('#f3b6c9'), hex(P.crystalTeal)] };
-    case 'sun':
-      return { count: 36, perRing: 6, size: 1.2, ribs: 0.22, alpha: 0.3, speed: 0.06, colors: [hex(P.crystalOrange), hex('#f0c46a'), hex(P.violet)] };
-    case 'clearing':
-      return { count: 30, perRing: 6, size: 1.1, ribs: 0.2, alpha: 0.24, speed: 0.045, colors: [hex('#c7ccde'), hex(P.crystalTeal)] };
-    case 'dorm':
-      return { count: 42, perRing: 7, size: 1.2, ribs: 0.25, alpha: 0.38, speed: 0.06, colors: [hex(P.crystalOrange), hex(P.crystalTeal), hex('#f0b458')] };
-    case 'mech':
-      return { count: 42, perRing: 7, size: 1.2, ribs: 0.25, alpha: 0.38, speed: 0.07, colors: [hex('#9aa3b8'), hex(P.crystalBlue), hex(P.violet)] };
-    case 'office':
-      return { count: 24, perRing: 6, size: 1, ribs: 0.15, alpha: 0.16, speed: 0.035, colors: [hex('#c9c1b0'), hex(P.violet)] };
-    default:
-      return { count: 36, perRing: 6, size: 1.2, ribs: 0.25, alpha: 0.32, speed: 0.06, colors: CRYSTALS };
+  constructor(
+    scene: Phaser.Scene,
+    private readonly art: GemArt,
+    slots: readonly FrameSlot[],
+    hues: readonly GemHue[],
+    rng: Rng,
+    blend: Phaser.BlendModes,
+    private readonly sideAlpha: number,
+    private readonly brushed: boolean,
+  ) {
+    for (const slot of slots) {
+      const img = scene.add.image(0, 0, GemArt.KEY, art.gem(hues[0]!, 0)).setScrollFactor(0).setBlendMode(blend);
+      this.pieces.push({ img, slot, span: 1, line: 0, alpha: 1 });
+    }
+    this.renew(slots, hues, rng);
+  }
+
+  /**
+   * A fresh arrangement (slots of the same kinds, in the same order) for the
+   * same sprites, its gems painted in hues picked at random (repeats weigh
+   * a hue), no two neighbours alike.
+   */
+  renew(slots: readonly FrameSlot[], hues: readonly GemHue[], rng: Rng): void {
+    let prev: GemHue | null = null;
+    this.pieces.forEach((p, i) => {
+      const slot = slots[i]!;
+      p.slot = slot;
+      if (slot.kind === 'side') {
+        const piece = this.art.side(slot.variant, this.brushed);
+        p.img.setFrame(piece.frame).setOrigin(0.5, piece.lineY);
+        p.span = piece.length;
+        p.line = this.brushed ? 0 : piece.lineWidth;
+        p.alpha = this.sideAlpha;
+        return;
+      }
+      let hue = rng.pick(hues);
+      for (let k = 0; k < 4 && hue === prev; k++) hue = rng.pick(hues);
+      prev = hue;
+      p.img.setFrame(this.art.gem(hue, slot.variant)).setOrigin(0.5, 0.5);
+      p.span = this.art.gemLength(slot.variant);
+      p.line = 0;
+      p.alpha = 1;
+    });
+  }
+
+  setDepth(depth: number): void {
+    for (const p of this.pieces) p.img.setDepth(p.slot.kind === 'gem' ? depth + 0.001 : depth);
+  }
+
+  /** Centre, outer half-size and turn of the frame, its opacity, and screen pixels per unit (camera zoom). */
+  place(x: number, y: number, size: number, turn: number, alpha: number, zoom: number): void {
+    // Exactly 0 skips drawing: nearly invisible frames cost nothing.
+    if (alpha < 0.004) {
+      if (!this.hidden) for (const p of this.pieces) p.img.setAlpha(0);
+      this.hidden = true;
+      return;
+    }
+    this.hidden = false;
+    const c = Math.cos(turn);
+    const s = Math.sin(turn);
+    // A rib's line gets a little thicker as its frame comes nearer.
+    const ribPx = Math.min(3.4, 1 + size * zoom * 0.004) / zoom;
+    for (const p of this.pieces) {
+      const { slot } = p;
+      const k = (size * slot.length) / p.span;
+      p.img.setPosition(x + size * (slot.x * c - slot.y * s), y + size * (slot.x * s + slot.y * c));
+      p.img.setRotation(turn + slot.angle);
+      p.img.setScale(k, p.line > 0 ? ribPx / p.line : k);
+      p.img.setAlpha(alpha * p.alpha);
+    }
+  }
+
+  setVisible(v: boolean): void {
+    for (const p of this.pieces) p.img.setVisible(v);
+  }
+
+  destroy(): void {
+    for (const p of this.pieces) p.img.destroy();
+    this.pieces.length = 0;
   }
 }
 
-interface Shard {
-  img: Phaser.GameObjects.Image;
-  ring: number;
-  slot: number;
-  /** Small per-shard offsets so the rings do not look machined. */
-  da: number;
-  dr: number;
-  len: number;
-}
+/** Size ratio between neighbouring frames, and how much further each smaller one is turned. */
+const RATIO = 0.66;
+const TWIST = 0.09;
+/** Half-size (screen pixels) of the nearest frame at spread 1. */
+const OUTER = 490;
+/**
+ * Levels at the near end where frames are gone: they fade out before they
+ * grow huge (they would mostly be off screen, and cost the most to draw).
+ */
+const NEAR_CUT = 0.45;
+/** Slow turn of the whole tunnel (radians per second), the same way the twist turns it. */
+const SPIN = -0.035;
 
 /**
- * The warping tube: rings of glowing shards travel out of a vanishing point
- * toward the viewer, twisting as they come, while the far end of the tube
- * slowly bends. Screen-space layer.
+ * How much tunnel a renderer affords. Software Canvas pays for every
+ * rotated sprite and every pixel it covers: no ribs or bands there, and
+ * smaller gems, most of all behind the rooms, where the tunnel runs all the
+ * time. WebGL draws all of it almost for free.
+ */
+interface Detail {
+  /** Frames to leave out of the look's (each costs a dozen sprites). */
+  fewerFrames: number;
+  /** Gem size multiplier. */
+  size: number;
+  /** Ribs and bands along the sides. */
+  sides: boolean;
+}
+
+const WEBGL_DETAIL: Detail = { fewerFrames: 0, size: 1, sides: true };
+const CANVAS_BRIEF: Detail = { fewerFrames: 0, size: 0.85, sides: false };
+const CANVAS_BACKGROUND: Detail = { fewerFrames: 1, size: 0.55, sides: false };
+
+/**
+ * The gem tunnel: square frames of painted gems, each turned a little
+ * against its neighbours, stream out of a vanishing point toward the viewer
+ * and slowly turn: a twisting, spiralling picture-in-a-picture.
+ * Screen-space layer; camera zoom is compensated.
  */
 export class CrystalWarp {
-  private items: Shard[] = [];
-  private ribs: Phaser.GameObjects.Graphics | null = null;
+  private readonly scene: Phaser.Scene;
+  private readonly art: GemArt;
+  private readonly tunnel: ZoomTunnel;
+  private readonly spec: FrameSpec;
+  private readonly frames: TunnelFrame[] = [];
+  /** Each frame's level at the last update (a jump up means it came round). */
+  private readonly levels: number[] = [];
+  private readonly hues: readonly GemHue[];
+  private readonly rng = new Rng(Math.floor(Math.random() * 2 ** 32));
+  private readonly depth: number;
+  private readonly calm: boolean;
   private t = Math.random() * 100;
-  private phase = Math.random();
-  private rings = 1;
-  private perRing = 1;
-  private size: number;
-  private ribAlpha: number;
-  private colors: number[];
+  private turn = Math.random() * Math.PI * 2;
+  private visible = true;
   speed: number;
   alpha: number;
-  /** Tube radius multiplier (transitions open it wide). */
+  /** Tunnel size multiplier (transitions open it wide). */
   spread = 1;
   cx = VIEW_W / 2;
   cy = VIEW_H * 0.42;
+  /** Radius (px) of a clear middle: smaller frames fade away there. */
+  core = 0;
+  /** Levels the tunnel has pulled back into the distance: the nearest frames fade first. */
+  recede = 0;
 
+  /** `additive` blends the gems as light instead of paint. */
   constructor(
     scene: Phaser.Scene,
     look: WarpLook,
     depth: number,
-    additive = true,
+    additive = false,
   ) {
+    this.scene = scene;
     this.speed = look.speed;
     this.alpha = look.alpha;
-    this.size = look.size ?? 1;
-    // The ribs are cheap on the GPU but cost more than the rest of a frame in
-    // the Canvas fallback renderer, where the shards alone draw the tube.
-    this.ribAlpha = scene.game.renderer.type === Phaser.WEBGL ? look.ribs ?? 0 : 0;
-    this.colors = look.colors;
-    const key = hasFrame('fx.shard') ? 'fx.shard' : 'fx.crystal';
-    if (!hasFrame(key)) return;
-    const f = frameRef(key);
-    this.perRing = look.perRing ?? 7;
-    this.rings = Math.max(3, Math.round(look.count / this.perRing));
-    if (this.ribAlpha > 0) {
-      this.ribs = scene.add.graphics().setScrollFactor(0).setDepth(depth - 0.5);
-      if (additive) this.ribs.setBlendMode(Phaser.BlendModes.ADD);
+    this.depth = depth;
+    // Reduced motion: fewer frames, no drift and no spin.
+    this.calm = app.settings.reducedMotion;
+    this.art = GemArt.ensure(scene);
+    this.hues = huesOf(look);
+    const detail = scene.game.renderer.type === Phaser.WEBGL ? WEBGL_DETAIL : look.brief ? CANVAS_BRIEF : CANVAS_BACKGROUND;
+    const perRing = Math.max(4, Math.round(look.perRing ?? 12));
+    const frames = Math.max(3, Math.round(look.count / perRing) - detail.fewerFrames - (this.calm ? 1 : 0));
+    this.tunnel = new ZoomTunnel({ frames, ratio: RATIO, twist: TWIST, nearCut: NEAR_CUT, nearFade: 0.6, farFade: 1.1 });
+    const sideAlpha = detail.sides ? (look.ribs ?? 0) : 0;
+    const brushed = look.brushed ?? false;
+    this.spec = {
+      gems: perRing,
+      sides: sideAlpha > 0,
+      band: 0.83,
+      edge: 0.97,
+      gemLength: 0.52 * (look.size ?? 1) * detail.size,
+      jitter: 0.14,
+      shapes: GemArt.SHAPES,
+      sideKinds: brushed ? GemArt.BANDS : GemArt.RIBS,
+    };
+    const blend = additive ? Phaser.BlendModes.ADD : Phaser.BlendModes.NORMAL;
+    for (let k = 0; k < frames; k++) {
+      this.frames.push(new TunnelFrame(scene, this.art, frameSlots(this.spec, this.rng), this.hues, this.rng, blend, sideAlpha, brushed));
+      this.levels.push(this.tunnel.level(k));
     }
-    for (let r = 0; r < this.rings; r++) {
-      for (let j = 0; j < this.perRing; j++) {
-        const img = scene.add.image(0, 0, f.atlas, f.frame).setScrollFactor(0).setDepth(depth);
-        img.setTint(look.colors[(r + j) % look.colors.length]!);
-        if (additive) img.setBlendMode(Phaser.BlendModes.ADD);
-        this.items.push({ img, ring: r, slot: j, da: (Math.random() - 0.5) * 0.4, dr: 0.85 + Math.random() * 0.3, len: 0.75 + Math.random() * 0.6 });
-      }
-    }
+    this.sortDepths();
   }
 
   update(dtMs: number): void {
     const dt = Math.min(dtMs, 100) / 1000;
     this.t += dt;
-    this.phase = (this.phase + this.speed * dt) % 1;
-    const bendX = Math.sin(this.t * 0.23) * 150;
-    const bendY = Math.cos(this.t * 0.17) * 70;
-    const step = (Math.PI * 2) / this.perRing;
-    // Depth 1 = the vanishing point, 0 = at the viewer.
-    const depthOf = (ring: number): number => 1 - ((this.phase + ring / this.rings) % 1);
-    const fadeOf = (z: number): number => Math.min(1, (1 - z) * 4) * Math.min(1, z * 7);
-    for (const it of this.items) {
-      const z = depthOf(it.ring);
-      const persp = 1 / (z * 4 + 0.18);
-      const ang = it.slot * step + it.ring * 0.45 + this.t * 0.3 + (1 - z) * 2.4 + it.da;
-      const rad = it.dr * 150 * persp * this.spread;
-      const far = z * z;
-      it.img.setPosition(this.cx + Math.cos(ang) * rad + bendX * far, this.cy + Math.sin(ang) * rad * 0.78 + bendY * far);
-      it.img.setRotation(ang + Math.PI / 2);
-      const sc = 0.13 * persp * this.size;
-      it.img.setScale(sc * 0.8, sc * it.len);
-      it.img.setAlpha(this.alpha * fadeOf(z));
-    }
-    const g = this.ribs;
-    if (!g) return;
-    g.clear();
-    for (let r = 0; r < this.rings; r++) {
-      const z = depthOf(r);
-      const a = this.alpha * this.ribAlpha * fadeOf(z);
-      if (a < 0.01) continue;
-      const persp = 1 / (z * 4 + 0.18);
-      const rad = 150 * persp * this.spread;
-      const far = z * z;
-      g.lineStyle(Math.max(1, 2.4 * persp), this.colors[r % this.colors.length]!, a);
-      g.strokeEllipse(this.cx + bendX * far, this.cy + bendY * far, rad * 2, rad * 2 * 0.78, rad > 260 ? 80 : 40);
-    }
+    this.tunnel.advance(this.speed * dt);
+    if (!this.calm) this.turn += SPIN * dt;
+    if (!this.visible) return;
+    const zoom = this.scene.cameras.main.zoom || 1;
+    const outer = (OUTER * this.spread) / zoom;
+    // The far end of the tunnel drifts a little.
+    const bendX = this.calm ? 0 : (Math.sin(this.t * 0.23) * 90) / zoom;
+    const bendY = this.calm ? 0 : (Math.cos(this.t * 0.17) * 40) / zoom;
+    const n = this.tunnel.spec.frames;
+    let cameRound = false;
+    this.frames.forEach((frame, k) => {
+      const u = this.tunnel.level(k);
+      if (u > this.levels[k]! + n / 2) {
+        // Passed the viewer: back at the vanishing point, rearranged and repainted.
+        frame.renew(frameSlots(this.spec, this.rng), this.hues, this.rng);
+        cameRound = true;
+      }
+      this.levels[k] = u;
+      const size = outer * this.tunnel.scale(u);
+      const far = (u / n) ** 2;
+      const clear = this.core > 0 ? smooth((size * zoom - this.core * 1.1) / (this.core * 0.5)) : 1;
+      frame.place(this.cx + bendX * far, this.cy + bendY * far, size, this.turn + this.tunnel.turn(u), this.alpha * this.tunnel.fade(u, this.recede) * clear, zoom);
+    });
+    if (cameRound) this.sortDepths();
+  }
+
+  /** Nearer (bigger) frames draw over farther ones; only reordered when one comes round. */
+  private sortDepths(): void {
+    const order = this.frames.map((frame, k) => ({ frame, u: this.tunnel.level(k) })).sort((a, b) => b.u - a.u);
+    order.forEach(({ frame }, i) => frame.setDepth(this.depth + (0.5 * i) / order.length));
   }
 
   setVisible(v: boolean): void {
-    for (const it of this.items) it.img.setVisible(v);
-    this.ribs?.setVisible(v);
+    this.visible = v;
+    for (const f of this.frames) f.setVisible(v);
   }
 
   destroy(): void {
-    for (const it of this.items) it.img.destroy();
-    this.items = [];
-    this.ribs?.destroy();
-    this.ribs = null;
+    for (const f of this.frames) f.destroy();
+    this.frames.length = 0;
   }
 }
 

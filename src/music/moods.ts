@@ -1,9 +1,9 @@
 import { SCALES } from './theory';
-import type { Mood, MusicCue } from './types';
+import type { Mood, PianoCue, StringCue, StringMood } from './types';
 
 // The character of each cue: key, tempo, harmony and texture. Progressions
 // are scale degrees (0 = tonic), one chord per bar.
-export const MOODS: Record<MusicCue, Mood> = {
+export const MOODS: Record<PianoCue, Mood> = {
   // Title screen: D major, an unhurried flowing arpeggio.
   menu: {
     bpm: 66,
@@ -192,5 +192,44 @@ export const MOODS: Record<MusicCue, Mood> = {
     color: 0.5,
     sparkle: 0.1,
     pedal: 'bar',
+  },
+};
+
+// Cues for the string ensemble.
+export const STRING_MOODS: Record<StringCue, StringMood> = {
+  // Dialogue scenes: D phrygian (minor with the dark bII a semitone above the
+  // tonic), a relentless low-string ostinato under long violin lines that
+  // climb and swell, suspensions resolving down, marcato hits.
+  tension: {
+    bpm: 92,
+    beats: 4,
+    tonic: 62,
+    scale: SCALES.phrygian,
+    progressions: [
+      [0, 1, 0, 5],
+      [0, 6, 5, 1],
+      [0, 5, 3, 1],
+      [0, 3, 1, 6],
+    ],
+    // The bridge climbs and ends on v° (its tritone resolves into the tonic).
+    bridge: [
+      [3, 1, 5, 4],
+      [5, 6, 3, 4],
+      [2, 3, 1, 4],
+    ],
+    // bII → i: every voice falls a step into the tonic.
+    cadence: [1, 0],
+    vel: 0.8,
+    low: [36, 62],
+    high: [55, 91],
+    suspend: 0.6,
+    motion: 0.35,
+    texture: {
+      A: { pulse: 'drive', line: 'single', lineRange: [62, 81], pad: 1, padArt: 'legato', padRange: [57, 74], dyn: [0.64, 0.86], hits: 0.3 },
+      A2: { pulse: 'tresillo', line: 'single', lineRange: [65, 86], pad: 2, padArt: 'tremolo', padRange: [57, 76], dyn: [0.68, 0.92], hits: 0.5 },
+      B: { pulse: 'surge', line: 'octaves', lineRange: [69, 89], pad: 2, padArt: 'tremolo', padRange: [57, 76], dyn: [0.76, 1], hits: 0.65 },
+      A3: { pulse: 'tresillo', line: 'octaves', lineRange: [67, 86], pad: 2, padArt: 'tremolo', padRange: [57, 76], dyn: [0.84, 0.96], hits: 0.5 },
+      interlude: { pulse: 'heartbeat', line: 'none', lineRange: [62, 81], pad: 1, padArt: 'tremolo', padRange: [74, 88], dyn: [0.56, 0.46], hits: 0 },
+    },
   },
 };

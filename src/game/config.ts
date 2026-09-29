@@ -5,6 +5,7 @@ import { MenuScene } from './scenes/MenuScene';
 import { WorldScene } from './scenes/WorldScene';
 import { EndingScene } from './scenes/EndingScene';
 import { WarpScene } from './scenes/WarpScene';
+import { CinemaScene } from './scenes/CinemaScene';
 
 export function gameConfig(parent: HTMLElement, forceCanvas: boolean): Phaser.Types.Core.GameConfig {
   return {
@@ -51,6 +52,6 @@ export function gameConfig(parent: HTMLElement, forceCanvas: boolean): Phaser.Ty
     disableContextMenu: true,
     banner: false,
     audio: { noAudio: true },
-    scene: [BootScene, MenuScene, WorldScene, EndingScene, WarpScene],
+    scene: [BootScene, MenuScene, WorldScene, EndingScene, WarpScene, CinemaScene],
   };
 }

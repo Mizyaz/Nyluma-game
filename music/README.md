@@ -2,7 +2,8 @@
 
 Bu klasör oyunda çalınacak **kayıtlı müzikleri** (mp3 ve benzeri) ve her
 parçanın **lisans notunu** tutar. Kütüphanede bir bölüm için parça yoksa oyun
-o bölümde kendi ürettiği piyano müziğini çalar (bkz. `src/music/README.md`).
+o bölümde kendi ürettiği müziği çalar: odalarda piyano, diyaloglarda yaylılar
+(bkz. `src/music/README.md`).
 
 ```
 music/
@@ -55,7 +56,7 @@ music/
 | `url` | `file` yerine, çevrimiçi bir kütüphaneden akış için `https://` adresi. Adres, tarayıcıdan çalınmaya (CORS) izin vermelidir; izin vermezse oyun o bölümde piyanoya döner. |
 | `license` | Aşağıdaki izinli lisanslardan biri. |
 | `source` | Parçanın ve lisansının bulunduğu sayfa. |
-| `cues` | Parçanın çalacağı yerler: `menu`, `roots` (Bölüm I), `forest` (orman ve açıklık), `ride` (at yolculuğu), `sun` (Güneş), `inner` (iç koğuş ve mekanizma), `final` (boş masa ve son). `*` her yer demektir. Bir yerde birden çok parça varsa sırayla çalınır. |
+| `cues` | Parçanın çalacağı yerler: `menu`, `roots` (Bölüm I), `forest` (orman ve açıklık), `ride` (at yolculuğu), `sun` (Güneş), `inner` (iç koğuş ve mekanizma), `final` (boş masa ve son), `tension` (yüz animasyonlu diyalog sahneleri). `*` bütün oda cue'ları demektir; `tension` için parça bu cue'yu adıyla listelemelidir, yoksa diyaloglarda üretilen yaylılar çalar. Bir yerde birden çok parça varsa sırayla çalınır. |
 | `volume` | İsteğe bağlı ses düzeyi, 0–1.5 (varsayılan 1). |
 
 ## İzinli lisanslar

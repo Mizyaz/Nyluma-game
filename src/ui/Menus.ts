@@ -349,7 +349,7 @@ export function creditsBlock(): HTMLElement {
     h('h3', { text: 'Oyun uyarlaması' }),
     h('div', { text: 'Tasarım, kod, çizimler, animasyon ve ses efektleri bu proje için özgün olarak üretildi: çizimler kodla yazılmış SVG’lerden, sesler Web Audio sentezinden.' }),
     h('h3', { text: 'Müzik' }),
-    h('div', { text: 'Piyano müziği oyun sırasında tarayıcıda bestelenir ve çalınır (oyunun müzik modülü); kayıt ya da örnek ses kullanılmaz.' }),
+    h('div', { text: 'Piyano müziği ve diyalog sahnelerindeki yaylılar oyun sırasında tarayıcıda bestelenir ve sentezlenir (oyunun müzik modülü); kayıt ya da örnek ses kullanılmaz.' }),
     ...app.audio.musicTracks().map((t) =>
       h(
         'div',

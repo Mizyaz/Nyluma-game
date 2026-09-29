@@ -33,9 +33,13 @@ export interface ProbeState {
   extra: Record<string, unknown>;
   /** Interaction prompts on screen ("E İncele"). */
   prompts: string[];
-  music: { cue: string; source: 'piano' | 'track' | 'none'; track: string | null; bars: number; notes: number };
+  music: { cue: string; source: 'piano' | 'strings' | 'track' | 'none'; track: string | null; bars: number; notes: number };
   /** Colour bombardments since the room started; `active` while one plays. */
   bursts: { count: number; active: boolean } | null;
+  /** Rezonans moves in this room: the next one, effects still running, birds flying. */
+  moves: { count: number; last: string | null; ready: boolean; next: string | null; running: string[]; birds: number } | null;
+  /** Self-handling things Gorti can inspect (paintings). */
+  features: string[];
 }
 
 /** Collects anything that would indicate a broken build. */

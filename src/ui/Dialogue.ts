@@ -69,6 +69,11 @@ export class Dialogue {
     return this.open_ ? (this.lines[this.idx]?.who ?? '') : '';
   }
 
+  /** The line on screen (null when closed). */
+  get current(): Line | null {
+    return this.open_ ? (this.lines[this.idx] ?? null) : null;
+  }
+
   /** True while the current line is still being typed out. */
   get typing(): boolean {
     return this.open_ && this.shown < this.full.length;

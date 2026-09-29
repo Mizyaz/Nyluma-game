@@ -1,4 +1,6 @@
+import type { Instrument } from './instrument';
 import { Rng } from './rng';
+import { Room } from './room';
 import { midiToHz } from './theory';
 
 // A small synthesized piano (Web Audio), no samples:
@@ -19,13 +21,14 @@ export interface PianoOptions {
   reverb?: number;
 }
 
-export class Piano {
+export class Piano implements Instrument {
   /** Everything the piano plays passes through here. */
   readonly output: GainNode;
   private readonly bus: GainNode;
   private readonly wave: PeriodicWave;
   private readonly knock: AudioBuffer;
   private readonly nodes: AudioNode[] = [];
+  private readonly room: Room;
   private readonly rng = new Rng(0x51a7);
   /** Keys struck so far (for tests and diagnostics). */
   struck = 0;
@@ -44,17 +47,13 @@ export class Piano {
     warm.Q.value = 0.5;
     const dry = c.createGain();
     dry.gain.value = 0.86;
-    const wet = c.createGain();
-    wet.gain.value = opts.reverb ?? 0.32;
-    const verb = c.createConvolver();
-    verb.buffer = roomImpulse(c, 2.6);
+    this.room = new Room(c, opts.reverb ?? 0.32);
     this.bus.connect(warm);
     warm.connect(dry);
-    warm.connect(verb);
-    verb.connect(wet);
+    warm.connect(this.room.input);
     dry.connect(this.output);
-    wet.connect(this.output);
-    this.nodes.push(this.bus, warm, dry, wet, verb);
+    this.room.output.connect(this.output);
+    this.nodes.push(this.bus, warm, dry);
     this.wave = pianoWave(c);
     this.knock = knockBuffer(c);
   }
@@ -135,6 +134,7 @@ export class Piano {
   dispose(): void {
     this.output.disconnect();
     for (const n of this.nodes) n.disconnect();
+    this.room.dispose();
   }
 }
 
@@ -157,34 +157,5 @@ function knockBuffer(c: BaseAudioContext): AudioBuffer {
   const d = b.getChannelData(0);
   const rng = new Rng(0xbeef);
   for (let i = 0; i < len; i++) d[i] = rng.next() * 2 - 1;
-  return b;
-}
-
-/**
- * A room's echo as an impulse response: a few early reflections, then a dense
- * tail that decays over `seconds` and darkens as it fades.
- */
-export function roomImpulse(c: BaseAudioContext, seconds: number): AudioBuffer {
-  const rate = c.sampleRate;
-  const len = Math.floor(rate * seconds);
-  const b = c.createBuffer(2, len, rate);
-  const pre = 0.014;
-  for (let ch = 0; ch < 2; ch++) {
-    const d = b.getChannelData(ch);
-    const rng = new Rng(ch === 0 ? 0x1234 : 0x9876);
-    let lp = 0;
-    for (let i = 0; i < len; i++) {
-      const t = i / rate - pre;
-      if (t < 0) continue;
-      const env = Math.exp(-t / 0.42);
-      const a = 0.07 + 0.55 * Math.exp(-t / 0.5);
-      lp += a * (rng.next() * 2 - 1 - lp);
-      d[i] = lp * env;
-    }
-    for (let r = 0; r < 6; r++) {
-      const i = Math.floor((pre + 0.006 + r * 0.011 + rng.next() * 0.006) * rate);
-      if (i < len) d[i] = d[i]! + (0.55 - r * 0.07) * (rng.next() < 0.5 ? -1 : 1);
-    }
-  }
   return b;
 }

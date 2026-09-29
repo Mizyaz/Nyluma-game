@@ -75,7 +75,7 @@ export function r09(w: WorldScene): RoomScript {
           'r09.line',
           async (cs) => {
             w.player.lock(true, 'idle');
-            await cs.say(DIALOGUE.selfLine!);
+            await cs.talk(DIALOGUE.selfLine!, ['gorti']);
           },
           () => {
             w.flag('r09.line', false);

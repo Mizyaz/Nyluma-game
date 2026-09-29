@@ -96,8 +96,14 @@ export function trackUrl(t: Track, base = 'music/'): string {
   return t.url ?? `${base}${t.file ?? ''}`;
 }
 
+/**
+ * Cues that "*" does not cover: a scene's mood (the dialogue scenes'
+ * 'tension') needs a piece chosen for it, or the generated strings play.
+ */
+const NAMED_ONLY: readonly string[] = ['tension'];
+
 /** The pieces that may play for a cue: those naming it first, then "any". */
 export function tracksFor(tracks: readonly Track[], cue: string): Track[] {
   const named = tracks.filter((t) => t.cues.includes(cue));
-  return named.length ? named : tracks.filter((t) => t.cues.includes('*'));
+  return named.length || NAMED_ONLY.includes(cue) ? named : tracks.filter((t) => t.cues.includes('*'));
 }
