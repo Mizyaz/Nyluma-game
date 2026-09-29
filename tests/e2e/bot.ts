@@ -1,0 +1,208 @@
+import type { Page } from '@playwright/test';
+import { probe, type ProbeState } from './helpers';
+
+// A normal-input player: every action is a real keyboard event. The bot only
+// *reads* the e2e probe to decide when to press or release keys.
+
+type Key = 'KeyA' | 'KeyD' | 'Space' | 'KeyE' | 'KeyQ' | 'KeyR' | 'KeyF' | 'Enter' | 'Escape' | 'ArrowLeft' | 'ArrowRight' | 'ArrowDown';
+
+export class Bot {
+  private down = new Set<Key>();
+  log: string[] = [];
+
+  constructor(public page: Page) {}
+
+  async s(): Promise<ProbeState & { extra: Record<string, unknown>; prompts: string[] }> {
+    return (await probe(this.page)) as ProbeState & { extra: Record<string, unknown>; prompts: string[] };
+  }
+
+  note(msg: string): void {
+    const line = `${new Date().toISOString().slice(11, 19)} ${msg}`;
+    this.log.push(line);
+    if (process.env.BOT_VERBOSE) console.log(line);
+  }
+
+  async keyDown(k: Key): Promise<void> {
+    if (this.down.has(k)) return;
+    this.down.add(k);
+    await this.page.keyboard.down(k);
+  }
+
+  async keyUp(k: Key): Promise<void> {
+    if (!this.down.has(k)) return;
+    this.down.delete(k);
+    await this.page.keyboard.up(k);
+  }
+
+  async releaseAll(): Promise<void> {
+    for (const k of [...this.down]) await this.keyUp(k);
+  }
+
+  async tap(k: Key, ms = 70): Promise<void> {
+    await this.keyDown(k);
+    await this.page.waitForTimeout(ms);
+    await this.keyUp(k);
+  }
+
+  async wait(ms: number): Promise<void> {
+    await this.page.waitForTimeout(ms);
+  }
+
+  /** Advances dialogues and skips cutscenes until the player has control. */
+  async settle(timeout = 90_000): Promise<ProbeState> {
+    const start = Date.now();
+    let st = await this.s();
+    while (Date.now() - start < timeout) {
+      st = await this.s();
+      if (st.context === 'gameplay' && !st.busy && !st.dialogueOpen && st.player && (st.player.state === 'normal' || st.player.state === 'hidden')) return st;
+      if (st.dialogueOpen) {
+        await this.tap('Space', 60);
+        await this.wait(140);
+      } else if (st.busy && (st.context === 'cutscene')) {
+        await this.keyDown('Enter');
+        await this.wait(1000);
+        await this.keyUp('Enter');
+        await this.wait(150);
+      } else await this.wait(120);
+    }
+    throw new Error(`settle timed out: ${JSON.stringify(st)}`);
+  }
+
+  async waitFor(pred: (s: ProbeState & { extra: Record<string, unknown>; prompts: string[] }) => boolean, timeout = 30_000, label = 'condition'): Promise<ProbeState & { extra: Record<string, unknown>; prompts: string[] }> {
+    const start = Date.now();
+    let st = await this.s();
+    while (Date.now() - start < timeout) {
+      st = await this.s();
+      if (pred(st)) return st;
+      if (st.dialogueOpen) await this.tap('Space', 60);
+      await this.wait(80);
+    }
+    throw new Error(`waitFor ${label} timed out: ${JSON.stringify({ room: st.room, p: st.player, ctx: st.context, busy: st.busy, obj: st.objective })}`);
+  }
+
+  /** Closed-loop walk to x. */
+  async walkTo(x: number, tol = 8, timeout = 40_000): Promise<void> {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+      const st = await this.s();
+      const p = st.player!;
+      if (st.dialogueOpen) {
+        await this.releaseAll();
+        await this.tap('Space', 60);
+        continue;
+      }
+      if (st.busy || st.context !== 'gameplay') {
+        await this.releaseAll();
+        await this.settle();
+        continue;
+      }
+      const dx = x - p.x;
+      const brake = Math.min(28, (p.vx * p.vx) / (2 * 2000) + 4);
+      if (Math.abs(dx) <= tol) {
+        await this.keyUp('KeyD');
+        await this.keyUp('KeyA');
+        if (Math.abs(p.vx) < 20) return;
+      } else if (Math.abs(dx) <= brake && Math.abs(p.vx) < 20) {
+        // Standing just short of the target: nudge with a short press.
+        await this.tap(dx > 0 ? 'KeyD' : 'KeyA', 30);
+        await this.wait(60);
+        continue;
+      } else if (dx > 0) {
+        await this.keyUp('KeyA');
+        if (dx > brake) await this.keyDown('KeyD');
+        else await this.keyUp('KeyD');
+      } else {
+        await this.keyUp('KeyD');
+        if (-dx > brake) await this.keyDown('KeyA');
+        else await this.keyUp('KeyA');
+      }
+      await this.wait(25);
+    }
+    await this.releaseAll();
+    throw new Error(`walkTo ${x} timed out at ${JSON.stringify((await this.s()).player)}`);
+  }
+
+  /** Turns to face a direction without moving far. */
+  async face(dir: 1 | -1): Promise<void> {
+    const st = await this.s();
+    if (st.player?.facing === dir) return;
+    await this.tap(dir > 0 ? 'KeyD' : 'KeyA', 40);
+    await this.wait(120);
+  }
+
+  /** Jumps and steers in the air toward targetX until landing. */
+  async jumpTo(targetX: number, opts: { hold?: number; timeout?: number; tol?: number } = {}): Promise<ProbeState> {
+    const hold = opts.hold ?? 320;
+    const tol = opts.tol ?? 6;
+    const t0 = Date.now();
+    await this.keyDown('Space');
+    let released = false;
+    let st = await this.s();
+    const y0 = st.player!.y;
+    let left = false;
+    while (Date.now() - t0 < (opts.timeout ?? 4000)) {
+      st = await this.s();
+      const p = st.player!;
+      if (!released && Date.now() - t0 > hold) {
+        await this.keyUp('Space');
+        released = true;
+      }
+      if (!p.onGround || Math.abs(p.y - y0) > 2) left = true;
+      const dx = targetX - p.x;
+      if (dx > tol) {
+        await this.keyUp('KeyA');
+        await this.keyDown('KeyD');
+      } else if (dx < -tol) {
+        await this.keyUp('KeyD');
+        await this.keyDown('KeyA');
+      } else {
+        await this.keyUp('KeyA');
+        await this.keyUp('KeyD');
+      }
+      if (left && p.onGround && Date.now() - t0 > 200) break;
+      await this.wait(20);
+    }
+    await this.keyUp('Space');
+    await this.keyUp('KeyA');
+    await this.keyUp('KeyD');
+    await this.wait(60);
+    return this.s();
+  }
+
+  /** Waits until a prompt with the label is shown, then presses E. */
+  async act(label: string, timeout = 8000): Promise<void> {
+    await this.waitFor((s) => s.prompts.some((p) => p.includes(label)), timeout, `prompt "${label}"`);
+    await this.tap('KeyE');
+    await this.wait(120);
+  }
+
+  async reach(): Promise<void> {
+    const before = await this.s();
+    await this.act('Köke uzan');
+    await this.waitFor((s) => s.player!.state === 'normal' && s.player!.onGround && Math.hypot(s.player!.x - before.player!.x, s.player!.y - before.player!.y) > 40, 6000, 'reach landing');
+  }
+
+  async sing(pattern: ('low' | 'mid' | 'high')[]): Promise<void> {
+    await this.waitFor((s) => s.prompts.some((p) => p.includes('Şarkı')), 8000, 'song prompt');
+    await this.tap('KeyF');
+    await this.waitFor((s) => s.songOpen, 5000, 'song panel');
+    await this.wait(400 + pattern.length * 720 + 300);
+    for (const n of pattern) {
+      await this.tap(n === 'low' ? 'ArrowLeft' : n === 'mid' ? 'ArrowDown' : 'ArrowRight', 60);
+      await this.wait(260);
+    }
+    await this.waitFor((s) => !s.songOpen, 6000, 'song closed');
+  }
+
+  async holdFocus(ms: number): Promise<void> {
+    await this.keyDown('KeyQ');
+    await this.wait(ms);
+    await this.keyUp('KeyQ');
+  }
+
+  async untilRoom(room: string, timeout = 60_000): Promise<void> {
+    await this.releaseAll();
+    await this.waitFor((s) => s.room === room && s.context !== 'none', timeout, `room ${room}`);
+    await this.wait(700);
+  }
+}

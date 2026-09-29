@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="tr">
+<head><meta charset="utf-8"><title>Creature art preview</title>
+<style>
+body{background:#3a3550;color:#e8dcca;font:12px sans-serif;margin:10px}
+h2{font:600 14px sans-serif;margin:14px 0 6px;color:#d7b3ff}
+.grid{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start}
+figure{margin:0;background:#4a4560;padding:6px;text-align:center;border-radius:6px}
+figcaption{margin-top:4px;line-height:1.35}
+figcaption small{color:#b8b0cc}
+.wrap{position:relative;display:inline-block;background:#3a3550}
+.wrap img{display:block}
+.cross{position:absolute;width:0;height:0}
+.cross::before,.cross::after{content:'';position:absolute;background:#ff2a2a}
+.cross::before{left:-5px;top:-0.5px;width:10px;height:1px}
+.cross::after{left:-0.5px;top:-5px;width:1px;height:10px}
+canvas{display:block;background:#3a3550}
+</style>
+</head>
+<body>
+<h2>Assembled (given attachment offsets)</h2>
+<div id="assembled" class="grid"></div>
+<h2>Parts (red cross = pivot)</h2>
+<div id="parts" class="grid"></div>
+<script type="module" src="/src/dev/creaturesPreview.ts"></script>
+</body>
+</html>

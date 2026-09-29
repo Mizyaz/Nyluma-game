@@ -1,0 +1,73 @@
+import type { RoomDef } from '../roomTypes';
+
+// Chapter I — fossil-root ascent (vertical).
+export const R02: RoomDef = {
+  id: 'r02',
+  chapter: 1,
+  title: 'Fosil Kökler',
+  width: 1600,
+  height: 2400,
+  theme: 'roots',
+  music: 'roots',
+  player: 'gorti',
+  objective: 'r02.whale',
+  checkpoints: [
+    { id: 'r02_start', x: 220, y: 2280, facing: 1, silent: true },
+    { id: 'r02_node', x: 860, y: 2280 },
+    { id: 'r02_climb', x: 1340, y: 1510 },
+    { id: 'r02_upper', x: 260, y: 1250 },
+    { id: 'r02_top', x: 900, y: 900 },
+  ],
+  solids: [
+    { x: 0, y: 2280, w: 1600, h: 120, style: 'soil' },
+    { x: 0, y: 0, w: 110, h: 2280, style: 'soil' },
+    { x: 1490, y: 500, w: 110, h: 1780, style: 'soil' },
+    { x: 110, y: 0, w: 1490, h: 60, style: 'soil' },
+    { x: 1100, y: 460, w: 500, h: 40, style: 'soil' },
+    // Climb route woken by the whale song
+    { id: 'p1', x: 1180, y: 2170, w: 220, h: 24, style: 'root', oneWay: true, grow: true, when: 'r02.song' },
+    { id: 'p2', x: 1000, y: 2060, w: 200, h: 24, style: 'root', oneWay: true, grow: true, when: 'r02.song' },
+    { id: 'p3', x: 1220, y: 1950, w: 220, h: 24, style: 'root', oneWay: true, grow: true, when: 'r02.song' },
+    { id: 'p4', x: 1020, y: 1840, w: 200, h: 24, style: 'root', oneWay: true, grow: true, when: 'r02.song' },
+    { id: 'p5', x: 1240, y: 1730, w: 220, h: 24, style: 'root', oneWay: true, grow: true, when: 'r02.song' },
+    { id: 'p6', x: 1040, y: 1620, w: 200, h: 24, style: 'root', oneWay: true, grow: true, when: 'r02.song' },
+    { id: 'p7', x: 1250, y: 1510, w: 240, h: 24, style: 'root', oneWay: true, grow: true, when: 'r02.song' },
+    // Side alcove route
+    { id: 'a1', x: 700, y: 1860, w: 160, h: 24, style: 'root', oneWay: true, grow: true, when: 'r02.song' },
+    { id: 'a2', x: 420, y: 1880, w: 150, h: 24, style: 'root', oneWay: true, grow: true, when: 'r02.song' },
+    { x: 110, y: 1900, w: 230, h: 30, style: 'soil' },
+    // Upper section
+    { x: 820, y: 1440, w: 320, h: 40, style: 'soil' },
+    { x: 110, y: 1250, w: 330, h: 40, style: 'soil' },
+    { x: 480, y: 1140, w: 200, h: 24, style: 'root', oneWay: true },
+    { x: 250, y: 1030, w: 200, h: 24, style: 'root', oneWay: true },
+    { x: 760, y: 900, w: 360, h: 40, style: 'soil' },
+    { x: 1180, y: 790, w: 200, h: 24, style: 'root', oneWay: true },
+    { x: 900, y: 680, w: 220, h: 24, style: 'root', oneWay: true },
+    { x: 850, y: 570, w: 200, h: 24, style: 'root', oneWay: true },
+  ],
+  anchors: [
+    { id: 'a1', x: 700, y: 1290, land: { x: 360, y: 1250 } },
+    { id: 'a2', x: 610, y: 900, land: { x: 830, y: 900 } },
+  ],
+  songNodes: [{ id: 'n1', x: 1030, y: 2280, pattern: ['low', 'mid', 'high'], unless: 'r02.song' }],
+  memories: [{ id: 'm1', x: 205, y: 1900 }],
+  hazards: [
+    { kind: 'thorns', id: 't1', x: 560, y: 2280, w: 120 },
+    { kind: 'wisp', id: 'w1', x: 1010, y: 740, dx: 150, dy: 26 },
+  ],
+  triggers: [
+    { id: 'whale', x: 760, y: 2000, w: 120, h: 280 },
+    { id: 'reachTut', x: 860, y: 1300, w: 220, h: 140 },
+  ],
+  exits: [{ id: 'up', x: 1560, y: 250, w: 40, h: 210, to: 'r03' }],
+  props: [
+    { key: 'prop.coil', x: 1320, y: 2282, depth: -10, unless: 'r02.song' },
+    { key: 'prop.fossilroot', x: 300, y: 2282, depth: -60 },
+    { key: 'prop.fossil', x: 520, y: 1650, depth: -60, oy: 0.5 },
+    { key: 'prop.crystals.teal', x: 1450, y: 2282, depth: -5 },
+    { key: 'prop.crystals.blue', x: 160, y: 1252, depth: -5, scale: 0.8 },
+    { key: 'prop.crystals.orange', x: 1080, y: 902, depth: -5, scale: 0.8 },
+    { key: 'prop.fossilroot', x: 1300, y: 462, depth: -60, scale: 0.7 },
+  ],
+};

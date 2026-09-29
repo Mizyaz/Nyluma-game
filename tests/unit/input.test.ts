@@ -1,0 +1,88 @@
+import { describe, expect, it } from 'vitest';
+import { actionsForKey, InputSystem } from '../../src/game/systems/InputSystem';
+
+describe('input contexts', () => {
+  const mk = (): { i: InputSystem; t: { now: number } } => {
+    const t = { now: 0 };
+    return { i: new InputSystem(() => t.now), t };
+  };
+
+  it('consumes a press exactly once', () => {
+    const { i } = mk();
+    i.setContext('gameplay');
+    i.sourceDown('key:Space', ['jump']);
+    expect(i.consume('jump')).toBe(true);
+    expect(i.consume('jump')).toBe(false);
+    expect(i.held('jump')).toBe(true);
+    i.sourceUp('key:Space');
+    expect(i.held('jump')).toBe(false);
+  });
+
+  it('ignores holds carried across a context change until released', () => {
+    const { i } = mk();
+    i.setContext('gameplay');
+    i.sourceDown('key:KeyE', ['action']);
+    i.pushContext('dialogue');
+    expect(i.consume('action')).toBe(false);
+    expect(i.held('action')).toBe(false);
+    i.sourceDown('key:KeyE', ['action']);
+    expect(i.consume('action')).toBe(false);
+    i.sourceUp('key:KeyE');
+    i.sourceDown('key:KeyE', ['action']);
+    expect(i.consume('action')).toBe(true);
+  });
+
+  it('expires stale presses', () => {
+    const { i, t } = mk();
+    i.setContext('gameplay');
+    i.sourceDown('key:KeyE', ['action']);
+    t.now = 1000;
+    expect(i.consume('action')).toBe(false);
+  });
+
+  it('supports simultaneous touch pointers and sliding on the pad', () => {
+    const { i } = mk();
+    i.setContext('gameplay');
+    i.sourceDown('touch:pad:1', ['left']);
+    i.sourceDown('touch:jump:2', ['jump']);
+    expect(i.axisX()).toBe(-1);
+    expect(i.consume('jump')).toBe(true);
+    i.sourceDown('touch:pad:1', ['right']);
+    expect(i.axisX()).toBe(1);
+    expect(i.held('left')).toBe(false);
+    i.sourceUp('touch:pad:1');
+    i.sourceUp('touch:jump:2');
+    expect(i.sourceCount()).toBe(0);
+  });
+
+  it('releases everything on blur', () => {
+    const { i } = mk();
+    i.setContext('gameplay');
+    i.sourceDown('key:KeyD', ['right']);
+    i.sourceDown('touch:jump:3', ['jump']);
+    i.releaseAll();
+    expect(i.axisX()).toBe(0);
+    expect(i.sourceCount()).toBe(0);
+  });
+
+  it('maps letters by character and specials by code', () => {
+    expect(actionsForKey('KeyQ', 'q')).toEqual(['focus']);
+    expect(actionsForKey('KeyA', 'q')).toEqual(['focus']);
+    expect(actionsForKey('Space', ' ')).toEqual(['jump']);
+    expect(actionsForKey('ArrowLeft', 'ArrowLeft')).toEqual(['left', 'note1']);
+  });
+
+  it('keeps a context stack', () => {
+    const { i } = mk();
+    i.setContext('gameplay');
+    i.pushContext('cutscene');
+    i.pushContext('dialogue');
+    expect(i.context).toBe('dialogue');
+    i.popContext('dialogue');
+    expect(i.context).toBe('cutscene');
+    i.popContext('cutscene');
+    expect(i.context).toBe('gameplay');
+    i.popContext();
+    expect(i.context).toBe('gameplay');
+  });
+});

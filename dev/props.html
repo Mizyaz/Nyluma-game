@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="tr">
+<head><meta charset="utf-8"><title>Props preview</title>
+<style>
+body{background:#1f1c2c;color:#ddd;font:11px sans-serif;margin:8px}
+#grid{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start}
+figure{margin:0;background:#3a3550;padding:8px;text-align:center}
+.stage{position:relative;display:inline-block}
+.stage img{display:block}
+.cross{position:absolute;width:13px;height:13px;margin:-6px 0 0 -6px;pointer-events:none}
+.cross:before,.cross:after{content:'';position:absolute;background:#ff2a2a}
+.cross:before{left:6px;top:0;width:1px;height:13px}
+.cross:after{top:6px;left:0;height:1px;width:13px}
+.surf{position:absolute;height:0;border-top:1px dashed #37f0ff;pointer-events:none}
+.plat{position:absolute;background:rgba(98,81,102,.55);outline:1px solid rgba(25,23,40,.8);pointer-events:none}
+figcaption{margin-top:4px}
+#status{margin:4px 0 8px}
+</style>
+</head>
+<body>
+<div id="status"></div>
+<div id="grid"></div>
+<script type="module" src="/src/dev/propsPreview.ts"></script>
+</body>
+</html>

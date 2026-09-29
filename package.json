@@ -1,0 +1,31 @@
+{
+  "name": "kristaller-dunyasi",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Kristaller Dünyası — 14. Oda: a hand-drawn 2D surreal adventure for the browser.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:e2e": "npm run build && npm run build:e2e && playwright test --grep-invert @campaign",
+    "test:campaign": "npm run build:e2e && playwright test --grep @campaign",
+    "build": "vite build",
+    "build:e2e": "vite build --mode e2e --outDir dist-e2e",
+    "preview": "vite preview",
+    "package": "node scripts/package.mjs"
+  },
+  "dependencies": {
+    "phaser": "3.90.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "@types/node": "22.20.4",
+    "typescript": "5.9.3",
+    "vite": "7.3.6",
+    "vitest": "4.0.18"
+  }
+}

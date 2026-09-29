@@ -1,0 +1,29 @@
+name: CI
+
+# Read-only checks for pull requests (and pushes): no deployment, no write
+# permissions, safe for contributions from forks.
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Install Chromium for browser tests
+        run: npx playwright install --with-deps chromium
+      - name: Browser smoke tests (root and repository sub-path)
+        run: npx playwright test --grep @smoke
