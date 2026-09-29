@@ -1,10 +1,16 @@
 # Third-party notices
 
 The shipped game (`dist/`) bundles the following third-party software. All
-artwork, animation, sound effects and music are original to this project and
-generated from code (SVG illustrations authored in `src/game/art/`, Web Audio
-synthesis in `src/game/systems/AudioSystem.ts`); no third-party images, fonts
-or audio files are included. Text uses the player's system fonts.
+artwork, animation, sound effects and the generated piano music are original
+to this project and generated from code (SVG illustrations authored in
+`src/game/art/`, Web Audio synthesis in `src/game/systems/AudioSystem.ts` and
+`src/music/`); no third-party images, fonts or audio files are included. Text
+uses the player's system fonts.
+
+Recorded music added to the music library (`music/tracks/`) ships with its
+license note in `music/licenses/` (copied to `dist/music/licenses/`) and is
+credited in the game's Credits screen; the build refuses a recording without
+an allowed license or without its note. The library is currently empty.
 
 ## Bundled at runtime
 
