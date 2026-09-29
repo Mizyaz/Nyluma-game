@@ -18,6 +18,11 @@ export interface PartArt {
   far?: boolean;
   /** Additive glow sprite (not outlined). */
   additive?: boolean;
+  /**
+   * Coloured-pencil grain inside the fills (the paintings' texture), added
+   * at rasterization. Default: on for opaque parts, off for additive ones.
+   */
+  grain?: boolean;
 }
 
 export interface RigJoint {
