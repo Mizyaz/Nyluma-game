@@ -84,7 +84,10 @@ function isEditable(t: EventTarget | null): boolean {
  */
 export class InputSystem {
   private sources = new Map<string, Source>();
-  private edges = new Map<Action, number>();
+  /** Pending presses: when (ms) and during which update frame they happened. */
+  private edges = new Map<Action, { t: number; frame: number }>();
+  /** Update frames seen so far (advanced by the game loop via beginFrame). */
+  private frame = 0;
   private contextStack: InputContext[] = ['none'];
   private listeners = new Set<(e: KeyboardEvent, actions: Action[]) => boolean>();
   private blurListeners = new Set<() => void>();
@@ -165,18 +168,32 @@ export class InputSystem {
     return false;
   }
 
+  /** Marks the start of an update frame (called once per game step). */
+  beginFrame(): void {
+    this.frame++;
+  }
+
+  /**
+   * A press stays fresh for EDGE_TTL_MS, and in any case until the first
+   * update after it: a long frame (slow device, a heavy first paint) must
+   * not swallow a key press.
+   */
+  private fresh(e: { t: number; frame: number }): boolean {
+    return this.now() - e.t <= EDGE_TTL_MS || this.frame - e.frame <= 1;
+  }
+
   /** True once per press. */
   consume(a: Action): boolean {
-    const t = this.edges.get(a);
-    if (t === undefined) return false;
+    const e = this.edges.get(a);
+    if (e === undefined) return false;
     this.edges.delete(a);
-    return this.now() - t <= EDGE_TTL_MS;
+    return this.fresh(e);
   }
 
   /** Peeks at a pending press without consuming it. */
   peek(a: Action): boolean {
-    const t = this.edges.get(a);
-    return t !== undefined && this.now() - t <= EDGE_TTL_MS;
+    const e = this.edges.get(a);
+    return e !== undefined && this.fresh(e);
   }
 
   axisX(): number {
@@ -190,7 +207,7 @@ export class InputSystem {
       // Same source, maybe different actions (sliding finger on the d-pad).
       for (const a of actions) {
         if (!prev.actions.has(a)) {
-          if (!this.held(a)) this.edges.set(a, this.now());
+          if (!this.held(a)) this.edges.set(a, { t: this.now(), frame: this.frame });
           prev.actions.add(a);
         }
       }
@@ -203,7 +220,7 @@ export class InputSystem {
     }
     const src: Source = { actions: new Set(), stale: false };
     for (const a of actions) {
-      if (!this.held(a)) this.edges.set(a, this.now());
+      if (!this.held(a)) this.edges.set(a, { t: this.now(), frame: this.frame });
       src.actions.add(a);
     }
     this.sources.set(id, src);

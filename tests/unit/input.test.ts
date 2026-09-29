@@ -36,8 +36,19 @@ describe('input contexts', () => {
     const { i, t } = mk();
     i.setContext('gameplay');
     i.sourceDown('key:KeyE', ['action']);
+    i.beginFrame();
+    i.beginFrame();
     t.now = 1000;
     expect(i.consume('action')).toBe(false);
+  });
+
+  it('keeps a press alive through one long frame', () => {
+    const { i, t } = mk();
+    i.setContext('puzzle');
+    i.sourceDown('key:KeyE', ['action']);
+    t.now = 2500; // the next update arrives very late (slow first paint)
+    i.beginFrame();
+    expect(i.consume('action')).toBe(true);
   });
 
   it('supports simultaneous touch pointers and sliding on the pad', () => {

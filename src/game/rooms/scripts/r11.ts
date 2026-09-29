@@ -68,8 +68,25 @@ export function r11(w: WorldScene): RoomScript {
     );
   };
 
+  let offKey: (() => void) | null = null;
+  const turn = (dir: number): void => {
+    angle = (angle + dir * KEY_STEP + 360) % 360;
+    keyGhost?.setAngle(angle);
+    app.audio.sfx('click');
+  };
+  const tryFit = (): void => {
+    const diff = Math.abs(((angle - KEY_TARGET + 540) % 360) - 180);
+    if (diff <= 12) endAlign(true);
+    else {
+      app.audio.sfx('songBad');
+      app.ui.hud.toast('Anahtar ize oturmadı. Biraz daha çevir.', 2200);
+    }
+  };
+
   const endAlign = (ok: boolean): void => {
     aligning = false;
+    offKey?.();
+    offKey = null;
     keyGhost?.setVisible(false);
     w.player.lock(false);
     if (!ok) return;
@@ -122,7 +139,10 @@ export function r11(w: WorldScene): RoomScript {
       beam = w.add.graphics().setDepth(DEPTH.fx - 2);
       legs = addArt(w, 'giant.legs', 2640, 562, DEPTH.backProps + 6);
       if (!w.quest.has('r11.intro')) assemble();
-      w.onCleanup(() => ring.destroy());
+      w.onCleanup(() => {
+        ring.destroy();
+        offKey?.();
+      });
     },
     onInteract(id) {
       if (id === 'console1' && !w.quest.has('r11.m1')) {
@@ -130,6 +150,18 @@ export function r11(w: WorldScene): RoomScript {
         angle = 0;
         w.player.lock(true, 'interact');
         keyGhost?.setVisible(true).setAngle(angle);
+        // Keyboard presses are applied in order as they arrive; touch input
+        // (pad + action button) goes through the fixed step below.
+        offKey = app.input.onKey((e, a) => {
+          if (!aligning || app.input.context !== 'gameplay') return false;
+          if (e.repeat) return true;
+          if (a.includes('left')) turn(-1);
+          else if (a.includes('right')) turn(1);
+          else if (a.includes('action') || a.includes('confirm')) tryFit();
+          else if (a.includes('pause')) endAlign(false);
+          else return false;
+          return true;
+        });
         app.audio.sfx('click');
         app.ui.hud.toast('← →: anahtar gözünü çevir  ·  E: hizala  ·  Esc: bırak', 5000);
         return true;
@@ -161,24 +193,14 @@ export function r11(w: WorldScene): RoomScript {
       const p = w.player;
       if (aligning) {
         if (i.context !== 'gameplay') return;
-        if (i.consume('left') || i.consume('note1')) {
-          angle = (angle - KEY_STEP + 360) % 360;
-          app.audio.sfx('click');
-        }
-        if (i.consume('right') || i.consume('note3')) {
-          angle = (angle + KEY_STEP) % 360;
-          app.audio.sfx('click');
-        }
-        keyGhost?.setAngle(angle);
-        if (i.consume('action') || i.consume('confirm')) {
-          const diff = Math.abs(((angle - KEY_TARGET + 540) % 360) - 180);
-          if (diff <= 12) endAlign(true);
-          else {
-            app.audio.sfx('songBad');
-            app.ui.hud.toast('Anahtar ize oturmadı. Biraz daha çevir.', 2200);
-          }
-        }
-        if (i.consume('pause')) endAlign(false);
+        const left = i.consume('left');
+        const right = i.consume('right');
+        i.consume('note1');
+        i.consume('note3');
+        if (left) turn(-1);
+        if (right) turn(1);
+        if (i.consume('action') || i.consume('confirm')) tryFit();
+        if (aligning && i.consume('pause')) endAlign(false);
         return;
       }
       // Keyhole-eye reveal: breath near the cliff face.

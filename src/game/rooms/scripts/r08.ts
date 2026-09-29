@@ -437,7 +437,7 @@ export function r08(w: WorldScene): RoomScript {
         for (let i = 0; i < n; i++) {
           const c = CURRENTS[i % 3]!;
           const col = columns[i % 3]!;
-          const y = GROUND - col.h + 20 + ((i * 37 + t * 60) % Math.max(40, col.h - 20));
+          const y = GROUND - col.h + 20 + ((i * 37 + t * 60) % Math.max(40, col.h - 70));
           fish.place(i, c + Math.sin(t * 3 + i) * 14, y, -Math.PI / 2);
         }
       } else if (fishMode === 'gather') {

@@ -63,6 +63,9 @@ export async function climb(b: Bot, steps: [number, number][], tries = 20): Prom
       await b.tap('KeyE');
       await b.wait(250);
     }
+    // Take off from this step's stand point: jump distance is limited.
+    const here = steps[idx]![0];
+    if (Math.abs(p.x - here) > 10) await b.walkTo(here, 6, 8000).catch(() => undefined);
     await b.jumpTo(next[0]);
     await b.wait(60);
   }
@@ -132,8 +135,18 @@ export const ROUTES: Record<string, Route> = {
         },
       },
       {
+        name: 'down from the side alcove',
+        when: (s) => s.flags.includes('r02.song') && (on(s, 1900, 110, 345) || on(s, 1880, 420, 570) || on(s, 1860, 700, 860)),
+        run: async (s) => {
+          // Drop back to the floor away from the thorns (x 500–620).
+          const x = s.player!.x;
+          await b.walkTo(x < 345 ? 370 : x < 600 ? 395 : 885, 6, 8000).catch(() => undefined);
+          await b.waitFor((st) => !!st.player?.onGround, 4000, 'landed').catch(() => undefined);
+        },
+      },
+      {
         name: 'root steps',
-        when: (s) => s.flags.includes('r02.song') && s.player!.y > 1500 && s.player!.onGround,
+        when: (s) => s.flags.includes('r02.song') && (on(s, 2280) || P.some(([, y]) => on(s, y, 950, 1500))),
         run: async (s) => {
           if (on(s, 2280)) {
             if (s.player!.x < 560) {
@@ -163,9 +176,9 @@ export const ROUTES: Record<string, Route> = {
         when: (s) => on(s, 1250, 100, 450) || on(s, 1140, 470, 690) || on(s, 1030, 240, 460),
         run: async () => {
           await climb(b, [
-            [380, 1250],
-            [560, 1140],
-            [350, 1030],
+            [420, 1250],
+            [500, 1140],
+            [430, 1030],
           ]);
           if (on(await b.s(), 1030)) {
             await b.walkTo(430, 6);
@@ -624,7 +637,8 @@ export const ROUTES: Record<string, Route> = {
       await b.releaseAll();
     };
     await b.settle();
-    for (let guard = 0; guard < 600; guard++) {
+    const t0 = Date.now();
+    while (Date.now() - t0 < 420_000) {
       const s = await b.s();
       if (s.room !== 'r08') return;
       if (s.busy || s.dialogueOpen) {
@@ -754,11 +768,20 @@ export const ROUTES: Record<string, Route> = {
   },
 
   async r11(b) {
+    // A waist-high metal block at x 420–520 has to be jumped.
+    const pastBlock = async (): Promise<void> => {
+      const s = await b.s();
+      if (on(s, 820) && s.player!.x < 430) {
+        await b.walkTo(392, 6);
+        await b.jumpTo(470);
+      }
+    };
     await stages(b, 'r11', [
       {
         name: 'align the key-eye',
-        when: (s) => !s.flags.includes('r11.m1') && on(s, 820),
+        when: (s) => !s.flags.includes('r11.m1') && (on(s, 820) || on(s, 740, 420, 520)),
         run: async () => {
+          await pastBlock();
           await b.walkTo(900, 8);
           await b.act('Anahtar gözünü hizala');
           for (let i = 0; i < 9; i++) {

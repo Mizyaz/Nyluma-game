@@ -1,5 +1,6 @@
 import { app } from '../game/App';
-import { h } from './dom';
+import type { Action } from '../game/systems/InputSystem';
+import { h, noClickFocus } from './dom';
 
 export interface Fragment {
   art: string;
@@ -29,8 +30,11 @@ export class PuzzlePanel {
   private cursor = 0;
   private resolve: ((ok: boolean) => void) | null = null;
   private timers: number[] = [];
-  private busy = false;
+  /** The forward playback is running (any choice interrupts it). */
+  private playing = false;
+  private solved = false;
   private dragFrom = -1;
+  private offKey: (() => void) | null = null;
 
   constructor(stage: HTMLElement) {
     this.titleEl = h('h3');
@@ -38,8 +42,10 @@ export class PuzzlePanel {
     this.cardsEl = h('div', { class: 'cards' });
     this.statusEl = h('p', { class: 'sub', role: 'status' });
     const replay = h('button', { class: 'btn small center', type: 'button', text: 'Yeniden oynat' });
+    noClickFocus(replay);
     replay.addEventListener('click', () => this.playForward());
     const reset = h('button', { class: 'btn small center', type: 'button', text: 'Sıfırla' });
+    noClickFocus(reset);
     reset.addEventListener('click', () => {
       this.order = [0, 1, 2];
       this.sel = -1;
@@ -47,6 +53,7 @@ export class PuzzlePanel {
       app.audio.sfx('uiBack');
     });
     const close = h('button', { class: 'btn small center', type: 'button', html: '<b class="key">Esc</b>Kapat' });
+    noClickFocus(close);
     close.addEventListener('click', () => this.close(false));
     this.el = h(
       'div',
@@ -69,10 +76,13 @@ export class PuzzlePanel {
     this.order = [0, 1, 2];
     this.sel = -1;
     this.cursor = 0;
+    this.solved = false;
     this.titleEl.textContent = def.title;
     this.subEl.textContent = def.sub;
     this.el.classList.remove('hidden');
     app.input.pushContext('puzzle');
+    // Keys are handled as they arrive (in order), independent of frame rate.
+    this.offKey = app.input.onKey((e, a) => this.onKey(e, a));
     this.render();
     this.playForward();
     return new Promise((res) => {
@@ -116,7 +126,7 @@ export class PuzzlePanel {
 
   private playForward(): void {
     this.clearTimers();
-    this.busy = true;
+    this.playing = true;
     this.statusEl.textContent = 'Anı ileriye akıyor…';
     const cards = (): HTMLElement[] => [...this.cardsEl.children] as HTMLElement[];
     [0, 1, 2].forEach((k) => {
@@ -131,15 +141,22 @@ export class PuzzlePanel {
     });
     this.timers.push(
       window.setTimeout(() => {
-        cards().forEach((c) => c.classList.remove('play'));
-        this.busy = false;
-        this.statusEl.textContent = 'Parçaları ters sıraya diz: anıyı geri sar.';
+        this.stopPlayback();
       }, 300 + 3 * 700),
     );
   }
 
+  private stopPlayback(): void {
+    if (!this.playing) return;
+    this.clearTimers();
+    this.playing = false;
+    for (const c of this.cardsEl.children) c.classList.remove('play');
+    this.statusEl.textContent = 'Parçaları ters sıraya diz: anıyı geri sar.';
+  }
+
   private pick(pos: number): void {
-    if (!this.resolve) return;
+    if (!this.resolve || this.solved) return;
+    this.stopPlayback();
     this.cursor = pos;
     if (this.sel < 0) {
       this.sel = pos;
@@ -156,10 +173,8 @@ export class PuzzlePanel {
   }
 
   private swap(a: number, b: number): void {
-    if (this.busy) {
-      this.clearTimers();
-      this.busy = false;
-    }
+    if (this.solved) return;
+    this.stopPlayback();
     const t = this.order[a]!;
     this.order[a] = this.order[b]!;
     this.order[b] = t;
@@ -169,7 +184,7 @@ export class PuzzlePanel {
     if (this.order[0] === 2 && this.order[1] === 1 && this.order[2] === 0) {
       this.statusEl.textContent = 'Anı geri sarıldı.';
       app.audio.sfx('songOk');
-      this.busy = true;
+      this.solved = true;
       this.timers.push(window.setTimeout(() => this.close(true), 900));
     } else this.statusEl.textContent = '';
   }
@@ -178,26 +193,26 @@ export class PuzzlePanel {
     if (!this.resolve) return;
     this.clearTimers();
     this.el.classList.add('hidden');
+    this.offKey?.();
+    this.offKey = null;
     app.input.popContext('puzzle');
     const r = this.resolve;
     this.resolve = null;
     r(ok);
   }
 
-  tick(): void {
-    if (!this.resolve || app.input.context !== 'puzzle') return;
-    const i = app.input;
-    if (i.consume('left')) {
+  private onKey(e: KeyboardEvent, a: Action[]): boolean {
+    if (!this.resolve || app.input.context !== 'puzzle') return false;
+    if (e.repeat) return true;
+    if (a.includes('pause')) this.close(false);
+    else if (a.includes('left')) {
       this.cursor = (this.cursor + 2) % 3;
       this.render();
-    }
-    if (i.consume('right')) {
+    } else if (a.includes('right')) {
       this.cursor = (this.cursor + 1) % 3;
       this.render();
-    }
-    if (i.consume('action') || i.consume('jump') || i.consume('confirm')) {
-      if (!this.busy || this.sel >= 0) this.pick(this.cursor);
-    }
-    if (i.consume('pause')) this.close(false);
+    } else if (a.includes('action') || a.includes('jump') || a.includes('confirm')) this.pick(this.cursor);
+    else return false;
+    return true;
   }
 }

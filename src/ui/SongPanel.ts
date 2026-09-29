@@ -1,6 +1,7 @@
 import { app } from '../game/App';
+import type { Action } from '../game/systems/InputSystem';
 import type { Note } from '../game/state/types';
-import { h, NOTE_SVG } from './dom';
+import { h, NOTE_SVG, noClickFocus } from './dom';
 
 const NOTES: { id: Note; label: string; keys: string; action: 'note1' | 'note2' | 'note3' }[] = [
   { id: 'low', label: 'Derin', keys: '← / A', action: 'note1' },
@@ -34,6 +35,7 @@ export class SongPanel {
   private resolve: ((r: 'done' | 'closed') => void) | null = null;
   private opts: SongOpts | null = null;
   private locked = false;
+  private offKey: (() => void) | null = null;
 
   constructor(stage: HTMLElement) {
     this.titleEl = h('h3');
@@ -52,10 +54,13 @@ export class SongPanel {
       this.btns.set(n.id, b);
     }
     const replay = h('button', { class: 'btn small center', type: 'button', html: '<b class="key">F</b>Tekrar dinle' });
+    noClickFocus(replay);
     replay.addEventListener('click', () => this.demo());
     const close = h('button', { class: 'btn small center', type: 'button', html: '<b class="key">Esc</b>Kapat' });
+    noClickFocus(close);
     close.addEventListener('click', () => this.close('closed'));
     this.assistBtn = h('button', { class: 'btn small center', type: 'button', text: 'Şarkıyı tamamla' });
+    noClickFocus(this.assistBtn);
     this.assistBtn.addEventListener('click', () => this.autoComplete());
     this.el = h(
       'div',
@@ -84,6 +89,7 @@ export class SongPanel {
     this.statusEl.textContent = 'Dinle…';
     this.el.classList.remove('hidden');
     app.input.pushContext('song');
+    this.offKey = app.input.onKey((e, a) => this.onKey(e, a));
     this.demo();
     return new Promise((res) => {
       this.resolve = res;
@@ -175,18 +181,24 @@ export class SongPanel {
     if (!this.resolve) return;
     this.clearDemo();
     this.el.classList.add('hidden');
+    this.offKey?.();
+    this.offKey = null;
     app.input.popContext('song');
     const res = this.resolve;
     this.resolve = null;
     res(r);
   }
 
-  tick(): void {
-    if (!this.resolve || app.input.context !== 'song') return;
-    if (app.input.consume('note1')) this.press('low');
-    if (app.input.consume('note2')) this.press('mid');
-    if (app.input.consume('note3')) this.press('high');
-    if (app.input.consume('song')) this.demo();
-    if (app.input.consume('pause')) this.close('closed');
+  /** Notes are taken in the exact order they are played, at any frame rate. */
+  private onKey(e: KeyboardEvent, a: Action[]): boolean {
+    if (!this.resolve || app.input.context !== 'song') return false;
+    if (e.repeat) return true;
+    if (a.includes('pause')) this.close('closed');
+    else if (a.includes('note1')) this.press('low');
+    else if (a.includes('note2')) this.press('mid');
+    else if (a.includes('note3')) this.press('high');
+    else if (a.includes('song')) this.demo();
+    else return false;
+    return true;
   }
 }

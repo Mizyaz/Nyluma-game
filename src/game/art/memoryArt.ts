@@ -1703,3 +1703,42 @@ export function fragmentArtUrl(key: string): string {
 export function portraitUrl(key: string): string {
   return build('portrait', PORTRAITS, key, 160, 160);
 }
+
+/** Draws a vector illustration into a PNG object URL at `scale`× resolution. */
+async function toPng(url: string, w: number, h: number, scale: number): Promise<string> {
+  const img = new Image();
+  img.src = url;
+  await img.decode();
+  const c = document.createElement('canvas');
+  c.width = Math.round(w * scale);
+  c.height = Math.round(h * scale);
+  c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
+  const blob = await new Promise<Blob | null>((res) => c.toBlob(res, 'image/png'));
+  if (!blob) throw new Error('PNG encoding failed');
+  return URL.createObjectURL(blob);
+}
+
+/**
+ * Rasterizes every journal, puzzle and portrait illustration once, in the
+ * background after loading. The DOM views then show light PNGs instead of
+ * re-rendering masked vector art on open, which can stall a frame on slow
+ * devices. Any failure keeps the SVG version.
+ */
+export async function prerasterizeArt(onProgress?: (done: number, total: number) => void): Promise<void> {
+  const jobs: [string, () => string, number, number][] = [
+    ...MEMORY_ART_KEYS.map((k): [string, () => string, number, number] => [`memory:${k}`, () => memoryArtUrl(k), 320, 200]),
+    ...FRAGMENT_KEYS.map((k): [string, () => string, number, number] => [`fragment:${k}`, () => fragmentArtUrl(k), 200, 150]),
+    ...PORTRAIT_KEYS.map((k): [string, () => string, number, number] => [`portrait:${k}`, () => portraitUrl(k), 160, 160]),
+  ];
+  let done = 0;
+  for (const [ck, get, w, h] of jobs) {
+    // Yield between pictures so menus and gameplay stay responsive.
+    await new Promise((res) => window.setTimeout(res, 60));
+    try {
+      cache.set(ck, await toPng(get(), w, h, 2));
+    } catch {
+      // keep the vector version
+    }
+    onProgress?.(++done, jobs.length);
+  }
+}

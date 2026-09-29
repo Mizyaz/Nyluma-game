@@ -44,6 +44,7 @@ export class UI {
       game.scale.on('resize', sync);
       sync();
     });
+    game.events.on('prestep', () => app.input.beginFrame());
     game.events.on('poststep', () => this.tick());
     sync();
   }
@@ -75,9 +76,6 @@ export class UI {
     this.last = now;
     this.hud.tick(dt);
     this.dialogue.tick(dt);
-    this.song.tick();
-    this.puzzle.tick();
-    this.doc.tick();
     const ctx = app.input.context;
     this.touch.setGameplay(ctx === 'gameplay' || ctx === 'cutscene');
   }

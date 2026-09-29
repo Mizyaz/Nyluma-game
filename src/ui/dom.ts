@@ -72,3 +72,12 @@ export function focusables(root: HTMLElement): HTMLElement[] {
     (el) => el.offsetParent !== null,
   );
 }
+
+/**
+ * Buttons of keyboard-driven panels: a mouse click must not leave focus on
+ * them, or a later Space/Enter meant for the panel would re-press them.
+ */
+export function noClickFocus<T extends HTMLElement>(el: T): T {
+  el.addEventListener('mousedown', (e) => e.preventDefault());
+  return el;
+}
