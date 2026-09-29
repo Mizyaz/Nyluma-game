@@ -22,7 +22,7 @@ async function freshPage(page: Page): Promise<void> {
 }
 
 test.describe('gameplay', () => {
-  test('walks, jumps and inspects in the first room', async ({ page }) => {
+  test('walks, jumps, passes the furniture and inspects in the first room', async ({ page }) => {
     const errors = watchErrors(page);
     await freshPage(page);
     await startNewGame(page, GAME);
@@ -45,6 +45,16 @@ test.describe('gameplay', () => {
     await waitState(page, (s) => s.dialogueOpen, 5000, 'dialogue');
     await bot.settle();
     expect((await probe(page)).flags).toContain('r01.toywhale');
+
+    // The toy blocks and the chest stand against the back wall: Gorti walks
+    // in front of them to the window without jumping.
+    await bot.walkTo(1441, 10);
+    const s2 = await probe(page);
+    expect(s2.player!.onGround).toBe(true);
+    expect(Math.abs(s2.player!.y - 660)).toBeLessThan(4);
+    await bot.act('İncele');
+    await bot.settle();
+    expect((await probe(page)).flags).toContain('r01.window');
     expect(errors).toEqual([]);
   });
 
@@ -245,6 +255,31 @@ test.describe('touch', () => {
     await waitState(page, (s) => s.heldSources === 0, 3000, 'released');
     await page.waitForTimeout(400);
     expect(Math.abs((await probe(page)).player!.vx)).toBeLessThan(5);
+  });
+});
+
+test.describe('music', () => {
+  test('the generated piano starts with the first key press and follows the rooms', async ({ page }) => {
+    const errors = watchErrors(page);
+    await freshPage(page);
+    await expect(page.getByRole('button', { name: 'Yeni Oyun' })).toBeVisible({ timeout: 60_000 });
+    expect((await probe(page)).music.source).toBe('none');
+    // Sound needs a user gesture: the first key press anywhere starts the title music.
+    await page.keyboard.press('ArrowDown');
+    await waitState(page, (s) => s.music.cue === 'menu' && s.music.source === 'piano' && s.music.notes > 4, 10_000, 'title piano');
+    await page.getByRole('button', { name: 'Yeni Oyun' }).click();
+    await waitState(page, (s) => s.room === 'r01' && s.music.cue === 'roots' && s.music.source === 'piano', 60_000, 'chapter I piano');
+    const before = (await probe(page)).music.notes;
+    await page.waitForTimeout(3000);
+    expect((await probe(page)).music.notes).toBeGreaterThan(before);
+    // Every cue is audible at the default volume and never clips.
+    for (const cue of ['menu', 'roots', 'forest', 'ride', 'sun', 'inner', 'final']) {
+      const r = await page.evaluate(([c]) => (window as unknown as { __kd: { renderMusic(c: string, s: number): Promise<{ peak: number; rms: number; notes: number }> } }).__kd.renderMusic(c!, 8), [cue]);
+      expect(r.rms, cue).toBeGreaterThan(0.008);
+      expect(r.peak, cue).toBeLessThan(0.9);
+      expect(r.notes, cue).toBeGreaterThan(8);
+    }
+    expect(errors).toEqual([]);
   });
 });
 

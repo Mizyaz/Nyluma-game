@@ -1,3 +1,4 @@
+import type { MusicCue } from '../../music/types';
 import type { FormId, Note, PlayerKind, RoomId } from '../state/types';
 
 export interface Rect {
@@ -136,7 +137,7 @@ export type ThemeId =
   | 'mech'
   | 'office';
 
-export type MusicId = 'menu' | 'roots' | 'forest' | 'ride' | 'sun' | 'inner' | 'final' | 'none';
+export type MusicId = MusicCue | 'none';
 
 export interface RoomDef {
   id: RoomId;

@@ -34,6 +34,7 @@ export interface ProbeState {
   endingOpen: boolean;
   heldSources: number;
   hazards?: { kind: string; x: number; y: number; active: boolean; dispersible: boolean }[];
+  music: { cue: string; source: 'piano' | 'track' | 'none'; track: string | null; bars: number; notes: number };
 }
 
 /** Collects anything that would indicate a broken build. */

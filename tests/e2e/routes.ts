@@ -85,27 +85,9 @@ export const ROUTES: Record<string, Route> = {
     await b.settle();
     await stages(b, 'r01', [
       { name: 'whale toy', when: (s) => !s.flags.includes('r01.toywhale'), run: () => inspect(b, 620) },
-      {
-        name: 'marks',
-        when: (s) => !s.flags.includes('r01.marks'),
-        run: async (s) => {
-          if (s.player!.x < 740) {
-            await b.walkTo(712, 6);
-            await b.jumpTo(905);
-          }
-          await inspect(b, 1090);
-        },
-      },
-      {
-        name: 'window',
-        when: (s) => !s.flags.includes('r01.window'),
-        run: async () => {
-          await b.walkTo(1320, 8);
-          await b.jumpTo(1440);
-          await b.act('İncele');
-          await b.settle();
-        },
-      },
+      // The toy blocks and the chest stand against the back wall: walk past.
+      { name: 'marks', when: (s) => !s.flags.includes('r01.marks'), run: () => inspect(b, 1090) },
+      { name: 'window', when: (s) => !s.flags.includes('r01.window'), run: () => inspect(b, 1441) },
       {
         name: 'leave',
         when: (s) => s.flags.includes('r01.door'),

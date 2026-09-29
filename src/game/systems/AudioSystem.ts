@@ -1,9 +1,11 @@
 import type { Settings } from '../state/types';
 import type { MusicId } from '../data/roomTypes';
+import { MusicPlayer, loadLibrary, type MusicState, type Track } from '../../music';
 
 // Original synthesized soundscape (Web Audio). One audio graph, three buses,
 // voice limits, short gain ramps, and nodes disconnected when they end.
-// Nothing streams at runtime; no external audio files are needed.
+// Music comes from the separate music module (src/music): generated piano,
+// or recordings from the licensed library in music/.
 
 export type Sfx =
   | 'whoosh'
@@ -64,13 +66,6 @@ interface Voice {
   stopAt: number;
 }
 
-const NOTE = (n: number): number => 440 * Math.pow(2, (n - 69) / 12);
-
-interface Theme {
-  tempo: number; // steps per second (16ths)
-  step: (a: AudioSystem, t: number, i: number, out: GainNode) => void;
-}
-
 export class AudioSystem {
   ctx: AudioContext | null = null;
   private master!: GainNode;
@@ -79,12 +74,8 @@ export class AudioSystem {
   private ambBus!: GainNode;
   private noise!: AudioBuffer;
   private voices: Voice[] = [];
-  private musicVoices: Voice[] = [];
   private theme: MusicId = 'none';
-  private themeGain: GainNode | null = null;
-  private themeTimer: number | null = null;
-  private themeStep = 0;
-  private themeNext = 0;
+  private player: MusicPlayer | null = null;
   private ambience: AmbienceId = 'none';
   private ambNodes: { src: AudioScheduledSourceNode[]; gain: GainNode } | null = null;
   private settings: Settings | null = null;
@@ -96,10 +87,20 @@ export class AudioSystem {
     document.addEventListener('visibilitychange', () => {
       this.hidden = document.visibilityState === 'hidden';
       this.applyGains();
+      if (this.hidden) this.player?.pause();
+      else this.player?.resume();
       if (!this.ctx) return;
       if (this.hidden) void this.ctx.suspend().catch(() => undefined);
       else void this.ctx.resume().catch(() => undefined);
     });
+    // Browsers allow sound only after a user gesture: the first tap or key
+    // press anywhere starts it, so the title music plays in the menu too.
+    const gestures = ['pointerup', 'touchend', 'keydown'] as const;
+    const first = (): void => {
+      for (const g of gestures) window.removeEventListener(g, first, true);
+      this.unlock();
+    };
+    for (const g of gestures) window.addEventListener(g, first, true);
   }
 
   /** Must be called from a user gesture (Start / Continue). */
@@ -139,11 +140,12 @@ export class AudioSystem {
       }
       this.unlocked = true;
       this.applyGains();
-      const pending = this.theme;
-      if (pending !== 'none' && !this.themeTimer) {
-        this.theme = 'none';
-        this.music(pending);
+      if (!this.player) {
+        const player = new MusicPlayer(this.ctx, this.musicBus);
+        this.player = player;
+        void loadLibrary().then((tracks) => player.setLibrary(tracks));
       }
+      this.player.play(this.theme);
       const amb = this.ambience;
       if (amb !== 'none' && !this.ambNodes) {
         this.ambience = 'none';
@@ -539,133 +541,19 @@ export class AudioSystem {
   music(id: MusicId): void {
     if (id === this.theme) return;
     this.theme = id;
-    const c = this.ok();
-    if (this.themeGain && this.ctx) {
-      const old = this.themeGain;
-      old.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.6);
-      window.setTimeout(() => old.disconnect(), 3500);
-      this.themeGain = null;
-    }
-    if (this.themeTimer !== null) {
-      window.clearInterval(this.themeTimer);
-      this.themeTimer = null;
-    }
-    if (!c || id === 'none') return;
-    const theme = THEMES[id];
-    if (!theme) return;
-    const g = c.createGain();
-    g.gain.value = 0.0001;
-    g.gain.setTargetAtTime(1, c.currentTime + 0.1, 1.0);
-    g.connect(this.musicBus);
-    this.themeGain = g;
-    this.themeStep = 0;
-    this.themeNext = c.currentTime + 0.15;
-    const tick = (): void => {
-      const cc = this.ctx;
-      if (!cc || this.themeGain !== g) return;
-      while (this.themeNext < cc.currentTime + 0.25) {
-        if (this.claim(this.musicVoices, 24, 4)) theme.step(this, this.themeNext, this.themeStep, g);
-        this.themeStep++;
-        this.themeNext += 1 / theme.tempo;
-      }
-    };
-    tick();
-    this.themeTimer = window.setInterval(tick, 60);
+    this.player?.play(id);
   }
 
   currentMusic(): MusicId {
     return this.theme;
   }
 
-  // Helpers used by the themes.
-  pad(t: number, notes: number[], dur: number, vol: number, out: AudioNode, type: OscillatorType = 'triangle'): void {
-    for (const n of notes) {
-      this.osc(type, NOTE(n), t, dur, vol, out, { attack: dur * 0.35, detune: (Math.random() - 0.5) * 8 });
-    }
+  musicState(): MusicState {
+    return this.player?.state() ?? { cue: this.theme, source: 'none', track: null, bars: 0, notes: 0 };
   }
 
-  pluck(t: number, n: number, vol: number, out: AudioNode, dur = 0.9): void {
-    this.osc('triangle', NOTE(n), t, dur, vol, out, { attack: 0.004 });
-    this.osc('sine', NOTE(n) * 2, t, dur * 0.5, vol * 0.3, out, { attack: 0.004 });
-  }
-
-  bell(t: number, n: number, vol: number, out: AudioNode, dur = 2): void {
-    this.chime(t, NOTE(n), vol, out, dur);
+  /** Library recordings in use (for the credits). */
+  musicTracks(): readonly Track[] {
+    return this.player?.tracks ?? [];
   }
 }
-
-const PENTA_D = [62, 64, 67, 69, 72, 74, 76, 79];
-const rnd = <T,>(a: readonly T[]): T => a[Math.floor(Math.random() * a.length)]!;
-
-const THEMES: Partial<Record<MusicId, Theme>> = {
-  menu: {
-    tempo: 2,
-    step: (a, t, i, out) => {
-      if (i % 16 === 0) a.pad(t, [50, 57, 62], 8.5, 0.04, out, 'sine');
-      if (i % 16 === 8) a.pad(t, [48, 55, 60], 8.5, 0.035, out, 'sine');
-      if (i % 3 === 0 && Math.random() < 0.55) a.bell(t, rnd(PENTA_D) + 12, 0.02, out, 2.4);
-    },
-  },
-  roots: {
-    tempo: 2,
-    step: (a, t, i, out) => {
-      if (i % 16 === 0) a.pad(t, [38, 45], 9, 0.06, out, 'sine');
-      if (i % 16 === 8) a.pad(t, [41, 48], 9, 0.045, out, 'sine');
-      if (Math.random() < 0.28) a.bell(t, rnd(PENTA_D) + (Math.random() < 0.3 ? 12 : 0), 0.018, out, 2.6);
-      if (i % 32 === 20) a.osc('sine', 150, t, 3, 0.02, out, { f1: 105, glide: 2, attack: 0.8 });
-    },
-  },
-  forest: {
-    tempo: 3,
-    step: (a, t, i, out) => {
-      const chords = [
-        [50, 57, 62, 65],
-        [46, 53, 58, 62],
-        [41, 48, 57, 60],
-        [48, 55, 60, 64],
-      ];
-      if (i % 12 === 0) a.pad(t, chords[Math.floor(i / 12) % 4]!, 4.4, 0.028, out);
-      if (i % 2 === 0 && Math.random() < 0.5) a.pluck(t, rnd([62, 65, 67, 69, 72, 74]), 0.025, out);
-    },
-  },
-  ride: {
-    tempo: 6.6,
-    step: (a, t, i, out) => {
-      const bar = Math.floor(i / 16) % 4;
-      const roots = [50, 46, 53, 48];
-      const r = roots[bar]!;
-      if (i % 4 === 0) a.osc('sine', NOTE(r - 12), t, 0.35, 0.09, out, { f1: NOTE(r - 12) * 0.98 });
-      if (i % 2 === 0) a.pluck(t, r + [12, 19, 24, 19][(i / 2) % 4]!, 0.022, out, 0.35);
-      if (i % 16 === 0) a.pad(t, [r, r + 7, r + 12], 2.4, 0.024, out);
-      if (i % 8 === 6) a.noiseBurst(t, 0.06, 0.02, out, { type: 'highpass', f0: 5000 });
-    },
-  },
-  sun: {
-    tempo: 3,
-    step: (a, t, i, out) => {
-      if (i % 12 === 0) a.pad(t, [45, 46, 52], 4.6, 0.035, out, 'sawtooth');
-      if (i % 6 === 0) a.osc('sine', 55, t, 0.3, 0.1, out, { f1: 42 });
-      if (i % 6 === 2) a.osc('sine', 52, t, 0.25, 0.07, out, { f1: 40 });
-      if (Math.random() < 0.18) a.bell(t, rnd([69, 70, 76, 77]), 0.012, out, 1.4);
-    },
-  },
-  inner: {
-    tempo: 2,
-    step: (a, t, i, out) => {
-      a.osc('square', 1500, t, 0.012, 0.012, out);
-      if (i % 2 === 0) {
-        const tune = [74, 72, 69, 67, 69, 72, 76, 74];
-        a.osc('triangle', NOTE(tune[(i / 2) % 8]!) * 1.004, t, 1.2, 0.03, out, { attack: 0.004 });
-        a.osc('sine', NOTE(tune[(i / 2) % 8]!) * 3.01, t, 0.5, 0.008, out);
-      }
-      if (i % 16 === 0) a.pad(t, [43, 50, 55], 7.5, 0.03, out, 'sine');
-    },
-  },
-  final: {
-    tempo: 1.5,
-    step: (a, t, i, out) => {
-      if (i % 4 === 0) a.pluck(t, rnd([57, 60, 62, 64, 67]), 0.03, out, 3);
-      if (i % 16 === 0) a.pad(t, [45, 52], 10, 0.025, out, 'sine');
-    },
-  },
-};

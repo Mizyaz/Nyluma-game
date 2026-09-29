@@ -23,16 +23,17 @@ export const R01: RoomDef = {
     { x: 1700, y: 130, w: 70, h: 300, style: 'root' },
     { id: 'door', x: 1705, y: 430, w: 60, h: 230, style: 'none', hidden: true, unless: 'r01.door' },
     { x: 1770, y: 0, w: 430, h: 440, style: 'soil' },
-    // Furniture colliders (drawn as props)
+    // Furniture tops (drawn as props). The furniture stands against the back
+    // wall, so Gorti walks in front of it and can still hop onto it.
     { x: 322, y: 590, w: 216, h: 20, style: 'bed', oneWay: true, hidden: true },
-    { x: 742, y: 604, w: 116, h: 56, style: 'wood', hidden: true },
-    { x: 772, y: 546, w: 58, h: 58, style: 'wood', hidden: true },
-    { x: 1368, y: 580, w: 146, h: 80, style: 'wood', hidden: true },
+    { x: 742, y: 604, w: 116, h: 24, style: 'wood', oneWay: true, hidden: true },
+    { x: 772, y: 546, w: 58, h: 24, style: 'wood', oneWay: true, hidden: true },
+    { x: 1368, y: 580, w: 146, h: 24, style: 'wood', oneWay: true, hidden: true },
   ],
   interacts: [
     { id: 'toywhale', x: 620, y: 660, r: 70, prompt: 'İncele' },
     { id: 'marks', x: 1090, y: 660, r: 90, prompt: 'İncele' },
-    { id: 'window', x: 1441, y: 580, r: 80, prompt: 'İncele' },
+    { id: 'window', x: 1441, y: 630, r: 90, prompt: 'İncele' },
     { id: 'bed', x: 430, y: 590, r: 70, prompt: 'İncele' },
   ],
   exits: [{ id: 'tunnel', x: 2150, y: 440, w: 50, h: 220, to: 'r02' }],

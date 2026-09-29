@@ -11,6 +11,7 @@
     "dev": "vite",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
+    "music:check": "vitest run tests/unit/music.test.ts",
     "test:e2e": "npm run build && npm run build:e2e && playwright test --grep-invert @campaign",
     "test:campaign": "npm run build:e2e && playwright test --grep @campaign",
     "build": "vite build",

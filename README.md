@@ -68,7 +68,8 @@ yerel sunucu için: `npx serve dist` ya da `node scripts/serve.mjs dist 4173 /`.
 | Komut | Ne yapar |
 | --- | --- |
 | `npm run typecheck` | TypeScript (strict) denetimi |
-| `npm run test` | Birim testleri (Vitest): kayıt, durum normalizasyonu, girdi bağlamları, yetenekler, Güneş karşılaşması, oda verisi doğrulaması |
+| `npm run test` | Birim testleri (Vitest): kayıt, durum normalizasyonu, girdi bağlamları, yetenekler, Güneş karşılaşması, oda verisi doğrulaması, müzik bestecisi ve müzik kütüphanesi |
+| `npm run music:check` | Yalnızca müzik testleri: bestecinin kuralları ve `music/tracks.json` ile lisans notlarının denetimi |
 | `npm run test:e2e` | Üretim ve e2e derlemelerini alır, Playwright tarayıcı testlerini çalıştırır: kök ve `/kristaller-dunyasi/` alt yolunda açılış (WebGL), oynanış akışları (hareket, etkileşim, duraklatma, odak kaybı, kontrol noktası + Devam Et, ayarlar, bozuk/erişilemeyen kayıt, bölüm seçimi, son), çoklu dokunma, dikey ve yatay ekran düzeni, menülerin her boyutta ekrana sığması, dokunmatik düğmelerin çakışmaması ve telefon boyutlu ekranda yalnızca dokunmatikle ilk oda (`PHONE_UPRIGHT=1` ile telefon dik tutulmuş olarak) |
 | `npm run test:campaign` | Yeni Oyun'dan son karta kadar tüm kampanyayı oynayan iki uzun test: masaüstünde yalnızca klavyeyle ve yatay tutulan telefon boyutlu ekranda yalnızca dokunmatikle (bu depodaki ölçümde her biri yaklaşık 12 dakika). `PHONE_UPRIGHT=1 npx playwright test mobile --grep @campaign` dokunmatik koşuyu telefon dik tutulmuş olarak oynar |
 | `npm run package` | Kaynak ve `dist` arşivlerini `release/` altına üretir |
@@ -119,6 +120,8 @@ src/game/data/              12 odanın verisi, diyaloglar, hedefler, anılar, G�
 src/game/rooms/             Oda kurucu (arazi, kapılar/bayraklar) ve oda betikleri
 src/game/art/               Palet, SVG çizim araçları, karakter/prop/anı çizimleri, arazi ve arka plan ressamları, atlas üretimi
 src/ui/                     DOM arayüzü: menüler, HUD, diyalog, şarkı paneli, anı bulmacası, belge görünümü, dokunmatik kontroller
+src/music/                  Bağımsız müzik modülü: üretken piyano bestecisi, sentez piyano, lisanslı parça kütüphanesi, oynatıcı
+music/                      Müzik kütüphanesi: tracks.json, tracks/ (ses dosyaları), licenses/ (her parçanın lisans notu)
 tests/unit, tests/e2e       Vitest ve Playwright testleri
 scripts/                    Test sunucusu, paketleme ve geliştirme yardımcıları
 dev/                        Geliştirici önizlemeleri (npm run dev ile /dev/preview.html, /dev/props.html, /dev/creatures.html, /dev/memories.html)
@@ -127,7 +130,28 @@ dev/                        Geliştirici önizlemeleri (npm run dev ile /dev/pre
 Çizimlerin tamamı koddan üretilir: karakter parçaları ve proplar SVG olarak
 yazılır, açılışta bir kez rasterleştirilip 2048×2048 atlas sayfalarına
 paketlenir; karakterler prosedürel iskelet (cutout) animasyonuyla oynatılır.
-Ses efektleri ve müzik Web Audio ile sentezlenir.
+Ses efektleri Web Audio ile sentezlenir.
+
+## Müzik
+
+Arka plan müziği piyanodur ve ayrı bir modülden (`src/music/`) gelir:
+
+- **Üretilen piyano:** Müzik oyun sırasında tarayıcıda bestelenir ve çalınır;
+  kayıt ya da örnek ses kullanılmaz. Her bölümün kendi karakteri vardır, örneğin
+  menü Re majör, Bölüm I La minör vals, ormanlar Fa lidya, at yolculuğu Re
+  miksolidya, Güneş Do armonik minör. Besteci her bölümde tanınır bir motifle
+  başlar, sonra her seferinde biraz farklı akar. Nasıl çalıştığı ve nasıl
+  ayarlanacağı `src/music/README.md` dosyasında anlatılıyor.
+- **Parça kütüphanesi:** `music/` klasörüne mp3 (ya da ogg, m4a, wav) ve her
+  parça için bir lisans notu eklenir, parça `music/tracks.json` listesinde
+  hangi bölümlerde çalacağıyla birlikte tanımlanır. Kütüphanede parçası olan
+  bölümde kayıt çalar, olmayan bölümde piyano. İzinli lisanslar CC0, kamu malı
+  ve CC BY'dir; atıf gerekenler Katkıda Bulunanlar ekranında gösterilir.
+  Lisansı izinli olmayan ya da lisans notu eksik bir parça derlemeyi durdurur.
+  Ayrıntılar `music/README.md` dosyasında.
+
+Tarayıcılar sesi ancak bir dokunuş ya da tuş basışından sonra açar. Müzik
+menüde ilk dokunuşla başlar. Ses düzeyi Ayarlar → Müzik'ten değiştirilir.
 
 Görünüm 2.5D'dir: platformların üst yüzeyi derinlikli çizilir, arka katmanlar
 farklı hızlarda kayar, ön planda odak dışı siluetler geçer ve karakter yere
@@ -155,6 +179,9 @@ root or any sub-path (GitHub Pages project sites). The included workflow
 tests every push to `main` and publishes `dist/` to the `gh-pages` branch,
 which GitHub Pages serves (*Settings → Pages → Source → Deploy from a branch →
 `gh-pages`*); live at https://mizyaz.github.io/Nyluma-game/. Playable with a
-keyboard, a mouse for menus, or touch alone, held upright or sideways. Serve
+keyboard, a mouse for menus, or touch alone, held upright or sideways. The
+background music is piano composed live in the browser by a separate module
+(`src/music/`), with an optional library of recorded pieces (`music/`) that
+only ships with an allowed license and a license note per piece. Serve
 over HTTP(S); `file://` is not supported. Story rights remain with the
 original author.

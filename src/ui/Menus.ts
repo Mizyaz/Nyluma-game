@@ -4,6 +4,7 @@ import { MEMORIES } from '../game/data/memories';
 import type { Settings, TextSpeed, TouchMode } from '../game/state/types';
 import { memoryArtUrl } from '../game/art/memoryArt';
 import { focusables, h } from './dom';
+import { ALLOWED_LICENSES } from '../music/library';
 
 export interface MenuActions {
   newGame: () => void;
@@ -354,7 +355,17 @@ export function creditsBlock(): HTMLElement {
     h('h3', { text: 'Hikâye' }),
     h('div', { text: '“Kristaller Dünyası” özgün metni. Hikâyenin ve dünyanın tüm hakları yazarına aittir.' }),
     h('h3', { text: 'Oyun uyarlaması' }),
-    h('div', { text: 'Tasarım, kod, çizimler, animasyon, ses efektleri ve müzik bu proje için özgün olarak üretildi: çizimler kodla yazılmış SVG’lerden, sesler Web Audio sentezinden.' }),
+    h('div', { text: 'Tasarım, kod, çizimler, animasyon ve ses efektleri bu proje için özgün olarak üretildi: çizimler kodla yazılmış SVG’lerden, sesler Web Audio sentezinden.' }),
+    h('h3', { text: 'Müzik' }),
+    h('div', { text: 'Piyano müziği oyun sırasında tarayıcıda bestelenir ve çalınır (oyunun müzik modülü); kayıt ya da örnek ses kullanılmaz.' }),
+    ...app.audio.musicTracks().map((t) =>
+      h(
+        'div',
+        {},
+        `${t.title} — ${t.artist} (${ALLOWED_LICENSES[t.license]?.name ?? t.license}). Kaynak: `,
+        /^https?:\/\//.test(t.source) ? h('a', { href: t.source, target: '_blank', rel: 'noopener', text: t.source }) : t.source,
+      ),
+    ),
     h('h3', { text: 'Açık kaynak' }),
     h(
       'div',

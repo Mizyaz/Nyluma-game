@@ -17,6 +17,11 @@ const TYPES = {
   '.json': 'application/json',
   '.ico': 'image/x-icon',
   '.txt': 'text/plain; charset=utf-8',
+  '.md': 'text/markdown; charset=utf-8',
+  '.mp3': 'audio/mpeg',
+  '.ogg': 'audio/ogg',
+  '.m4a': 'audio/mp4',
+  '.wav': 'audio/wav',
 };
 
 createServer(async (req, res) => {
