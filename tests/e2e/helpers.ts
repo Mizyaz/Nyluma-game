@@ -17,24 +17,25 @@ export interface ProbeState {
     state: string;
     form: string;
     kind: string;
-    halves: number;
     focus: number;
     facing: number;
   } | null;
   paused: boolean;
   busy: boolean;
-  objective: string | null;
   flags: string[];
   checkpoint: string | null;
   memories: string[];
   dialogueOpen: boolean;
-  songOpen: boolean;
-  puzzleOpen: boolean;
   docOpen: boolean;
   endingOpen: boolean;
   heldSources: number;
-  hazards?: { kind: string; x: number; y: number; active: boolean; dispersible: boolean }[];
+  /** Facts room scripts publish (the horse, the Sun encounter). */
+  extra: Record<string, unknown>;
+  /** Interaction prompts on screen ("E İncele"). */
+  prompts: string[];
   music: { cue: string; source: 'piano' | 'track' | 'none'; track: string | null; bars: number; notes: number };
+  /** Colour bombardments since the room started; `active` while one plays. */
+  bursts: { count: number; active: boolean } | null;
 }
 
 /** Collects anything that would indicate a broken build. */

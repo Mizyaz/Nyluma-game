@@ -1,14 +1,12 @@
 import * as Phaser from 'phaser';
 import { app } from '../App';
 import {
-  COHERENCE_SEGMENTS,
   COWARD_MOVE,
   COYOTE_MS,
   DEPTH,
   HULL_H,
   HULL_W,
   HUMAN_MOVE,
-  INVULN_MS,
   JUMP_BUFFER_MS,
   MAX_FALL,
   MECH_MOVE,
@@ -72,11 +70,14 @@ export class Player {
   private jumpBuffer = 0;
   private jumping = false;
   private groundLock = 0;
-  halves = COHERENCE_SEGMENTS * 2;
-  readonly maxHalves = COHERENCE_SEGMENTS * 2;
-  invuln = 0;
-  hurtLock = 0;
   private landT = 0;
+  private landDur = 0.2;
+  private landImpact = 0;
+  /** Seconds since the last take-off (-1 while not in a jump). */
+  private jumpT = -1;
+  /** Whole-body squash and stretch: a damped spring around 1. */
+  private sq = 1;
+  private sqV = 0;
   private walkPhase = 0;
   private stepAcc = 0;
   readonly focus = new FocusMeter();
@@ -121,7 +122,7 @@ export class Player {
   }
 
   get controllable(): boolean {
-    return this.state === 'normal' && this.hurtLock <= 0;
+    return this.state === 'normal';
   }
 
   teleport(x: number, feetY: number, facing?: 1 | -1): void {
@@ -133,6 +134,13 @@ export class Player {
     this.coyote = 0;
     this.jumpBuffer = 0;
     this.jumping = false;
+    this.jumpT = -1;
+    this.landT = 0;
+    this.sq = 1;
+    this.sqV = 0;
+    this.rig.squashX = 1;
+    this.rig.squashY = 1;
+    this.rig.extraRot = 0;
     this.rig.setPosition(x, feetY);
     this.rig.snap();
   }
@@ -174,7 +182,6 @@ export class Player {
 
   fixed(dt: number, input: { axis: number; jumpPressed: boolean; jumpHeld: boolean }): void {
     const b = this.body;
-    if (this.invuln > 0) this.invuln -= dt * 1000;
     if (this.pulseCd > 0) this.pulseCd -= dt * 1000;
     if (this.interactT > 0) this.interactT -= dt;
     if (this.state === 'reach') {
@@ -195,10 +202,7 @@ export class Player {
     }
     this.coyote = this.onGround ? COYOTE_MS / 1000 : this.coyote - dt;
     if (this.landT > 0) this.landT -= dt;
-    if (this.hurtLock > 0) {
-      this.hurtLock -= dt;
-      return;
-    }
+    if (this.jumpT >= 0) this.jumpT += dt;
     const canMove = this.state === 'normal';
     const axis = canMove ? input.axis : 0;
     if (input.jumpPressed && canMove) this.jumpBuffer = JUMP_BUFFER_MS / 1000;
@@ -224,9 +228,15 @@ export class Player {
       this.onGround = false;
       this.airTime = 0;
       this.maxFallVy = 0;
-      this.rig.squashX = 0.9;
-      this.rig.squashY = 1.1;
+      this.landT = 0;
+      // Visual only (the physics above already left the ground): the body
+      // snaps into a crouch and springs open, squashed then stretched.
+      this.jumpT = 0;
+      this.sq = 0.86;
+      this.sqV = 6;
+      this.rig.snapTo('crouch');
       app.audio.sfx('jump');
+      this.scene.events.emit('player-jump', this.x, this.feetY);
     }
     if (this.jumping && !input.jumpHeld && b.velocity.y < 0) {
       b.velocity.y *= t.jumpCut;
@@ -253,12 +263,18 @@ export class Player {
 
   private landed(): void {
     if (this.airTime > 0.12 && this.maxFallVy > 180) {
-      this.landT = Math.min(0.22, 0.1 + this.maxFallVy / 4000);
-      this.rig.squashX = 1.08;
-      this.rig.squashY = 0.92;
+      // Knees and body absorb the drop, deeper and longer the harder it was.
+      const i = Math.min(1, (this.maxFallVy - 180) / 720);
+      this.landImpact = i;
+      this.landDur = 0.14 + 0.2 * i;
+      this.landT = this.landDur;
+      this.sq = 1 - (0.06 + 0.14 * i);
+      this.sqV = -1.2 * i;
+      if (i > 0.55) this.emote('effort', 380);
       app.audio.sfx('land', { vol: Math.min(1, this.maxFallVy / 700) });
       this.scene.events.emit('player-land', this.x, this.feetY, this.maxFallVy);
     }
+    this.jumpT = -1;
     this.airTime = 0;
     this.maxFallVy = 0;
   }
@@ -336,42 +352,32 @@ export class Player {
     g.strokePoints(pts, false);
   }
 
-  // ------------------------------------------------------------ damage
-
-  /** Returns true if the hit landed. */
-  hurt(fromX: number, halves: number): boolean {
-    if (this.invuln > 0 || this.state === 'reform' || this.state === 'hidden') return false;
-    this.halves = Math.max(0, this.halves - halves);
-    this.invuln = INVULN_MS;
-    const dir = this.x >= fromX ? 1 : -1;
-    if (this.state === 'reach') {
-      this.reach = null;
-      this.state = 'normal';
-      this.body.setAllowGravity(true);
-      this.body.checkCollision.none = false;
-    }
-    if (this.state === 'normal') {
-      this.body.setVelocity(dir * 230, -300);
-      this.hurtLock = 0.28;
-      this.groundLock = 0.05;
-    }
-    this.rootLine.clear();
-    this.emote('pain', 1100);
-    app.audio.sfx('hurt');
-    return true;
-  }
-
-  heal(): void {
-    this.halves = this.maxHalves;
-  }
-
   private emoteName: Emote = 'surprise';
   private emoteT = 0;
+  private blinkIn = 1.5;
+  private blinkT = -1;
+  private blinkAgain = false;
+  private idleT = 0;
+  private danceT = 0;
+  private gazeTo = 0;
+  private gazeT = 0;
+  private gaze = 0;
 
-  /** Shows an emotion on the brows for a moment (layered over any pose). */
+  /** Shows an emotion on the face for a moment (layered over any pose). */
   emote(e: Emote, ms = 900): void {
     this.emoteName = e;
     this.emoteT = ms;
+  }
+
+  /** A little dance while standing (e.g. in the colour storm). */
+  dance(ms: number): void {
+    this.danceT = Math.max(this.danceT, ms / 1000);
+  }
+
+  /** Turns the head for a while (negative looks up). */
+  lookFor(angle: number, ms: number): void {
+    this.gazeTo = angle;
+    this.gazeT = ms / 1000;
   }
 
   // ------------------------------------------------------------ visuals
@@ -379,11 +385,16 @@ export class Player {
   visual(dtMs: number): void {
     const b = this.body;
     const feet = this.feetY;
+    const dt = Math.min(dtMs, 50) / 1000;
     this.rig.setPosition(this.x, feet);
-    // Relax squash back toward 1.
-    const k = 1 - Math.exp(-14 * (dtMs / 1000));
-    this.rig.squashX += (1 - this.rig.squashX) * k;
-    this.rig.squashY += (1 - this.rig.squashY) * k;
+    const airborne = !this.onGround && this.state === 'normal';
+    // Squash and stretch: a springy body that stretches with fall speed and
+    // wobbles back after take-off and landing. Scaled at the feet.
+    const stretch = airborne ? 1 + Math.min(0.06, Math.abs(b.velocity.y) / 10000) : 1;
+    this.sqV += ((stretch - this.sq) * 320 - this.sqV * 15) * dt;
+    this.sq += this.sqV * dt;
+    this.rig.squashY = this.sq;
+    this.rig.squashX = 1 + (1 - this.sq) * 0.85;
     const speed = Math.abs(b.velocity.x) / Math.max(1, this.tuning.speed);
     let anim = 'idle';
     const prm: PoseParams = {};
@@ -393,18 +404,41 @@ export class Player {
       prm.emote = this.emoteName;
       prm.emoteK = Math.min(1, this.emoteT / 250);
     }
+    // Blinks every few seconds, sometimes twice.
+    if (this.blinkT >= 0) {
+      this.blinkT += dt;
+      if (this.blinkT > 0.15) {
+        this.blinkT = -1;
+        this.blinkIn = this.blinkAgain ? 0.09 : 2.2 + Math.random() * 3.6;
+        this.blinkAgain = !this.blinkAgain && Math.random() < 0.22;
+      }
+    } else if ((this.blinkIn -= dt) <= 0) this.blinkT = 0;
+    if (this.blinkT >= 0) prm.blink = 1 - Math.abs(this.blinkT / 0.075 - 1);
+    // Head turns asked for by the world (looking up at a colour storm).
+    if (this.gazeT > 0) this.gazeT -= dt;
+    this.gaze += ((this.gazeT > 0 ? this.gazeTo : 0) - this.gaze) * (1 - Math.exp(-5 * dt));
+    if (Math.abs(this.gaze) > 0.005) prm.look = this.gaze;
+    if (this.danceT > 0) this.danceT -= dt;
     if (this.forceAnim) anim = this.forceAnim;
     else if (this.state === 'reach') anim = this.reach?.phase === 0 ? 'reach' : 'pull';
     else if (this.state === 'song') anim = 'song';
     else if (this.state === 'transform') anim = 'transform';
     else if (this.state === 'reform') anim = 'collapse';
-    else if (this.hurtLock > 0) anim = 'hurt';
     else if (!this.onGround) {
-      anim = b.velocity.y < -40 ? 'rise' : 'fall';
-      prm.vy = b.velocity.y;
-    } else if (this.landT > 0) {
+      const vy = b.velocity.y;
+      prm.vy = vy;
+      prm.jv = this.tuning.jumpVel || 600;
+      // Take-off, climb, a weightless moment at the top, then the drop.
+      // Stepping off a ledge goes straight to the drop.
+      if (this.jumpT < 0) anim = 'fall';
+      else if (this.jumpT < 0.13) anim = 'takeoff';
+      else if (vy < -140) anim = 'rise';
+      else if (vy < 150) anim = 'apex';
+      else anim = 'fall';
+    } else if (this.landT > 0 && !(Math.abs(b.velocity.x) > 60 && this.landDur - this.landT > 0.08)) {
       anim = 'land';
-      prm.k = 1 - this.landT / 0.22;
+      prm.k = 1 - this.landT / this.landDur;
+      prm.impact = this.landImpact;
     } else if (Math.abs(b.velocity.x) > 12) {
       anim = this.pushing ? 'push' : 'walk';
       const strideLen = this.kind === 'gorti' && this.form === 'root' ? 124 : this.kind === 'suit' ? 70 : 92;
@@ -413,11 +447,17 @@ export class Player {
       prm.speed = speed;
     } else if (this.focus.active) anim = 'breath';
     else if (this.interactT > 0) anim = 'interact';
+    else if (this.danceT > 0 && this.state === 'normal') anim = 'dance';
+    // Standing still for a while brings idle actions (see animPoses).
+    this.idleT = anim === 'idle' && this.state === 'normal' ? this.idleT + dt : 0;
+    prm.idleT = this.idleT;
     this.rig.play(anim, prm);
-    this.rig.stiffness = anim === 'land' || anim === 'hurt' ? 2 : 1;
+    this.rig.stiffness = anim === 'takeoff' ? 2.6 : anim === 'land' ? 2 : anim === 'apex' ? 0.85 : 1;
+    // Lean into the flight: back while climbing, forward while dropping.
+    const run = Math.min(1, Math.abs(b.velocity.x) / Math.max(1, this.tuning.speed));
+    const lean = airborne ? (b.velocity.y < -140 ? -0.05 : b.velocity.y > 150 ? 0.08 : 0.02) * run : 0;
+    this.rig.extraRot += (lean - this.rig.extraRot) * (1 - Math.exp(-10 * dt));
     this.rig.update(dtMs);
-    // Invulnerability flicker (gentle, not a flash).
-    this.rig.setAlpha(this.invuln > 0 && this.state !== 'reform' ? 0.55 + 0.35 * Math.sin(this.scene.time.now / 45) : 1);
     if (this.state === 'reach') this.drawRoot();
     else this.rootLine.clear();
   }

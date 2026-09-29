@@ -48,8 +48,6 @@ export interface Settings {
   reducedMotion: boolean;
   screenShake: boolean;
   textSpeed: TextSpeed;
-  focusToggle: boolean;
-  storyAssist: boolean;
   touch: TouchMode;
 }
 
@@ -60,7 +58,5 @@ export const DEFAULT_SETTINGS: Settings = {
   reducedMotion: false,
   screenShake: true,
   textSpeed: 'normal',
-  focusToggle: false,
-  storyAssist: false,
   touch: 'auto',
 };

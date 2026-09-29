@@ -10,7 +10,6 @@ export const R01: RoomDef = {
   theme: 'nursery',
   music: 'roots',
   player: 'gorti',
-  objective: 'r01.explore',
   checkpoints: [
     { id: 'r01_start', x: 290, y: 660, facing: 1, silent: true },
     { id: 'r01_door', x: 1600, y: 660 },
@@ -21,7 +20,6 @@ export const R01: RoomDef = {
     { x: 0, y: 0, w: 160, h: 660, style: 'soil' },
     { x: 160, y: 0, w: 1540, h: 130, style: 'soil' },
     { x: 1700, y: 130, w: 70, h: 300, style: 'root' },
-    { id: 'door', x: 1705, y: 430, w: 60, h: 230, style: 'none', hidden: true, unless: 'r01.door' },
     { x: 1770, y: 0, w: 430, h: 440, style: 'soil' },
     // Furniture tops (drawn as props). The furniture stands against the back
     // wall, so Gorti walks in front of it and can still hop onto it.
@@ -47,8 +45,8 @@ export const R01: RoomDef = {
     { key: 'prop.window', x: 1441, y: 400, depth: -50, oy: 0.5 },
     { key: 'prop.chest', x: 1441, y: 662, depth: -20 },
     { key: 'prop.toyhorse', x: 1250, y: 662, depth: -20, scale: 0.9 },
-    { key: 'prop.rootdoor', x: 1735, y: 662, depth: 12, unless: 'r01.door' },
-    { key: 'prop.rootdoor.open', x: 1735, y: 662, depth: 12, when: 'r01.door' },
+    // The roots have already parted: the way on is always open.
+    { key: 'prop.rootdoor.open', x: 1735, y: 662, depth: 12 },
     { key: 'prop.fossil', x: 1980, y: 500, depth: -40, scale: 0.8, oy: 0.5 },
   ],
 };

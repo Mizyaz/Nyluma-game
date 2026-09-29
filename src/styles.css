@@ -473,61 +473,6 @@ button {
   pointer-events: none;
 }
 
-.coherence {
-  position: absolute;
-  left: calc(max(10px, calc(var(--s) * 20px)) + var(--safe-l));
-  top: calc(max(8px, calc(var(--s) * 16px)) + var(--safe-t));
-  display: flex;
-  gap: max(3px, calc(var(--s) * 5px));
-  align-items: center;
-  pointer-events: none;
-}
-
-.seg-mark {
-  width: max(12px, calc(var(--s) * 20px));
-  height: max(17px, calc(var(--s) * 28px));
-  position: relative;
-}
-
-.seg-mark svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.focus-meter {
-  position: absolute;
-  left: calc(max(10px, calc(var(--s) * 20px)) + var(--safe-l));
-  top: calc(max(32px, calc(var(--s) * 52px)) + var(--safe-t));
-  width: max(80px, calc(var(--s) * 130px));
-  height: max(8px, calc(var(--s) * 11px));
-  border: 2px solid var(--ink);
-  background: rgba(25, 23, 40, 0.8);
-  border-radius: 8px 3px 8px 3px;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.focus-meter i {
-  display: block;
-  height: 100%;
-  background: linear-gradient(90deg, var(--violet), var(--vein));
-  transform-origin: left center;
-}
-
-.focus-meter.active {
-  box-shadow: 0 0 10px rgba(215, 179, 255, 0.7);
-}
-
-.focus-label {
-  position: absolute;
-  left: calc(max(96px, calc(var(--s) * 158px)) + var(--safe-l));
-  top: calc(max(29px, calc(var(--s) * 48px)) + var(--safe-t));
-  font-size: max(10px, calc(var(--s) * 13px));
-  color: var(--ivory-dim);
-  pointer-events: none;
-}
-
 .hud-right {
   position: absolute;
   right: calc(max(8px, calc(var(--s) * 16px)) + var(--safe-r));
@@ -540,24 +485,6 @@ button {
 
 /* Objective and hint: under the buttons (landscape) or in the text column
    below the game view (portrait, see .hud-stack). */
-.hud .hud-obj {
-  position: absolute;
-  right: calc(max(8px, calc(var(--s) * 16px)) + var(--safe-r));
-  top: calc(max(8px, calc(var(--s) * 12px)) + max(40px, calc(var(--s) * 46px)) + 8px + var(--safe-t));
-  max-width: max(190px, calc(var(--s) * 360px));
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
-  pointer-events: none;
-}
-
-.hud .hud-stack .hud-obj {
-  position: static;
-  max-width: 100%;
-  align-items: center;
-}
-
 .icon-btn {
   appearance: none;
   width: max(40px, calc(var(--s) * 46px));
@@ -580,43 +507,6 @@ button {
 .icon-btn svg {
   width: 60%;
   height: 60%;
-}
-
-.objective {
-  max-width: 100%;
-  background: rgba(25, 23, 40, 0.9);
-  border: 3px solid var(--ink);
-  border-radius: 12px 6px 12px 6px;
-  padding: 0.4em 0.75em;
-  font-family: var(--serif);
-  font-size: max(12px, calc(var(--s) * 16px));
-  line-height: 1.35;
-  pointer-events: none;
-}
-
-.objective:not(.show) {
-  display: none;
-}
-
-.objective.show {
-  animation: hud-in 0.3s ease;
-}
-
-.objective b {
-  display: block;
-  font-family: var(--sans);
-  font-weight: 600;
-  font-size: 0.72em;
-  color: var(--vein);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.hud .hint-btn {
-  font-family: var(--serif);
-  font-size: max(12px, calc(var(--s) * 15px));
-  min-height: 40px;
-  pointer-events: auto;
 }
 
 /* Toast, prompts and subtitles share one column. Landscape: at the bottom
@@ -658,9 +548,6 @@ button {
 }
 #app.portrait .hud-stack .toast {
   order: 2;
-}
-#app.portrait .hud-stack .hud-obj {
-  order: 3;
 }
 #app.portrait .hud-stack .prompt {
   order: 4;
@@ -902,191 +789,6 @@ button {
   50% {
     transform: translateY(3px);
   }
-}
-
-/* ------------------------------------------------------------ song panel */
-
-.song {
-  position: absolute;
-  left: 50%;
-  bottom: calc(max(12px, calc(var(--s) * 24px)) + var(--safe-b));
-  transform: translateX(-50%);
-  width: min(94%, calc(var(--s) * 760px));
-  background: rgba(25, 23, 40, 0.95);
-  border: 3px solid var(--ink);
-  border-radius: 20px 10px 20px 10px;
-  box-shadow: 0 0 0 1px rgba(83, 191, 175, 0.4);
-  padding: max(10px, calc(var(--s) * 18px));
-  text-align: center;
-}
-
-.song h3 {
-  margin: 0 0 0.3em;
-  font-family: var(--serif);
-  font-weight: normal;
-  font-size: max(14px, calc(var(--s) * 20px));
-}
-
-.song .pattern {
-  display: flex;
-  justify-content: center;
-  gap: 0.5em;
-  margin: 0.3em 0 0.6em;
-  min-height: max(30px, calc(var(--s) * 44px));
-}
-
-.song .pattern .note {
-  width: max(30px, calc(var(--s) * 44px));
-  height: max(30px, calc(var(--s) * 44px));
-  opacity: 0.45;
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
-
-.song .pattern .note.lit {
-  opacity: 1;
-  transform: scale(1.15);
-}
-
-.song .pattern .note.done {
-  opacity: 1;
-}
-
-.song .notes {
-  display: flex;
-  justify-content: center;
-  gap: max(10px, calc(var(--s) * 20px));
-}
-
-.note-btn {
-  appearance: none;
-  border: 3px solid var(--ink);
-  background: var(--ink-2);
-  border-radius: 16px 8px 16px 8px;
-  padding: 0.3em 0.6em;
-  min-width: max(72px, calc(var(--s) * 120px));
-  min-height: 60px;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.15em;
-  font-family: var(--serif);
-  font-size: max(12px, calc(var(--s) * 15px));
-}
-
-.note-btn svg {
-  width: max(28px, calc(var(--s) * 38px));
-  height: max(28px, calc(var(--s) * 38px));
-}
-
-.note-btn.flash {
-  background: var(--ink-3);
-  box-shadow: 0 0 14px rgba(83, 191, 175, 0.8);
-}
-
-.note-btn small {
-  font-family: var(--sans);
-  font-size: 0.72em;
-  color: var(--ivory-dim);
-}
-
-.song .actions {
-  margin-top: 0.6em;
-  display: flex;
-  justify-content: center;
-  gap: 0.6em;
-  flex-wrap: wrap;
-}
-
-.song .status {
-  min-height: 1.4em;
-  font-family: var(--serif);
-  font-style: italic;
-  color: var(--vein);
-  font-size: max(12px, calc(var(--s) * 15px));
-}
-
-/* ------------------------------------------------------------ puzzle */
-
-.puzzle {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: min(96%, max(300px, calc(var(--s) * 860px)));
-  max-height: calc(100% - 16px);
-  overflow-y: auto;
-  background: rgba(35, 28, 31, 0.97);
-  border: 3px solid var(--ink);
-  border-radius: 20px 10px 20px 10px;
-  box-shadow: 0 0 0 1px rgba(216, 206, 186, 0.3);
-  padding: max(12px, calc(var(--s) * 22px));
-  text-align: center;
-}
-
-.puzzle h3 {
-  margin: 0 0 0.2em;
-  font-family: var(--serif);
-  font-weight: normal;
-  font-size: max(15px, calc(var(--s) * 22px));
-}
-
-.puzzle .sub {
-  font-family: var(--serif);
-  font-style: italic;
-  color: var(--ivory-dim);
-  font-size: max(12px, calc(var(--s) * 15px));
-  margin: 0 0 0.6em;
-}
-
-.cards {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: max(8px, calc(var(--s) * 16px));
-  margin: 0.4em 0 0.8em;
-}
-
-.card {
-  appearance: none;
-  border: 3px solid var(--ink);
-  background: var(--paper);
-  border-radius: 10px 4px 10px 4px;
-  padding: max(4px, calc(var(--s) * 8px));
-  width: clamp(64px, 21vmin, calc(var(--s) * 200px));
-  cursor: pointer;
-  color: var(--ink);
-  font-family: var(--serif);
-  font-size: max(11px, calc(var(--s) * 14px));
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-  touch-action: none;
-}
-
-.card img {
-  width: 100%;
-  display: block;
-  border-radius: 4px;
-  pointer-events: none;
-}
-
-.card.sel {
-  transform: translateY(-8px);
-  box-shadow: 0 0 0 4px var(--vein);
-}
-
-.card.play {
-  box-shadow: 0 0 0 4px var(--orange);
-}
-
-.card:focus-visible {
-  outline: 3px solid var(--violet);
-  outline-offset: 2px;
-}
-
-.card .num {
-  display: block;
-  font-family: var(--sans);
-  font-weight: 700;
 }
 
 /* ------------------------------------------------------------ documents */
@@ -1333,16 +1035,85 @@ button {
 @media (prefers-reduced-motion: reduce) {
   .dialogue .next,
   .caption.show,
-  .toast.show,
-  .objective.show {
+  .toast.show {
     animation: none;
   }
 }
 
 .reduced-motion .caption.show,
-.reduced-motion .toast.show,
-.reduced-motion .objective.show {
+.reduced-motion .toast.show {
   animation: none;
+}
+
+/* ------------------------------------------------------------ colour storm */
+
+/* The colour bombardment (ColorStorm) over the game view. No z-index,
+   transform or opacity here: the clouds must blend with the canvas behind. */
+.color-storm {
+  position: absolute;
+  left: var(--gx);
+  top: var(--gy);
+  width: var(--gw);
+  height: var(--gh);
+  overflow: hidden;
+  display: none;
+}
+
+.color-storm.on {
+  display: block;
+}
+
+.cs-cloud {
+  position: absolute;
+  inset: -10%;
+  mix-blend-mode: screen;
+  opacity: 0;
+  transform: scale(0.55);
+  animation-name: cs-cloud;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1);
+  animation-fill-mode: both;
+}
+
+@keyframes cs-cloud {
+  0% {
+    opacity: 0;
+    transform: scale(0.55);
+  }
+  30% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) scale(1.25);
+  }
+}
+
+.cs-wave {
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: -60%;
+  right: -60%;
+  background: linear-gradient(100deg, transparent 18%, var(--a) 34%, var(--b) 50%, var(--c) 66%, transparent 82%);
+  mix-blend-mode: color;
+  opacity: 0.8;
+  animation-name: cs-wave;
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: both;
+}
+
+.color-storm.paused .cs-cloud,
+.color-storm.paused .cs-wave {
+  animation-play-state: paused;
+}
+
+@keyframes cs-wave {
+  from {
+    transform: translateX(calc(-62% * var(--dir)));
+  }
+  to {
+    transform: translateX(calc(62% * var(--dir)));
+  }
 }
 
 /* ------------------------------------------------------------ touch wording */

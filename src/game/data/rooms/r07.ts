@@ -19,7 +19,7 @@ export const RIDE_GAPS: [number, number][] = [
   [28400, 28620],
 ];
 
-/** Chasms that need a focus-bloomed flower bridge. */
+/** Chasms; a flower bridge blooms over each one as the horse comes near. */
 export const RIDE_CHASMS: [number, number][] = [
   [6400, 6900],
   [12500, 13100],
@@ -27,14 +27,6 @@ export const RIDE_CHASMS: [number, number][] = [
   [24000, 24700],
   [29600, 30200],
 ];
-
-export const RIDE_THORNS: number[] = [
-  1800, 2600, 3400, 3700, 9500, 11000, 13400, 15500, 16100, 20700, 22900, 23400, 25200, 27000, 27500, 28950,
-  30900,
-];
-
-/** Crystal shards falling from the canopy (impact x). */
-export const RIDE_SHARDS: number[] = [7800, 8600, 10900, 14000, 15800, 20400, 23800, 25600, 27300, 29000, 31100];
 
 /** Raised mound whose far edge launches the optional memory arc. */
 export const RIDE_MOUND: [number, number] = [17600, 18300];
@@ -64,7 +56,6 @@ export const R07: RoomDef = {
   player: 'horse',
   entryForm: 'human',
   zoom: 1.12,
-  objective: 'r07.ride',
   killY: 1060,
   checkpoints: [
     { id: 'r07_start', x: 300, y: RIDE_GROUND_Y, facing: 1, silent: true },

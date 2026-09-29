@@ -5,20 +5,10 @@ import { Raccoons } from '../../entities/Creatures';
 import type { WorldScene } from '../../scenes/WorldScene';
 import type { RoomScript } from './types';
 
-// Chapter II — first wind on the surface; the memory pool; the first human
-// transformation and a short grounding moment.
+// Chapter II — first wind on the surface. At the memory pool Gorti sees the
+// faces of the memories and becomes human for the first time.
 export function r04(w: WorldScene): RoomScript {
   let raccoons: Raccoons | null = null;
-  let grounding = false;
-
-  const pickObjective = (): void => {
-    const q = w.quest;
-    if (q.has('r04.transformed')) w.setObjective('r04.onward', false);
-    else if (q.has('r04.human')) w.setObjective('r04.ground', false);
-    else if (q.has('r04.up')) w.setObjective('r04.pool', false);
-    else if (q.has('r04.focusTut')) w.setObjective('r04.focus', false);
-    else w.setObjective('r04.walk', false);
-  };
 
   const emerge = (): void => {
     void w.narrative.play(
@@ -77,29 +67,16 @@ export function r04(w: WorldScene): RoomScript {
           w.quest.setForm('human');
         }
         w.flag('r04.human', false);
+        w.flag('r04.transformed', false);
         w.camTo(null);
-        w.player.lock(true, 'kneel');
-        grounding = true;
-        w.setObjective('r04.ground');
-        app.ui.hud.caption(CAPTIONS.ground, 6000);
+        w.player.lock(false);
+        w.activateCheckpoint('r04_after', true);
       },
     );
   };
 
-  const finishGrounding = (): void => {
-    grounding = false;
-    w.quest.grant('form');
-    w.flag('r04.transformed');
-    w.player.lock(false);
-    app.audio.sfx('checkpoint');
-    app.ui.hud.caption(CAPTIONS.formUnlock, 7000);
-    w.setObjective('r04.onward');
-    w.activateCheckpoint('r04_after', true);
-  };
-
   return {
     setup() {
-      pickObjective();
       raccoons = new Raccoons(w, [
         { x: 800, y: 868, kind: 'sit', scale: 0.9 },
         { x: 852, y: 868, kind: 'sniff', scale: 0.85 },
@@ -110,14 +87,8 @@ export function r04(w: WorldScene): RoomScript {
         { x: 2980, y: 770, kind: 'shadow', scale: 0.7, depth: DEPTH.backProps, flip: true },
       ]);
       if (!w.quest.has('r04.emerged')) emerge();
-      if (w.quest.has('r04.human') && !w.quest.has('r04.transformed')) {
-        if (w.player.form !== 'human') {
-          w.player.setForm('human');
-          w.quest.setForm('human');
-        }
-        w.player.lock(true, 'kneel');
-        grounding = true;
-      }
+      // Saves from the old kneeling moment: it is over.
+      if (w.quest.has('r04.human')) w.flag('r04.transformed', false);
       w.onCleanup(() => raccoons?.destroy());
     },
     onTrigger(id) {
@@ -130,28 +101,11 @@ export function r04(w: WorldScene): RoomScript {
         app.ui.hud.caption(CAPTIONS.raccoons, 4600);
         app.audio.sfx('chirp', { pitch: 0.6 });
       }
-      if (id === 'focusTut' && w.flag('r04.focusTut', false)) {
-        app.ui.hud.caption(CAPTIONS.r04focus, 5200);
-        w.setObjective('r04.focus');
-      }
-    },
-    onInteract(id) {
-      if (id === 'pool' && !w.quest.has('r04.human')) {
-        poolScene();
-        return true;
-      }
-      return false;
     },
     onFixed() {
       const p = w.player;
-      if (!w.quest.has('r04.up') && p.x > 1660 && p.feetY <= 642 && p.onGround) {
-        w.flag('r04.up', false);
-        if (!w.quest.has('r04.human')) w.setObjective('r04.pool');
-      }
-      if (grounding && p.focus.heldFor >= 1.3) finishGrounding();
-    },
-    focusRelevant() {
-      return grounding || w.room.solids.some((s) => s.def.latent && Math.abs(s.def.x - w.player.x) < 420);
+      // At the memory pool, the faces look back.
+      if (!w.quest.has('r04.human') && p.x > 2230 && p.feetY <= 642 && p.onGround) poolScene();
     },
     onUpdate(dt) {
       raccoons?.update(dt);

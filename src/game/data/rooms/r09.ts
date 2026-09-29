@@ -11,7 +11,6 @@ export const R09: RoomDef = {
   music: 'forest',
   player: 'gorti',
   entryForm: 'root',
-  objective: 'r09.follow',
   checkpoints: [
     { id: 'r09_start', x: 150, y: 900, facing: 1, silent: true },
     { id: 'r09_mid', x: 1800, y: 900 },
@@ -25,9 +24,7 @@ export const R09: RoomDef = {
     { x: 1700, y: 900, w: 1500, h: 200, style: 'moss' },
     { x: 2200, y: 640, w: 160, h: 24, style: 'root', oneWay: true },
   ],
-  anchors: [{ id: 'a1', x: 2230, y: 720, land: { x: 2285, y: 640 } }],
-  interacts: [{ id: 'pool', x: 2860, y: 900, r: 85, prompt: 'Gözlerini kapat' }],
-  memories: [{ id: 'm7', x: 2300, y: 640 }],
+  memories: [{ id: 'm7', x: 2300, y: 900 }],
   triggers: [
     { id: 'sparrow', x: 260, y: 700, w: 80, h: 200 },
     { id: 'line', x: 1760, y: 700, w: 100, h: 200 },

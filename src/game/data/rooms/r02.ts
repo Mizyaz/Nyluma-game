@@ -10,7 +10,6 @@ export const R02: RoomDef = {
   theme: 'roots',
   music: 'roots',
   player: 'gorti',
-  objective: 'r02.whale',
   checkpoints: [
     { id: 'r02_start', x: 220, y: 2280, facing: 1, silent: true },
     { id: 'r02_node', x: 860, y: 2280 },
@@ -24,7 +23,7 @@ export const R02: RoomDef = {
     { x: 1490, y: 500, w: 110, h: 1780, style: 'soil' },
     { x: 110, y: 0, w: 1490, h: 60, style: 'soil' },
     { x: 1100, y: 460, w: 500, h: 40, style: 'soil' },
-    // Climb route woken by the whale song
+    // Climb route, grown by the whale's song as the whale passes
     { id: 'p1', x: 1180, y: 2170, w: 220, h: 24, style: 'root', oneWay: true, grow: true, when: 'r02.song' },
     { id: 'p2', x: 1000, y: 2060, w: 200, h: 24, style: 'root', oneWay: true, grow: true, when: 'r02.song' },
     { id: 'p3', x: 1220, y: 1950, w: 220, h: 24, style: 'root', oneWay: true, grow: true, when: 'r02.song' },
@@ -36,30 +35,20 @@ export const R02: RoomDef = {
     { id: 'a1', x: 700, y: 1860, w: 160, h: 24, style: 'root', oneWay: true, grow: true, when: 'r02.song' },
     { id: 'a2', x: 420, y: 1880, w: 150, h: 24, style: 'root', oneWay: true, grow: true, when: 'r02.song' },
     { x: 110, y: 1900, w: 230, h: 30, style: 'soil' },
-    // Upper section
+    // Upper section (steps where roots used to be reached for)
     { x: 820, y: 1440, w: 320, h: 40, style: 'soil' },
+    { x: 560, y: 1345, w: 140, h: 24, style: 'root', oneWay: true },
     { x: 110, y: 1250, w: 330, h: 40, style: 'soil' },
     { x: 480, y: 1140, w: 200, h: 24, style: 'root', oneWay: true },
     { x: 250, y: 1030, w: 200, h: 24, style: 'root', oneWay: true },
+    { x: 540, y: 965, w: 140, h: 24, style: 'root', oneWay: true },
     { x: 760, y: 900, w: 360, h: 40, style: 'soil' },
     { x: 1180, y: 790, w: 200, h: 24, style: 'root', oneWay: true },
     { x: 900, y: 680, w: 220, h: 24, style: 'root', oneWay: true },
     { x: 850, y: 570, w: 200, h: 24, style: 'root', oneWay: true },
   ],
-  anchors: [
-    { id: 'a1', x: 700, y: 1290, land: { x: 360, y: 1250 } },
-    { id: 'a2', x: 610, y: 900, land: { x: 830, y: 900 } },
-  ],
-  songNodes: [{ id: 'n1', x: 1030, y: 2280, pattern: ['low', 'mid', 'high'], unless: 'r02.song' }],
   memories: [{ id: 'm1', x: 205, y: 1900 }],
-  hazards: [
-    { kind: 'thorns', id: 't1', x: 560, y: 2280, w: 120 },
-    { kind: 'wisp', id: 'w1', x: 1010, y: 740, dx: 150, dy: 26 },
-  ],
-  triggers: [
-    { id: 'whale', x: 760, y: 2000, w: 120, h: 280 },
-    { id: 'reachTut', x: 860, y: 1300, w: 220, h: 140 },
-  ],
+  triggers: [{ id: 'whale', x: 760, y: 2000, w: 120, h: 280 }],
   exits: [{ id: 'up', x: 1560, y: 250, w: 40, h: 210, to: 'r03' }],
   props: [
     { key: 'prop.coil', x: 1320, y: 2282, depth: -10, unless: 'r02.song' },

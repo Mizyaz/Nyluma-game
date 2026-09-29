@@ -24,25 +24,20 @@ export function installProbe(): void {
               state: world.player.state,
               form: world.player.form,
               kind: world.player.kind,
-              halves: world.player.halves,
               focus: world.player.focus.value,
               facing: world.player.facing,
             }
           : null,
         paused: active ? world.paused : false,
         busy: active ? world.narrative.busy : false,
-        objective: active ? world.objective : null,
         flags: app.quest ? [...app.quest.progress.flags] : [],
         checkpoint: app.quest?.progress.checkpoint ?? null,
         memories: app.quest?.profile.memories ?? app.profile.memories,
         dialogueOpen: app.ui.dialogue.isOpen,
-        songOpen: app.ui.song.isOpen,
-        puzzleOpen: app.ui.puzzle.isOpen,
         docOpen: app.ui.doc.isOpen,
         endingOpen: app.ui.ending.isOpen,
         heldSources: app.input.sourceCount(),
         extra: active ? { ...world.probeExtra } : {},
-        hazards: active ? world.hazards.describe() : [],
         prompts: [...document.querySelectorAll('.prompt span')].map((e) => e.textContent ?? ''),
         fps: Math.round(app.game.loop.actualFps),
         simElapsed: active ? world.elapsed : 0,
@@ -50,6 +45,10 @@ export function installProbe(): void {
         rawDelta: app.game.loop.rawDelta,
         renderer: app.game.renderer.type === 2 ? 'webgl' : 'canvas',
         music: app.audio.musicState(),
+        bursts: active ? { count: world.bursts.count, active: world.bursts.active } : null,
+        view: active
+          ? (({ x, y, width, height }) => ({ x, y, w: width, h: height }))(world.cameras.main.worldView)
+          : null,
       };
     },
     /**

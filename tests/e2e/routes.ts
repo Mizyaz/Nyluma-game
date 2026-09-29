@@ -1,13 +1,15 @@
 import type { Bot } from './bot';
 import type { ProbeState } from './helpers';
-import { RIDE_CHASMS, RIDE_GAPS, RIDE_MOUND, RIDE_SHARDS, RIDE_THORNS } from '../../src/game/data/rooms/r07';
 
 // Room-by-room routes for the normal-input campaign run. Coordinates come
-// from the room data; decisions use the read-only probe. Routes are staged:
-// after a fall or a knock-back the bot re-plans from where it stands.
+// from the room data (src/game/data/rooms); decisions use the read-only
+// probe. Gorti only walks and jumps: story scenes start by themselves where
+// Gorti arrives, and the bot waits for them (`settle` holds the skip button
+// like an impatient player). Routes are staged: after a fall the bot
+// re-plans from where it stands.
 
 export type Route = (b: Bot) => Promise<void>;
-type S = ProbeState & { extra: Record<string, unknown>; prompts: string[] };
+type S = ProbeState;
 
 interface Stage {
   name: string;
@@ -19,10 +21,14 @@ async function stages(b: Bot, room: string, list: Stage[], maxIter = 40): Promis
   for (let i = 0; i < maxIter; i++) {
     let s = await b.s();
     if (s.room !== room) return;
-    if (s.busy || s.dialogueOpen || s.context !== 'gameplay') {
+    if (s.busy || s.dialogueOpen || s.docOpen || s.context !== 'gameplay') {
       await b.settle();
       s = await b.s();
       if (s.room !== room) return;
+    }
+    if (s.player && !s.player.onGround) {
+      await b.waitFor((x) => x.room !== room || !x.player || x.player.onGround, 4000, 'landing').catch(() => undefined);
+      continue;
     }
     const st = list.find((x) => x.when(s));
     if (!st) {
@@ -35,6 +41,7 @@ async function stages(b: Bot, room: string, list: Stage[], maxIter = 40): Promis
   throw new Error(`${room}: route did not finish. Log:\n${b.log.slice(-25).join('\n')}`);
 }
 
+/** Standing on the surface at height y (feet), between x0 and x1. */
 const on = (s: S, y: number, x0 = -1e9, x1 = 1e9): boolean => !!s.player && s.player.onGround && Math.abs(s.player.y - y) < 4 && s.player.x >= x0 && s.player.x <= x1;
 
 async function inspect(b: Bot, x: number, label = 'İncele'): Promise<void> {
@@ -43,16 +50,87 @@ async function inspect(b: Bot, x: number, label = 'İncele'): Promise<void> {
   await b.settle();
 }
 
-/** Jumps along a list of ledges from whichever one we stand on. */
+/**
+ * Holds a direction until `done`, letting the story scenes met on the way
+ * play out (they start by themselves).
+ */
+async function walkUntil(b: Bot, dir: 1 | -1, done: (s: S) => boolean, label: string, timeout = 120_000): Promise<S> {
+  const key = dir > 0 ? 'KeyD' : 'KeyA';
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeout) {
+    const s = await b.s();
+    if (done(s)) {
+      await b.releaseAll();
+      return s;
+    }
+    if (!s.player || s.busy || s.dialogueOpen || s.docOpen || s.context !== 'gameplay') {
+      await b.releaseAll();
+      if (s.player) await b.settle();
+      else await b.wait(100);
+      continue;
+    }
+    await b.keyDown(key);
+    await b.wait(50);
+  }
+  await b.releaseAll();
+  throw new Error(`walking ${dir > 0 ? 'right' : 'left'} until ${label} timed out`);
+}
+
+/** Walks on until the next room (an exit, or a scene that moves on by itself). */
+async function leave(b: Bot, dir: 1 | -1, next: string, timeout = 120_000): Promise<void> {
+  await walkUntil(b, dir, (s) => s.room === next, `room ${next}`, timeout);
+}
+
+/** One jump off a surface: take off at `from`, steer toward `to`. */
+interface Hop {
+  y: number;
+  x0: number;
+  x1: number;
+  from: number;
+  to: number;
+}
+
+/**
+ * Hops along a chain of surfaces: on whichever listed surface Gorti stands,
+ * walk to its take-off point and jump toward the next one. A take-off point
+ * past the surface's edge just walks off it. Returns once Gorti stands on
+ * none of them (the goal, or a spot the caller re-plans from).
+ */
+async function hops(b: Bot, list: Hop[], tries = 30): Promise<void> {
+  const room = (await b.s()).room;
+  for (let n = 0; n < tries; n++) {
+    let s = await b.s();
+    if (s.room !== room || !s.player) return;
+    if (s.busy || s.dialogueOpen || s.docOpen || s.context !== 'gameplay') {
+      await b.settle();
+      continue;
+    }
+    if (!s.player.onGround) {
+      await b.waitFor((x) => !x.player || x.player.onGround, 4000, 'landing').catch(() => undefined);
+      continue;
+    }
+    const hop = list.find((h) => on(s, h.y, h.x0, h.x1));
+    if (!hop) return;
+    if (Math.abs(s.player.x - hop.from) > 8) {
+      await b.walkTo(hop.from, 6).catch((e: unknown) => b.note(`hop: ${(e as Error).message.slice(0, 120)}`));
+      s = await b.s();
+      if (!on(s, hop.y, hop.x0, hop.x1)) continue;
+    }
+    await b.jumpTo(hop.to);
+  }
+}
+
 /**
  * Climbs a list of stand points one jump at a time. `lean` moves the take-off
  * toward the next step and the aim back toward this one (px), like a player
  * jumping from the edge of a zig-zag ladder instead of from its middle.
  */
 export async function climb(b: Bot, steps: [number, number][], tries = 20, lean: { takeoff: number; aim: number } = { takeoff: 0, aim: 0 }): Promise<void> {
+  const room = (await b.s()).room;
   for (let n = 0; n < tries; n++) {
     const st = await b.s();
-    const p = st.player!;
+    const p = st.player;
+    if (st.room !== room || !p) return;
     if (st.busy || st.dialogueOpen) {
       await b.settle();
       continue;
@@ -64,13 +142,11 @@ export async function climb(b: Bot, steps: [number, number][], tries = 20, lean:
     if (idx < 0) return;
     const next = steps[idx + 1];
     if (!next) {
-      // Top reached: stand on the step's stand point (prompts are local).
+      // Top reached: stand on the step's stand point.
       const top = steps[idx]![0];
       if (Math.abs(p.x - top) > 10) await b.walkTo(top, 6, 8000).catch(() => undefined);
       return;
     }
-    // A wisp dashes at Gorti mid-air: disperse it before jumping.
-    await b.clearWisps();
     // Take off from this step's stand point: jump distance is limited.
     const dir = Math.sign(next[0] - steps[idx]![0]);
     const here = steps[idx]![0] + dir * lean.takeoff;
@@ -80,27 +156,29 @@ export async function climb(b: Bot, steps: [number, number][], tries = 20, lean:
   }
 }
 
+/** The label on the open document page's button ('' when none is open). */
+async function docButton(b: Bot): Promise<string> {
+  return b.page.evaluate(() => document.querySelector('.doc:not(.hidden) .close')?.textContent ?? '');
+}
+
 export const ROUTES: Record<string, Route> = {
   async r01(b) {
     await b.settle();
+    // Nothing has to be done here; Gorti looks at a few things on the way.
     await stages(b, 'r01', [
       { name: 'whale toy', when: (s) => !s.flags.includes('r01.toywhale'), run: () => inspect(b, 620) },
-      // The toy blocks and the chest stand against the back wall: walk past.
       { name: 'marks', when: (s) => !s.flags.includes('r01.marks'), run: () => inspect(b, 1090) },
       { name: 'window', when: (s) => !s.flags.includes('r01.window'), run: () => inspect(b, 1441) },
-      {
-        name: 'leave',
-        when: (s) => s.flags.includes('r01.door'),
-        run: async () => {
-          await b.walkTo(2190, 6, 30_000).catch(() => undefined);
-          await b.untilRoom('r02');
-        },
-      },
+      // The roots at the far end are always open.
+      { name: 'leave', when: () => true, run: () => leave(b, 1, 'r02') },
     ]);
+    await b.untilRoom('r02');
   },
 
   async r02(b) {
-    const P: [number, number][] = [
+    // Walking past x 1000 on the floor, the whale passes and its song grows
+    // the root steps (p1–p7) up the right side.
+    const ROOTS: [number, number][] = [
       [1250, 2280],
       [1250, 2170],
       [1190, 2060],
@@ -112,41 +190,12 @@ export const ROUTES: Record<string, Route> = {
     ];
     await stages(b, 'r02', [
       {
-        name: 'to node',
-        when: (s) => !s.flags.includes('r02.song') && on(s, 2280),
-        run: async (s) => {
-          if (s.player!.x < 560) {
-            await b.walkTo(470, 6);
-            await b.jumpTo(720);
-          }
-          await b.walkTo(1030, 10);
-          await b.settle();
-          await b.sing(['low', 'mid', 'high']);
-          await b.settle();
-        },
-      },
-      {
-        name: 'down from the side alcove',
-        when: (s) => s.flags.includes('r02.song') && (on(s, 1900, 110, 345) || on(s, 1880, 420, 570) || on(s, 1860, 700, 860)),
-        run: async (s) => {
-          // Drop back to the floor away from the thorns (x 500–620).
-          const x = s.player!.x;
-          await b.walkTo(x < 345 ? 370 : x < 600 ? 395 : 885, 6, 8000).catch(() => undefined);
-          await b.waitFor((st) => !!st.player?.onGround, 4000, 'landed').catch(() => undefined);
-        },
-      },
-      {
         name: 'root steps',
-        when: (s) => s.flags.includes('r02.song') && (on(s, 2280) || P.some(([, y]) => on(s, y, 950, 1500))),
+        when: (s) => on(s, 2280) || ROOTS.some(([, y]) => on(s, y, 950, 1500)),
         run: async (s) => {
-          if (on(s, 2280)) {
-            if (s.player!.x < 560) {
-              await b.walkTo(470, 6);
-              await b.jumpTo(720);
-            }
-            await b.walkTo(1250, 10);
-          }
-          await climb(b, P);
+          if (on(s, 2280)) await b.walkTo(1250, 10);
+          await b.waitFor((x) => x.flags.includes('r02.song'), 5000, 'the whale song');
+          await climb(b, ROOTS);
           if (on(await b.s(), 1510)) {
             await b.walkTo(1270, 6);
             await b.jumpTo(1000);
@@ -154,35 +203,32 @@ export const ROUTES: Record<string, Route> = {
         },
       },
       {
-        name: 'reach left',
-        when: (s) => on(s, 1440, 820, 1140),
-        run: async () => {
-          // Well inside the ledge (left edge at 820).
-          await b.walkTo(870, 6);
-          await b.face(-1);
-          await b.reach();
-        },
+        name: 'across to the left wall',
+        when: (s) => on(s, 1440, 800, 1160) || on(s, 1345, 540, 720),
+        run: () =>
+          hops(b, [
+            { y: 1440, x0: 800, x1: 1160, from: 832, to: 630 },
+            { y: 1345, x0: 540, x1: 720, from: 572, to: 400 },
+          ]),
       },
       {
         name: 'left ledges',
-        when: (s) => on(s, 1250, 100, 450) || on(s, 1140, 470, 690) || on(s, 1030, 240, 460),
+        when: (s) => on(s, 1250, 100, 460) || on(s, 1140, 460, 700) || on(s, 1030, 230, 470) || on(s, 965, 520, 700),
         run: async () => {
           await climb(b, [
             [400, 1250],
             [500, 1140],
             [415, 1030],
           ]);
-          if (on(await b.s(), 1030)) {
-            // Right edge at 450: stay clear of it, the anchor is still in reach.
-            await b.walkTo(415, 6);
-            await b.face(1);
-            await b.reach();
-          }
+          await hops(b, [
+            { y: 1030, x0: 230, x1: 470, from: 435, to: 610 },
+            { y: 965, x0: 520, x1: 700, from: 665, to: 830 },
+          ]);
         },
       },
       {
         name: 'upper ledges',
-        when: (s) => on(s, 900, 750, 1130) || on(s, 790, 1170, 1390) || on(s, 680, 890, 1130) || on(s, 570, 840, 1060),
+        when: (s) => on(s, 900, 740, 1140) || on(s, 790, 1160, 1400) || on(s, 680, 880, 1140) || on(s, 570, 830, 1070),
         run: async () => {
           // Take-offs near the facing edges (with a margin for overshoot):
           // from the middle of the 790 root, 680 is out of jumping range.
@@ -195,32 +241,41 @@ export const ROUTES: Record<string, Route> = {
           ]);
         },
       },
+      { name: 'exit', when: (s) => on(s, 460, 1080, 1600), run: () => leave(b, 1, 'r03') },
       {
-        name: 'exit',
-        when: (s) => on(s, 460, 1090, 1600),
-        run: async () => {
-          await b.walkTo(1590, 6, 20_000).catch(() => undefined);
-          await b.untilRoom('r03');
-        },
-      },
-      {
-        name: 'recover from alcove/odd spot',
-        when: (s) => !!s.player && s.player.onGround,
+        name: 'back to the floor',
+        when: (s) => !!s.player?.onGround,
         run: async (s) => {
-          // Drop to the floor if somewhere unexpected.
-          await b.walkTo(s.player!.x < 800 ? 150 : 1450, 10, 8000).catch(() => undefined);
+          // Somewhere unexpected (the side alcove): step off to the floor.
+          const x = s.player!.x;
+          await b.walkTo(s.player!.y < 1950 && x < 900 ? (x < 345 ? 370 : x < 600 ? 600 : 885) : 1250, 10, 15_000).catch(() => undefined);
         },
       },
     ]);
+    await b.untilRoom('r03');
   },
+
   async r03(b) {
-    const BR: [number, number][] = [
+    // Over the poisoned pool on root steps (touching it only sends Gorti
+    // back), over the crystal steps, then the tree scene plays by itself.
+    const CROSS: Hop[] = [
+      { y: 1200, x0: 0, x1: 720, from: 678, to: 860 },
+      { y: 1170, x0: 800, x1: 920, from: 885, to: 1020 },
+      { y: 1130, x0: 940, x1: 1110, from: 1072, to: 1212 },
+      { y: 1150, x0: 1150, x1: 1280, from: 1243, to: 1420 },
+      { y: 1180, x0: 1330, x1: 1740, from: 1700, to: 1860 },
+      { y: 1150, x0: 1780, x1: 1940, from: 1905, to: 2030 },
+      { y: 1130, x0: 1950, x1: 2110, from: 2075, to: 2260 },
+      // Out of the pit on its right: straight up onto the pit step (clear of
+      // the crystal above), then up to the tree.
+      { y: 1260, x0: 1700, x1: 1810, from: 1840, to: 1840 },
+      { y: 1340, x0: 1800, x1: 2140, from: 2118, to: 2118 },
+      { y: 1260, x0: 2040, x1: 2170, from: 2115, to: 2230 },
+    ];
+    const TREE: [number, number][] = [
       [2400, 1180],
       [2535, 1070],
       [2730, 960],
-      [2520, 850],
-    ];
-    const UP: [number, number][] = [
       [2520, 850],
       [2740, 740],
       [2530, 630],
@@ -229,294 +284,94 @@ export const ROUTES: Record<string, Route> = {
       [2760, 300],
     ];
     await stages(b, 'r03', [
+      { name: 'to the tree', when: (s) => CROSS.some((h) => on(s, h.y, h.x0, h.x1)), run: () => hops(b, CROSS) },
       {
-        name: 'tunnel and first anchor',
-        when: (s) => on(s, 1200, 0, 700),
-        run: async (s) => {
-          if (s.player!.x < 540) {
-            await b.walkTo(372, 6);
-            await b.face(1);
-            await b.act('Rezonans');
-            await b.wait(700);
-          }
-          await b.walkTo(682, 6);
-          await b.face(1);
-          await b.reach();
-        },
-      },
-      {
-        name: 'second anchor',
-        when: (s) => on(s, 1130, 955, 1095),
+        name: 'the tree scene',
+        when: (s) => on(s, 1180, 2130, 3000) && !s.flags.includes('r03.bloom'),
         run: async () => {
-          await b.walkTo(1075, 6);
-          await b.face(1);
-          await b.reach();
-        },
-      },
-      {
-        name: 'breath crossing',
-        when: (s) => on(s, 1180, 1340, 1725),
-        run: async () => {
-          await b.walkTo(1702, 5);
-          await b.keyDown('KeyQ');
-          await b.wait(250);
-          await b.jumpTo(1860);
-          await b.jumpTo(2030);
-          await b.jumpTo(2215);
-          await b.keyUp('KeyQ');
-        },
-      },
-      {
-        name: 'out of the pit',
-        when: (s) => on(s, 1340, 1720, 2150) || on(s, 1260, 1715, 1795),
-        run: async (s) => {
-          if (s.player!.y > 1300) {
-            await b.walkTo(1810, 6);
-            await b.jumpTo(1752);
-          }
-          await b.jumpTo(1660);
-        },
-      },
-      {
-        name: 'moon and sun',
-        when: (s) => on(s, 1180, 2150, 3000) && !s.flags.includes('r03.sun'),
-        run: async (s) => {
-          await b.walkTo(2300, 10);
-          if (!s.flags.includes('r03.moon')) {
-            await b.sing(['high', 'mid', 'low']);
-            await b.settle();
-          }
-          await b.sing(['low', 'mid', 'low', 'high']);
-          await b.settle();
-        },
-      },
-      {
-        name: 'star',
-        when: (s) => s.flags.includes('r03.sun') && !s.flags.includes('r03.star') && !!s.player?.onGround,
-        run: async (s) => {
-          if (on(s, 1180)) await b.walkTo(2400, 8);
-          await climb(b, BR, 20, { takeoff: 55, aim: 25 });
-          await b.walkTo(2520, 8, 8000).catch(() => undefined);
-          await b.act('Yıldızı topla');
-          await b.settle();
-        },
-      },
-      {
-        name: 'bind',
-        when: (s) => s.flags.includes('r03.star') && !s.flags.includes('r03.bloom') && !!s.player?.onGround,
-        run: async (s) => {
-          if (!on(s, 1180)) await b.walkTo(2380, 6, 8000).catch(() => undefined);
-          await b.walkTo(2600, 12);
-          await b.act('Yıldızı ağaca bağla');
+          await b.walkTo(2320, 10);
           await b.settle();
         },
       },
       {
         name: 'climb the bloom',
-        when: (s) => s.flags.includes('r03.bloom') && !!s.player?.onGround,
+        when: (s) => s.flags.includes('r03.bloom') && TREE.some(([, y]) => on(s, y, 2130, 3000)),
         run: async (s) => {
           if (on(s, 1180)) await b.walkTo(2400, 8);
-          // Root ledges 150–200 px wide, 50 px apart: jump from the near edge.
-          await climb(b, [...BR, ...UP.slice(1)], 20, { takeoff: 55, aim: 25 });
-          await b.untilRoom('r04', 20_000);
+          // Branches 150–200 px wide, 110 px apart: jump from the near edge.
+          // The top branch reaches into the exit.
+          await climb(b, TREE, 20, { takeoff: 55, aim: 25 });
+          await b.waitFor((x) => x.room !== 'r03', 3000, 'the canopy exit').catch(() => undefined);
         },
       },
     ]);
+    await b.untilRoom('r04');
   },
+
   async r04(b) {
+    // Up the crystal steps to the plateau; at the memory pool the scene plays
+    // by itself and Gorti becomes human; the way east is open.
+    const UP: Hop[] = [
+      { y: 900, x0: 0, x1: 1265, from: 1232, to: 1385 },
+      { y: 830, x0: 1310, x1: 1460, from: 1390, to: 1525 },
+      { y: 730, x0: 1450, x1: 1600, from: 1530, to: 1720 },
+      // Fallen into the ditch: back up to the left.
+      { y: 960, x0: 1235, x1: 1665, from: 1290, to: 1200 },
+    ];
     await stages(b, 'r04', [
-      {
-        name: 'breath steps',
-        when: (s) => on(s, 900, 0, 1250),
-        run: async () => {
-          await b.walkTo(1232, 5);
-          await b.keyDown('KeyQ');
-          await b.wait(250);
-          await b.jumpTo(1385);
-          await b.jumpTo(1525);
-          await b.jumpTo(1710);
-          await b.keyUp('KeyQ');
-        },
-      },
-      {
-        name: 'out of the ditch',
-        when: (s) => on(s, 960, 1250, 1650),
-        run: async () => {
-          await b.walkTo(1275, 6);
-          await b.jumpTo(1200);
-        },
-      },
+      { name: 'crystal steps', when: (s) => UP.some((h) => on(s, h.y, h.x0, h.x1)), run: () => hops(b, UP) },
       {
         name: 'memory pool',
-        when: (s) => on(s, 640, 1650, 2550) && !s.flags.includes('r04.human'),
+        when: (s) => on(s, 640, 1630, 2570) && !s.flags.includes('r04.human'),
         run: async () => {
           await b.walkTo(2300, 10);
-          await b.act('Havuza bak');
           await b.settle();
         },
       },
-      {
-        name: 'grounding',
-        when: (s) => s.flags.includes('r04.human') && !s.flags.includes('r04.transformed'),
-        run: async () => {
-          await b.holdFocus(1900);
-          await b.wait(300);
-        },
-      },
-      {
-        name: 'onward',
-        when: (s) => s.flags.includes('r04.transformed') && !!s.player?.onGround,
-        run: async () => {
-          await b.walkTo(3445, 6, 40_000).catch(() => undefined);
-          await b.untilRoom('r05', 20_000);
-        },
-      },
+      { name: 'onward', when: (s) => s.flags.includes('r04.human'), run: () => leave(b, 1, 'r05') },
     ]);
+    await b.untilRoom('r05');
   },
 
   async r05(b) {
-    const form = async (want: 'root' | 'human', siteX: number): Promise<void> => {
-      const s = await b.s();
-      if (s.player!.form === want) return;
-      await b.walkTo(siteX, 6);
-      await b.tap('KeyR');
-      await b.waitFor((x) => x.player!.form === want && x.player!.state === 'normal', 5000, `form ${want}`);
-    };
-    const stone = async (i: number): Promise<{ x: number; bottom: number }> => {
-      const s = await b.s();
-      return ((s.extra.stones as ({ x: number; bottom: number } | null)[])[i])!;
-    };
-    const push = async (i: number, flag: string): Promise<void> => {
-      const st = await stone(i);
-      await b.walkTo(st.x - 30 - 17 - 6, 6);
-      await b.keyDown('KeyD');
-      await b.waitFor((x) => x.flags.includes(flag) || !x.player!.onGround, 20_000, `push ${flag}`);
-      await b.wait(300);
-      await b.keyUp('KeyD');
-    };
+    // The stones already rest on their plates and the gate is open: along
+    // the floor, up the root staircase to the hill, where the Moon scene
+    // plays by itself.
+    const STAIRS: Hop[] = [
+      { y: 1100, x0: 0, x1: 3400, from: 2762, to: 2835 },
+      { y: 1030, x0: 2775, x1: 2895, from: 2840, to: 2905 },
+      { y: 960, x0: 2845, x1: 2965, from: 2900, to: 2945 },
+      // The soil ledge overhangs the right end of this step.
+      { y: 890, x0: 2915, x1: 2965, from: 2945, to: 3060 },
+      { y: 850, x0: 2965, x1: 3245, from: 3200, to: 3285 },
+      { y: 780, x0: 3225, x1: 3345, from: 3290, to: 3355 },
+      { y: 710, x0: 3295, x1: 3415, from: 3360, to: 3470 },
+    ];
     await stages(b, 'r05', [
+      { name: 'staircase', when: (s) => STAIRS.some((h) => on(s, h.y, h.x0, h.x1)), run: () => hops(b, STAIRS) },
       {
-        name: 'first stone',
-        when: (s) => !s.flags.includes('r05.plateA') && on(s, 1100, 0, 1300),
+        name: 'the Moon',
+        when: (s) => on(s, 640, 3380, 3900) && !s.flags.includes('r05.moon'),
         run: async () => {
-          await form('human', 380);
-          const st = await stone(0);
-          if (st.x > 1240 || st.bottom < 1090) {
-            await b.walkTo(560, 8);
-            await b.act('Taşı geri çağır');
-            await b.wait(900);
-          }
-          await push(0, 'r05.plateA');
+          await b.walkTo(3620, 10);
+          await b.settle();
         },
       },
-      {
-        name: 'up to the elevated path',
-        when: (s) => s.flags.includes('r05.plateA') && !s.flags.includes('r05.plateB') && on(s, 1100, 0, 2480),
-        run: async () => {
-          await form('root', 1050);
-          // The stone now sits on the plate; reach over it from its left.
-          await b.walkTo(1126, 5);
-          await b.face(1);
-          await b.reach();
-        },
-      },
-      {
-        name: 'second stone',
-        when: (s) => s.flags.includes('r05.plateA') && !s.flags.includes('r05.plateB') && on(s, 820, 1300, 2000),
-        run: async () => {
-          await form('human', 1520);
-          await push(1, 'r05.plateB');
-        },
-      },
-      {
-        name: 'drop from the path',
-        when: (s) => s.flags.includes('r05.plateB') && on(s, 820, 1300, 2000),
-        run: async () => {
-          await b.walkTo(2060, 6, 10_000).catch(() => undefined);
-        },
-      },
-      {
-        name: 'gate and anchors',
-        // Also from the top of the pushed stone.
-        when: (s) => s.flags.includes('r05.plateB') && !!s.player?.onGround && s.player.y > 1000 && s.player.x > 1200 && s.player.x < 2980,
-        run: async () => {
-          await b.walkTo(2600, 10);
-          await form('root', 2700);
-          await b.walkTo(2802, 5);
-          await b.face(1);
-          await b.reach();
-        },
-      },
-      {
-        name: 'ledge anchor',
-        when: (s) => on(s, 850, 2970, 3240),
-        run: async () => {
-          await b.walkTo(3200, 5);
-          await b.face(1);
-          await b.reach();
-        },
-      },
-      {
-        name: 'hilltop',
-        when: (s) => on(s, 640, 3395, 3900),
-        run: async (s) => {
-          if (!s.flags.includes('r05.moon')) {
-            await b.walkTo(3620, 10);
-            await b.settle();
-          }
-          await b.walkTo(3890, 5, 15_000).catch(() => undefined);
-          await b.untilRoom('r06', 20_000);
-        },
-      },
+      { name: 'onward', when: (s) => on(s, 640, 3380, 3900), run: () => leave(b, 1, 'r06') },
     ]);
+    await b.untilRoom('r06');
   },
 
   async r06(b) {
-    const KNOTS: { id: string; x: number; y: number }[] = [
-      { id: 'k1', x: 1000, y: 900 },
-      { id: 'k2', x: 1780, y: 740 },
-      { id: 'k3', x: 2450, y: 900 },
+    // The shout scene at the start; over the mound (the knots calm as Gorti
+    // passes); the horse forms and walking up to it mounts it.
+    const MOUND: Hop[] = [
+      { y: 900, x0: 0, x1: 1500, from: 1462, to: 1560 },
+      { y: 820, x0: 1480, x1: 1630, from: 1580, to: 1700 },
+      // Walk off the far side.
+      { y: 740, x0: 1600, x1: 1960, from: 2110, to: 2110 },
+      { y: 820, x0: 1920, x1: 2070, from: 2110, to: 2110 },
     ];
-    // Unstable thorns at x≈2190 guard the ground right of the mound; a
-    // resonance pulse disperses them.
-    const clearThorns = async (): Promise<void> => {
-      for (let i = 0; i < 3; i++) {
-        const st = await b.s();
-        if (!st.prompts.some((x) => x.includes('Rezonans'))) return;
-        await b.tap('KeyE');
-        await b.wait(700);
-      }
-    };
-    const toMound = async (): Promise<void> => {
-      const s = await b.s();
-      if (on(s, 740, 1620, 1940)) return;
-      if (on(s, 820, 1940, 2050)) {
-        await b.jumpTo(1880);
-        return;
-      }
-      if (on(s, 900) && s.player!.x > 2050) {
-        if (s.player!.x > 2150) {
-          await b.walkTo(2290, 8);
-          await clearThorns();
-        }
-        await b.walkTo(2095, 6);
-        await b.jumpTo(1995);
-        await b.jumpTo(1880);
-        return;
-      }
-      await b.walkTo(1455, 6);
-      await b.jumpTo(1560);
-      await b.jumpTo(1700);
-    };
-    const pastMound = async (): Promise<void> => {
-      const s = await b.s();
-      if (on(s, 900) && s.player!.x > 2250) return;
-      if (s.player!.x < 2100) {
-        await b.walkTo(2085, 6, 15_000);
-        await clearThorns();
-      }
-      await b.walkTo(2400, 8);
-    };
     await stages(b, 'r06', [
       {
         name: 'shout',
@@ -526,292 +381,106 @@ export const ROUTES: Record<string, Route> = {
           await b.settle(120_000);
         },
       },
-      ...KNOTS.map(
-        (k): Stage => ({
-          name: `knot ${k.id}`,
-          when: (s) => s.flags.includes('r06.shout') && !s.flags.includes(`r06.${k.id}`) && KNOTS.findIndex((x) => !s.flags.includes(`r06.${x.id}`)) === KNOTS.indexOf(k) && !!s.player?.onGround,
-          run: async () => {
-            if (k.id === 'k2') await toMound();
-            if (k.id === 'k3') await pastMound();
-            await b.walkTo(k.x - 40, 8);
-            await b.holdFocus(1600);
-            await b.act('Düğümü bağla');
-            await b.settle();
-          },
-        }),
-      ),
-      {
-        name: 'mount',
-        when: (s) => s.flags.includes('r06.horse') && !!s.player?.onGround,
-        run: async () => {
-          await toMound();
-          await b.walkTo(1700, 8);
-          await b.act('Ata bin');
-          await b.settle();
-          await b.untilRoom('r07', 30_000);
-        },
-      },
+      { name: 'over the mound', when: (s) => MOUND.some((h) => on(s, h.y, h.x0, h.x1)), run: () => hops(b, MOUND) },
+      { name: 'the horse', when: (s) => on(s, 900, 2050, 3000), run: () => leave(b, 1, 'r07') },
     ]);
+    await b.untilRoom('r07');
   },
 
   async r07(b) {
-    await b.settle();
-    const start = Date.now();
-    let focusHeld = false;
-    while (Date.now() - start < 360_000) {
+    // The ride runs by itself: the horse leaps the gaps and the mound, the
+    // flower bridges bloom as it comes near, and the ride ends in r08.
+    const t0 = Date.now();
+    let lastNote = 0;
+    while (Date.now() - t0 < 420_000) {
       const s = await b.s();
-      if (s.room !== 'r07') return;
-      if (s.busy || s.context !== 'gameplay') {
-        if (focusHeld) {
-          await b.keyUp('KeyQ');
-          focusHeld = false;
-        }
+      if (s.room && s.room !== 'r07') return;
+      if (s.busy || s.dialogueOpen) {
         await b.settle(60_000).catch(() => undefined);
         continue;
       }
-      const h = s.extra.horse as { x: number; y: number; grounded: boolean; vx: number; bridges: boolean[] } | undefined;
-      if (!h) {
-        await b.wait(50);
-        continue;
+      if (Date.now() - lastNote > 15_000) {
+        lastNote = Date.now();
+        b.note(`r07: horse ${JSON.stringify(s.extra.horse ?? null)}`);
       }
-      const lead = Math.max(120, h.vx * 0.5);
-      const ahead = (x: number, near: number, far: number): boolean => x - h.x > near && x - h.x < far;
-      const jumpNow =
-        h.grounded &&
-        (RIDE_THORNS.some((x) => ahead(x, lead - 10, lead + 40)) ||
-          RIDE_SHARDS.some((x) => ahead(x, lead - 10, lead + 40)) ||
-          RIDE_GAPS.some(([a]) => ahead(a, 60, 110)) ||
-          ahead(RIDE_MOUND[0], 90, 150));
-      if (jumpNow) await b.tap('Space', 260);
-      const chasm = RIDE_CHASMS.findIndex(([a, bb]) => h.x > a - 640 && h.x < bb - 60);
-      const needFocus = chasm >= 0 && !h.bridges[chasm];
-      if (needFocus && !focusHeld) {
-        await b.keyDown('KeyQ');
-        focusHeld = true;
-      } else if (!needFocus && focusHeld) {
-        await b.keyUp('KeyQ');
-        focusHeld = false;
-      }
-      await b.wait(20);
+      await b.wait(250);
     }
-    throw new Error('ride did not finish');
+    throw new Error(`r07: the ride did not end. Log:\n${b.log.slice(-10).join('\n')}`);
   },
 
   async r08(b) {
-    type Sun = { phase: string; flowers: number; currents: number; hits: number; window: boolean; sweep: { x: number; dir: number; type: string; phase: string } | null };
-    const sun = async (): Promise<Sun | undefined> => (await b.s()).extra.sun as Sun | undefined;
-    const dodge = async (): Promise<void> => {
-      const s = await b.s();
-      const sw = (s.extra.sun as Sun | undefined)?.sweep;
-      if (!sw || sw.phase !== 'active' || sw.type !== 'low' || !s.player?.onGround) return;
-      const d = (s.player.x - sw.x) * sw.dir;
-      if (d > 0 && d < 95) await b.tap('Space', 300);
-    };
-    const walkDodging = async (x: number): Promise<void> => {
-      for (let i = 0; i < 400; i++) {
-        const s = await b.s();
-        if (s.busy || s.dialogueOpen) {
-          await b.releaseAll();
-          await b.settle();
-          continue;
-        }
-        const p = s.player!;
-        if (Math.abs(p.x - x) < 12) {
-          await b.keyUp('KeyA');
-          await b.keyUp('KeyD');
-          return;
-        }
-        await dodge();
-        if (p.x < x) {
-          await b.keyUp('KeyA');
-          await b.keyDown('KeyD');
-        } else {
-          await b.keyUp('KeyD');
-          await b.keyDown('KeyA');
-        }
-        await b.wait(25);
-      }
-      await b.releaseAll();
-    };
-    await b.settle();
+    // The Sun sequence plays by itself: the flowers open, the currents rise,
+    // the fish hit the Sun three times and it falls; then the way east opens.
     const t0 = Date.now();
-    while (Date.now() - t0 < 420_000) {
+    while (Date.now() - t0 < 300_000) {
       const s = await b.s();
-      if (s.room !== 'r08') return;
-      if (s.busy || s.dialogueOpen) {
-        await b.releaseAll();
+      if (s.room && s.room !== 'r08') return;
+      if (s.busy || s.dialogueOpen || (s.player && s.context !== 'gameplay')) {
         await b.settle(90_000);
         continue;
       }
-      const st = await sun();
-      if (!st) {
-        await b.wait(100);
-        continue;
-      }
-      if (st.phase === 'p1') {
-        await walkDodging(st.flowers === 0 ? 250 : 1030);
-        await b.tap('KeyE');
-        await b.wait(500);
-      } else if (st.phase === 'p2') {
-        await walkDodging([420, 640, 860][st.currents]!);
-        await b.tap('KeyE');
-        await b.wait(400);
-      } else if (st.phase === 'p3') {
-        if (st.window) {
-          await b.keyDown('KeyQ');
-          await b.wait(950);
-          await b.keyUp('KeyQ');
-          await b.wait(1500);
-        } else {
-          await walkDodging(640);
-          await dodge();
-          await b.wait(30);
-        }
-      } else if (st.phase === 'done') {
-        await b.walkTo(1270, 6, 20_000).catch(() => undefined);
-        await b.untilRoom('r09', 20_000);
+      if (s.flags.includes('r08.done')) {
+        await leave(b, 1, 'r09');
         return;
-      } else await b.wait(100);
+      }
+      await b.wait(250);
     }
-    throw new Error('sun encounter did not finish');
+    throw new Error(`r08: the Sun sequence did not end: ${JSON.stringify((await b.s()).extra.sun ?? null)}`);
   },
 
   async r09(b) {
+    // Over the river stones (or through the river bed); the line scene and,
+    // at the pool, the fold scene play by themselves.
+    const RIVER: Hop[] = [
+      { y: 900, x0: 0, x1: 1310, from: 1290, to: 1400 },
+      { y: 880, x0: 1345, x1: 1455, from: 1420, to: 1570 },
+      { y: 872, x0: 1515, x1: 1625, from: 1590, to: 1770 },
+      { y: 960, x0: 1285, x1: 1715, from: 1665, to: 1770 },
+    ];
     await stages(b, 'r09', [
-      {
-        name: 'riverbank',
-        when: (s) => on(s, 900, 0, 1300),
-        run: async () => {
-          await b.walkTo(1290, 6);
-          await b.jumpTo(1400);
-          await b.jumpTo(1570);
-          await b.jumpTo(1760);
-        },
-      },
-      {
-        name: 'river stones',
-        when: (s) => on(s, 880, 1355, 1445) || on(s, 872, 1525, 1615),
-        run: async () => {
-          await climb(b, [
-            [1400, 880],
-            [1570, 872],
-            [1760, 900],
-          ]);
-        },
-      },
-      {
-        name: 'in the river',
-        when: (s) => on(s, 960, 1300, 1700),
-        run: async () => {
-          await b.walkTo(1660, 6);
-          await b.jumpTo(1760);
-        },
-      },
-      {
-        name: 'to the pool',
-        when: (s) => on(s, 900, 1700, 3200),
-        run: async () => {
-          await b.walkTo(2860, 10, 40_000);
-          await b.act('Gözlerini kapat');
-          await b.settle();
-          await b.untilRoom('r10', 30_000);
-        },
-      },
-      {
-        name: 'down from the nest',
-        when: (s) => on(s, 640, 2190, 2370),
-        run: async () => {
-          await b.walkTo(2400, 6, 8000).catch(() => undefined);
-        },
-      },
+      { name: 'river', when: (s) => RIVER.some((h) => on(s, h.y, h.x0, h.x1)), run: () => hops(b, RIVER) },
+      { name: 'to the pool', when: (s) => on(s, 900, 1690, 3200), run: () => leave(b, 1, 'r10') },
+      // The sparrow's branch (not on the way): step off it.
+      { name: 'off the branch', when: (s) => on(s, 640, 2180, 2380), run: () => b.walkTo(2420, 6, 8000).catch(() => undefined) },
     ]);
+    await b.untilRoom('r10');
   },
 
   async r10(b) {
-    const solveStation = async (x: number): Promise<void> => {
-      await b.walkTo(x, 10);
-      await b.act('Anıyı geri sar');
-      await b.waitFor((s) => s.puzzleOpen, 5000, 'puzzle open');
-      await b.wait(600);
-      if (b.touch) {
-        // Touch: tap the first card, then the last one to swap them.
-        await b.touchSelector('.puzzle .card', 0);
-        await b.wait(250);
-        await b.touchSelector('.puzzle .card', 2);
-      } else {
-        await b.tap('KeyE');
-        await b.wait(200);
-        await b.tap('ArrowRight');
-        await b.wait(150);
-        await b.tap('ArrowRight');
-        await b.wait(150);
-        await b.tap('KeyE');
-      }
-      await b.waitFor((s) => !s.puzzleOpen, 8000, 'puzzle solved');
-      await b.settle();
-    };
-    await stages(b, 'r10', [
-      { name: 'station 1', when: (s) => !s.flags.includes('r10.s1') && !!s.player?.onGround, run: () => solveStation(760) },
-      { name: 'station 2', when: (s) => s.flags.includes('r10.s1') && !s.flags.includes('r10.s2') && !!s.player?.onGround, run: () => solveStation(1650) },
-      { name: 'station 3', when: (s) => s.flags.includes('r10.s2') && !s.flags.includes('r10.s3') && !!s.player?.onGround, run: () => solveStation(2500) },
-      {
-        name: 'keep the torch lit',
-        when: (s) => s.flags.includes('r10.s3'),
-        run: async () => {
-          for (let i = 0; i < 70; i++) {
-            const s = await b.s();
-            if (s.room !== 'r10' || s.busy) break;
-            await b.tap('KeyE', 60);
-            await b.wait(110);
-          }
-          await b.settle(120_000);
-          await b.untilRoom('r11', 60_000);
-        },
-      },
-    ]);
+    // The memory stations play as Gorti walks past them and the beds grow
+    // into bridges over the gaps; at the third the finale, the torch moment
+    // and the second finale follow by themselves, and the room moves on.
+    await b.settle();
+    await leave(b, 1, 'r11', 180_000);
   },
 
   async r11(b) {
-    // A waist-high metal block at x 420–520 has to be jumped.
-    const pastBlock = async (): Promise<void> => {
-      const s = await b.s();
-      if (on(s, 820) && s.player!.x < 430) {
-        await b.walkTo(392, 6);
-        await b.jumpTo(470);
-      }
-    };
+    // The key scene opens the wall and the lock scene grows the steps, both
+    // by themselves as the mechanical form walks by.
+    await b.settle();
     await stages(b, 'r11', [
       {
-        name: 'align the key-eye',
-        when: (s) => !s.flags.includes('r11.m1') && (on(s, 820) || on(s, 740, 420, 520)),
+        name: 'onto the block',
+        // A waist-high metal block at x 420–520 has to be jumped.
+        when: (s) => on(s, 820, 0, 410),
         run: async () => {
-          await pastBlock();
-          await b.walkTo(900, 8);
-          await b.act('Anahtar gözünü hizala');
-          for (let i = 0; i < 9; i++) {
-            await b.tap('ArrowRight', 60);
-            await b.wait(120);
-          }
-          await b.tap('KeyE');
-          await b.waitFor((s) => s.flags.includes('r11.m1'), 5000, 'wall open');
-          await b.settle();
+          await b.walkTo(378, 6);
+          await b.jumpTo(470);
         },
       },
       {
-        name: 'reveal the lock',
-        when: (s) => s.flags.includes('r11.m1') && !s.flags.includes('r11.m2') && on(s, 820),
+        name: 'key and lock',
+        when: (s) => !s.flags.includes('r11.m2') && (on(s, 820, 410, 1900) || on(s, 740, 400, 540)),
         run: async () => {
-          await b.walkTo(1830, 8);
-          await b.holdFocus(1500);
-          await b.act('Kilide bak');
-          await b.waitFor((s) => s.flags.includes('r11.m2'), 5000, 'lock');
+          await b.walkTo(1700, 8);
+          await b.waitFor((x) => x.flags.includes('r11.m2') || x.busy, 5000, 'the lock scene');
         },
       },
       {
-        name: 'climb to the legs',
-        when: (s) => s.flags.includes('r11.m2') && !!s.player?.onGround && s.player!.y > 600,
-        run: async () => {
-          await b.walkTo(1700, 6);
+        name: 'steps to the ledge',
+        when: (s) => s.flags.includes('r11.m2') && (on(s, 820, 410, 1900) || on(s, 740, 1720, 1860) || on(s, 650, 1790, 1900)),
+        run: async (s) => {
+          if (on(s, 820)) await b.walkTo(1700, 6);
           await climb(b, [
             [1700, 820],
             [1790, 740],
@@ -820,47 +489,26 @@ export const ROUTES: Record<string, Route> = {
           ]);
         },
       },
-      {
-        name: 'wake Gorti',
-        when: (s) => s.flags.includes('r11.m2') && on(s, 560, 1900, 2800),
-        run: async () => {
-          await b.walkTo(2530, 8);
-          await b.keyDown('KeyE');
-          await b.wait(2700);
-          await b.keyUp('KeyE');
-          await b.settle(60_000);
-          await b.untilRoom('r12', 30_000);
-        },
-      },
+      { name: 'wake', when: (s) => on(s, 560, 1880, 2800), run: () => leave(b, 1, 'r12') },
     ]);
+    await b.untilRoom('r12');
   },
 
   async r12(b) {
-    const readDoc = async (x: number): Promise<void> => {
-      await b.walkTo(x, 10);
-      await b.act('Belgeyi incele');
-      await b.waitFor((s) => s.docOpen, 5000, 'doc open');
-      await b.wait(700);
-      await b.tap('KeyE');
-      await b.waitFor((s) => !s.docOpen, 5000, 'doc closed');
-      await b.wait(200);
-    };
+    // The suit cannot jump: walk. The door opens by itself; at the end of
+    // the table the last pages open by themselves and are put down, then the
+    // closing scene and the ending follow.
     await b.settle(60_000);
-    await b.walkTo(1545, 8, 60_000);
-    await b.act('Kapıyı aç');
-    await b.wait(600);
-    await readDoc(1990);
-    await readDoc(2150);
-    await readDoc(2310);
-    await b.walkTo(2150, 10);
-    await b.act('Son sayfayı çevir');
-    await b.waitFor((s) => s.docOpen, 5000, 'clause page');
-    await b.wait(700);
-    await b.tap('KeyE');
-    await b.waitFor((s) => s.docOpen, 5000, 'final page');
-    await b.wait(900);
-    await b.tap('KeyE');
+    await walkUntil(b, 1, (s) => s.docOpen, 'the last pages');
+    for (const label of ['Sayfayı çevir', 'Bırak']) {
+      const t0 = Date.now();
+      while (!(await docButton(b)).includes(label)) {
+        if (Date.now() - t0 > 15_000) throw new Error(`r12: no page with "${label}" (button: "${await docButton(b)}")`);
+        await b.wait(100);
+      }
+      await b.wait(800);
+      await b.tap('KeyE');
+    }
     await b.waitFor((s) => s.scenes.includes('ending') && s.endingOpen, 60_000, 'ending');
   },
-
 };

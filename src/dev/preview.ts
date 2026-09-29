@@ -1,7 +1,7 @@
 // Development-only art sheet (not part of the production build).
 import { allParts, allRigs } from '../game/art/manifest';
 import { drawOrder, isNear, orderJoints, solve } from '../game/art/fk';
-import { poseFor } from '../game/entities/animPoses';
+import { poseFor, type PoseParams } from '../game/entities/animPoses';
 import { horsePose } from '../game/entities/horsePoses';
 
 const partsEl = document.getElementById('parts')!;
@@ -36,27 +36,35 @@ async function load(): Promise<void> {
   );
 }
 
-function drawRig(rigId: string, anim: string, t: number, facing: 1 | -1, zoomIn = 2.5): HTMLCanvasElement {
+function drawRig(rigId: string, anim: string, t: number, facing: 1 | -1, zoomIn = 2.5, prm: PoseParams = {}): HTMLCanvasElement {
   const rig = allRigs().find((r) => r.id === rigId)!;
   const c = document.createElement('canvas');
   let zoom = zoomIn;
   const wide = rigId === 'horse';
-  c.width = wide ? 440 : 220;
-  c.height = 360;
+  // head=1 frames the head up close (with a large zoom).
+  const q = new URLSearchParams(location.search);
+  const head = q.get('head') === '1';
+  c.width = wide ? 440 : head ? 180 : 220;
+  c.height = head ? 180 : 360;
   const ctx = c.getContext('2d')!;
-  ctx.translate(wide ? 200 : 110, 330);
+  ctx.translate(wide ? 200 : head ? 70 : 110, head ? 150 + zoomIn * 88 : 330);
   if (wide) zoom = 1.15;
   ctx.scale(zoom * facing, zoom);
   const ordered = orderJoints(rig);
-  const pose = rig.id === 'horse' ? horsePose(anim === 'walk' ? 'gallop' : anim, t) : poseFor(rig.id, anim, t);
+  const pose = rig.id === 'horse' ? horsePose(anim === 'walk' ? 'gallop' : anim, t) : poseFor(rig.id, anim, t, prm);
   const solved = solve(ordered, pose.angles, pose.offsets);
   for (const j of drawOrder(ordered, facing)) {
     const s = solved.get(j.id)!;
-    const p = parts.find((pp) => pp.key === j.part)!;
-    const img = imgs.get(j.part!)!;
+    // Shape variants (eyes, mouth) and per-joint scale, as in RigView.
+    const v = pose.frames?.[j.id];
+    const key = v && imgs.has(`${j.part!}.${v}`) ? `${j.part!}.${v}` : j.part!;
+    const p = parts.find((pp) => pp.key === key)!;
+    const img = imgs.get(key)!;
+    const sc = pose.scales?.[j.id];
     ctx.save();
     ctx.translate(s.x + (pose.x ?? 0), s.y + (pose.y ?? 0));
     ctx.rotate(s.rot);
+    if (sc) ctx.scale(sc.x, sc.y);
     if (j.additive) ctx.globalCompositeOperation = 'lighter';
     if (!isNear(j, facing)) ctx.filter = 'brightness(0.72)';
     ctx.drawImage(img, -p.px, -p.py, p.w, p.h);
@@ -72,13 +80,23 @@ function drawRig(rigId: string, anim: string, t: number, facing: 1 | -1, zoomIn 
 
 void load().then(() => {
   const params = new URLSearchParams(location.search);
+  // anims=idle,fall@vy=700,land@k=0.1;impact=1,idle@emote=joy;emoteK=1
   const anims = (params.get('anims') ?? 'idle,walk,rise,fall,reach,song,breath,push').split(',');
   const only = params.get('rigs')?.split(',');
+  const zoom = Number(params.get('zoom') ?? 2.5);
+  const both = params.get('both') !== '0';
   for (const rig of allRigs().filter((r) => !only || only.includes(r.id))) {
     const row = document.createElement('div');
     row.innerHTML = `<div>${rig.id}</div>`;
-    for (const a of anims) {
-      for (const t of [0, 0.35]) row.appendChild(drawRig(rig.id, a, t, t === 0 ? 1 : -1));
+    for (const spec of anims) {
+      const [a, q = ''] = spec.split('@');
+      const prm: Record<string, number | string> = {};
+      for (const kv of q.split(';').filter(Boolean)) {
+        const [k, val = ''] = kv.split('=');
+        prm[k!] = Number.isNaN(Number(val)) ? val : Number(val);
+      }
+      const t = typeof prm.t === 'number' ? prm.t : 0;
+      for (const f of both ? ([1, -1] as const) : ([1] as const)) row.appendChild(drawRig(rig.id, a!, f === 1 ? t : t + 0.35, f, zoom, prm as PoseParams));
     }
     rigsEl.appendChild(row);
   }

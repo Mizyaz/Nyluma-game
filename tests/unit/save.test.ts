@@ -94,13 +94,13 @@ describe('SaveSystem', () => {
   it('normalizes and persists settings separately from progress', () => {
     const st = new MemStorage();
     const s = new SaveSystem(st);
-    s.saveSettings({ ...DEFAULT_SETTINGS, music: 0.25, textSpeed: 'instant', touch: 'on', storyAssist: true });
+    s.saveSettings({ ...DEFAULT_SETTINGS, music: 0.25, textSpeed: 'instant', touch: 'on', reducedMotion: true });
     expect(st.map.has(SETTINGS_KEY)).toBe(true);
     const back = new SaveSystem(st).loadSettings();
     expect(back.music).toBe(0.25);
     expect(back.textSpeed).toBe('instant');
     expect(back.touch).toBe('on');
-    expect(back.storyAssist).toBe(true);
+    expect(back.reducedMotion).toBe(true);
     st.map.set(SETTINGS_KEY, JSON.stringify({ schema: 1, settings: { master: 7, sfx: -2, textSpeed: 'warp', reducedMotion: 'yes' } }));
     const odd = new SaveSystem(st).loadSettings();
     expect(odd.master).toBe(1);

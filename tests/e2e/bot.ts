@@ -6,8 +6,8 @@ import { probe, type ProbeState } from './helpers';
 // the on-screen controls and panels (no keyboard at all). The bot only
 // *reads* the e2e probe to decide when to press or release.
 
-type Key = 'KeyA' | 'KeyD' | 'Space' | 'KeyE' | 'KeyQ' | 'KeyR' | 'KeyF' | 'Enter' | 'Escape' | 'ArrowLeft' | 'ArrowRight' | 'ArrowDown';
-type Control = 'left' | 'right' | 'jump' | 'action' | 'focus' | 'form' | 'song';
+type Key = 'KeyA' | 'KeyD' | 'Space' | 'KeyE' | 'Enter' | 'Escape' | 'ArrowLeft' | 'ArrowRight';
+type Control = 'left' | 'right' | 'jump' | 'action';
 interface Rect {
   x: number;
   y: number;
@@ -33,18 +33,18 @@ export class Bot {
     this.touch = mode === 'touch';
   }
 
-  private lastState: (ProbeState & { extra: Record<string, unknown>; prompts: string[] }) | null = null;
+  private lastState: ProbeState | null = null;
   private lastAt = 0;
 
-  async s(): Promise<ProbeState & { extra: Record<string, unknown>; prompts: string[] }> {
-    const st = (await probe(this.page)) as ProbeState & { extra: Record<string, unknown>; prompts: string[] };
+  async s(): Promise<ProbeState> {
+    const st = await probe(this.page);
     this.lastState = st;
     this.lastAt = Date.now();
     return st;
   }
 
   /** The state just read by the caller, if fresh (saves a round trip per touch). */
-  private async recent(): Promise<ProbeState & { extra: Record<string, unknown>; prompts: string[] }> {
+  private async recent(): Promise<ProbeState> {
     return this.lastState && Date.now() - this.lastAt < 120 ? this.lastState : this.s();
   }
 
@@ -156,12 +156,7 @@ export class Bot {
 
   private async touchDown(k: Key): Promise<void> {
     const st = await this.recent();
-    // Panels and dialogue are touched directly.
-    if (st.songOpen && (k === 'ArrowLeft' || k === 'ArrowDown' || k === 'ArrowRight' || k === 'KeyA' || k === 'KeyD')) {
-      const idx = k === 'ArrowLeft' || k === 'KeyA' ? 0 : k === 'ArrowDown' ? 1 : 2;
-      await this.touchSelector('.song .note-btn', idx);
-      return;
-    }
+    // Document pages and dialogue are touched directly.
     if (st.docOpen && (k === 'KeyE' || k === 'Space' || k === 'Enter')) {
       await this.touchSelector('.doc .close');
       return;
@@ -174,23 +169,8 @@ export class Bot {
       await this.touchSelector('.hud [aria-label="Duraklat"]');
       return;
     }
-    const control: Control | null =
-      k === 'KeyA' || k === 'ArrowLeft'
-        ? 'left'
-        : k === 'KeyD' || k === 'ArrowRight'
-          ? 'right'
-          : k === 'Space'
-            ? 'jump'
-            : k === 'KeyE' || k === 'Enter'
-              ? 'action'
-              : k === 'KeyQ'
-                ? 'focus'
-                : k === 'KeyR'
-                  ? 'form'
-                  : k === 'KeyF'
-                    ? 'song'
-                    : null;
-    if (!control) return;
+    const control: Control =
+      k === 'KeyA' || k === 'ArrowLeft' ? 'left' : k === 'KeyD' || k === 'ArrowRight' ? 'right' : k === 'Space' ? 'jump' : 'action';
     const r = await this.controlRect(control);
     if (!r) {
       this.note(`touch: control ${control} not visible`);
@@ -207,17 +187,31 @@ export class Bot {
     await this.page.waitForTimeout(ms);
   }
 
-  /** Advances dialogues and skips cutscenes until the player has control. */
+  /**
+   * Advances dialogues, skips cutscenes and puts document pages down until
+   * the player has control.
+   */
   async settle(timeout = 90_000): Promise<ProbeState> {
     const start = Date.now();
     let st = await this.s();
+    let docSince = 0;
     while (Date.now() - start < timeout) {
       st = await this.s();
-      if (st.context === 'gameplay' && !st.busy && !st.dialogueOpen && st.player && (st.player.state === 'normal' || st.player.state === 'hidden')) return st;
+      if (st.context === 'gameplay' && !st.busy && !st.dialogueOpen && !st.docOpen && st.player && (st.player.state === 'normal' || st.player.state === 'hidden')) return st;
+      if (!st.docOpen) docSince = 0;
       if (st.dialogueOpen) {
         await this.tap('Space', 60);
         await this.wait(140);
-      } else if (st.busy && (st.context === 'cutscene')) {
+      } else if (st.docOpen) {
+        // Read for a moment first: a short guard keeps the key that opened
+        // a page from also closing it.
+        docSince ||= Date.now();
+        if (Date.now() - docSince > 600) {
+          await this.tap('KeyE');
+          docSince = 0;
+        }
+        await this.wait(150);
+      } else if (st.busy && st.context === 'cutscene') {
         await this.keyDown('Enter');
         await this.wait(1000);
         await this.keyUp('Enter');
@@ -227,7 +221,7 @@ export class Bot {
     throw new Error(`settle timed out: ${JSON.stringify(st)}`);
   }
 
-  async waitFor(pred: (s: ProbeState & { extra: Record<string, unknown>; prompts: string[] }) => boolean, timeout = 30_000, label = 'condition'): Promise<ProbeState & { extra: Record<string, unknown>; prompts: string[] }> {
+  async waitFor(pred: (s: ProbeState) => boolean, timeout = 30_000, label = 'condition'): Promise<ProbeState> {
     const start = Date.now();
     let st = await this.s();
     while (Date.now() - start < timeout) {
@@ -236,21 +230,33 @@ export class Bot {
       if (st.dialogueOpen) await this.tap('Space', 60);
       await this.wait(80);
     }
-    throw new Error(`waitFor ${label} timed out: ${JSON.stringify({ room: st.room, p: st.player, ctx: st.context, busy: st.busy, obj: st.objective })}`);
+    throw new Error(`waitFor ${label} timed out: ${JSON.stringify({ room: st.room, p: st.player, ctx: st.context, busy: st.busy })}`);
   }
 
-  /** Closed-loop walk to x. */
+  /** Closed-loop walk to x. Returns early (no error) if the room changes. */
   async walkTo(x: number, tol = 8, timeout = 40_000): Promise<void> {
     const start = Date.now();
+    let room: string | null = null;
     while (Date.now() - start < timeout) {
       const st = await this.s();
-      const p = st.player!;
+      const p = st.player;
+      if (!p) {
+        // Between rooms.
+        await this.releaseAll();
+        await this.wait(100);
+        continue;
+      }
+      room ??= st.room;
+      if (st.room !== room) {
+        await this.releaseAll();
+        return;
+      }
       if (st.dialogueOpen) {
         await this.releaseAll();
         await this.tap('Space', 60);
         continue;
       }
-      if (st.busy || st.context !== 'gameplay') {
+      if (st.busy || st.context !== 'gameplay' || st.docOpen) {
         await this.releaseAll();
         await this.settle();
         continue;
@@ -283,35 +289,6 @@ export class Bot {
     throw new Error(`walkTo ${x} timed out at ${JSON.stringify((await this.s()).player)}`);
   }
 
-  /**
-   * Deals with a wisp before a jump, as a careful player would: pulses once
-   * it is in reach (the prompt says so) and waits while one lurks nearby.
-   */
-  async clearWisps(timeout = 5000): Promise<void> {
-    const t0 = Date.now();
-    while (Date.now() - t0 < timeout) {
-      const st = await this.s();
-      const p = st.player;
-      if (!p || st.context !== 'gameplay') return;
-      const near = (st.hazards ?? []).some((h) => h.kind === 'wisp' && h.dispersible && Math.hypot(h.x - p.x, h.y - (p.y - 50)) < 280);
-      if (!near) return;
-      if (st.prompts.some((x) => x.includes('Rezonans'))) {
-        await this.tap('KeyE');
-        await this.wait(250);
-        continue;
-      }
-      await this.wait(60);
-    }
-  }
-
-  /** Turns to face a direction without moving far. */
-  async face(dir: 1 | -1): Promise<void> {
-    const st = await this.s();
-    if (st.player?.facing === dir) return;
-    await this.tap(dir > 0 ? 'KeyD' : 'KeyA', 40);
-    await this.wait(120);
-  }
-
   /** Jumps and steers in the air toward targetX until landing. */
   async jumpTo(targetX: number, opts: { hold?: number; timeout?: number; tol?: number } = {}): Promise<ProbeState> {
     // Without an explicit hold the jump button stays down until the rise has
@@ -323,11 +300,14 @@ export class Bot {
     await this.keyDown('Space');
     let released = false;
     let st = await this.s();
-    const y0 = st.player!.y;
+    const room = st.room;
+    const y0 = st.player?.y ?? 0;
     let left = false;
     while (Date.now() - t0 < (opts.timeout ?? 4000)) {
       st = await this.s();
-      const p = st.player!;
+      const p = st.player;
+      // Through an exit mid-jump.
+      if (!p || st.room !== room) break;
       if (!p.onGround || Math.abs(p.y - y0) > 2) left = true;
       const done = hold !== undefined ? Date.now() - t0 > hold : (left && p.vy > -120) || Date.now() - t0 > 1500;
       if (!released && done) {
@@ -360,30 +340,6 @@ export class Bot {
     await this.waitFor((s) => s.prompts.some((p) => p.includes(label)), timeout, `prompt "${label}"`);
     await this.tap('KeyE');
     await this.wait(120);
-  }
-
-  async reach(): Promise<void> {
-    const before = await this.s();
-    await this.act('Köke uzan');
-    await this.waitFor((s) => s.player!.state === 'normal' && s.player!.onGround && Math.hypot(s.player!.x - before.player!.x, s.player!.y - before.player!.y) > 40, 6000, 'reach landing');
-  }
-
-  async sing(pattern: ('low' | 'mid' | 'high')[]): Promise<void> {
-    await this.waitFor((s) => s.prompts.some((p) => p.includes('Şarkı')), 8000, 'song prompt');
-    await this.tap('KeyF');
-    await this.waitFor((s) => s.songOpen, 5000, 'song panel');
-    await this.wait(400 + pattern.length * 720 + 300);
-    for (const n of pattern) {
-      await this.tap(n === 'low' ? 'ArrowLeft' : n === 'mid' ? 'ArrowDown' : 'ArrowRight', 60);
-      await this.wait(260);
-    }
-    await this.waitFor((s) => !s.songOpen, 6000, 'song closed');
-  }
-
-  async holdFocus(ms: number): Promise<void> {
-    await this.keyDown('KeyQ');
-    await this.wait(ms);
-    await this.keyUp('KeyQ');
   }
 
   async untilRoom(room: string, timeout = 60_000): Promise<void> {

@@ -6,10 +6,13 @@ import { E2E, probe, waitState, watchErrors } from './helpers';
 // Reference screenshots for the QA report (WebGL renderer). Skipped unless
 // SHOTS=1; uses the e2e build's room jump to reach each scene quickly:
 //   npm run build:e2e && SHOTS=1 npx playwright test screenshots
-const OUT = 'qa/screenshots';
+// SHOTS_DIR writes them elsewhere. `bursts=0` keeps the colour bombardment
+// out of the pictures.
+const OUT = process.env.SHOTS_DIR ?? 'qa/screenshots';
+const GAME = `${E2E}?bursts=0`;
 
 async function jump(page: Page, room: string, extra: Record<string, string> = {}): Promise<Bot> {
-  const q = new URLSearchParams({ room, ...extra });
+  const q = new URLSearchParams({ room, bursts: '0', ...extra });
   await page.goto(`${E2E}?${q.toString()}`);
   await waitState(page, (s) => s.room === room && !!s.player, 90_000, `room ${room}`);
   const bot = new Bot(page);
@@ -28,7 +31,7 @@ test.describe('reference screenshots', () => {
 
   test('main menu', async ({ page }) => {
     const errors = watchErrors(page);
-    await page.goto(E2E);
+    await page.goto(GAME);
     await expect(page.getByRole('button', { name: 'Yeni Oyun' })).toBeVisible({ timeout: 90_000 });
     await page.waitForTimeout(2500);
     await shot(page, '01-menu');
@@ -36,7 +39,7 @@ test.describe('reference screenshots', () => {
   });
 
   test('crystal tunnel transition', async ({ page }) => {
-    await page.goto(`${E2E}?room=r05`);
+    await page.goto(`${GAME}&room=r05`);
     await waitState(page, (s) => s.scenes.includes('warp'), 120_000, 'tunnel');
     await page.waitForTimeout(450);
     await shot(page, '08-crystal-tunnel');
@@ -49,12 +52,12 @@ test.describe('reference screenshots', () => {
     await shot(page, '02-root-forest');
   });
 
-  test('human form puzzle', async ({ page }) => {
-    const bot = await jump(page, 'r05', { form: 'human', flags: 'r05.enter,r05.formTut' });
-    await bot.walkTo(690, 8);
+  test('human form by the memory stones', async ({ page }) => {
+    const bot = await jump(page, 'r05', { form: 'human', flags: 'r05.enter' });
+    await bot.walkTo(1000, 8);
     await bot.keyDown('KeyD');
     await page.waitForTimeout(1500);
-    await shot(page, '03-human-puzzle');
+    await shot(page, '03-human-stones');
     await bot.keyUp('KeyD');
   });
 
@@ -78,15 +81,33 @@ test.describe('reference screenshots', () => {
     await shot(page, '06-dormitory');
   });
 
-  test('final document', async ({ page }) => {
-    const bot = await jump(page, 'r12', { cp: 'r12_room', flags: 'r12.intercut,r12.door,r12.doc1,r12.doc2,r12.doc3,r12.read' });
-    await bot.walkTo(2150, 10);
-    await bot.act('Son sayfayı çevir');
-    await waitState(page, (s) => s.docOpen, 5000, 'clause page');
+  test('colour bombardment', async ({ page }) => {
+    await jump(page, 'r02', { bursts: 'fast' });
+    await waitState(page, (s) => !!s.bursts?.active, 30_000, 'bombardment');
+    await page.waitForTimeout(900);
+    await shot(page, '11-colour-storm');
+  });
+
+  test('Gorti near the top of a jump', async ({ page }) => {
+    const bot = await jump(page, 'r06', { cp: 'r06_knots', flags: 'r06.shout', form: 'root' });
+    await bot.walkTo(860, 10);
     await page.waitForTimeout(800);
-    await bot.tap('KeyE');
-    await page.waitForTimeout(400);
-    await waitState(page, (s) => s.docOpen, 5000, 'final page');
+    await page.keyboard.down('Space');
+    await waitState(page, (s) => !!s.player && !s.player.onGround && s.player.vy > -220, 5000, 'top of the jump');
+    await shot(page, '12-jump');
+    await page.keyboard.up('Space');
+  });
+
+  test('final document', async ({ page }) => {
+    await jump(page, 'r12', { cp: 'r12_room', flags: 'r12.intercut,r12.door' });
+    // At the end of the table the last pages open by themselves.
+    await page.keyboard.down('KeyD');
+    await waitState(page, (s) => s.docOpen, 60_000, 'clause page');
+    await page.keyboard.up('KeyD');
+    await expect(page.locator('.doc .close')).toContainText('Sayfayı çevir');
+    await page.waitForTimeout(800);
+    await page.keyboard.press('KeyE');
+    await expect(page.locator('.doc .close')).toContainText('Bırak');
     await page.waitForTimeout(1600);
     await shot(page, '07-final-document');
     const st = await probe(page);
@@ -100,14 +121,14 @@ test.describe('reference screenshots, phone held upright', () => {
   test.setTimeout(300_000);
 
   test('main menu (upright phone)', async ({ page }) => {
-    await page.goto(E2E);
+    await page.goto(GAME);
     await expect(page.getByRole('button', { name: 'Yeni Oyun' })).toBeVisible({ timeout: 90_000 });
     await page.waitForTimeout(2500);
     await shot(page, '09-phone-menu');
   });
 
   test('first room with subtitles (upright phone)', async ({ page }) => {
-    await page.goto(`${E2E}?room=r01`);
+    await page.goto(`${GAME}&room=r01`);
     await waitState(page, (s) => s.room === 'r01' && !!s.player, 90_000, 'room r01');
     await expect(page.locator('.caption.show')).toBeVisible({ timeout: 60_000 });
     await page.waitForTimeout(1200);

@@ -10,7 +10,6 @@ export const R10: RoomDef = {
   theme: 'dorm',
   music: 'inner',
   player: 'coward',
-  objective: 'r10.stations',
   killY: 1060,
   checkpoints: [
     { id: 'r10_start', x: 150, y: 820, facing: 1, silent: true },
@@ -26,11 +25,6 @@ export const R10: RoomDef = {
     { x: 290, y: 752, w: 170, h: 20, style: 'bed', oneWay: true, hidden: true },
     { x: 1390, y: 752, w: 170, h: 20, style: 'bed', oneWay: true, hidden: true },
     { x: 2290, y: 752, w: 170, h: 20, style: 'bed', oneWay: true, hidden: true },
-  ],
-  interacts: [
-    { id: 'st1', x: 760, y: 820, r: 85, prompt: 'Anıyı geri sar', unless: 'r10.s1' },
-    { id: 'st2', x: 1650, y: 820, r: 85, prompt: 'Anıyı geri sar', unless: 'r10.s2' },
-    { id: 'st3', x: 2500, y: 820, r: 85, prompt: 'Anıyı geri sar', unless: 'r10.s3' },
   ],
   exits: [],
   props: [

@@ -5,6 +5,8 @@ import { ROUTES } from './routes';
 // Developer harness (skipped unless DEV_ROUTE is set): runs one room route
 // against the e2e build's room jump (run `npm run build:e2e` first), e.g.
 //   DEV_ROUTE=r02 npx playwright test devroute
+// DEV_FLAGS, DEV_CP and DEV_FORM (root | human) set the jump's flags,
+// checkpoint and form.
 const room = process.env.DEV_ROUTE;
 
 test.describe('dev route', () => {
@@ -16,6 +18,7 @@ test.describe('dev route', () => {
     const q = new URLSearchParams({ room: room!, canvas: '1' });
     if (process.env.DEV_FLAGS) q.set('flags', process.env.DEV_FLAGS);
     if (process.env.DEV_CP) q.set('cp', process.env.DEV_CP);
+    if (process.env.DEV_FORM) q.set('form', process.env.DEV_FORM);
     page.on('pageerror', (e) => console.log('PAGEERROR', e.message));
     await page.goto(`http://localhost:4175/?${q.toString()}`);
     await page.waitForFunction(() => {
@@ -26,7 +29,7 @@ test.describe('dev route', () => {
     const trace = setInterval(() => {
       void bot
         .s()
-        .then((st) => console.log(`TRACE ${JSON.stringify({ room: st.room, ctx: st.context, busy: st.busy, p: st.player && { x: Math.round(st.player.x), y: Math.round(st.player.y), g: st.player.onGround, st: st.player.state, f: st.player.form, h: st.player.halves }, obj: st.objective, prompts: st.prompts, extra: st.extra })}`))
+        .then((st) => console.log(`TRACE ${JSON.stringify({ room: st.room, ctx: st.context, busy: st.busy, p: st.player && { x: Math.round(st.player.x), y: Math.round(st.player.y), g: st.player.onGround, st: st.player.state, f: st.player.form }, prompts: st.prompts, extra: st.extra })}`))
         .catch(() => undefined);
     }, 5000);
     try {
@@ -36,9 +39,9 @@ test.describe('dev route', () => {
       ]);
     } finally {
       clearInterval(trace);
-      await page.screenshot({ path: `/tmp/claude-0/route-${room}.png` });
+      await page.screenshot({ path: test.info().outputPath(`route-${room}.png`) });
       const st = await bot.s();
-      console.log(JSON.stringify({ room: st.room, p: st.player, obj: st.objective, flags: st.flags.slice(-8) }));
+      console.log(JSON.stringify({ room: st.room, p: st.player, flags: st.flags.slice(-8) }));
     }
   });
 });

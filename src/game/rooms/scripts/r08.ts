@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
 import { app } from '../../App';
-import { DEPTH, HULL_H, HULL_W } from '../../constants';
+import { DEPTH } from '../../constants';
 import { hex, P } from '../../art/palette';
 import { frameRef, hasFrame } from '../../art/TextureFactory';
 import { CAPTIONS, DIALOGUE } from '../../data/dialogue.tr';
@@ -12,22 +12,16 @@ import type { WorldScene } from '../../scenes/WorldScene';
 import type { RoomScript } from './types';
 import { addArt, addGlow } from './helpers';
 
-// Chapter III — the Sun encounter: evade slow broken rays, wake two flowers,
-// raise three currents, then release the gathered fish during openings.
+// Chapter III — the Sun. Nothing here can hurt Gorti and nothing has to be
+// done: the flowers wake as Gorti passes (or by themselves), the currents
+// rise, the fish gather around Gorti and fly into the Sun whenever it opens
+// its eyes, and after the third time the Sun falls.
 
 const GROUND = 640;
 const SUN_X = 640;
 const SUN_Y = 175;
 const FLOWERS = [220, 1060];
 const CURRENTS = [420, 640, 860];
-
-interface Sweep {
-  x: number;
-  dir: 1 | -1;
-  type: 'high' | 'low';
-  phase: 'tele' | 'active';
-  t: number;
-}
 
 export function r08(w: WorldScene): RoomScript {
   let st: SunState = sunStart({ p1: w.quest.has('r08.p1'), p2: w.quest.has('r08.p2'), done: w.quest.has('r08.done') });
@@ -37,25 +31,14 @@ export function r08(w: WorldScene): RoomScript {
   const fish = new CreaturePool(w, 'fish', 12, DEPTH.actors + 2);
   const flowerImgs: { closed: Phaser.GameObjects.Image | null; open: Phaser.GameObjects.Image | null; opened: boolean }[] = [];
   const columns: { base: Phaser.GameObjects.Image | null; col: Phaser.GameObjects.Image; h: number; target: number; glow: Phaser.GameObjects.Image }[] = [];
-  const rayG = w.add.graphics().setDepth(DEPTH.fx - 5);
   let ring: Phaser.GameObjects.Image | null = null;
-  let sweep: Sweep | null = null;
-  let sinceSweep = 0.8;
-  let sweeps = 0;
   let windowT = 0;
-  let firstType: 'high' | 'low' = 'high';
   let coughIn = 3;
   let fishMode: 'hidden' | 'school' | 'columns' | 'gather' | 'fly' = 'hidden';
   let gatherK = 0;
   let collapsing = false;
-  const scale = (): number => w.encounterScale;
-
-  const setObjectiveForPhase = (): void => {
-    if (st.phase === 'done') w.setObjective('r08.leave', false);
-    else if (st.phase === 'p3' || st.phase === 'collapse') w.setObjective('r08.p3', false);
-    else if (st.phase === 'p2') w.setObjective('r08.p2', false);
-    else w.setObjective('r08.p1', false);
-  };
+  /** Seconds until the next thing happens by itself. */
+  let nextBeat = 2.5;
 
   const buildStage = (): void => {
     sun = new Face(w, 'sun', SUN_X, SUN_Y, DEPTH.backProps + 30);
@@ -97,8 +80,8 @@ export function r08(w: WorldScene): RoomScript {
       app.ui.hud.caption(CAPTIONS.fishBorn, 4200);
       app.audio.sfx('fishes');
       fishMode = 'school';
-      w.setObjective('r08.p2');
-    } else app.ui.hud.toast('Bir çiçek uyandı. Bir tane daha.', 2600);
+      nextBeat = 1.6;
+    }
   };
 
   const raiseCurrent = (): void => {
@@ -114,17 +97,18 @@ export function r08(w: WorldScene): RoomScript {
       w.activateCheckpoint('r08_p3', true);
       fishMode = 'columns';
       app.ui.hud.caption(CAPTIONS.current, 4200);
-      w.time.delayedCall(4400, () => app.ui.hud.caption(CAPTIONS.point, 3800));
-      w.setObjective('r08.p3');
-      sweeps = 0;
+      nextBeat = 2.2;
     }
   };
 
-  const openWindow = (): void => {
-    windowT = SUN_TUNING.openingWindow / scale();
+  /** The Sun opens its eyes and the fish gather around Gorti to fly in. */
+  const volley = (): void => {
+    windowT = SUN_TUNING.openingWindow;
     app.audio.sfx('crystal', { pitch: 0.8 });
-    app.ui.hud.caption('Güneş gözlerini açtı: şimdi!', 2400);
     if (sun) sun.lidDrop = 0;
+    fishMode = 'gather';
+    gatherK = 0;
+    w.player.emote('effort', 900);
   };
 
   const release = (): void => {
@@ -163,20 +147,19 @@ export function r08(w: WorldScene): RoomScript {
         w.shake(0.008, 300);
         sun?.cough();
         if (sun) sun.rayLevel = 0.5;
+        w.player.emote('joy', 1400);
         if (st.phase === 'collapse') collapse();
-        else app.ui.hud.toast(`İsabet: ${st.hits} / ${SUN_TUNING.hitsNeeded}`, 2600);
-      } else if (st.phase === 'p3') {
-        app.ui.hud.toast('Güneş gözlerini kapamıştı. Açılmasını bekle.', 3000);
       }
       windowT = 0;
+      if (sun && st.phase === 'p3') sun.lidDrop = 0.6;
       fishMode = st.phase === 'p3' ? 'columns' : 'hidden';
+      nextBeat = 1.8;
     });
   };
 
   const collapse = (): void => {
     if (collapsing) return;
     collapsing = true;
-    sweep = null;
     void w.narrative.play(
       'r08.collapse',
       async (cs) => {
@@ -212,7 +195,6 @@ export function r08(w: WorldScene): RoomScript {
         w.flag('r08.done', false);
         w.activateCheckpoint('r08_end', true);
         p.lock(false);
-        w.setObjective('r08.leave');
       },
     );
   };
@@ -245,54 +227,14 @@ export function r08(w: WorldScene): RoomScript {
         st = sunNext(st, 'introDone');
         w.flag('r08.intro', false);
         w.player.lock(false);
-        w.setObjective('r08.p1');
-        sinceSweep = 0;
+        nextBeat = 3;
       },
     );
-  };
-
-  const rayRects = (s: Sweep): { x: number; y: number; w: number; h: number }[] => {
-    const x = s.x - 22;
-    if (s.type === 'high') return [{ x, y: 0, w: 44, h: 525 }];
-    return [
-      { x, y: 0, w: 44, h: 400 },
-      { x, y: 585, w: 44, h: GROUND - 585 },
-    ];
-  };
-
-  const drawRays = (time: number): void => {
-    rayG.clear();
-    const s = sweep;
-    if (!s) return;
-    const rects = rayRects(s);
-    if (s.phase === 'tele') {
-      const a = 0.25 + 0.2 * Math.sin(time / 90);
-      for (const r of rects) {
-        rayG.lineStyle(3, 0xf0d38e, a);
-        rayG.strokeRect(r.x, r.y, r.w, r.h);
-      }
-      rayG.fillStyle(0xf0d38e, a * 0.6);
-      rayG.fillTriangle(s.x + s.dir * 34, 600, s.x + s.dir * 14, 588, s.x + s.dir * 14, 612);
-      return;
-    }
-    for (const r of rects) {
-      rayG.fillStyle(0xd9ae54, 0.55);
-      rayG.fillRect(r.x - 8, r.y, r.w + 16, r.h);
-      rayG.fillStyle(0xf0d38e, 0.9);
-      rayG.fillRect(r.x, r.y, r.w, r.h);
-      rayG.fillStyle(0xffffff, 0.8);
-      rayG.fillRect(r.x + 16, r.y, 12, r.h);
-      // Jagged broken ends
-      rayG.fillStyle(0xf0d38e, 0.9);
-      rayG.fillTriangle(r.x, r.y + r.h, r.x + r.w, r.y + r.h, r.x + r.w * 0.3, r.y + r.h + 14);
-      if (r.y > 0) rayG.fillTriangle(r.x, r.y, r.x + r.w, r.y, r.x + r.w * 0.7, r.y - 14);
-    }
   };
 
   return {
     setup() {
       buildStage();
-      setObjectiveForPhase();
       if (st.phase === 'intro') intro();
       if (st.phase === 'done') {
         sun?.c.setVisible(false);
@@ -306,100 +248,30 @@ export function r08(w: WorldScene): RoomScript {
         fish.destroy();
       });
     },
-    extraInteracts() {
-      if (st.phase !== 'p2') return [];
-      const x = CURRENTS[st.currents];
-      if (x === undefined) return [];
-      return [{ id: 'current', x, y: GROUND, r: 95, prompt: 'Akıntıyı yükselt' }];
-    },
-    onInteract(id) {
-      if (id === 'current' && st.phase === 'p2') {
-        raiseCurrent();
-        return true;
-      }
-      return false;
-    },
-    onPulse(x, _y, r) {
-      if (st.phase !== 'p1') return false;
-      let any = false;
-      FLOWERS.forEach((fx, i) => {
-        if (!flowerImgs[i]?.opened && Math.abs(fx - x) < r + 45) {
-          openFlower(i);
-          any = true;
-        }
-      });
-      return any;
-    },
-    pulseRelevant() {
-      return st.phase === 'p1' && FLOWERS.some((fx, i) => !flowerImgs[i]?.opened && Math.abs(fx - w.player.x) < 200);
-    },
-    focusRelevant() {
-      return st.phase === 'p3';
-    },
-    onFocusChange(active) {
-      if (st.phase !== 'p3') return;
-      if (active && (fishMode === 'columns' || fishMode === 'school')) {
-        fishMode = 'gather';
-        gatherK = 0;
-      } else if (!active) release();
-    },
-    onRespawn() {
-      st = sunNext(st, 'respawn');
-      sweep = null;
-      sinceSweep = 0;
-      windowT = 0;
-      if (st.phase === 'p3') fishMode = 'columns';
-    },
     onFixed(dt) {
-      w.probeExtra.sun = { phase: st.phase, flowers: st.flowers, currents: st.currents, hits: st.hits, window: windowT > 0, fishMode, sweep: sweep ? { ...sweep } : null };
-      if (st.phase === 'intro' || st.phase === 'done' || collapsing) return;
-      const k = scale();
-      // Openings (phase 3) interrupt sweeps.
-      if (windowT > 0) {
-        windowT -= dt;
-        if (windowT <= 0 && fishMode !== 'fly') {
-          if (sun) sun.lidDrop = 0.6;
-          sinceSweep = 0;
-        }
-        return;
-      }
-      sinceSweep += dt;
-      if (!sweep && sinceSweep > SUN_TUNING.sweepGap / k) {
-        if (st.phase === 'p3' && sweeps >= SUN_TUNING.openingEvery) {
-          sweeps = 0;
-          openWindow();
-          return;
-        }
-        const dir: 1 | -1 = Math.random() < 0.5 ? 1 : -1;
-        const type = sweeps === 0 && st.phase === 'p1' && firstType === 'high' ? 'high' : Math.random() < 0.5 ? 'high' : 'low';
-        if (firstType === 'high' && type === 'high') firstType = 'low';
-        sweep = { x: dir > 0 ? -30 : 1310, dir, type, phase: 'tele', t: 0 };
-        app.audio.sfx('ray');
-      }
-      const s = sweep;
-      if (!s) return;
-      s.t += dt;
-      if (s.phase === 'tele') {
-        if (s.t > SUN_TUNING.telegraph / k) {
-          s.phase = 'active';
-          s.t = 0;
-        }
-        return;
-      }
-      s.x += s.dir * SUN_TUNING.sweepSpeed * k * dt;
-      if (s.x < -60 || s.x > 1340) {
-        sweep = null;
-        sinceSweep = 0;
-        sweeps++;
-        return;
-      }
+      w.probeExtra.sun = { phase: st.phase, flowers: st.flowers, currents: st.currents, hits: st.hits, window: windowT > 0, fishMode };
+      if (st.phase === 'intro' || st.phase === 'done' || collapsing || w.narrative.busy) return;
+      if (windowT > 0) windowT -= dt;
+      nextBeat -= dt;
       const p = w.player;
-      const box = { x: p.x - HULL_W / 2, y: p.feetY - HULL_H, w: HULL_W, h: HULL_H };
-      for (const r of rayRects(s)) {
-        if (box.x < r.x + r.w && box.x + box.w > r.x && box.y < r.y + r.h && box.y + box.h > r.y) {
-          w.damage(s.x);
-          break;
+      if (st.phase === 'p1') {
+        // Flowers wake as Gorti passes, or by themselves soon after.
+        FLOWERS.forEach((fx, i) => {
+          if (!flowerImgs[i]?.opened && Math.abs(fx - p.x) < 110) openFlower(i);
+        });
+        if (nextBeat <= 0 && st.phase === 'p1') {
+          const i = flowerImgs.findIndex((f) => !f.opened);
+          if (i >= 0) openFlower(i);
+          nextBeat = 2.4;
         }
+      } else if (st.phase === 'p2') {
+        if (nextBeat <= 0) {
+          raiseCurrent();
+          nextBeat = 1.1;
+        }
+      } else if (st.phase === 'p3' && fishMode === 'columns' && nextBeat <= 0) {
+        volley();
+        nextBeat = 99;
       }
     },
     onUpdate(dt, time) {
@@ -407,7 +279,6 @@ export function r08(w: WorldScene): RoomScript {
       sun?.lookAt(w.player.x, w.player.feetY - 80);
       sparrow?.update(dt);
       fish.update(dt);
-      drawRays(time);
       if (sun && st.phase !== 'done' && !collapsing) {
         coughIn -= dt / 1000;
         if (coughIn <= 0 && windowT <= 0) {
@@ -442,7 +313,8 @@ export function r08(w: WorldScene): RoomScript {
         }
       } else if (fishMode === 'gather') {
         const p = w.player;
-        gatherK = Math.min(1, w.player.focus.heldFor / (SUN_TUNING.gatherTime / scale()));
+        gatherK = Math.min(1, gatherK + dt / 1000 / SUN_TUNING.gatherTime);
+        if (gatherK >= 1) release();
         for (let i = 0; i < n; i++) {
           const a = t * 4 + (i / n) * Math.PI * 2;
           const c = CURRENTS[i % 3]!;

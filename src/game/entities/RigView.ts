@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import { drawOrder, isNear, orderJoints, solve, type Angles, type Solved } from '../art/fk';
 import type { RigDef, RigJoint } from '../art/rigTypes';
-import { frameRef } from '../art/TextureFactory';
+import { frameRef, hasFrame } from '../art/TextureFactory';
 import type { PoseOut, PoseParams } from './animPoses';
 
 export type PoseFn = (anim: string, t: number, prm: PoseParams, rigId: string) => PoseOut;
@@ -45,6 +45,12 @@ export class RigView {
   /** Multiplies smoothing speed (1 = normal; large = snap). */
   stiffness = 1;
   private scene: Phaser.Scene;
+  /** Shape variant shown per joint ('' = the joint's own part). */
+  private variant = new Map<string, string>();
+  /** Secondary motion of spring joints: angle offset and its velocity. */
+  private springs = new Map<string, { a: number; v: number; parentRot: number | null }>();
+  private lastPos: { x: number; y: number } | null = null;
+  private lastVel = { x: 0, y: 0 };
 
   constructor(scene: Phaser.Scene, rig: RigDef, poseFn: PoseFn, x: number, y: number, depth: number) {
     this.scene = scene;
@@ -60,6 +66,8 @@ export class RigView {
   private buildImages(): void {
     for (const img of this.images.values()) img.destroy();
     this.images.clear();
+    this.variant.clear();
+    this.springs.clear();
     for (const j of this.ordered) {
       if (!j.part) continue;
       const f = frameRef(j.part);
@@ -93,11 +101,12 @@ export class RigView {
     for (const j of drawOrder(this.ordered, this.facing)) {
       const img = this.images.get(j.id);
       if (!img) continue;
-      const f = frameRef(j.part!);
+      const v = this.variant.get(j.id);
+      const f = frameRef(v ? `${j.part!}.${v}` : j.part!);
       // Side-aware shading: the far limb uses the darker frame.
       const near = isNear(j, this.facing);
       const key = near ? j.part! : j.part! + '.far';
-      const fr = near ? f : safeFar(key, f);
+      const fr = near || v ? f : safeFar(key, f);
       img.setTexture(fr.atlas, fr.frame);
       this.container.add(img);
     }
@@ -117,7 +126,20 @@ export class RigView {
     this.angles = { ...pose.angles };
     this.offsets = {};
     for (const k of Object.keys(pose.offsets)) this.offsets[k] = { ...pose.offsets[k]! };
+    this.springs.clear();
+    this.lastPos = null;
+    this.lastVel = { x: 0, y: 0 };
     this.layout(pose);
+  }
+
+  /**
+   * Puts the joints straight into another pose (no easing), e.g. the crouch
+   * at the instant of a jump; the next `update` eases out of it.
+   */
+  snapTo(anim: string, params: PoseParams = {}): void {
+    const pose = this.poseFn(anim, 0, params, this.rig.id);
+    for (const j of this.ordered) this.angles[j.id] = pose.angles[j.id] ?? 0;
+    for (const k of Object.keys(pose.offsets)) this.offsets[k] = { ...pose.offsets[k]! };
   }
 
   update(dtMs: number): void {
@@ -141,17 +163,83 @@ export class RigView {
         this.offsets[j.id] = c;
       }
     }
+    this.stepSprings(dt);
     this.layout(pose);
   }
 
+  /**
+   * Secondary motion for spring joints (hair): they trail their parent's
+   * turns and swing from the body's changes of speed, then settle.
+   */
+  private stepSprings(dt: number): void {
+    const c = this.container;
+    let dvx = 0;
+    let dvy = 0;
+    if (this.lastPos && dt > 0) {
+      const vx = (c.x - this.lastPos.x) / dt;
+      const vy = (c.y - this.lastPos.y) / dt;
+      // A teleport or a respawn is not a push.
+      if (Math.abs(vx) < 3000 && Math.abs(vy) < 3000) {
+        dvx = Math.max(-900, Math.min(900, vx - this.lastVel.x));
+        dvy = Math.max(-900, Math.min(900, vy - this.lastVel.y));
+      }
+      this.lastVel = { x: vx, y: vy };
+    }
+    this.lastPos = { x: c.x, y: c.y };
+    // In the rig's own (right-facing) frame.
+    dvx *= this.facing;
+    let any = false;
+    for (const j of this.ordered) {
+      if (!j.spring || !j.parent) continue;
+      any = true;
+      const sp = this.springs.get(j.id) ?? { a: 0, v: 0, parentRot: null };
+      const parent = this.solved.get(j.parent);
+      const me = this.solved.get(j.id);
+      if (parent && me) {
+        if (sp.parentRot !== null) sp.a -= (parent.rot - sp.parentRot) * j.spring.lag;
+        sp.parentRot = parent.rot;
+        // Direction the part points and the push it feels (inertia).
+        const [tx, ty] = j.spring.tip;
+        const len = Math.hypot(tx, ty) || 1;
+        const cs = Math.cos(me.rot);
+        const sn = Math.sin(me.rot);
+        const dx = (tx * cs - ty * sn) / len;
+        const dy = (tx * sn + ty * cs) / len;
+        sp.v += j.spring.gain * (-dx * dvy + dy * dvx);
+      }
+      sp.v += (-j.spring.k * sp.a - j.spring.c * sp.v) * dt;
+      sp.a = Math.max(-0.9, Math.min(0.9, sp.a + sp.v * dt));
+      this.springs.set(j.id, sp);
+    }
+    if (!any) return;
+  }
+
   private layout(pose: PoseOut): void {
-    solve(this.ordered, this.angles, this.offsets, this.solved);
+    let solveAngles = this.angles;
+    if (this.springs.size) {
+      solveAngles = { ...this.angles };
+      for (const [id, sp] of this.springs) solveAngles[id] = (solveAngles[id] ?? 0) + sp.a;
+    }
+    solve(this.ordered, solveAngles, this.offsets, this.solved);
     for (const j of this.ordered) {
       const img = this.images.get(j.id);
       if (!img) continue;
       const s = this.solved.get(j.id)!;
       img.setPosition(s.x + (pose.x ?? 0), s.y + (pose.y ?? 0));
       img.setRotation(s.rot);
+      // Shape variants (eyes, mouth) and per-joint scale.
+      const want = pose.frames?.[j.id] ?? '';
+      if (want !== (this.variant.get(j.id) ?? '')) {
+        const key = want && hasFrame(`${j.part!}.${want}`) ? `${j.part!}.${want}` : j.part!;
+        const f = frameRef(key);
+        img.setTexture(f.atlas, f.frame);
+        img.setOrigin(f.px / f.w, f.py / f.h);
+        this.variant.set(j.id, key === j.part ? '' : want);
+      }
+      const sc = pose.scales?.[j.id];
+      const base = 1 / frameRef(j.part!).scale;
+      if (sc) img.setScale(base * sc.x, base * sc.y);
+      else if (img.scaleX !== base || img.scaleY !== base) img.setScale(base);
     }
     const sx = (pose.sx ?? 1) * this.squashX;
     const sy = (pose.sy ?? 1) * this.squashY;

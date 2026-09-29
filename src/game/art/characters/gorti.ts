@@ -63,24 +63,59 @@ export function brow(key: string, fill: string, len: number, thick: number, far:
 
 // ---------------------------------------------------------------- root form
 
-function rootHead(key: string, giant = false): PartArt {
-  return part(key, { x0: -40, y0: -62, x1: 22, y1: 4 }, (ox, oy) => {
+const BARK = { fill: P.bark, shade: P.barkDark, light: P.barkLight, sx: 1.6, sy: 1.6, hx: 1, hy: 1, stroke: 2.6 };
+
+/**
+ * Gorti's branch hair in four clusters, each a separate part that pivots at
+ * its base inside the skull, so the branches can sway and bounce on their
+ * own. Points are in head coordinates.
+ */
+export const ROOT_BRANCHES: { id: string; base: Pt; strokes: [Pt[], number, number][] }[] = [
+  {
+    id: 'hairA',
+    base: [-9, -18],
+    strokes: [
+      [[[-9, -18], [-18, -22], [-27, -24], [-33, -31], [-35, -39]], 6.5, 1.6],
+      [[[-26, -24], [-31, -21], [-37, -22]], 2.6, 1.1],
+    ],
+  },
+  {
+    id: 'hairB',
+    base: [-5, -26],
+    strokes: [
+      [[[-5, -26], [-12, -35], [-19, -43], [-21, -52], [-18, -59]], 7.5, 1.8],
+      [[[-17, -42], [-25, -46], [-30, -45]], 2.8, 1.1],
+      [[[-20, -51], [-26, -56]], 2, 1],
+    ],
+  },
+  {
+    id: 'hairC',
+    base: [2, -29],
+    strokes: [
+      [[[2, -29], [0, -38], [-4, -46], [-3, -54]], 5, 1.5],
+      [[[-1, -43], [5, -48], [8, -55]], 2.4, 1],
+    ],
+  },
+  { id: 'hairD', base: [7, -27], strokes: [[[[7, -27], [11, -33], [12, -40]], 3.4, 1.2]] },
+];
+
+function rootBranch(key: string, b: (typeof ROOT_BRANCHES)[number]): PartArt {
+  const pts = b.strokes.flatMap(([ps]) => ps.map(([x, y]): Pt => [x - b.base[0], y - b.base[1]]));
+  const xs = pts.map((q) => q[0]);
+  const ys = pts.map((q) => q[1]);
+  const box = { x0: Math.min(...xs) - 5, y0: Math.min(...ys) - 5, x1: Math.max(...xs) + 5, y1: Math.max(...ys) + 5 };
+  return part(key, box, (ox, oy) =>
+    b.strokes.map(([ps, w0, w1]) => cel(taper(tr(ps.map(([x, y]): Pt => [x - b.base[0], y - b.base[1]]), ox, oy), w0, w1), BARK)).join(''),
+  );
+}
+
+/** The bark skull; hair, eye and mouth are separate, animated parts. */
+function rootHead(key: string): PartArt {
+  return part(key, { x0: -14, y0: -34, x1: 18, y1: 4 }, (ox, oy) => {
     const skull: Pt[] = [
       [-5, 1], [-8, -7], [-12, -15], [-12, -23], [-7, -29], [1, -31], [8, -29], [13, -24],
       [15, -19], [14, -14], [13, -9], [11, -5], [6, -2], [4, 1],
     ];
-    const bark = { fill: P.bark, shade: P.barkDark, light: P.barkLight, sx: 1.6, sy: 1.6, hx: 1, hy: 1, stroke: 2.6 };
-    const br = (pts: Pt[], w0: number, w1: number): string => cel(taper(tr(pts, ox, oy), w0, w1), bark);
-    let s = '';
-    // Branch hair continues the skull silhouette up and back.
-    s += br([[-9, -18], [-18, -22], [-27, -24], [-33, -31], [-35, -39]], 6.5, 1.6);
-    s += br([[-26, -24], [-31, -21], [-37, -22]], 2.6, 1.1);
-    s += br([[-5, -26], [-12, -35], [-19, -43], [-21, -52], [-18, -59]], 7.5, 1.8);
-    s += br([[-17, -42], [-25, -46], [-30, -45]], 2.8, 1.1);
-    s += br([[-20, -51], [-26, -56]], 2, 1);
-    s += br([[2, -29], [0, -38], [-4, -46], [-3, -54]], 5, 1.5);
-    s += br([[-1, -43], [5, -48], [8, -55]], 2.4, 1);
-    s += br([[7, -27], [11, -33], [12, -40]], 3.4, 1.2);
     const knots =
       line(ellipsePath(-4 + ox, -14 + oy, 2.4, 3.4), P.gortiBarkDark, 1.1) +
       line(ellipsePath(-7 + ox, -22 + oy, 1.6, 2.2), P.gortiBarkDark, 1) +
@@ -89,10 +124,7 @@ function rootHead(key: string, giant = false): PartArt {
       line(smooth(tr([[9, -17], [8, -12], [5, -7], [3, -3]], ox, oy), 1, false), P.violet, 1.4) +
       line(smooth(tr([[6, -21], [1, -23], [-4, -26]], ox, oy), 1, false), P.violet, 1.2) +
       line(smooth(tr([[8, -15], [11, -11]], ox, oy), 1, false), P.violet, 1);
-    // The eyes are pure black hollows: nothing to read in them. All the
-    // expression lives in the separate, very mobile brows.
-    const eye = blackEye(9 + ox, -20 + oy, 4.6, 3.6);
-    s += cel(smooth(tr(skull, ox, oy)), {
+    return cel(smooth(tr(skull, ox, oy)), {
       fill: P.gortiBark,
       shade: P.gortiBarkDark,
       light: P.gortiBarkLight,
@@ -101,13 +133,75 @@ function rootHead(key: string, giant = false): PartArt {
       hx: 1.6,
       hy: 1.6,
       stroke: 3,
-      over: knots + veins + eye,
+      over: knots + veins,
     });
-    if (giant) {
-      s += line(smooth(tr([[-10, -18], [-4, -16], [2, -10]], ox, oy), 1, false), P.vein, 1.2, 0.8);
-    }
-    return s;
   });
+}
+
+const EYE_INK = '#07060b';
+
+/**
+ * Eye shapes (pivot at the eye's centre), still pure black: the hollow, a
+ * smiling arc, a heavy tired lid and a squeezed-shut line. Blinks and wide
+ * eyes are scale changes of the hollow.
+ */
+export function eyeParts(prefix: string, rx: number, ry: number): PartArt[] {
+  const box = { x0: -rx - 1.5, y0: -ry - 2, x1: rx + 1.5, y1: ry + 1.5 };
+  const w = Math.max(1.5, ry * 0.62);
+  return [
+    part(`${prefix}.eye`, box, (ox, oy) => blackEye(ox, oy, rx, ry)),
+    part(
+      `${prefix}.eye.happy`,
+      box,
+      (ox, oy) =>
+        `<path d="M${ox - rx} ${oy + ry * 0.5}Q${ox} ${oy - ry * 1.5} ${ox + rx} ${oy + ry * 0.5}" fill="none" stroke="${EYE_INK}" stroke-width="${w * 1.25}" stroke-linecap="round"/>`,
+    ),
+    part(`${prefix}.eye.sad`, box, (ox, oy) => {
+      // The hollow below a lid that droops toward the outer (back) corner.
+      const id = `lid${prefix.replace(/\W/g, '')}`;
+      return (
+        `<clipPath id="${id}"><path d="M${ox - rx - 2} ${oy + ry * 0.15}L${ox + rx + 2} ${oy - ry * 0.55}L${ox + rx + 2} ${oy + ry + 2}L${ox - rx - 2} ${oy + ry + 2}Z"/></clipPath>` +
+        `<path d="${ellipsePath(ox, oy, rx, ry)}" fill="${EYE_INK}" clip-path="url(#${id})"/>` +
+        `<path d="M${ox - rx - 0.6} ${oy + ry * 0.2}L${ox + rx + 0.6} ${oy - ry * 0.6}" stroke="${EYE_INK}" stroke-width="${w * 0.7}" stroke-linecap="round"/>`
+      );
+    }),
+    part(
+      `${prefix}.eye.shut`,
+      box,
+      (ox, oy) =>
+        `<path d="M${ox - rx} ${oy - ry * 0.15}Q${ox} ${oy + ry * 1.1} ${ox + rx} ${oy - ry * 0.15}" fill="none" stroke="${EYE_INK}" stroke-width="${w}" stroke-linecap="round"/>`,
+    ),
+  ];
+}
+
+/**
+ * Mouth shapes in profile (pivot at the mouth's centre, the front corner at
+ * +x): a quiet line, a smile, a small round "oh", an open grin, clenched
+ * teeth and a frown.
+ */
+export function mouthParts(prefix: string, half: number, ink: string, inside: string): PartArt[] {
+  const m = half;
+  const box = { x0: -m - 2, y0: -m - 2, x1: m + 2, y1: m + 2 };
+  const stroke = (d: string, sw = 1.5): string => `<path d="${d}" fill="none" stroke="${ink}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  return [
+    part(`${prefix}.mouth`, box, (ox, oy) => stroke(`M${ox - m} ${oy}Q${ox} ${oy + m * 0.2} ${ox + m} ${oy - m * 0.1}`)),
+    part(`${prefix}.mouth.smile`, box, (ox, oy) => stroke(`M${ox - m} ${oy - m * 0.15}Q${ox + m * 0.1} ${oy + m * 0.75} ${ox + m} ${oy - m * 0.55}`, 1.7)),
+    part(`${prefix}.mouth.open`, box, (ox, oy) => `<path d="${ellipsePath(ox, oy, m * 0.55, m * 0.7)}" fill="${inside}" stroke="${ink}" stroke-width="1.3"/>`),
+    part(
+      `${prefix}.mouth.grin`,
+      box,
+      (ox, oy) =>
+        `<path d="M${ox - m} ${oy - m * 0.3}Q${ox + m * 0.05} ${oy + m * 1.25} ${ox + m} ${oy - m * 0.65}Q${ox} ${oy - m * 0.05} ${ox - m} ${oy - m * 0.3}Z" fill="${inside}" stroke="${ink}" stroke-width="1.3" stroke-linejoin="round"/>`,
+    ),
+    part(
+      `${prefix}.mouth.grit`,
+      box,
+      (ox, oy) =>
+        `<rect x="${ox - m}" y="${oy - m * 0.38}" width="${m * 2}" height="${m * 0.76}" rx="${m * 0.3}" fill="${inside}" stroke="${ink}" stroke-width="1.2"/>` +
+        `<path d="M${ox - m * 0.8} ${oy}H${ox + m * 0.8}" stroke="#e8e0cf" stroke-width="0.8"/>`,
+    ),
+    part(`${prefix}.mouth.frown`, box, (ox, oy) => stroke(`M${ox - m} ${oy + m * 0.35}Q${ox} ${oy - m * 0.45} ${ox + m} ${oy + m * 0.3}`)),
+  ];
 }
 
 function rootTorso(key: string): PartArt {
@@ -253,10 +347,9 @@ function humanHead(key: string, suit = false): PartArt {
     const fringe = cel(smooth(o([[-12, -25], [-8, -26], [-5, -22], [-6, -14], [-9, -10], [-12, -15]])), {
       fill: '#9a969e', shade: '#77737e', sx: 1, sy: 1.5, stroke: 1.8,
     });
+    // The eye and the mouth are separate, animated parts.
     const face =
-      blackEye(11 + ox, -20.8 + oy, 3.4, 2.5) + // eye: a black hollow
       line(smooth(o([[10, -17], [8, -12]]), 1, false), P.skinDark, 1) + // cheek fold
-      line(smooth(o([[12, -7], [15, -7.5]]), 1, false), '#7c5046', 1.2) + // mouth
       line(smooth(o([[2, -29], [0, -25], [-1, -21]]), 1, false), P.violet, 1, 0.75) + // faint temple vein
       line(smooth(o([[7, -30], [3, -32]]), 1, false), P.skinDark, 0.9, 0.7);
     let traces = '';
@@ -425,6 +518,10 @@ export interface HumanoidDims {
   eye?: Pt;
   /** Separate expressive eyebrow (part key, offset above the eye). */
   brow?: { part: string; up: number; dx: number };
+  /** Animated face: eye and mouth parts (prefix of their shape set). */
+  face?: { eye: string; mouth: string; mouthAt: Pt };
+  /** Springy hair clusters on the head. */
+  hair?: { part: string; id: string; at: Pt; tip: Pt; z: number }[];
 }
 
 export function humanoidRig(id: string, prefix: string, d: HumanoidDims, withWatch: boolean, glowKey?: string): RigDef {
@@ -450,6 +547,14 @@ export function humanoidRig(id: string, prefix: string, d: HumanoidDims, withWat
     // Profile head: one strong brow on the skin above the black eye.
     j.push({ id: 'browN', parent: 'head', x: d.eye[0] + d.brow.dx, y: d.eye[1] - d.brow.up, part: d.brow.part, z: 66 });
   }
+  if (d.face && d.eye) {
+    j.push({ id: 'eyeN', parent: 'head', x: d.eye[0], y: d.eye[1], part: `${d.face.eye}.eye`, z: 64 });
+    j.push({ id: 'mouth', parent: 'head', x: d.face.mouthAt[0], y: d.face.mouthAt[1], part: `${d.face.mouth}.mouth`, z: 63 });
+  }
+  for (const hr of d.hair ?? []) {
+    // Behind the skull; sways with inertia (see RigView springs).
+    j.push({ id: hr.id, parent: 'head', x: hr.at[0], y: hr.at[1], part: hr.part, z: hr.z, spring: { k: 170, c: 6.5, lag: 0.7, gain: 0.0045, tip: hr.tip } });
+  }
   return {
     id,
     joints: j,
@@ -470,15 +575,27 @@ export function humanoidRig(id: string, prefix: string, d: HumanoidDims, withWat
 export const GORTI_ROOT_DIMS: HumanoidDims = {
   hip: 48, thigh: 23, shin: 23, torso: 37, shoulderY: 33, shoulderX: 3, upper: 20, hipX: 3, headX: 1, eye: [9, -20],
   brow: { part: 'gorti.root.brow', up: 5.6, dx: -1 },
+  face: { eye: 'gorti.root', mouth: 'gorti.root', mouthAt: [9.6, -8.6] },
+  hair: ROOT_BRANCHES.map((b, i) => {
+    const main = b.strokes[0]![0];
+    const end = main[main.length - 1]!;
+    return { part: `gorti.root.${b.id}`, id: b.id, at: b.base, tip: [end[0] - b.base[0], end[1] - b.base[1]] as Pt, z: 55 + i };
+  }),
 };
 export const GORTI_HUMAN_DIMS: HumanoidDims = {
   hip: 43, thigh: 21, shin: 18, torso: 40, shoulderY: 36, shoulderX: 2, upper: 20, hipX: 4, headX: 2, eye: [11, -21],
   brow: { part: 'gorti.human.brow', up: 5.2, dx: -0.5 },
+  face: { eye: 'gorti.human', mouth: 'gorti.human', mouthAt: [13.6, -7.3] },
 };
 
 export function gortiParts(): PartArt[] {
   return [
     rootHead('gorti.root.head'),
+    ...ROOT_BRANCHES.map((b) => rootBranch(`gorti.root.${b.id}`, b)),
+    ...eyeParts('gorti.root', 4.6, 3.6),
+    ...mouthParts('gorti.root', 3.4, '#170d1d', '#241028'),
+    ...eyeParts('gorti.human', 3.4, 2.5),
+    ...mouthParts('gorti.human', 2.3, '#6a3c36', '#3a1a1c'),
     rootTorso('gorti.root.torso'),
     rootUpperArm('gorti.root.arm'),
     rootForearm('gorti.root.fore'),

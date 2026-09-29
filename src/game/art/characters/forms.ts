@@ -1,7 +1,7 @@
 import { P } from '../palette';
 import { cel, glow, limb, line, poly, rrect, smooth, taper, type Pt } from '../svg';
 import type { PartArt, RigDef } from '../rigTypes';
-import { blackEye, brow, humanoidRig, type HumanoidDims } from './gorti';
+import { brow, eyeParts, humanoidRig, mouthParts, type HumanoidDims } from './gorti';
 
 // The inner forms of Chapter IV: the cowardly torch-bearer and the
 // mechanical key-and-lock form.
@@ -30,10 +30,8 @@ function cowardHead(): PartArt {
     const hair = cel(smooth(o([[-12, -18], [-12, -27], [-6, -32], [3, -33], [11, -28], [14, -22], [8, -25], [4, -21], [0, -26], [-4, -21], [-8, -24], [-9, -14]])), {
       fill: '#3d3438', shade: '#2a2327', sx: 1.5, sy: 1.5, stroke: 2.4,
     });
-    // Eye: a black hollow; the brow is a separate, animated part.
+    // The eye, the mouth and the brow are separate, animated parts.
     const face =
-      blackEye(7.6 + ox, -17 + oy, 3, 3.3) +
-      line(smooth(o([[9, -7], [11, -6.5], [12.5, -7.5]]), 1, false), '#6e4a44', 1.2) +
       line(smooth(o([[-2, -12], [1, -9]]), 1, false), SKIN_D, 1) +
       line(smooth(o([[4, -26], [1, -22]]), 1, false), P.violet, 0.9, 0.6);
     return cel(smooth(o(skull)), { fill: SKIN, shade: SKIN_D, light: '#dccbbd', sx: 3, sy: 2, hx: 1.2, hy: 1.2, stroke: 2.8, over: face }) + hair;
@@ -199,18 +197,25 @@ export function formParts(): PartArt[] {
   return [
     cowardHead(), cowardTorso(), cowardArm(), cowardFore(), cowardThigh(), cowardShin(), cowardFoot(), torch(), flame(),
     brow('coward.brow', '#1f191c', 11.5, 5, false),
+    ...eyeParts('coward', 3, 3.3),
+    ...mouthParts('coward', 1.9, '#6e4a44', '#3a1f1d'),
     mechHead(), mechTorso(), mechArm(), mechFore(), mechThigh(), mechShin(), mechFoot(),
     brow('mech.brow', '#343945', 12, 4.8, false),
   ];
 }
 
-const COWARD_DIMS: HumanoidDims = { hip: 40, thigh: 19, shin: 19, torso: 32, shoulderY: 29, shoulderX: 2, upper: 16, hipX: 3, headX: 1, eye: [8, -17], brow: { part: 'coward.brow', up: 4.6, dx: -0.4 } };
+const COWARD_DIMS: HumanoidDims = {
+  hip: 40, thigh: 19, shin: 19, torso: 32, shoulderY: 29, shoulderX: 2, upper: 16, hipX: 3, headX: 1, eye: [7.6, -17],
+  brow: { part: 'coward.brow', up: 4.6, dx: 0 },
+  face: { eye: 'coward', mouth: 'coward', mouthAt: [10.8, -7] },
+};
 const MECH_DIMS: HumanoidDims = { hip: 42, thigh: 20, shin: 20, torso: 34, shoulderY: 30, shoulderX: 2, upper: 20, hipX: 4, headX: 1, eye: [9, -19], brow: { part: 'mech.brow', up: 5.8, dx: -1.5 } };
 
 export const RIG_COWARD: RigDef = (() => {
   const r = humanoidRig('coward', 'coward', COWARD_DIMS, false);
   r.joints.push({ id: 'torch', parent: 'foreR', x: 0, y: 22, part: 'coward.torch', z: 72 });
-  r.joints.push({ id: 'flame', parent: 'torch', x: 1, y: -50, part: 'coward.flame', z: 73 });
+  // The flame trails the torch's moves.
+  r.joints.push({ id: 'flame', parent: 'torch', x: 1, y: -50, part: 'coward.flame', z: 73, spring: { k: 120, c: 6, lag: 0.5, gain: 0.004, tip: [0, -26] } });
   r.attach.flame = { joint: 'torch', x: 1, y: -58 };
   return r;
 })();

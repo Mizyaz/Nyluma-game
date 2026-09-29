@@ -3,7 +3,6 @@ import { E2E, hold, probe, seedSave, startNewGame, tap, waitState, watchErrors }
 import { Bot } from './bot';
 import { ROUTES } from './routes';
 
-
 // Gameplay flows against the e2e build (the production game plus a read-only
 // state probe). `?canvas=1` selects Phaser's Canvas renderer: headless
 // Chromium's software WebGL is too slow for real-time input tests.
@@ -87,7 +86,7 @@ test.describe('gameplay', () => {
   });
 
   test('saves at checkpoints and continues after a reload', async ({ page }) => {
-    await seedSave(page, GAME, save({ room: 'r04', checkpoint: 'r04_start', abilities: ['pulse', 'reach', 'song', 'focus'] }, { chaptersReached: [1, 2] }));
+    await seedSave(page, GAME, save({ room: 'r04', checkpoint: 'r04_start' }, { chaptersReached: [1, 2] }));
     await page.reload();
     const cont = page.getByRole('button', { name: 'Devam Et' });
     await expect(cont).toBeEnabled({ timeout: 60_000 });
@@ -128,9 +127,9 @@ test.describe('gameplay', () => {
 
     await tap(page, 'Escape');
     await expect(page.getByRole('heading', { name: 'Duraklatıldı' })).toBeVisible();
+    // Nothing to aim for: no objective in the pause menu.
     const pauseMenu = page.getByRole('navigation', { name: 'Duraklatma menüsü' });
-    await pauseMenu.getByRole('button', { name: 'Hedef', exact: true }).click();
-    await expect(pauseMenu.getByText('Odayı tanı: üç şeyi incele.')).toBeVisible();
+    await expect(pauseMenu.getByRole('button')).toHaveText(['Devam', 'Anılar', 'Ayarlar', 'Ana Menü']);
     await page.getByRole('button', { name: 'Anılar' }).click();
     await expect(page.getByRole('heading', { name: 'Anılar' })).toBeVisible();
     await back.click();
@@ -150,16 +149,19 @@ test.describe('gameplay', () => {
     await freshPage(page);
     await page.reload();
     await page.getByRole('button', { name: 'Ayarlar' }).click();
+    // No difficulty or ability settings: the game asks nothing of the player.
+    await expect(page.getByRole('group', { name: 'Hikâye yardımı' })).toHaveCount(0);
+    await expect(page.getByRole('group', { name: 'Nefes (odak)' })).toHaveCount(0);
     const speed = page.getByRole('group', { name: 'Metin hızı' });
     await speed.getByRole('button', { name: 'Anında' }).click();
-    await page.getByRole('group', { name: 'Hikâye yardımı' }).getByRole('button', { name: 'Açık' }).click();
-    await page.getByRole('group', { name: 'Nefes (odak)' }).getByRole('button', { name: 'Aç / kapa' }).click();
+    await page.getByRole('group', { name: 'Ekran sarsıntısı' }).getByRole('button', { name: 'Kapalı' }).click();
+    await page.getByRole('group', { name: 'Azaltılmış hareket' }).getByRole('button', { name: 'Açık' }).click();
     await page.getByLabel('Müzik').fill('20');
     await page.reload();
     await page.getByRole('button', { name: 'Ayarlar' }).click();
     await expect(page.getByRole('group', { name: 'Metin hızı' }).getByRole('button', { name: 'Anında' })).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.getByRole('group', { name: 'Hikâye yardımı' }).getByRole('button', { name: 'Açık' })).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.getByRole('group', { name: 'Nefes (odak)' }).getByRole('button', { name: 'Aç / kapa' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('group', { name: 'Ekran sarsıntısı' }).getByRole('button', { name: 'Kapalı' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('group', { name: 'Azaltılmış hareket' }).getByRole('button', { name: 'Açık' })).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByLabel('Müzik')).toHaveValue('20');
   });
 
@@ -201,11 +203,22 @@ test.describe('gameplay', () => {
 
   test('the final office ends with the sale and the fixed line', async ({ page }) => {
     test.setTimeout(240_000);
-    await seedSave(page, GAME, save({ room: 'r12', checkpoint: 'r12_start', abilities: ['pulse', 'reach', 'song', 'focus', 'form'], form: 'human' }, { chaptersReached: [1, 2, 3, 4, 5] }));
+    await seedSave(page, GAME, save({ room: 'r12', checkpoint: 'r12_start' }, { chaptersReached: [1, 2, 3, 4, 5] }));
     await page.reload();
     await page.getByRole('button', { name: 'Devam Et' }).click();
     await waitState(page, (s) => s.room === 'r12' && !!s.player, 60_000, 'room r12');
-    await ROUTES.r12!(new Bot(page));
+    const bot = new Bot(page);
+    await bot.settle(60_000);
+    // The suit cannot jump: Gorti only walks. The door opens by itself…
+    const st = await probe(page);
+    expect(st.player!.kind).toBe('suit');
+    await bot.walkTo(1480, 10, 60_000);
+    await waitState(page, (s) => s.flags.includes('r12.door'), 5000, 'the door opens');
+    // …the papers on the table can be left unread, and at its end (x > 2400)
+    // the last pages turn by themselves: the route puts them down.
+    await bot.walkTo(2340, 10, 60_000);
+    expect((await probe(page)).docOpen).toBe(false);
+    await ROUTES.r12!(bot);
     await expect(page.locator('.ending .final-line')).toHaveText('Gorti, içindeki tüm ruhların sahipliğini kaybetmişti.');
     await expect(page.getByRole('button', { name: 'Yeniden oyna' })).toBeVisible({ timeout: 15_000 });
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('kristaller-dunyasi:save') ?? '{}') as { profile?: { endingSeen?: boolean } });
@@ -216,6 +229,40 @@ test.describe('gameplay', () => {
     await page.getByRole('button', { name: 'Bölümler' }).click();
     for (const r of ['I', 'II', 'III', 'IV', 'V']) await expect(page.getByRole('button', { name: new RegExp(`^${r}\\. `) })).toBeEnabled();
     await page.getByRole('button', { name: 'Geri' }).click();
+  });
+});
+
+test.describe('colour bombardment', () => {
+  test('comes by itself now and then and never stops Gorti', async ({ page }) => {
+    const errors = watchErrors(page);
+    // `?bursts=fast`: the first one ~2 s into play, then one every ~6 s.
+    const url = `${GAME}&bursts=fast`;
+    await page.goto(url);
+    await page.evaluate(() => localStorage.clear());
+    await startNewGame(page, url);
+    await new Bot(page).settle();
+    const storm = page.locator('#stage .color-storm');
+    const s1 = await waitState(page, (s) => !!s.bursts?.active, 15_000, 'first bombardment');
+    expect(s1.bursts!.count).toBe(1);
+    await expect(storm).toHaveClass(/\bon\b/);
+    await expect(storm).toBeVisible();
+    // Visual only: Gorti keeps control, walks and jumps through it.
+    expect(s1.context).toBe('gameplay');
+    expect(s1.player!.state).toBe('normal');
+    await hold(page, 'KeyD', 600);
+    const s2 = await probe(page);
+    expect(s2.bursts!.active).toBe(true);
+    expect(s2.player!.x).toBeGreaterThan(s1.player!.x + 60);
+    await page.keyboard.down('Space');
+    await waitState(page, (s) => !s.player!.onGround && s.player!.vy < 0 && !!s.bursts?.active, 3000, 'jump during the bombardment');
+    await page.keyboard.up('Space');
+    await waitState(page, (s) => s.player!.onGround, 4000, 'landed');
+    // It passes, and the next one comes by itself.
+    await waitState(page, (s) => !s.bursts!.active, 10_000, 'bombardment over');
+    await expect(storm).not.toHaveClass(/\bon\b/);
+    await waitState(page, (s) => (s.bursts?.count ?? 0) >= 2 && !!s.bursts?.active, 15_000, 'second bombardment');
+    await expect(storm).toHaveClass(/\bon\b/);
+    expect(errors).toEqual([]);
   });
 });
 

@@ -1,13 +1,12 @@
 import type * as Phaser from 'phaser';
 import { app } from '../game/App';
 import type { Settings } from '../game/state/types';
+import { ColorStorm } from './ColorStorm';
 import { Dialogue } from './Dialogue';
 import { DocView } from './DocView';
 import { EndingView } from './EndingView';
 import { Hud } from './Hud';
 import { Menus } from './Menus';
-import { PuzzlePanel } from './PuzzlePanel';
-import { SongPanel } from './SongPanel';
 import { TouchControls } from './TouchControls';
 import { h } from './dom';
 
@@ -17,11 +16,10 @@ export class UI {
   readonly hud: Hud;
   readonly dialogue: Dialogue;
   readonly menus: Menus;
-  readonly song: SongPanel;
-  readonly puzzle: PuzzlePanel;
   readonly doc: DocView;
   readonly ending: EndingView;
   readonly touch: TouchControls;
+  readonly colorStorm: ColorStorm;
   private loadingEl: HTMLElement | null = null;
   private game: Phaser.Game;
   private last = performance.now();
@@ -31,12 +29,11 @@ export class UI {
     this.stage = document.getElementById('stage')!;
     this.hud = new Hud(this.stage);
     this.dialogue = new Dialogue(this.stage);
-    this.song = new SongPanel(this.stage);
-    this.puzzle = new PuzzlePanel(this.stage);
     this.doc = new DocView(this.stage);
     this.ending = new EndingView(this.stage);
     this.menus = new Menus(this.stage);
     this.touch = new TouchControls(document.getElementById('touch')!);
+    this.colorStorm = new ColorStorm(this.stage);
     const sync = (): void => this.sync();
     window.addEventListener('resize', sync);
     window.addEventListener('orientationchange', sync);
@@ -62,7 +59,6 @@ export class UI {
     const root = document.getElementById('app');
     if (root && root.classList.contains('portrait') !== portrait) {
       root.classList.toggle('portrait', portrait);
-      this.hud.setLayout(portrait);
       // The canvas box changed shape: let Phaser measure it and fit again
       // (refresh() alone reuses the last measured parent size).
       if (this.game.isBooted) {

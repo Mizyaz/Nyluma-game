@@ -4,8 +4,8 @@ import { E2E, probe, waitState, watchErrors } from './helpers';
 import { ROUTES } from './routes';
 
 // Phone-sized landscape screen with touch only: menus are tapped, the game
-// is played through the on-screen controls (multi-touch pad + buttons) and
-// the song/puzzle/document panels are touched directly. No keyboard input.
+// is played through the on-screen controls (multi-touch pad, Zıpla, Eylem)
+// and the dialogue and document pages are touched directly. No keyboard input.
 // PHONE_UPRIGHT=1 runs the same tests with the phone held upright.
 const UPRIGHT = !!process.env.PHONE_UPRIGHT;
 const PHONE = { viewport: UPRIGHT ? { width: 412, height: 915 } : { width: 915, height: 412 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 };
@@ -28,6 +28,9 @@ test.describe('mobile (touch only)', () => {
     const errors = watchErrors(page);
     await newGameByTouch(page);
     await expect(page.locator('#touch')).not.toHaveClass(/off/);
+    // Walking, jumping and the action button are all the game needs.
+    const shown = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>('#touch .tc:not(.hidden)')].map((e) => e.dataset.key).sort());
+    expect(shown).toEqual(['action', 'jump']);
     // Touch wording replaces key names in the instructions.
     await expect(page.locator('html')).toHaveClass(/touch-ui/);
     const bot = new Bot(page, 'touch');
@@ -53,10 +56,10 @@ test.describe('mobile (touch only)', () => {
     ] as const) {
       await page.setViewportSize({ width: w, height: h });
       await page.waitForTimeout(400);
-      // Show every contextual button too.
-      await page.evaluate(() => document.querySelectorAll('#touch .tc.hidden').forEach((e) => e.classList.remove('hidden')));
+      // Zıpla hides where Gorti cannot jump: show it (and Eylem) anyway.
+      await page.evaluate(() => document.querySelectorAll('#touch .tc[data-key="jump"], #touch .tc[data-key="action"]').forEach((e) => e.classList.remove('hidden')));
       const r = await page.evaluate(() => {
-        const rs = [...document.querySelectorAll('#touch .tc, #touch .tc-pad')].map((e) => ({ k: (e as HTMLElement).dataset.key ?? 'pad', r: e.getBoundingClientRect() }));
+        const rs = [...document.querySelectorAll('#touch .tc[data-key="jump"], #touch .tc[data-key="action"], #touch .tc-pad')].map((e) => ({ k: (e as HTMLElement).dataset.key ?? 'pad', r: e.getBoundingClientRect() }));
         const hits: string[] = [];
         for (let i = 0; i < rs.length; i++)
           for (let j = i + 1; j < rs.length; j++) {

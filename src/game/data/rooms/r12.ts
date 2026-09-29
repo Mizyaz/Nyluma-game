@@ -10,21 +10,19 @@ export const R12: RoomDef = {
   theme: 'office',
   music: 'final',
   player: 'suit',
-  objective: 'r12.door',
   checkpoints: [
     { id: 'r12_start', x: 150, y: 680, facing: 1, silent: true },
     { id: 'r12_room', x: 1760, y: 680, silent: true },
   ],
   solids: [
     { x: 0, y: 680, w: 2700, h: 120, style: 'office' },
-    { id: 'door', x: 1590, y: 380, w: 40, h: 300, style: 'none', hidden: true, unless: 'r12.door' },
   ],
+  // Reading the papers is up to the player; the last page turns by itself
+  // at the end of the table.
   interacts: [
-    { id: 'door', x: 1545, y: 680, r: 70, prompt: 'Kapıyı aç', unless: 'r12.door' },
-    { id: 'portraits', x: 1990, y: 680, r: 70, prompt: 'Belgeyi incele', when: 'r12.door', unless: 'r12.read' },
-    { id: 'russian', x: 2150, y: 680, r: 70, prompt: 'Belgeyi incele', when: 'r12.door', unless: 'r12.read' },
-    { id: 'clause', x: 2310, y: 680, r: 70, prompt: 'Belgeyi incele', when: 'r12.door', unless: 'r12.read' },
-    { id: 'final', x: 2150, y: 680, r: 100, prompt: 'Son sayfayı çevir', when: 'r12.read', unless: 'r12.sold' },
+    { id: 'portraits', x: 1990, y: 680, r: 70, prompt: 'Belgeyi incele', when: 'r12.door', unless: 'r12.sold' },
+    { id: 'russian', x: 2150, y: 680, r: 70, prompt: 'Belgeyi incele', when: 'r12.door', unless: 'r12.sold' },
+    { id: 'clause', x: 2310, y: 680, r: 70, prompt: 'Belgeyi incele', when: 'r12.door', unless: 'r12.sold' },
   ],
   exits: [],
   props: [

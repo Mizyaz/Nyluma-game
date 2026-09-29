@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { NEXT_ROOM, ROOMS } from '../../src/game/data/rooms';
 import { MEMORIES } from '../../src/game/data/memories';
-import { OBJECTIVES } from '../../src/game/data/objectives.tr';
 import { allParts } from '../../src/game/art/manifest';
 import { HULL_H, HULL_W, REACH_RANGE } from '../../src/game/constants';
 import type { RoomDef, SolidDef } from '../../src/game/data/roomTypes';
@@ -80,13 +79,12 @@ describe('room data', () => {
     }
   });
 
-  it('uses short song patterns and valid objectives', () => {
+  it('sets no tasks: no song nodes, anchors, form sites or hidden surfaces', () => {
     for (const r of rooms) {
-      for (const n of r.songNodes ?? []) {
-        expect(n.pattern.length).toBeGreaterThanOrEqual(3);
-        expect(n.pattern.length).toBeLessThanOrEqual(4);
-      }
-      expect(OBJECTIVES[r.objective], r.objective).toBeDefined();
+      expect(r.songNodes ?? [], r.id).toEqual([]);
+      expect(r.anchors ?? [], r.id).toEqual([]);
+      expect(r.sites ?? [], r.id).toEqual([]);
+      expect(r.solids.filter((s) => s.latent).map((s) => s.id ?? `${s.x},${s.y}`), r.id).toEqual([]);
     }
   });
 
@@ -94,7 +92,7 @@ describe('room data', () => {
     const keys = new Set(allParts().map((p) => p.key));
     const missing: string[] = [];
     for (const r of rooms) for (const p of r.props ?? []) if (!keys.has(p.key)) missing.push(`${r.id}:${p.key}`);
-    for (const k of ['prop.anchor', 'prop.node', 'prop.node.lit', 'prop.site', 'prop.memory', 'prop.lantern', 'prop.lantern.lit', 'hz.thorns', 'hz.wisp', 'hz.lash']) if (!keys.has(k)) missing.push(k);
+    for (const k of ['prop.anchor', 'prop.node', 'prop.node.lit', 'prop.site', 'prop.memory', 'prop.lantern', 'prop.lantern.lit']) if (!keys.has(k)) missing.push(k);
     expect(missing).toEqual([]);
   });
 

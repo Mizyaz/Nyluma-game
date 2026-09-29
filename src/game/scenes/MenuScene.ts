@@ -20,6 +20,7 @@ import type { WorldData } from './WorldScene';
 /** Title screen: an animated crystal chamber behind the DOM main menu. */
 export class MenuScene extends Phaser.Scene {
   private rig: RigView | null = null;
+  private idleT = 0;
 
   constructor() {
     super('menu');
@@ -89,7 +90,6 @@ export class MenuScene extends Phaser.Scene {
       startChapter: (ch) => this.start(chapterStartProgress(ch)),
       resume: () => undefined,
       quitToMenu: () => undefined,
-      objectiveText: () => '',
     };
     app.ui.menus.showMain();
     app.audio.music('menu');
@@ -126,6 +126,12 @@ export class MenuScene extends Phaser.Scene {
   }
 
   override update(_t: number, dt: number): void {
+    if (this.rig) {
+      // Gorti waits on the title screen: blinks and idle actions.
+      this.idleT += dt / 1000;
+      const b = (this.idleT % 4.3) / 0.15;
+      this.rig.play('idle', { idleT: 2.5 + this.idleT, blink: b < 1 ? 1 - Math.abs(2 * b - 1) : 0 });
+    }
     this.rig?.update(dt);
   }
 }

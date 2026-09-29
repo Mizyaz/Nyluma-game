@@ -84,9 +84,6 @@ export const FOCUS_RECHARGE_DELAY_S = 0.3;
 export const FOCUS_RECHARGE_RATE = 1.1; // seconds of focus regained per second
 export const LATENT_GRACE_S = 0.4;
 
-export const COHERENCE_SEGMENTS = 5;
-export const INVULN_MS = 1000;
-
 export const HINT_DELAY_MS = 40000;
 
 // Depth bands.

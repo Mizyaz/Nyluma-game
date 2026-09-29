@@ -5,7 +5,7 @@ import { hex, P } from '../../art/palette';
 import { frameRef, hasFrame } from '../../art/TextureFactory';
 import { CAPTIONS } from '../../data/dialogue.tr';
 import { memoryDef } from '../../data/memories';
-import { RIDE_CHASMS, RIDE_GROUND_Y, RIDE_MOUND, RIDE_SHARDS, RIDE_STOP_X, RIDE_THORNS } from '../../data/rooms/r07';
+import { RIDE_CHASMS, RIDE_GAPS, RIDE_GROUND_Y, RIDE_MOUND, RIDE_STOP_X } from '../../data/rooms/r07';
 import { CreaturePool } from '../../entities/Creatures';
 import { Face } from '../../entities/Celestial';
 import { Horse } from '../../entities/Horse';
@@ -13,9 +13,9 @@ import type { WorldScene } from '../../scenes/WorldScene';
 import type { RoomScript } from './types';
 import { addArt } from './helpers';
 
-// Chapter III — the flowering ride. Constant forward motion, forgiving
-// jumps, focus-bloomed flower bridges over chasms, telegraphed falling
-// shards. Two intermediate restart points; hazards are taught one at a time.
+// Chapter III — the flowering ride. Constant forward motion; the horse leaps
+// the gaps by itself (the player may jump whenever they like) and flower
+// bridges bloom over the chasms as it comes near.
 
 const HULL_W = 110;
 const HULL_H = 96;
@@ -32,32 +32,19 @@ interface Bridge {
   sign: Phaser.GameObjects.Image | null;
 }
 
-interface Shard {
-  x: number;
-  state: 'wait' | 'warn' | 'fall' | 'ground' | 'gone';
-  t: number;
-  img: Phaser.GameObjects.Image | null;
-  ring: Phaser.GameObjects.Image;
-  y: number;
-}
-
 export function r07(w: WorldScene): RoomScript {
   let horse!: Horse;
   let zone!: Phaser.GameObjects.Zone;
   let body!: Phaser.Physics.Arcade.Body;
   const bridges: Bridge[] = [];
-  const shards: Shard[] = [];
-  const thornImgs: Phaser.GameObjects.Image[] = [];
   let coyote = 0;
   let buffer = 0;
   let jumping = false;
-  let stumble = 0;
-  let invuln = 0;
+  /** A leap the horse takes by itself: full height, never cut short. */
+  let autoLeap = false;
   let ending = false;
   let restarting = false;
   let hoofCount = 0;
-  let taughtChasm = false;
-  let taughtShard = false;
   let wasGround = true;
   let lastVy = 0;
   let memTaken = w.quest.hasMemory('m6');
@@ -67,7 +54,7 @@ export function r07(w: WorldScene): RoomScript {
   const fish = new CreaturePool(w, 'fish', 12, DEPTH.actors - 2);
   let sun: Face | null = null;
 
-  const speedBase = (): number => (w.assist ? 285 : 330);
+  const speedBase = (): number => 330;
 
   const grounded = (): boolean => (body.blocked.down || body.touching.down) && body.velocity.y >= -1;
 
@@ -137,48 +124,6 @@ export function r07(w: WorldScene): RoomScript {
     }
   };
 
-  const buildHazards = (): void => {
-    for (const x of RIDE_THORNS) {
-      for (let k = -1; k <= 1; k++) {
-        const im = addArt(w, 'hz.thorns', x + k * 30, RIDE_GROUND_Y + 3, DEPTH.props + 2);
-        if (im) {
-          im.setFlipX(k === 0);
-          thornImgs.push(im);
-        }
-      }
-    }
-    const ringF = frameRef('fx.ring');
-    for (const x of RIDE_SHARDS) {
-      const ring = w.add.image(x, RIDE_GROUND_Y - 4, ringF.atlas, ringF.frame).setTint(hex(P.crystalTealLight)).setScale(0.9, 0.22).setAlpha(0).setDepth(DEPTH.props + 1);
-      const img = addArt(w, 'hz.shard', x, -60, DEPTH.actors + 1);
-      img?.setVisible(false);
-      shards.push({ x, state: 'wait', t: 0, img, ring, y: -60 });
-    }
-  };
-
-  const resetShards = (fromX: number): void => {
-    for (const s of shards) {
-      if (s.x < fromX) continue;
-      s.state = 'wait';
-      s.t = 0;
-      s.img?.setVisible(false);
-      s.ring.setAlpha(0);
-    }
-  };
-
-  const hit = (fromX: number): void => {
-    if (invuln > 0 || restarting) return;
-    invuln = 1.1;
-    stumble = 0.5;
-    const p = w.player;
-    p.halves = Math.max(0, p.halves - (w.assist ? 1 : 2));
-    app.audio.sfx('hurt');
-    app.audio.sfx('neigh', { vol: 0.5 });
-    w.shake(0.006, 180);
-    void fromX;
-    if (p.halves <= 0) restart();
-  };
-
   const restart = (): void => {
     if (restarting) return;
     restarting = true;
@@ -188,11 +133,6 @@ export function r07(w: WorldScene): RoomScript {
       const cp = w.def.checkpoints.find((c) => c.id === w.quest.progress.checkpoint) ?? w.def.checkpoints[0]!;
       place(cp.x);
       resetBridges(cp.x);
-      resetShards(cp.x);
-      w.player.heal();
-      w.player.focus.refill();
-      invuln = 1;
-      stumble = 0;
       restarting = false;
       w.camFree.x = cp.x + 360;
       cam.fadeIn(360, 15, 13, 24);
@@ -240,7 +180,6 @@ export function r07(w: WorldScene): RoomScript {
       w.physics.add.collider(zone, w.room.group);
       place(cp.x);
       buildBridges();
-      buildHazards();
       horse.onHoof = (x, y) => {
         if (!grounded()) return;
         hoofCount++;
@@ -267,8 +206,6 @@ export function r07(w: WorldScene): RoomScript {
       if (restarting) return;
       const inp = w.stepInput;
       const gp = app.input.context === 'gameplay';
-      if (invuln > 0) invuln -= dt;
-      if (stumble > 0) stumble -= dt;
       const g = grounded();
       if (g && !wasGround && lastVy > 250) {
         app.audio.sfx('land', { vol: 0.8 });
@@ -281,11 +218,16 @@ export function r07(w: WorldScene): RoomScript {
       buffer = gp && inp.jumpPressed ? BUFFER : buffer - dt;
       // Constant forward motion with gentle speed control.
       let target = speedBase() + (gp ? inp.axis : 0) * 70;
-      if (stumble > 0) target *= 0.6;
       if (ending) target = Math.min(speedBase(), Math.max(0, (RIDE_STOP_X - horse.x) * 0.5));
       body.velocity.x += (target - body.velocity.x) * Math.min(1, dt * 4);
       // Never stall against a ledge: the horse hops up on its own.
       if (!ending && g && body.blocked.right && buffer <= 0) buffer = BUFFER;
+      // Gaps and the mound: the horse leaps by itself.
+      const lead = body.velocity.x * 0.2;
+      if (!ending && g && buffer <= 0 && (RIDE_GAPS.some(([a]) => a - horse.x > lead && a - horse.x < lead + 60) || (RIDE_MOUND[0] - horse.x > lead + 30 && RIDE_MOUND[0] - horse.x < lead + 90))) {
+        buffer = BUFFER;
+        autoLeap = true;
+      }
       if (!ending && buffer > 0 && coyote > 0) {
         body.velocity.y = -JUMP_V;
         buffer = 0;
@@ -293,69 +235,20 @@ export function r07(w: WorldScene): RoomScript {
         jumping = true;
         app.audio.sfx('jump', { pitch: 0.7 });
       }
-      if (jumping && !inp.jumpHeld && body.velocity.y < 0) {
+      if (jumping && !autoLeap && !inp.jumpHeld && body.velocity.y < 0) {
         body.velocity.y *= 0.55;
         jumping = false;
       }
-      if (body.velocity.y >= 0) jumping = false;
+      if (body.velocity.y >= 0) {
+        jumping = false;
+        autoLeap = false;
+      }
       horse.x = zone.x;
       horse.y = zone.y + HULL_H / 2;
       w.probeExtra.horse = { x: horse.x, y: horse.y, grounded: g, vx: body.velocity.x, bridges: bridges.map((b) => b.bloomed) };
-      // Flower bridges bloom with a short breath before a chasm.
+      // Flower bridges bloom by themselves as the horse comes near.
       for (const br of bridges) {
-        const near = horse.x > br.a - 700 && horse.x < br.b - 80;
-        if (near && !br.bloomed && w.player.focus.active && w.player.focus.heldFor > 0.2) bloomBridge(br);
-        if (!taughtChasm && !br.bloomed && horse.x > br.a - 900 && horse.x < br.a) {
-          taughtChasm = true;
-          app.ui.hud.caption('Uçurumu çiçekler kapatabilir: kenara varmadan nefesini tut (Q).', 5200);
-        }
-      }
-      // Thorns
-      if (invuln <= 0) {
-        for (const x of RIDE_THORNS) {
-          if (Math.abs(horse.x + 20 - x) < 60 && horse.y > RIDE_GROUND_Y - 36) hit(x);
-        }
-      }
-      // Falling shards: telegraph ≥ 1.6 s ahead, then a jumpable obstacle.
-      for (const s of shards) {
-        const dx = s.x - horse.x;
-        if (s.state === 'wait' && dx < 900 && dx > 0) {
-          s.state = 'warn';
-          s.t = 0;
-          app.audio.sfx('shard', { pitch: 0.6, vol: 0.5 });
-          if (!taughtShard) {
-            taughtShard = true;
-            app.ui.hud.caption('Parlayan halkaya bir kristal düşecek: hızını ayarla ya da üstünden atla.', 5200);
-          }
-        }
-        s.t += dt;
-        if (s.state === 'warn') {
-          s.ring.setAlpha(0.4 + 0.5 * Math.abs(Math.sin(s.t * 6)));
-          if (s.t > 0.9) {
-            s.state = 'fall';
-            s.t = 0;
-            s.y = w.cameras.main.scrollY - 40;
-            s.img?.setVisible(true).setPosition(s.x, s.y);
-          }
-        } else if (s.state === 'fall') {
-          s.y += 900 * dt;
-          s.img?.setY(s.y);
-          if (s.y >= RIDE_GROUND_Y + 4) {
-            s.state = 'ground';
-            s.t = 0;
-            s.img?.setY(RIDE_GROUND_Y + 4);
-            s.ring.setAlpha(0);
-            app.audio.sfx('shard');
-            w.burst(s.x, RIDE_GROUND_Y - 10, hex(P.crystalTealLight), 10);
-          }
-          if (invuln <= 0 && Math.abs(horse.x - s.x) < 60 && s.y > horse.y - 190 && s.y < horse.y) hit(s.x);
-        } else if (s.state === 'ground') {
-          if (invuln <= 0 && Math.abs(horse.x + 20 - s.x) < 50 && horse.y > RIDE_GROUND_Y - 30) hit(s.x);
-          if (horse.x - s.x > 400) {
-            s.state = 'gone';
-            s.img?.setVisible(false);
-          }
-        }
+        if (!br.bloomed && horse.x > br.a - 700 && horse.x < br.b - 80) bloomBridge(br);
       }
       // Optional memory on the alternate arc.
       if (!memTaken) {
@@ -390,7 +283,8 @@ export function r07(w: WorldScene): RoomScript {
       if (!grounded()) horse.play(body.velocity.y < 0 ? 'jump' : 'land');
       else if (moving) horse.gallop((Math.abs(body.velocity.x) * dt) / 1000);
       else horse.play('idle');
-      horse.rig.setAlpha(invuln > 0 ? 0.6 + 0.4 * Math.sin(w.time.now / 50) : 1);
+      // Gorti cheers while the horse flies over a gap.
+      horse.rider?.play('ride', grounded() ? {} : { emote: 'joy', emoteK: 1 });
       horse.update(dt);
       birds.update(dt);
       fish.update(dt);
@@ -404,9 +298,6 @@ export function r07(w: WorldScene): RoomScript {
       }
       void VIEW_W;
       void hasFrame;
-    },
-    focusRelevant() {
-      return bridges.some((br) => !br.bloomed && horse.x > br.a - 900 && horse.x < br.b);
     },
     onRespawn() {
       restart();

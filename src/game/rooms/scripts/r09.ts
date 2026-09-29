@@ -1,15 +1,14 @@
 import * as Phaser from 'phaser';
 import { app } from '../../App';
 import { DEPTH, VIEW_H, VIEW_W } from '../../constants';
-import { hex } from '../../art/palette';
-import { frameRef } from '../../art/TextureFactory';
 import { CAPTIONS, DIALOGUE } from '../../data/dialogue.tr';
 import { Sparrow } from '../../entities/Creatures';
 import type { WorldScene } from '../../scenes/WorldScene';
 import type { RoomScript } from './types';
 
 // Chapter IV — the sparrow clearing by the river, Gorti's line, and the
-// reflective pool that folds the forest into the mind.
+// reflective pool: reaching it, Gorti closes their eyes and the forest folds
+// into the mind.
 const PERCHES: [number, number][] = [
   [520, 690],
   [1180, 640],
@@ -28,18 +27,16 @@ export function r09(w: WorldScene): RoomScript {
       async (cs) => {
         w.player.lock(true, 'breath');
         await cs.say(DIALOGUE.closeEyes!);
-        // The forest folds inward: layered strips slide across like closing pages.
-        const f = frameRef('fx.white');
+        // The forest folds inward: layered strips slide across like closing
+        // pages (filled shapes, so they keep their colours in every renderer).
         const cols = [0x3f4847, 0x4b5654, 0x58705f, 0x2e2426, 0x3a2f2c, 0x231c1f];
-        const strips: Phaser.GameObjects.Image[] = [];
+        const strips: Phaser.GameObjects.Rectangle[] = [];
         for (let i = 0; i < 6; i++) {
           const h = VIEW_H / 6 + 2;
           const dir = i % 2 ? 1 : -1;
           const s = w.add
-            .image(VIEW_W / 2 + dir * VIEW_W * 1.2, i * (VIEW_H / 6) + h / 2, f.atlas, f.frame)
+            .rectangle(VIEW_W / 2 + dir * VIEW_W * 1.2, i * (VIEW_H / 6) + h / 2, VIEW_W * 1.2, h, cols[i]!)
             .setScrollFactor(0)
-            .setDisplaySize(VIEW_W * 1.2, h)
-            .setTint(cols[i]!)
             .setDepth(DEPTH.overlay + 1);
           strips.push(s);
         }
@@ -51,7 +48,6 @@ export function r09(w: WorldScene): RoomScript {
         }
         await Promise.all(strips.map((s, i) => cs.tween({ targets: s, x: VIEW_W / 2, duration: 900 + i * 120, ease: 'Cubic.easeInOut' })));
         await cs.wait(400);
-        void hex;
       },
       () => {
         w.flag('r09.pool', false);
@@ -62,7 +58,6 @@ export function r09(w: WorldScene): RoomScript {
 
   return {
     setup() {
-      w.setObjective(w.quest.has('r09.line') ? 'r09.pool' : 'r09.follow', false);
       const startIdx = w.player.x > 1700 ? 3 : 0;
       perch = startIdx;
       const [px, py] = PERCHES[perch]!;
@@ -85,21 +80,17 @@ export function r09(w: WorldScene): RoomScript {
           () => {
             w.flag('r09.line', false);
             w.player.lock(false);
-            w.setObjective('r09.pool');
           },
         );
       }
     },
-    onInteract(id) {
-      if (id === 'pool') {
-        if (!w.quest.has('r09.line')) {
-          app.ui.hud.toast('Serçe henüz yolu göstermedi.', 2400);
-          return true;
-        }
+    onFixed() {
+      // At the pool Gorti closes their eyes.
+      const p = w.player;
+      if (p.x > 2790 && p.onGround && !w.narrative.busy && !w.quest.has('r09.pool')) {
+        w.flag('r09.line', false);
         fold();
-        return true;
       }
-      return false;
     },
     onUpdate(dt) {
       if (!sparrow) return;

@@ -33,7 +33,6 @@ export type Sfx =
   | 'stamp'
   | 'ui'
   | 'uiBack'
-  | 'hurt'
   | 'pulse'
   | 'focusIn'
   | 'focusOut'
@@ -44,8 +43,6 @@ export type Sfx =
   | 'chirp'
   | 'shout'
   | 'whale'
-  | 'lash'
-  | 'lashWarn'
   | 'shard'
   | 'door'
   | 'heartbeat'
@@ -56,7 +53,6 @@ export type Sfx =
   | 'clock'
   | 'gear'
   | 'neigh'
-  | 'wisp'
   | 'bloom'
   | 'ray';
 
@@ -356,11 +352,6 @@ export class AudioSystem {
       case 'uiBack':
         this.osc('sine', 440 * p, t, 0.06, 0.05 * v, out);
         break;
-      case 'hurt':
-        this.noiseBurst(t, 0.16, 0.14 * v, out, { type: 'lowpass', f0: 900, f1: 300 });
-        this.osc('sine', 150, t, 0.18, 0.12 * v, out, { f1: 70 });
-        this.chime(t, 330, 0.03 * v, out, 0.5);
-        break;
       case 'pulse':
         this.osc('sine', 180, t, 0.25, 0.12 * v, out, { f1: 380, glide: 0.15 });
         this.chime(t + 0.05, 660, 0.04 * v, out, 0.9);
@@ -395,13 +386,6 @@ export class AudioSystem {
       case 'whale':
         this.osc('sine', 170, t, 2.6, 0.12 * v, out, { f1: 110, glide: 1.4, attack: 0.5, vib: 0.01, vibRate: 3 });
         this.osc('sine', 340, t + 0.2, 2.2, 0.03 * v, out, { f1: 230, glide: 1.4, attack: 0.5 });
-        break;
-      case 'lashWarn':
-        this.noiseBurst(t, 0.8, 0.07 * v, out, { type: 'lowpass', f0: 180, f1: 320 }, 0.3);
-        break;
-      case 'lash':
-        this.noiseBurst(t, 0.2, 0.12 * v, out, { type: 'bandpass', f0: 2200, f1: 280, q: 2 });
-        this.osc('sine', 90, t + 0.05, 0.15, 0.12 * v, out, { f1: 60 });
         break;
       case 'shard':
         this.chime(t, 1320 * p, 0.05 * v, out, 0.6);
@@ -447,9 +431,6 @@ export class AudioSystem {
       case 'neigh':
         this.osc('sawtooth', 420, t, 0.9, 0.05 * v, out, { f1: 260, vib: 0.06, vibRate: 12, attack: 0.05 });
         this.noiseBurst(t, 0.8, 0.05 * v, out, { type: 'bandpass', f0: 1200, f1: 600, q: 2 });
-        break;
-      case 'wisp':
-        this.osc('sine', 520, t, 0.5, 0.03 * v, out, { f1: 780, vib: 0.04, vibRate: 9, attack: 0.1 });
         break;
       case 'bloom':
         [659, 880, 1047].forEach((f, i) => this.chime(t + i * 0.05, f * p, 0.03 * v, out, 0.9));

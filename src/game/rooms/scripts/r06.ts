@@ -7,32 +7,22 @@ import { CAPTIONS, DIALOGUE } from '../../data/dialogue.tr';
 import { Horse } from '../../entities/Horse';
 import type { WorldScene } from '../../scenes/WorldScene';
 import type { RoomScript } from './types';
-import { addArt, addGlow, bloomAt, RingGauge } from './helpers';
+import { addArt, addGlow, bloomAt } from './helpers';
 
-// Chapter II — “Yalanlar!”: the forest answers, Gorti swells into the
-// unstable giant, three knots are stabilised with breath, the horse forms.
+// Chapter II — “Yalanlar!”: the forest answers and Gorti swells into the
+// unstable giant. The swollen knots calm as Gorti walks past them; then the
+// purple horse forms at the far end and Gorti rides away on it.
 const KNOTS = [
   { id: 'k1', x: 1000, y: 900 },
   { id: 'k2', x: 1780, y: 740 },
   { id: 'k3', x: 2450, y: 900 },
 ];
-const HOLD_S = 1.2;
+const HORSE = { x: 2780, y: 900 };
 
 export function r06(w: WorldScene): RoomScript {
   const imgs = new Map<string, { swollen: Phaser.GameObjects.Image | null; calm: Phaser.GameObjects.Image | null; glow: Phaser.GameObjects.Image }>();
-  const progress: Record<string, number> = { k1: 0, k2: 0, k3: 0 };
-  const ring = new RingGauge(w);
   let horse: Horse | null = null;
   let drips: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
-
-  const knotsDone = (): number => KNOTS.filter((k) => w.quest.has(`r06.${k.id}`)).length;
-
-  const pickObjective = (): void => {
-    const q = w.quest;
-    if (q.has('r06.horse')) w.setObjective('r06.mount', false);
-    else if (q.has('r06.shout')) w.setObjective('r06.knots', false);
-    else w.setObjective('r06.walk', false);
-  };
 
   const refreshKnots = (): void => {
     for (const k of KNOTS) {
@@ -48,7 +38,7 @@ export function r06(w: WorldScene): RoomScript {
 
   const spawnHorse = (immediate: boolean): void => {
     if (horse) return;
-    horse = new Horse(w, 1760, 740, DEPTH.actors);
+    horse = new Horse(w, HORSE.x, HORSE.y, DEPTH.actors);
     horse.setFacing(-1);
     if (immediate) horse.play('kneel');
   };
@@ -115,7 +105,6 @@ export function r06(w: WorldScene): RoomScript {
         refreshKnots();
         w.camTo(null);
         p.lock(false);
-        w.setObjective('r06.knots');
         w.activateCheckpoint('r06_knots', true);
       },
     );
@@ -126,9 +115,9 @@ export function r06(w: WorldScene): RoomScript {
       'r06.horse',
       async (cs) => {
         w.player.lock(true, 'look');
-        w.camTo(1760, 640);
+        w.camTo(HORSE.x - 120, HORSE.y - 100);
         await cs.wait(600);
-        const g = addGlow(w, 1760, 700, P.violet, 0.4, 0.8, DEPTH.fx);
+        const g = addGlow(w, HORSE.x, HORSE.y - 40, P.violet, 0.4, 0.8, DEPTH.fx);
         await cs.tween({ targets: g, scale: 3.2, alpha: 0.4, duration: 1600 });
         cs.caption(CAPTIONS.horseBorn, 5000);
         spawnHorse(false);
@@ -152,7 +141,6 @@ export function r06(w: WorldScene): RoomScript {
         w.flag('r06.horse', false);
         w.camTo(null);
         w.player.lock(false);
-        w.setObjective('r06.mount');
       },
     );
   };
@@ -181,7 +169,6 @@ export function r06(w: WorldScene): RoomScript {
 
   return {
     setup() {
-      pickObjective();
       for (const k of KNOTS) {
         const swollen = addArt(w, 'prop.knot', k.x, k.y + 2, DEPTH.props + 2);
         const calm = addArt(w, 'prop.knot.calm', k.x, k.y + 2, DEPTH.props + 2);
@@ -208,65 +195,35 @@ export function r06(w: WorldScene): RoomScript {
         drips.setDepth(DEPTH.fx);
       }
       if (w.quest.has('r06.horse')) spawnHorse(true);
-      w.onCleanup(() => {
-        horse?.destroy();
-        ring.destroy();
-      });
+      w.onCleanup(() => horse?.destroy());
     },
     onTrigger(id) {
       if (id === 'shout' && !w.quest.has('r06.shout')) shoutScene();
     },
-    extraInteracts() {
-      return [];
-    },
-    onInteract(id) {
-      const k = KNOTS.find((x) => x.id === id);
-      if (k) {
-        if (w.quest.has(`r06.${k.id}`)) return true;
-        if ((progress[k.id] ?? 0) < HOLD_S) {
-          app.ui.hud.toast('Önce yanında nefesini tut (Q) ve halkayı doldur.', 3200);
-          return true;
-        }
+    onFixed() {
+      const p = w.player;
+      if (!w.quest.has('r06.shout') || w.narrative.busy) return;
+      // The knots calm as Gorti passes.
+      for (const k of KNOTS) {
+        if (w.quest.has(`r06.${k.id}`) || Math.hypot(p.x - k.x, p.feetY - k.y) > 120) continue;
         w.flag(`r06.${k.id}`);
         app.audio.sfx('bloom');
-        app.audio.sfx('checkpoint');
         refreshKnots();
         for (let i = 0; i < 5; i++) w.time.delayedCall(i * 110, () => bloomAt(w, k.x - 200 + i * 100, k.y, 5));
         w.flash(0x9459d8, 0.18);
         app.ui.hud.caption(CAPTIONS.knotCalm, 3600);
-        if (k.id === 'k1') w.activateCheckpoint('r06_k1');
-        if (k.id === 'k2') w.activateCheckpoint('r06_k2');
-        if (knotsDone() >= 3) {
-          w.activateCheckpoint('r06_horse', true);
-          horseScene();
-        } else app.ui.hud.toast(`Dengelenen düğüm: ${knotsDone()} / 3`, 2600);
-        return true;
       }
-      if (id === 'mount' && horse && !w.quest.has('r06.done')) {
-        mountScene();
-        return true;
+      // Past the last knot, the horse forms ahead.
+      if (!w.quest.has('r06.horse') && p.x > 2380) {
+        for (const k of KNOTS) w.flag(`r06.${k.id}`, false);
+        refreshKnots();
+        w.activateCheckpoint('r06_horse', true);
+        horseScene();
       }
-      return false;
-    },
-    onFixed(dt) {
-      const p = w.player;
-      if (!w.quest.has('r06.shout')) return;
-      for (const k of KNOTS) {
-        if (w.quest.has(`r06.${k.id}`)) continue;
-        const near = Math.hypot(p.x - k.x, p.feetY - k.y) < 110;
-        if (near && p.focus.active) progress[k.id] = Math.min(HOLD_S, (progress[k.id] ?? 0) + dt);
-        else if (!near) progress[k.id] = Math.max(0, (progress[k.id] ?? 0) - dt * 0.5);
-      }
-    },
-    onRespawn() {
-      for (const k of KNOTS) progress[k.id] = 0;
-    },
-    focusRelevant() {
-      return w.quest.has('r06.shout') && KNOTS.some((k) => !w.quest.has(`r06.${k.id}`) && Math.abs(w.player.x - k.x) < 200);
+      if (horse && w.quest.has('r06.horse') && !w.quest.has('r06.done') && Math.abs(p.x - HORSE.x) < 90) mountScene();
     },
     onUpdate(dt, time) {
       horse?.update(dt);
-      let shown = false;
       for (const k of KNOTS) {
         const v = imgs.get(k.id);
         if (v?.swollen?.visible) {
@@ -275,12 +232,7 @@ export function r06(w: WorldScene): RoomScript {
           v.swollen.setScale((1 / f.scale) * pulse);
           v.glow.setAlpha(0.3 + 0.2 * Math.sin(time / 200 + k.x));
         }
-        if (!shown && w.quest.has('r06.shout') && !w.quest.has(`r06.${k.id}`) && Math.hypot(w.player.x - k.x, w.player.feetY - k.y) < 160) {
-          ring.draw(k.x, k.y - 50, 46, (progress[k.id] ?? 0) / HOLD_S, true);
-          shown = true;
-        }
       }
-      if (!shown) ring.draw(0, 0, 0, 0, false);
     },
   };
 }

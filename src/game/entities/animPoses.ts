@@ -10,6 +10,10 @@ export type HumanoidStyle = 'root' | 'human' | 'coward' | 'mech' | 'suit';
 export interface PoseOut {
   angles: Angles;
   offsets: Record<string, { x: number; y: number }>;
+  /** Shape variants for joints that have them (e.g. eyeN: 'happy'). */
+  frames?: Record<string, string>;
+  /** Per-joint scale (e.g. a blink squashes the eye). */
+  scales?: Record<string, { x: number; y: number }>;
   /** Whole-rig offset and squash/stretch. */
   x?: number;
   y?: number;
@@ -24,12 +28,22 @@ export interface PoseParams {
   speed?: number;
   /** Vertical velocity for air poses. */
   vy?: number;
+  /** The form's take-off speed (scales the air poses). */
+  jv?: number;
+  /** 0..1 how hard the last landing was. */
+  impact?: number;
   /** 0..1 progress for one-shot poses. */
   k?: number;
   /** Momentary emotion layered over the animation (drives the brows). */
   emote?: Emote;
   /** 0..1 strength of the emote (fades out). */
   emoteK?: number;
+  /** 0..1 how closed the eyes are (blinks). */
+  blink?: number;
+  /** Extra head turn (radians, negative looks up). */
+  look?: number;
+  /** Seconds spent standing still (idle actions). */
+  idleT?: number;
 }
 
 export type Emote = 'surprise' | 'pain' | 'joy' | 'anger' | 'talk' | 'listen' | 'relief' | 'worry' | 'effort';
@@ -63,8 +77,24 @@ function browsFor(anim: string, t: number, prm: PoseParams, st: HumanoidStyle): 
       const twitch = Math.max(0, S(t * 0.37 + 1) - 0.9) * 26;
       b = { raise: -lift, knit: 0.04 * S(t * 0.5), asym: -twitch };
       if (st === 'suit') b = { raise: 1.4, knit: -0.32, asym: 0 };
+      const act = idleAction(prm.idleT ?? 0, st);
+      if (act) {
+        const e = act.env;
+        const to: BrowSet =
+          act.kind === 'look'
+            ? { raise: -4, knit: -0.15, asym: -2 }
+            : act.kind === 'stretch'
+              ? { raise: -2, knit: -0.3, asym: 0 }
+              : act.kind === 'hum'
+                ? { raise: -3 - 1.2 * Math.abs(S(t * 3.4)), knit: -0.25, asym: 0 }
+                : { raise: -1, knit: 0.3, asym: -3.2 };
+        b = { raise: b.raise + (to.raise - b.raise) * e, knit: b.knit + (to.knit - b.knit) * e, asym: b.asym + (to.asym - b.asym) * e };
+      }
       break;
     }
+    case 'dance':
+      b = { raise: -5 - 1.5 * Math.abs(S(t * 8)), knit: -0.3, asym: 0 };
+      break;
     case 'walk':
       b = { raise: 0, knit: st === 'suit' ? -0.3 : 0.1, asym: 0 };
       break;
@@ -74,8 +104,16 @@ function browsFor(anim: string, t: number, prm: PoseParams, st: HumanoidStyle): 
     case 'push':
       b = EMOTES.effort(t);
       break;
+    case 'crouch':
+    case 'takeoff':
+      b = { raise: 1.4, knit: 0.42, asym: 0 };
+      break;
     case 'rise':
       b = { raise: -5, knit: -0.12, asym: -1.2 };
+      break;
+    case 'apex':
+      // Weightless for a moment: delight.
+      b = { raise: -6 - 1 * Math.abs(S(t * 7)), knit: -0.28, asym: -1.8 };
       break;
     case 'fall': {
       const f = Math.min(1, Math.max(0, (prm.vy ?? 300) / 700));
@@ -83,8 +121,9 @@ function browsFor(anim: string, t: number, prm: PoseParams, st: HumanoidStyle): 
       break;
     }
     case 'land': {
-      const u = Math.min(1, t / 0.28);
-      b = { raise: 2.6 * (1 - u), knit: 0.5 * (1 - u), asym: 0 };
+      const u = Math.min(1, prm.k ?? t / 0.28);
+      const i = 0.4 + 0.6 * (prm.impact ?? 0.5);
+      b = { raise: 3 * i * (1 - u), knit: 0.6 * i * (1 - u), asym: 0 };
       break;
     }
     case 'interact':
@@ -153,6 +192,269 @@ function applyBrows(p: PoseOut, b: BrowSet, st: HumanoidStyle): void {
 
 const S = Math.sin;
 const C = Math.cos;
+const easeOut = (x: number): number => 1 - (1 - x) * (1 - x);
+const smooth01 = (e0: number, e1: number, x: number): number => {
+  const u = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
+  return u * u * (3 - 2 * u);
+};
+
+// ------------------------------------------------------------ idle actions
+
+type IdleKind = 'look' | 'stretch' | 'hum' | 'scratch';
+const IDLE_START = 3.5;
+const IDLE_CYCLE = 8;
+
+/** Standing still for a while, Gorti does something now and then. */
+export function idleAction(idleT: number, st: HumanoidStyle): { kind: IdleKind; u: number; env: number } | null {
+  if (idleT < IDLE_START || st === 'suit') return null;
+  const since = idleT - IDLE_START;
+  const n = Math.floor(since / IDLE_CYCLE);
+  const kinds: IdleKind[] = st === 'coward' ? ['look'] : st === 'mech' ? ['look', 'stretch'] : ['look', 'stretch', 'hum', 'scratch'];
+  const kind = kinds[n % kinds.length]!;
+  const dur = kind === 'hum' ? 3.4 : kind === 'stretch' ? 2.6 : 2.8;
+  const local = since - n * IDLE_CYCLE;
+  if (local > dur) return null;
+  const u = local / dur;
+  return { kind, u, env: smooth01(0, 0.2, u) * (1 - smooth01(0.8, 1, u)) };
+}
+
+function blendTo(p: PoseOut, target: Record<string, number>, k: number): void {
+  for (const [id, v] of Object.entries(target)) {
+    const cur = p.angles[id] ?? 0;
+    p.angles[id] = cur + (v - cur) * k;
+  }
+}
+
+function applyIdle(p: PoseOut, act: { kind: IdleKind; u: number; env: number }, t: number, st: HumanoidStyle): void {
+  const a = p.angles;
+  const e = act.env;
+  switch (act.kind) {
+    case 'look': {
+      // Looks up and around, curious.
+      a.head = (a.head ?? 0) - 0.3 * e + 0.1 * e * S(act.u * Math.PI * 3);
+      a.torso = (a.torso ?? 0) - 0.05 * e;
+      p.offsets.eyeN = { x: 0.5 * e * S(act.u * Math.PI * 3), y: -0.8 * e };
+      break;
+    }
+    case 'stretch': {
+      // Arms high, up on the toes, a yawn.
+      const arms: Record<string, number> = st === 'coward' ? {} : { armR: -2.9, foreR: -0.12, armL: -2.75, foreL: -0.2 };
+      blendTo(p, { ...arms, torso: -0.16, head: -0.4, footR: 0.35, footL: 0.3 }, e);
+      p.offsets.hips = { x: 0, y: (p.offsets.hips?.y ?? 0) - 3 * e };
+      break;
+    }
+    case 'hum': {
+      // Sways to a tune only Gorti hears.
+      const w = S(t * 3.4);
+      a.torso = (a.torso ?? 0) + 0.07 * w * e;
+      a.head = (a.head ?? 0) + 0.12 * S(t * 3.4 + 0.6) * e;
+      if (st !== 'coward') {
+        a.armR = (a.armR ?? 0) + 0.18 * w * e;
+        a.armL = (a.armL ?? 0) - 0.18 * w * e;
+      }
+      p.offsets.hips = { x: 0, y: (p.offsets.hips?.y ?? 0) + 1.4 * Math.abs(w) * e };
+      break;
+    }
+    case 'scratch': {
+      // Puzzled: a hand goes up to scratch the head.
+      blendTo(p, { armR: -2.55, foreR: -2.3 + 0.14 * S(t * 24), head: 0.16, torso: 0.04 }, e);
+      break;
+    }
+  }
+}
+
+// ------------------------------------------------------------ face
+
+/** Eye shape and size, mouth shape and size. */
+interface Face {
+  eye: string;
+  ex: number;
+  ey: number;
+  mouth: string;
+  ms: number;
+}
+
+/** What the black eyes and the mouth do in each animation and emotion. */
+function faceFor(anim: string, t: number, prm: PoseParams, st: HumanoidStyle, idle: ReturnType<typeof idleAction>): Face {
+  const f: Face = { eye: '', ex: 1, ey: 1, mouth: '', ms: 1 };
+  switch (anim) {
+    case 'idle':
+      if (idle && idle.env > 0.3) {
+        if (idle.kind === 'stretch') {
+          f.eye = 'shut';
+          f.mouth = 'open';
+          f.ms = 1.3;
+        } else if (idle.kind === 'hum') {
+          f.eye = 'happy';
+          f.mouth = 'smile';
+        } else if (idle.kind === 'look') {
+          f.ex = 1.12;
+          f.ey = 1.15;
+        } else f.mouth = 'frown';
+      }
+      break;
+    case 'run':
+      f.mouth = 'open';
+      f.ms = 0.8;
+      break;
+    case 'push':
+    case 'pull':
+    case 'reach':
+      f.ey = 0.55;
+      f.mouth = 'grit';
+      break;
+    case 'crouch':
+    case 'takeoff':
+      f.ey = 0.7;
+      f.mouth = 'grit';
+      break;
+    case 'rise':
+      f.ex = 1.1;
+      f.ey = 1.15;
+      f.mouth = 'open';
+      f.ms = 0.85;
+      break;
+    case 'apex':
+      f.eye = 'happy';
+      f.mouth = 'grin';
+      break;
+    case 'fall': {
+      const k = Math.min(1, Math.max(0, (prm.vy ?? 300) / 700));
+      f.ex = 1 + 0.25 * k;
+      f.ey = 1 + 0.35 * k;
+      f.mouth = k > 0.35 ? 'open' : '';
+      f.ms = 0.8 + 0.5 * k;
+      break;
+    }
+    case 'land':
+      if ((prm.impact ?? 0) > 0.5 && (prm.k ?? 1) < 0.55) {
+        f.eye = 'shut';
+        f.mouth = 'grit';
+      } else f.ey = 0.8;
+      break;
+    case 'interact':
+    case 'look':
+      f.ex = 1.1;
+      f.ey = 1.15;
+      f.mouth = 'open';
+      f.ms = 0.6;
+      break;
+    case 'song':
+      f.eye = 'happy';
+      f.mouth = 'open';
+      f.ms = 0.7 + 0.3 * Math.abs(S(t * 5.5));
+      break;
+    case 'breath':
+      f.ey = 0.45;
+      break;
+    case 'transform':
+      f.ex = 1.3;
+      f.ey = 1.4;
+      f.mouth = 'open';
+      f.ms = 1.2;
+      break;
+    case 'collapse':
+      f.eye = 'shut';
+      f.mouth = 'frown';
+      break;
+    case 'kneel':
+    case 'sit':
+      f.eye = 'sad';
+      f.mouth = 'frown';
+      break;
+    case 'shout':
+      f.ey = 0.75;
+      f.mouth = 'open';
+      f.ms = 1.55 + 0.1 * S(t * 30);
+      break;
+    case 'ride':
+      f.mouth = 'grin';
+      break;
+    case 'dance':
+      f.eye = 'happy';
+      f.mouth = 'grin';
+      break;
+    case 'torchUp':
+      f.ey = 1.1;
+      f.mouth = 'open';
+      f.ms = 0.6;
+      break;
+    default:
+      break;
+  }
+  // The suited Gorti is worn out; the torch-bearer is afraid.
+  if (st === 'suit' && !f.eye) {
+    f.eye = 'sad';
+    if (!f.mouth) f.mouth = 'frown';
+  }
+  if (st === 'coward') {
+    if (!f.eye && f.ex === 1) {
+      f.ex = 1.08;
+      f.ey = 1.12;
+    }
+    if (!f.mouth) {
+      f.mouth = 'frown';
+      f.ms = 1 + 0.08 * S(t * 41);
+    }
+  }
+  const k = Math.max(0, Math.min(1, prm.emoteK ?? 0));
+  if (prm.emote && k > 0.3) {
+    switch (prm.emote) {
+      case 'joy':
+        f.eye = 'happy';
+        f.mouth = 'grin';
+        break;
+      case 'surprise':
+        f.eye = '';
+        f.ex = 1.25;
+        f.ey = 1.35;
+        f.mouth = 'open';
+        f.ms = 1.1;
+        break;
+      case 'pain':
+        f.eye = 'shut';
+        f.mouth = 'grit';
+        break;
+      case 'anger':
+        f.ey = 0.7;
+        f.mouth = 'grit';
+        break;
+      case 'talk':
+        // Lips move with the typing text.
+        f.mouth = S(t * 17) > -0.2 || S(t * 6.3) > 0.7 ? 'open' : '';
+        f.ms = 0.55 + 0.45 * Math.abs(S(t * 9));
+        break;
+      case 'listen':
+        f.mouth = '';
+        break;
+      case 'relief':
+        f.eye = 'happy';
+        f.mouth = 'smile';
+        break;
+      case 'worry':
+        f.eye = 'sad';
+        f.mouth = 'frown';
+        break;
+      case 'effort':
+        f.eye = '';
+        f.ey = 0.5;
+        f.mouth = 'grit';
+        break;
+    }
+  }
+  return f;
+}
+
+function applyFace(p: PoseOut, f: Face, prm: PoseParams): void {
+  const open = f.eye === '' || f.eye === 'sad';
+  const blink = open ? Math.min(1, Math.max(0, prm.blink ?? 0)) : 0;
+  p.frames = { ...(p.frames ?? {}), eyeN: f.eye, mouth: f.mouth };
+  p.scales = {
+    ...(p.scales ?? {}),
+    eyeN: { x: f.ex, y: Math.max(0.08, f.ey * (1 - 0.9 * blink)) },
+    mouth: { x: f.ms, y: f.ms },
+  };
+}
 
 function base(): PoseOut {
   return { angles: {}, offsets: {} };
@@ -234,6 +536,28 @@ export function humanoidPose(rigId: string, anim: string, t: number, prm: PosePa
       a.armL = (a.armL ?? 0) + 0.04 * b;
       if (st === 'root') a.head = (a.head ?? 0) + 0.02 * S(t * 0.7);
       if (st === 'suit') p.offsets.torso = { x: 0, y: -0.3 * b };
+      const act = idleAction(prm.idleT ?? 0, st);
+      if (act) applyIdle(p, act, t, st);
+      break;
+    }
+    case 'dance': {
+      // A happy little dance in the colour storm.
+      const q = t * 8;
+      a.legR = -0.22 + 0.16 * S(q);
+      a.shinR = 0.35 + 0.25 * Math.max(0, S(q));
+      a.legL = 0.05 - 0.16 * S(q);
+      a.shinL = 0.35 + 0.25 * Math.max(0, -S(q));
+      a.footR = -(a.legR + a.shinR);
+      a.footL = -(a.legL + a.shinL);
+      p.offsets.hips = { x: 0, y: k.kneeBase * 10 + 3.5 * Math.abs(S(q)) };
+      a.torso = k.torsoBase + 0.09 * S(q / 2);
+      a.head = k.headBase - 0.18 + 0.14 * S(q / 2 + 0.7);
+      if (st !== 'coward') {
+        a.armR = -2.55 + 0.4 * S(q);
+        a.foreR = -0.35 + 0.25 * S(q + 1);
+        a.armL = -2.35 - 0.4 * S(q + 0.8);
+        a.foreL = -0.3 + 0.25 * S(q + 2);
+      }
       break;
     }
     case 'walk':
@@ -285,60 +609,133 @@ export function humanoidPose(rigId: string, anim: string, t: number, prm: PosePa
       }
       break;
     }
-    case 'rise': {
-      a.legR = -0.75;
-      a.shinR = 1.05;
-      a.legL = -0.15;
-      a.shinL = 0.55;
-      a.footR = -0.3;
-      a.footL = -0.35;
-      a.torso = k.torsoBase + 0.08;
-      a.head = k.headBase - 0.12;
+    case 'crouch': {
+      // The instant before leaving the ground (snapped at take-off, then the
+      // joints spring open into 'takeoff').
+      a.legR = -0.8;
+      a.shinR = 1.45;
+      a.legL = -0.62;
+      a.shinL = 1.35;
+      a.footR = -(a.legR + a.shinR);
+      a.footL = -(a.legL + a.shinL);
+      p.offsets.hips = { x: 0, y: 14 + k.kneeBase * 10 };
+      a.torso = k.torsoBase + 0.4;
+      a.head = k.headBase - 0.22;
       if (st !== 'coward') {
-        a.armR = 0.55;
-        a.foreR = -0.2;
+        a.armR = 0.9;
+        a.foreR = -0.25;
         a.armL = 0.75;
-        a.foreL = -0.15;
+        a.foreL = -0.2;
       }
-      p.sy = 1.04;
-      p.sx = 0.97;
       break;
     }
-    case 'fall': {
-      const f = Math.min(1, Math.max(0, (prm.vy ?? 300) / 600));
-      a.legR = -0.35 - 0.1 * f;
-      a.shinR = 0.4;
-      a.legL = 0.15;
+    case 'takeoff': {
+      // Push-off: legs straighten and trail, toes point, arms swing up.
+      a.legR = 0.1;
+      a.shinR = 0.12;
+      a.legL = 0.32;
       a.shinL = 0.3;
-      a.footR = -0.1;
-      a.footL = -0.35;
+      a.footR = -(a.legR + a.shinR) + 0.75;
+      a.footL = -(a.legL + a.shinL) + 0.85;
+      p.offsets.hips = { x: 0, y: -2 };
       a.torso = k.torsoBase - 0.02;
-      a.head = k.headBase - 0.15;
+      a.head = k.headBase - 0.25;
       if (st !== 'coward') {
-        a.armR = -1.9 - 0.4 * f;
-        a.foreR = -0.35;
-        a.armL = -2.2 - 0.3 * f;
+        a.armR = -2.4;
+        a.foreR = -0.25;
+        a.armL = -2.1;
+        a.foreL = -0.35;
+      }
+      break;
+    }
+    case 'rise': {
+      // The knees come up as the climb slows down.
+      const u = Math.min(1, Math.max(0, -(prm.vy ?? -300) / Math.max(1, prm.jv ?? 600)));
+      const tuck = 1 - u;
+      a.legR = -0.5 - 0.65 * tuck;
+      a.shinR = 0.55 + 1.0 * tuck;
+      a.legL = 0.2 - 0.5 * tuck;
+      a.shinL = 0.5 + 0.95 * tuck;
+      a.footR = -(a.legR + a.shinR) + 0.55;
+      a.footL = -(a.legL + a.shinL) + 0.6;
+      a.torso = k.torsoBase + 0.03;
+      a.head = k.headBase - 0.2 + 0.06 * tuck;
+      if (st !== 'coward') {
+        a.armR = -2.3 + 0.55 * tuck;
+        a.foreR = -0.3 - 0.25 * tuck;
+        a.armL = -2.0 + 0.9 * tuck;
         a.foreL = -0.3;
       }
       break;
     }
+    case 'apex': {
+      // Weightless for a moment: knees tucked, arms open like wings.
+      const fl = S(t * 7);
+      a.legR = -1.2;
+      a.shinR = 1.7;
+      a.legL = -0.78;
+      a.shinL = 1.8;
+      a.footR = -(a.legR + a.shinR) + 0.45;
+      a.footL = -(a.legL + a.shinL) + 0.5;
+      p.offsets.hips = { x: 0, y: -3 };
+      a.torso = k.torsoBase - 0.06;
+      a.head = k.headBase - 0.3;
+      if (st !== 'coward') {
+        a.armR = -1.95 - 0.1 * fl;
+        a.foreR = -0.45;
+        a.armL = 1.9 + 0.1 * fl;
+        a.foreL = 0.45;
+      }
+      if (st === 'mech') {
+        a.armR = -1.5;
+        a.armL = 1.2;
+        a.foreR = -0.2;
+        a.foreL = 0.2;
+      }
+      break;
+    }
+    case 'fall': {
+      // Legs reach for the ground; the faster the drop, the higher the arms.
+      const f = Math.min(1, Math.max(0, (prm.vy ?? 300) / 700));
+      const fl = f * S(t * 15);
+      a.legR = -0.3 - 0.15 * f;
+      a.shinR = 0.5 - 0.2 * f;
+      a.legL = 0.12;
+      a.shinL = 0.45 - 0.15 * f;
+      a.footR = -(a.legR + a.shinR) * 0.6 - 0.1;
+      a.footL = -(a.legL + a.shinL) * 0.6 + 0.15;
+      a.torso = k.torsoBase - 0.03 - 0.05 * f;
+      a.head = k.headBase - 0.18 - 0.12 * f;
+      if (st !== 'coward') {
+        a.armR = -1.7 - 0.6 * f + 0.22 * fl;
+        a.foreR = -0.35 - 0.2 * f;
+        a.armL = -2.0 - 0.5 * f - 0.22 * fl;
+        a.foreL = -0.3;
+      }
+      if (st === 'mech') {
+        a.armR = -1.3;
+        a.armL = -1.1;
+      }
+      break;
+    }
     case 'land': {
-      const s = 1 - Math.min(1, prm.k ?? 0);
-      a.legR = -0.55 * s;
-      a.shinR = 1.0 * s + k.kneeBase;
-      a.legL = -0.45 * s;
-      a.shinL = 0.95 * s + k.kneeBase;
+      // Knees absorb the drop; the harder the landing, the deeper.
+      const d = (0.35 + 0.65 * Math.min(1, prm.impact ?? 0.5)) * (1 - easeOut(Math.min(1, prm.k ?? 0)));
+      a.legR = -0.72 * d;
+      a.shinR = 1.35 * d + k.kneeBase;
+      a.legL = -0.6 * d;
+      a.shinL = 1.3 * d + k.kneeBase;
       a.footR = -(a.legR + a.shinR);
       a.footL = -(a.legL + a.shinL);
-      p.offsets.hips = { x: 0, y: 9 * s + k.kneeBase * 10 };
-      a.torso = k.torsoBase + 0.25 * s;
-      a.head = k.headBase - 0.15 * s;
+      p.offsets.hips = { x: 0, y: 15 * d + k.kneeBase * 10 };
+      a.torso = k.torsoBase + 0.45 * d;
+      a.head = k.headBase - 0.28 * d;
       if (st !== 'coward') {
-        a.armR = -0.5 * s;
-        a.armL = -0.3 * s;
+        a.armR = -0.95 * d;
+        a.foreR = -0.2 - 0.5 * d;
+        a.armL = -0.65 * d;
+        a.foreL = -0.2 - 0.4 * d;
       }
-      p.sx = 1 + 0.05 * s;
-      p.sy = 1 - 0.05 * s;
       break;
     }
     case 'interact': {
@@ -515,6 +912,13 @@ export function humanoidPose(rigId: string, anim: string, t: number, prm: PosePa
     a.torch = -((a.torso ?? 0) + (a.armR ?? 0) + (a.foreR ?? 0)) + (anim === 'torchUp' ? 0 : 0.12);
     a.flame = 0.05 * Math.sin(t * 17);
   }
+  if (prm.look) {
+    a.head = (a.head ?? 0) + prm.look;
+    const e = p.offsets.eyeN ?? { x: 0, y: 0 };
+    p.offsets.eyeN = { x: e.x, y: e.y + prm.look * 2.4 };
+  }
+  const idle = anim === 'idle' ? idleAction(prm.idleT ?? 0, st) : null;
+  applyFace(p, faceFor(anim, t, prm, st, idle), prm);
   applyBrows(p, browsFor(anim, t, prm, st), st);
   return p;
 }

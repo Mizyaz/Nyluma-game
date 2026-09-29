@@ -3,51 +3,54 @@ import { app } from '../../App';
 import { DEPTH } from '../../constants';
 import { hex, P } from '../../art/palette';
 import { frameRef } from '../../art/TextureFactory';
-import { fragmentArtUrl } from '../../art/memoryArt';
 import { CAPTIONS, DIALOGUE } from '../../data/dialogue.tr';
 import { Sparrow } from '../../entities/Creatures';
-import type { StationDef } from '../../../ui/PuzzlePanel';
 import type { WorldScene } from '../../scenes/WorldScene';
 import type { RoomScript } from './types';
-import { addArt, addGlow, RingGauge } from './helpers';
+import { addArt, addGlow } from './helpers';
 
-// Chapter IV — the inner dormitory: carry the torch across three memory
-// stations and reverse each memory; then the giant fingers, the fruiting
-// souls and the cut watch strap.
-const STATIONS: Record<string, { flag: string; def: StationDef }> = {
+// Chapter IV — the inner dormitory. Passing each memory station with the
+// torch, Gorti sees the memory run backwards and the beds slide into a
+// bridge; at the last one the giant fingers, the fruiting souls and the cut
+// watch strap follow by themselves.
+interface Station {
+  title: string;
+  fragments: { label: string }[];
+}
+const STATIONS: Record<string, { flag: string; x: number; def: Station }> = {
   st1: {
     flag: 'r10.s1',
+    x: 760,
     def: {
       title: 'Birinci anı: Geç kalmak',
-      sub: 'İleriye akarken: çalan saat, koşan ayaklar, kapanan kapı.',
       fragments: [
-        { art: fragmentArtUrl('alarm'), label: 'Çalan saat' },
-        { art: fragmentArtUrl('shoes'), label: 'Koşan ayaklar' },
-        { art: fragmentArtUrl('closedoor'), label: 'Kapanan kapı' },
+        { label: 'Çalan saat' },
+        { label: 'Koşan ayaklar' },
+        { label: 'Kapanan kapı' },
       ],
     },
   },
   st2: {
     flag: 'r10.s2',
+    x: 1650,
     def: {
       title: 'İkinci anı: Emanet ışık',
-      sub: 'İleriye akarken: uzatılan mum, aydınlanan oda, büyüyen gölge.',
       fragments: [
-        { art: fragmentArtUrl('candle'), label: 'Uzatılan mum' },
-        { art: fragmentArtUrl('room'), label: 'Aydınlanan oda' },
-        { art: fragmentArtUrl('shadow'), label: 'Büyüyen gölge' },
+        { label: 'Uzatılan mum' },
+        { label: 'Aydınlanan oda' },
+        { label: 'Büyüyen gölge' },
       ],
     },
   },
   st3: {
     flag: 'r10.s3',
+    x: 2500,
     def: {
       title: 'Üçüncü anı: Gözyaşı',
-      sub: 'İleriye akarken: açan çiçek, solan çiçek, düşen damla.',
       fragments: [
-        { art: fragmentArtUrl('bloom'), label: 'Açan çiçek' },
-        { art: fragmentArtUrl('wilt'), label: 'Solan çiçek' },
-        { art: fragmentArtUrl('rain'), label: 'Düşen damla' },
+        { label: 'Açan çiçek' },
+        { label: 'Solan çiçek' },
+        { label: 'Düşen damla' },
       ],
     },
   },
@@ -58,13 +61,25 @@ export function r10(w: WorldScene): RoomScript {
   let torchPhase = false;
   let torchT = 0;
   let light = 1;
-  const ring = new RingGauge(w, 0xf0b458);
   let torchGlow: Phaser.GameObjects.Image | null = null;
   const fingers: Phaser.GameObjects.Image[] = [];
   let sparrow: Sparrow | null = null;
 
-  const pickObjective = (): void => {
-    w.setObjective(torchPhase ? 'r10.torch' : 'r10.stations', false);
+  /** A memory runs backwards as Gorti passes its station. */
+  const rewind = (id: string): void => {
+    const st = STATIONS[id]!;
+    if (w.quest.has(st.flag)) return;
+    if (id === 'st3') {
+      finale1();
+      return;
+    }
+    const back = [...st.def.fragments].reverse().map((f) => f.label.toLocaleLowerCase('tr')).join(', ');
+    app.audio.sfx('clock', { pitch: 0.8 });
+    app.audio.sfx('rootGrow');
+    app.ui.hud.caption(`${st.def.title}. Geriye doğru: ${back}.`, 5200);
+    w.player.emote('surprise', 900);
+    w.flag(st.flag);
+    w.activateCheckpoint(id === 'st1' ? 'r10_s1' : 'r10_s2', true);
   };
 
   const spawnForms = (): void => {
@@ -105,7 +120,6 @@ export function r10(w: WorldScene): RoomScript {
         if (!forms.length) spawnForms();
         w.flag('r10.intro', false);
         w.player.lock(false);
-        pickObjective();
       },
     );
   };
@@ -152,15 +166,12 @@ export function r10(w: WorldScene): RoomScript {
         torchPhase = true;
         torchT = 0;
         light = 0.8;
-        w.setObjective('r10.torch');
-        app.ui.hud.toast('E: meşaleyi yukarıda tut', 3000);
       },
     );
   };
 
   const finale2 = (): void => {
     torchPhase = false;
-    ring.draw(0, 0, 0, 0, false);
     void w.narrative.play(
       'r10.finale2',
       async (cs) => {
@@ -209,7 +220,6 @@ export function r10(w: WorldScene): RoomScript {
 
   return {
     setup() {
-      pickObjective();
       const tf = frameRef('fx.glow');
       torchGlow = w.add.image(0, 0, tf.atlas, tf.frame).setBlendMode(Phaser.BlendModes.ADD).setTint(hex(P.fire)).setScale(2.4).setAlpha(0.5).setDepth(DEPTH.player - 2);
       if (!w.quest.has('r10.intro')) intro();
@@ -218,39 +228,21 @@ export function r10(w: WorldScene): RoomScript {
         w.player.lock(true, 'torchUp');
         torchPhase = true;
         light = 0.8;
-        pickObjective();
       }
-      w.onCleanup(() => {
-        ring.destroy();
-        sparrow?.destroy();
-      });
-    },
-    onInteract(id) {
-      const st = STATIONS[id];
-      if (!st) return false;
-      if (w.quest.has(st.flag)) return true;
-      w.player.lock(true, 'breath');
-      void app.ui.puzzle.open(st.def).then((ok) => {
-        w.player.lock(false);
-        if (!ok) return;
-        app.audio.sfx('rootGrow');
-        w.flag(st.flag);
-        if (id === 'st1') {
-          w.activateCheckpoint('r10_s1', true);
-          app.ui.hud.toast('Yataklar kayarak bir köprü kurdu.', 3200);
-        } else if (id === 'st2') {
-          w.activateCheckpoint('r10_s2', true);
-          app.ui.hud.toast('Yataklar kayarak bir köprü kurdu.', 3200);
-        } else finale1();
-      });
-      return true;
+      w.onCleanup(() => sparrow?.destroy());
     },
     onFixed(dt) {
-      if (!torchPhase) return;
+      if (!torchPhase) {
+        if (w.narrative.busy || !w.quest.has('r10.intro')) return;
+        for (const [id, st] of Object.entries(STATIONS)) {
+          if (!w.quest.has(st.flag) && w.player.x > st.x - 150) rewind(id);
+        }
+        return;
+      }
+      // Gorti holds the torch up; the light swells and settles by itself.
       torchT += dt;
-      light = Math.max(0.2, light - dt * 0.16);
-      if (app.input.context === 'gameplay' && (app.input.consume('action') || app.input.held('action'))) light = Math.min(1, light + dt * 1.4 + 0.02);
-      if (torchT > 9) finale2();
+      light = 0.6 + 0.4 * Math.abs(Math.sin(torchT * 1.3));
+      if (torchT > 6) finale2();
     },
     onUpdate(_dt, time) {
       const p = w.player;
@@ -258,7 +250,6 @@ export function r10(w: WorldScene): RoomScript {
       if (torchGlow) torchGlow.setPosition(fl.x, fl.y).setAlpha((torchPhase ? light : 0.8) * (0.45 + 0.08 * Math.sin(time / 70)));
       const flameImg = p.rig.jointImage('flame');
       if (flameImg) flameImg.setAlpha(torchPhase ? 0.3 + 0.7 * light : 1);
-      if (torchPhase) ring.draw(fl.x, fl.y, 34, Math.min(1, torchT / 9), true);
       for (const f of forms) f.setFlipX(f.x > p.x);
       sparrow?.update(_dt);
     },

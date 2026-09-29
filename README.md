@@ -10,28 +10,45 @@ boş masadaki hak aktarımına.
 Tüm oyun içi metinler Türkçedir. Oyun tamamen statik dosyalardan çalışır:
 sunucu, hesap, çevrim içi hizmet ya da dış kaynak (CDN, yazı tipi, ses) yoktur.
 
+## Deneyim
+
+Oyun bir deneyimdir: can değeri, diken ya da tehlike, görev, hedef ya da
+bulmaca yoktur; her odada hep ilerlenebilir. Yürümek ve zıplamak yeter;
+hikâyenin sahneleri Gorti bir yere vardığında kendiliğinden başlar. Bazı
+şeylerin yanında E ile incelemek mümkündür ama zorunlu değildir; başka bir
+yerde E, Gorti'nin etrafına rastgele renklerde kristaller saçar ("Parılda").
+Arada bir, kendiliğinden bir **renk bombardımanı** başlar: görüntü birkaç
+saniye renk bulutları ve bir renk dalgasıyla dolar, her renkte kristaller
+yağar, Gorti yukarı bakar ve sevinçle dans eder. (Ani yanıp sönme yoktur; her
+renk değişimi en az üçte bir saniye sürer. Azaltılmış hareket açıkken daha
+seyrek ve daha sakindir.)
+
+Gorti'nin zıplaması baştan sona canlandırılmıştır: çömelir, itilir ve gerilir,
+yükselirken dizlerini çeker, tepede bir an kollarını açıp süzülür, düşerken
+bacaklarını yere uzatır ve inişte düşüşün sertliğine göre esneyip toparlanır.
+Yüzü de canlıdır: siyah gözleri kırpışır, sevinçte kavislenir, şaşkınlıkta
+büyür, yorgunlukta ağırlaşır; ağzı konuşur, gülümser, dişlerini sıkar. Dal
+saçları hareketle yaylanıp sallanır. Bir süre durduğunda etrafına bakar,
+gerinip esner, mırıldanarak sallanır ya da başını kaşır; yakındaki anılara ve
+incelenebilecek şeylere göz atar.
+
 ## Kontroller
 
 | Eylem | Klavye | Dokunmatik |
 | --- | --- | --- |
 | Yürü | A / D ya da ← / → | Sol alttaki yön tuşları |
 | Zıpla (bırakınca kısa zıplar) | Boşluk | Zıpla |
-| Etkileşim / köke uzan / rezonans | E (ekranda hangisi yazıyorsa) | Eylem |
-| Nefes (odak) | Q basılı tut (Ayarlar'dan aç/kapa yapılabilir) | Nefes |
-| Biçim değiştir (işaretli dairede) | R | Biçim |
-| Balina dili (tomurcuğun yanında) | F; notalar ← ↓ → ya da A S D | Şarkı + büyük nota düğmeleri |
+| İncele (yakında bir şey varsa) / Parılda | E | Eylem |
 | Duraklat / geri | Esc | Sağ üstteki ⏸ |
 | Anılar | M | Duraklatma menüsü |
 | Menü seçimi | Enter | Dokun |
 | Diyaloğu ilerlet | Boşluk / E | Diyalog kutusuna dokun |
 | Ara sahneyi geç | Boşluk / E / Enter basılı tut | Eylem ya da diyalog kutusunu basılı tut |
-| Anı istasyonu (bulmaca) | ← → ile seç, E ile değiştir | Parçaya dokun, sonra yer değiştireceği parçaya dokun (ya da sürükle) |
 | Tam ekran | — | Sağ üstteki ⛶ (dokunmatik cihazlarda oyun başlarken otomatik denenir) |
 
 **Mobil:** Oyun baştan sona yalnızca dokunmatikle oynanabilir. Sol altta yön
-düğmeleri, sağ altta Zıpla ve Eylem; Nefes, Biçim ve Şarkı düğmeleri gerektiği
-yerde belirir. Birden çok parmak aynı anda kullanılabilir (ör. yürürken zıplamak
-ya da nefes tutarken zıplamak). Dokunmatik cihazlarda ekrandaki yönergeler tuş
+düğmeleri, sağ altta Zıpla ve Eylem. Birden çok parmak aynı anda kullanılabilir
+(ör. yürürken zıplamak). Dokunmatik cihazlarda ekrandaki yönergeler tuş
 adları yerine bu düğmelerin adlarıyla gösterilir. Cihaz dik ya da yatay
 tutulabilir: dik tutulduğunda oyun görüntüsü üstte tam genişlikte, altyazılar
 ve diyaloglar hemen altında, kontroller en altta durur; yatay tutulduğunda oyun
@@ -39,10 +56,8 @@ ekranı doldurur ve altyazılar görüntünün altında gösterilir. Tarayıcı
 destekliyorsa oyun başlarken tam ekrana geçer.
 
 Menüler klavyeyle (↑ ↓, Enter, Esc) ve fareyle kullanılabilir. Ayarlar'da ses
-seviyeleri, azaltılmış hareket, ekran sarsıntısı, metin hızı (anında dahil),
-nefes için basılı tut / aç-kapa, hikâye yardımı (daha az hasar, daha yavaş
-karşılaşmalar, şarkılarda "Tamamla") ve dokunmatik kontroller (otomatik / açık /
-kapalı) bulunur.
+seviyeleri, azaltılmış hareket, ekran sarsıntısı, metin hızı (anında dahil) ve
+dokunmatik kontroller (otomatik / açık / kapalı) bulunur.
 
 İlerleme tarayıcının `localStorage` alanına kaydedilir (kontrol noktalarında ve
 önemli etkileşimlerden sonra). Depolama kullanılamıyorsa oyun yine oynanır ve
@@ -114,12 +129,13 @@ index.html                  Giriş sayfası
 src/main.ts                 Hizmetlerin kurulumu ve Phaser oyunu
 src/game/config.ts          1280×720 tasarım alanı, FIT ölçekleme, Arcade Physics (60 Hz sabit adım)
 src/game/scenes/            BootScene (çizimleri bir kez rasterleştirir), MenuScene, WorldScene, EndingScene
-src/game/entities/          Oyuncu, iskelet (cutout) çalışma zamanı, at, yaratıklar, Ay/Güneş yüzleri, tehlikeler, anı taşı
-src/game/systems/           Girdi bağlamları, kayıt, ses (Web Audio), anlatı/ara sahne, yetenek mantığı
-src/game/data/              12 odanın verisi, diyaloglar, hedefler, anılar, Güneş karşılaşması durum makinesi
+src/game/entities/          Oyuncu, iskelet (cutout) çalışma zamanı ve pozlar (zıplama, yüz, bekleme hareketleri), at, yaratıklar, Ay/Güneş yüzleri, anı taşı
+src/game/fx/                Kristal tünel ve adım efektleri, renk patlamaları ve renk bombardımanı
+src/game/systems/           Girdi bağlamları, kayıt, ses (Web Audio), anlatı/ara sahne
+src/game/data/              12 odanın verisi, diyaloglar, anılar, Güneş karşılaşması durum makinesi
 src/game/rooms/             Oda kurucu (arazi, kapılar/bayraklar) ve oda betikleri
 src/game/art/               Palet, SVG çizim araçları, karakter/prop/anı çizimleri, arazi ve arka plan ressamları, atlas üretimi
-src/ui/                     DOM arayüzü: menüler, HUD, diyalog, şarkı paneli, anı bulmacası, belge görünümü, dokunmatik kontroller
+src/ui/                     DOM arayüzü: menüler, HUD, diyalog, belge görünümü, renk bombardımanı katmanı, dokunmatik kontroller
 src/music/                  Bağımsız müzik modülü: üretken piyano bestecisi, sentez piyano, lisanslı parça kütüphanesi, oynatıcı
 music/                      Müzik kütüphanesi: tracks.json, tracks/ (ses dosyaları), licenses/ (her parçanın lisans notu)
 tests/unit, tests/e2e       Vitest ve Playwright testleri
@@ -160,8 +176,10 @@ doğru aktığı bir tünel katmanı vardır; oda ve bölüm geçişleri aynı t
 ekran, hızlanan bir sürümüyle yapılır. Her adımda zeminden parlayan kristaller
 filizlenir, inişlerde kristal bir taç açılır. Oynanan her formun (Gorti'nin kök
 ve insan biçimleri, Korkak ve Mekanik form) gözleri siyahtır; Mekanik formun
-anahtar ve kilit gözleri de siyah silüetlerdir. Duygular, ayrı birer parça olan
-ve her harekete, darbeye, keşfe ve konuşmaya tepki veren kaşlarla taşınır.
+anahtar ve kilit gözleri de siyah silüetlerdir. Duygular ayrı birer parça olan
+kaşlarla, Gorti'de ve Korkak formda ayrıca şekil değiştiren gözler ve ağızla
+taşınır; Gorti'nin dal saçları ve Korkak formun meşale alevi yay gibi
+gecikerek hareketi izler.
 
 ## Haklar ve lisanslar
 
@@ -179,7 +197,10 @@ root or any sub-path (GitHub Pages project sites). The included workflow
 tests every push to `main` and publishes `dist/` to the `gh-pages` branch,
 which GitHub Pages serves (*Settings → Pages → Source → Deploy from a branch →
 `gh-pages`*); live at https://mizyaz.github.io/Nyluma-game/. Playable with a
-keyboard, a mouse for menus, or touch alone, held upright or sideways. The
+keyboard, a mouse for menus, or touch alone, held upright or sideways. It is
+an experience rather than a challenge: no health, hazards, quests or puzzles;
+story scenes start as Gorti walks on, a colour bombardment breaks out now and
+then, and Gorti's jump and face are fully animated. The
 background music is piano composed live in the browser by a separate module
 (`src/music/`), with an optional library of recorded pieces (`music/`) that
 only ships with an allowed license and a license note per piece. Serve

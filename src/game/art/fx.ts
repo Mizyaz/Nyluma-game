@@ -1,5 +1,8 @@
 import type * as Phaser from 'phaser';
-import { artCanvas, registerCanvas } from './TextureFactory';
+import { addStaticCanvas, artCanvas, registerCanvas } from './TextureFactory';
+
+/** Hues of the coloured effect frames (see `fx.hues`). */
+export const HUE_STEPS = 12;
 
 // Small procedural effect textures (particles, glows, rings). Generated once.
 
@@ -142,6 +145,46 @@ export function makeFxTextures(tex: Phaser.Textures.TextureManager): void {
     body();
     x.fill();
     registerCanvas(tex, 'fx.shard', c, { w: 48, h: 112, px: 24, py: 56 });
+  }
+  // Coloured glows and shards, one pair per hue ('d0'…'d11', 's0'…'s11'),
+  // painted in their colours: the Canvas renderer cannot tint, and the colour
+  // bursts must be colourful in both renderers.
+  {
+    const cell = 40;
+    const [c, x] = artCanvas(cell * HUE_STEPS, cell * 2);
+    for (let i = 0; i < HUE_STEPS; i++) {
+      const hue = (i * 360) / HUE_STEPS;
+      const ox = i * cell;
+      const g = x.createRadialGradient(ox + 20, 20, 0, ox + 20, 20, 19);
+      g.addColorStop(0, 'rgba(255,255,255,1)');
+      g.addColorStop(0.25, `hsla(${hue},100%,72%,0.95)`);
+      g.addColorStop(0.6, `hsla(${hue},95%,58%,0.45)`);
+      g.addColorStop(1, `hsla(${hue},95%,50%,0)`);
+      x.fillStyle = g;
+      x.fillRect(ox, 0, cell, cell);
+      x.save();
+      x.translate(ox + 20, cell + 20);
+      x.shadowColor = `hsla(${hue},100%,65%,0.9)`;
+      x.shadowBlur = 6;
+      x.beginPath();
+      x.moveTo(0, -17);
+      x.lineTo(6, -4);
+      x.lineTo(0, 17);
+      x.lineTo(-6, -4);
+      x.closePath();
+      const sg = x.createLinearGradient(-6, 0, 6, 0);
+      sg.addColorStop(0, `hsl(${hue},90%,55%)`);
+      sg.addColorStop(0.5, `hsl(${hue},100%,86%)`);
+      sg.addColorStop(1, `hsl(${hue},85%,45%)`);
+      x.fillStyle = sg;
+      x.fill();
+      x.restore();
+    }
+    const t = addStaticCanvas(tex, 'fx.hues', c);
+    for (let i = 0; i < HUE_STEPS; i++) {
+      t?.add(`d${i}`, 0, i * cell, 0, cell, cell);
+      t?.add(`s${i}`, 0, i * cell, cell, cell, cell);
+    }
   }
   // Soft contact shadow (2.5D grounding).
   {

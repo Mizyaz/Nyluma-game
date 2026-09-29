@@ -159,8 +159,6 @@ export function normalizeSettings(raw: unknown): Settings {
     reducedMotion: bool(raw.reducedMotion, d.reducedMotion),
     screenShake: bool(raw.screenShake, d.screenShake),
     textSpeed,
-    focusToggle: bool(raw.focusToggle, d.focusToggle),
-    storyAssist: bool(raw.storyAssist, d.storyAssist),
     touch,
   };
 }

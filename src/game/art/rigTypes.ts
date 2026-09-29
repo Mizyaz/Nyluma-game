@@ -33,6 +33,13 @@ export interface RigJoint {
   z: number;
   /** Additive blend (glows). */
   additive?: boolean;
+  /**
+   * Secondary motion: the joint lags behind its parent's turns (`lag`, 0..1)
+   * and swings from the body's changes of speed (`gain`), settling on a
+   * damped spring (`k` stiffness, `c` damping). `tip` is where the part
+   * points at rest, relative to the joint.
+   */
+  spring?: { k: number; c: number; lag: number; gain: number; tip: [number, number] };
 }
 
 export interface RigDef {

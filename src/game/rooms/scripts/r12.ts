@@ -65,14 +65,7 @@ export function r12(w: WorldScene): RoomScript {
   const chairs: Phaser.GameObjects.Image[] = [];
   let watch: Phaser.GameObjects.Image | null = null;
 
-  const readCount = (): number => ['r12.doc1', 'r12.doc2', 'r12.doc3'].filter((f) => w.quest.has(f)).length;
-
-  const pickObjective = (): void => {
-    const q = w.quest;
-    if (q.has('r12.read')) w.setObjective('r12.final', false);
-    else if (q.has('r12.door')) w.setObjective('r12.read', false);
-    else w.setObjective('r12.door', false);
-  };
+  let ending = false;
 
   const intercut = (): void => {
     void w.narrative.play(
@@ -107,7 +100,6 @@ export function r12(w: WorldScene): RoomScript {
         p.lock(false);
         w.camTo(null);
         app.ui.hud.caption(CAPTIONS.hallway, 5200);
-        pickObjective();
       },
     );
   };
@@ -116,14 +108,21 @@ export function r12(w: WorldScene): RoomScript {
     w.player.lock(true, 'interact');
     void app.ui.doc.open(content).then(() => {
       w.player.lock(false);
-      if (w.flag(flag, false) && readCount() >= 3) {
-        w.flag('r12.read');
-        w.setObjective('r12.final');
-      } else if (readCount() < 3) app.ui.hud.toast(`İncelenen belge: ${readCount()} / 3`, 2200);
+      w.flag(flag, false);
     });
   };
 
+  /** The door opens as Gorti reaches it. */
+  const openDoor = (): void => {
+    app.audio.sfx('door');
+    w.flag('r12.door');
+    w.activateCheckpoint('r12_room', true);
+    w.time.delayedCall(900, () => app.ui.hud.caption(CAPTIONS.papersOnly, 4200));
+  };
+
+  /** At the end of the table the last page turns by itself. */
   const finalPage = (): void => {
+    ending = true;
     w.player.lock(true, 'interact');
     void app.ui.doc.open(docClause(), 'Sayfayı çevir').then(() => {
       app.audio.sfx('paper');
@@ -151,7 +150,6 @@ export function r12(w: WorldScene): RoomScript {
 
   return {
     setup() {
-      pickObjective();
       for (const [i, x] of SEATS.entries()) {
         const ch = addArt(w, 'prop.chair', x, 682, DEPTH.props - 2);
         if (ch) {
@@ -177,14 +175,6 @@ export function r12(w: WorldScene): RoomScript {
       w.onCleanup(() => watch?.destroy());
     },
     onInteract(id) {
-      if (id === 'door' && !w.quest.has('r12.door')) {
-        app.audio.sfx('door');
-        w.flag('r12.door');
-        w.activateCheckpoint('r12_room', true);
-        w.setObjective('r12.read');
-        w.time.delayedCall(900, () => app.ui.hud.caption(CAPTIONS.papersOnly, 4200));
-        return true;
-      }
       if (id === 'portraits') {
         openDoc('r12.doc1', docPortraits());
         return true;
@@ -197,11 +187,15 @@ export function r12(w: WorldScene): RoomScript {
         openDoc('r12.doc3', docClause());
         return true;
       }
-      if (id === 'final' && w.quest.has('r12.read')) {
-        finalPage();
-        return true;
-      }
       return false;
+    },
+    onFixed() {
+      const q = w.quest;
+      const p = w.player;
+      if (ending || w.narrative.busy || !q.has('r12.intercut') || app.input.context !== 'gameplay' || !p.controllable) return;
+      if (!q.has('r12.door')) {
+        if (p.x > 1440) openDoor();
+      } else if (!q.has('r12.sold') && p.x > 2400) finalPage();
     },
     onUpdate(_dt, time) {
       if (watch) watch.setAngle(160 + Math.sin(time / 1000) * 0.5);

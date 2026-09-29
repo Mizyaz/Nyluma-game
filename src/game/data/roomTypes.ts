@@ -93,10 +93,6 @@ export interface MemoryPickupDef {
   y: number;
 }
 
-export type HazardDef =
-  | ({ kind: 'thorns'; id: string; x: number; y: number; w: number; unstable?: boolean } & Gate)
-  | ({ kind: 'wisp'; id: string; x: number; y: number; dx?: number; dy?: number } & Gate)
-  | ({ kind: 'lash'; id: string; x: number; y: number; period: number; offset: number } & Gate);
 
 export interface ExitDef extends Rect, Gate {
   id: string;
@@ -158,13 +154,10 @@ export interface RoomDef {
   sites?: SiteDef[];
   interacts?: InteractDef[];
   memories?: MemoryPickupDef[];
-  hazards?: HazardDef[];
   exits: ExitDef[];
   triggers?: TriggerDef[];
   props?: PropDef[];
   killY?: number;
   /** Camera zoom (default CAMERA_ZOOM); arenas and the ride show more. */
   zoom?: number;
-  /** Objective key shown on entry. */
-  objective: string;
 }

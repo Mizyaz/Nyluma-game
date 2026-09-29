@@ -1,6 +1,6 @@
 import type { RoomDef } from '../roomTypes';
 
-// Chapter IV — key and lock: the mechanical form.
+// Chapter IV — key and lock: the mechanical form opens the way by itself.
 export const R11: RoomDef = {
   id: 'r11',
   chapter: 4,
@@ -10,7 +10,6 @@ export const R11: RoomDef = {
   theme: 'mech',
   music: 'inner',
   player: 'mech',
-  objective: 'r11.key',
   checkpoints: [
     { id: 'r11_start', x: 150, y: 820, facing: 1, silent: true },
     { id: 'r11_m1', x: 1150, y: 820 },
@@ -25,11 +24,6 @@ export const R11: RoomDef = {
     { x: 560, y: 640, w: 160, h: 24, style: 'metal', oneWay: true },
     { id: 'step1', x: 1740, y: 740, w: 100, h: 24, style: 'metal', oneWay: true, grow: true, when: 'r11.m2' },
     { id: 'step2', x: 1810, y: 650, w: 80, h: 24, style: 'metal', oneWay: true, grow: true, when: 'r11.m2' },
-  ],
-  interacts: [
-    { id: 'console1', x: 900, y: 820, r: 80, prompt: 'Anahtar gözünü hizala', unless: 'r11.m1' },
-    { id: 'lock', x: 1840, y: 820, r: 90, prompt: 'Kilide bak', unless: 'r11.m2' },
-    { id: 'legs', x: 2540, y: 560, r: 90, prompt: 'Kollarını sapla', unless: 'r11.wake' },
   ],
   memories: [{ id: 'm8', x: 645, y: 640 }],
   exits: [],

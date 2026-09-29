@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { forTouch } from '../../src/ui/controlText';
 import { CAPTIONS } from '../../src/game/data/dialogue.tr';
-import { OBJECTIVES } from '../../src/game/data/objectives.tr';
 
 describe('touch wording of instructions', () => {
   it('names the on-screen buttons instead of keys', () => {
@@ -23,8 +22,8 @@ describe('touch wording of instructions', () => {
     expect(forTouch('Yalanlar sadece doğrular varken oluşur.')).toBe('Yalanlar sadece doğrular varken oluşur.');
   });
 
-  it('leaves no raw key names in any objective hint or caption', () => {
-    const texts = [...Object.values(OBJECTIVES).flatMap((o) => [o.text, o.hint]), ...Object.values(CAPTIONS)];
+  it('leaves no raw key names in any caption', () => {
+    const texts = Object.values(CAPTIONS);
     for (const t of texts) {
       const out = forTouch(t);
       expect(out, t).not.toMatch(/’ye bas|Q’yu|Boşluk|← →|\(A, S, D\)|(^|[\s(])[EQRF](?=[\s.:,)]|$)/);

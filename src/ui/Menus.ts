@@ -12,7 +12,6 @@ export interface MenuActions {
   startChapter: (ch: number) => void;
   resume: () => void;
   quitToMenu: () => void;
-  objectiveText: () => string;
 }
 
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V'];
@@ -162,8 +161,6 @@ export class Menus {
 
   showPause(): void {
     this.closeAll();
-    const objective = this.actions?.objectiveText() ?? '';
-    const objEl = h('p', { class: 'hidden', text: objective });
     const panel = h(
       'div',
       { class: 'panel' },
@@ -172,8 +169,6 @@ export class Menus {
         'nav',
         { class: 'menu', 'aria-label': 'Duraklatma menüsü' },
         this.btn('Devam', () => this.actions?.resume()),
-        this.btn('Hedef', () => objEl.classList.toggle('hidden')),
-        objEl,
         this.btn('Anılar', () => this.showJournal(() => this.pop())),
         this.btn('Ayarlar', () => this.showSettings(() => this.pop())),
         this.btn('Ana Menü', () =>
@@ -300,8 +295,6 @@ export class Menus {
       ...onoff('Azaltılmış hareket', s.reducedMotion, (v) => apply({ reducedMotion: v })),
       ...onoff('Ekran sarsıntısı', s.screenShake, (v) => apply({ screenShake: v })),
       ...seg<TextSpeed>('Metin hızı', [['slow', 'Yavaş'], ['normal', 'Normal'], ['fast', 'Hızlı'], ['instant', 'Anında']], s.textSpeed, (v) => apply({ textSpeed: v })),
-      ...seg('Nefes (odak)', [['hold', 'Basılı tut'], ['toggle', 'Aç / kapa']], s.focusToggle ? 'toggle' : 'hold', (v) => apply({ focusToggle: v === 'toggle' })),
-      ...onoff('Hikâye yardımı', s.storyAssist, (v) => apply({ storyAssist: v })),
       ...seg<TouchMode>('Dokunmatik kontroller', [['auto', 'Otomatik'], ['on', 'Açık'], ['off', 'Kapalı']], s.touch, (v) => apply({ touch: v })),
     );
     const reset = this.btn('Kaydı sıfırla', () =>
@@ -319,7 +312,6 @@ export class Menus {
       'div',
       { class: 'panel' },
       h('h2', { text: 'Ayarlar' }),
-      h('p', { style: 'margin:0 0 0.8em;font-size:0.8em;color:var(--ivory-dim)', text: 'Hikâye yardımı: daha az hasar, daha yavaş karşılaşmalar ve şarkılarda “Tamamla” düğmesi.' }),
       grid,
       h('div', { class: 'row', style: 'margin-top:1em' }, this.btn('Geri', back, { cls: 'small' }), reset),
     );
