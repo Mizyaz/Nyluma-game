@@ -40,22 +40,32 @@ export function svgMarkup(p: { w: number; h: number; body: string }, scale: numb
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.ceil(p.w * scale)}" height="${Math.ceil(p.h * scale)}" viewBox="0 0 ${p.w} ${p.h}">${p.body}</svg>`;
 }
 
-/** SVG string → decoded image. */
-export function rasterizeSvg(svg: string): Promise<HTMLImageElement> {
+function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
-    const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
     const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve(img);
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error('SVG rasterization failed'));
-    };
-    img.src = url;
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('SVG rasterization failed'));
+    img.src = src;
   });
+}
+
+/** False once a blob: image was refused (a host's content security policy). */
+let blobImages = true;
+
+/**
+ * SVG string → decoded image. Some hosts' content security policies refuse
+ * blob: images; data: URLs are used there instead.
+ */
+export function rasterizeSvg(svg: string): Promise<HTMLImageElement> {
+  const asData = (): Promise<HTMLImageElement> => loadImage('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg));
+  if (!blobImages) return asData();
+  const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
+  return loadImage(url)
+    .catch(() => {
+      blobImages = false;
+      return asData();
+    })
+    .finally(() => URL.revokeObjectURL(url));
 }
 
 interface Placed {

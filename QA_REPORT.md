@@ -30,7 +30,10 @@ ortamda **test edilmedi**.
 | Referans ekran görüntüleri (WebGL) | 8/8 alındı (`qa/screenshots/`) |
 | Temiz klon: `npm ci` → typecheck → test → build | Geçti (ayrıntı aşağıda) |
 
-Tüm sonuçlar aynı son kaynak ağacı üzerinde alındı.
+Tam kampanyalar ve ekran görüntüleri, son iki küçük düzeltmeden (bilgi
+kutusunun dokunmatik konumu, `data:` URL yedeği) önceki derlemede alındı;
+bu iki düzeltmeden sonra birim testleri, tarayıcı testleri (13/13) ve
+telefon testi yeniden koşturuldu ve geçti.
 
 ## Temiz klon
 
@@ -145,6 +148,8 @@ yukarıda, "Temiz klon").
 | Yavaş karelerde kısa bir yön basışı hiç algılanmayabiliyordu (dönülemiyordu) | İki güncelleme arasında basılıp bırakılan yön, sonraki güncellemede bir kez sayılıyor (birim testi var) |
 | "Rezonans" istemi tehlike 230 px içindeyken görünüyor, ama darbe yalnızca 115 px'e ulaşıyordu: istem görünürken basmak hiçbir şey yapmıyordu | İstem yalnızca darbe gerçekten bir şeyi dağıtacaksa görünüyor; saldıran wisp'lere erişim 55 px daha geniş |
 | Kristal tünelinin halka çizgileri Canvas çizicisinde kare hızını ~%30 düşürüyordu | Halkalar yalnızca WebGL'de; Canvas'ta tünel yalnızca kristallerle çiziliyor |
+| Telefonda sağ alttaki bilgi kutusu dokunmatik düğmelerin altında kalıp kısmen okunmuyordu | Dokunmatik arayüzde bilgi kutusu yön düğmeleriyle eylem düğmeleri arasındaki boşlukta (düğmelerle çakışmadığı ölçüldü) |
+| `blob:` görsellerini yasaklayan bir içerik güvenlik politikası (CSP) altında çizimler yüklenemezdi | `data:` URL yedeği; `img-src 'self' data:` politikasıyla yerelde denendi: menü tüm çizimlerle açıldı, sayfa hatası yok |
 
 Yükleme düzeltmelerinin etkisi (aynı ölçüm betiği, SwiftShader bayraklarıyla,
 Canvas çizici, r03): odanın oynanabilir olması ~30 sn'den ~3 sn'ye indi.

@@ -606,6 +606,20 @@ button {
   transform: none;
 }
 
+/* With touch controls the bottom-right corner holds the buttons: toasts sit
+   in the free space between the direction pad and the buttons. */
+.touch-ui .toast {
+  right: auto;
+  left: 50%;
+  bottom: calc(12px + var(--safe-b));
+  max-width: min(40%, 380px);
+  transform: translate(-50%, 8px);
+}
+
+.touch-ui .toast.show {
+  transform: translate(-50%, 0);
+}
+
 .skip-hint {
   position: absolute;
   right: calc(max(10px, calc(var(--s) * 22px)) + var(--safe-r));
