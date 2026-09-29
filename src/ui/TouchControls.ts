@@ -91,7 +91,7 @@ export class TouchControls {
 
   private makeBtn(key: string, actions: Action[], icon: string, label: string, size: number): void {
     const b = h('div', { class: 'tc', role: 'button', 'aria-label': label, html: icon + `<span>${label}</span>` });
-    b.style.width = b.style.height = `${size}px`;
+    b.style.width = b.style.height = `calc(${size}px * var(--tk, 1))`;
     b.dataset.key = key;
     const active = new Set<number>();
     b.addEventListener('pointerdown', (e) => {
@@ -114,24 +114,45 @@ export class TouchControls {
     this.btns.set(key, b);
   }
 
+  /**
+   * Sizes follow the screen. Held sideways, the buttons fan out to the left
+   * of Zıpla; held upright (narrow), they stack in two columns above it so
+   * nothing reaches the direction pad.
+   */
   layout(): void {
     const W = window.innerWidth;
     const H = window.innerHeight;
-    const small = Math.min(W, H) < 420;
-    const m = small ? 12 : 22;
+    const portrait = H > W * 0.9;
+    const k = Math.min(1.15, Math.max(0.8, Math.min(W, H) / 412));
+    this.root.style.setProperty('--tk', k.toFixed(3));
+    const m = Math.min(W, H) < 420 ? 12 : 22;
+    const u = (n: number): number => Math.round(n * k);
+    const J = u(92);
+    const A = u(92);
+    const F = u(66);
+    const S = u(60);
+    const label = 20;
     const bottom = `calc(${m + 8}px + env(safe-area-inset-bottom, 0px))`;
     this.pad.style.left = `calc(${m}px + env(safe-area-inset-left, 0px))`;
     this.pad.style.bottom = bottom;
     const place = (key: string, right: number, bot: number): void => {
       const b = this.btns.get(key)!;
-      b.style.right = `calc(${right}px + env(safe-area-inset-right, 0px))`;
-      b.style.bottom = `calc(${bot}px + env(safe-area-inset-bottom, 0px))`;
+      b.style.right = `calc(${Math.round(right)}px + env(safe-area-inset-right, 0px))`;
+      b.style.bottom = `calc(${Math.round(bot)}px + env(safe-area-inset-bottom, 0px))`;
     };
     place('jump', m, m + 8);
-    place('action', m + 108, m + 30);
-    place('focus', m + 14, m + 128);
-    place('form', m + 112, m + 140);
-    place('song', m + 196, m + 118);
+    if (portrait) {
+      const row2 = m + 8 + J + label;
+      place('action', m, row2);
+      place('focus', m + J + 14, m + 8 + (J - F) / 2);
+      place('form', m + J + 14, row2 + (A - S) / 2);
+      place('song', m + J + 14, row2 + A + label);
+    } else {
+      place('action', m + J + 16, m + u(30));
+      place('focus', m + (J - F) / 2, m + 8 + J + label);
+      place('form', m + J + 16 + (A - S) / 2, m + u(30) + A + label);
+      place('song', m + J + A + 36, m + u(30) + (A - S) / 2 + u(70));
+    }
   }
 
   setMode(mode: TouchMode): void {

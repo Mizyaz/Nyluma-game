@@ -5,9 +5,7 @@ gerçeküstü bir macera. Beş bölüm ve on iki oda boyunca Gorti Evaskinan'ın
 382. Dünya'daki yolculuğu: 14. Oda'dan yüzeye, mor atla Güneş'e, iç koğuşa ve
 boş masadaki hak aktarımına.
 
-> **Oyna:** GitHub Pages bağlantısı depo yayınlandığında burada yer alır
-> (`https://<kullanıcı>.github.io/<depo>/`). Aşağıdaki "GitHub Pages" bölümüne
-> bakın.
+> **Oyna:** https://mizyaz.github.io/Nyluma-game/
 
 Tüm oyun içi metinler Türkçedir. Oyun tamamen statik dosyalardan çalışır:
 sunucu, hesap, çevrim içi hizmet ya da dış kaynak (CDN, yazı tipi, ses) yoktur.
@@ -34,8 +32,11 @@ sunucu, hesap, çevrim içi hizmet ya da dış kaynak (CDN, yazı tipi, ses) yok
 düğmeleri, sağ altta Zıpla ve Eylem; Nefes, Biçim ve Şarkı düğmeleri gerektiği
 yerde belirir. Birden çok parmak aynı anda kullanılabilir (ör. yürürken zıplamak
 ya da nefes tutarken zıplamak). Dokunmatik cihazlarda ekrandaki yönergeler tuş
-adları yerine bu düğmelerin adlarıyla gösterilir. En rahat deneyim için cihazı
-yatay tutun; tarayıcı destekliyorsa oyun tam ekrana ve yatay yöne geçer.
+adları yerine bu düğmelerin adlarıyla gösterilir. Cihaz dik ya da yatay
+tutulabilir: dik tutulduğunda oyun görüntüsü üstte tam genişlikte, altyazılar
+ve diyaloglar hemen altında, kontroller en altta durur; yatay tutulduğunda oyun
+ekranı doldurur ve altyazılar görüntünün altında gösterilir. Tarayıcı
+destekliyorsa oyun başlarken tam ekrana geçer.
 
 Menüler klavyeyle (↑ ↓, Enter, Esc) ve fareyle kullanılabilir. Ayarlar'da ses
 seviyeleri, azaltılmış hareket, ekran sarsıntısı, metin hızı (anında dahil),
@@ -68,7 +69,7 @@ yerel sunucu için: `npx serve dist` ya da `node scripts/serve.mjs dist 4173 /`.
 | --- | --- |
 | `npm run typecheck` | TypeScript (strict) denetimi |
 | `npm run test` | Birim testleri (Vitest): kayıt, durum normalizasyonu, girdi bağlamları, yetenekler, Güneş karşılaşması, oda verisi doğrulaması |
-| `npm run test:e2e` | Üretim ve e2e derlemelerini alır, Playwright tarayıcı testlerini çalıştırır: kök ve `/kristaller-dunyasi/` alt yolunda açılış (WebGL), oynanış akışları (hareket, etkileşim, duraklatma, odak kaybı, kontrol noktası + Devam Et, ayarlar, bozuk/erişilemeyen kayıt, bölüm seçimi, son), çoklu dokunma, yeniden boyutlandırma ve telefon boyutlu ekranda yalnızca dokunmatikle ilk oda |
+| `npm run test:e2e` | Üretim ve e2e derlemelerini alır, Playwright tarayıcı testlerini çalıştırır: kök ve `/kristaller-dunyasi/` alt yolunda açılış (WebGL), oynanış akışları (hareket, etkileşim, duraklatma, odak kaybı, kontrol noktası + Devam Et, ayarlar, bozuk/erişilemeyen kayıt, bölüm seçimi, son), çoklu dokunma, dikey ve yatay ekran düzeni, menülerin her boyutta ekrana sığması, dokunmatik düğmelerin çakışmaması ve telefon boyutlu ekranda yalnızca dokunmatikle ilk oda (`PHONE_UPRIGHT=1` ile telefon dik tutulmuş olarak) |
 | `npm run test:campaign` | Yeni Oyun'dan son karta kadar tüm kampanyayı oynayan iki uzun test: masaüstünde yalnızca klavyeyle ve telefon boyutlu ekranda yalnızca dokunmatikle (bu depodaki ölçümde her biri yaklaşık 12 dakika) |
 | `npm run package` | Kaynak ve `dist` arşivlerini `release/` altına üretir |
 
@@ -80,19 +81,17 @@ ayarlarıyla çalışır.
 
 ## GitHub Pages
 
-Depo `.github/workflows/deploy.yml` ile resmî Pages eylemlerini kullanır
-(`actions/configure-pages`, `actions/upload-pages-artifact`,
-`actions/deploy-pages`). Varsayılan dala (`main`) her gönderimde ve elle
-tetiklemede: `npm ci` → typecheck → birim testleri → üretim derlemesi →
-`dist/` yükleme → yayın.
+Oyun https://mizyaz.github.io/Nyluma-game/ adresinde yayınlanır.
+`.github/workflows/deploy.yml`, varsayılan dala (`main`) her gönderimde ve
+elle tetiklemede şunları yapar: `npm ci` → typecheck → birim testleri → üretim
+derlemesi → `dist/` içeriğini `gh-pages` dalına yazma. GitHub Pages bu dalı
+sunar ("pages build and deployment" iş akışı).
 
-Bir kereliğine yapılması gereken ayar:
-
-1. GitHub'da depo → **Settings → Pages → Build and deployment → Source →
-   GitHub Actions**.
-2. `main` dalına gönderin ya da **Actions → Deploy to GitHub Pages → Run
-   workflow**.
-3. Yayın adresi iş akışının `deploy` adımında görünür.
+Pages kapalıysa ya da başka bir kaynağa ayarlıysa: depo → **Settings → Pages →
+Build and deployment → Source → Deploy from a branch → `gh-pages` / `(root)`**.
+Resmî Pages eylemleriyle (Source → GitHub Actions) yayınlamak isterseniz iş
+akışının son adımını `actions/configure-pages`, `actions/upload-pages-artifact`
+ve `actions/deploy-pages` ile değiştirebilirsiniz.
 
 Vite `base: './'` ile derlenir; bu yüzden aynı `dist/` hem alan adı kökünde
 hem de `https://<kullanıcı>.github.io/<depo>/` gibi bir alt yolda çalışır.
@@ -101,11 +100,10 @@ hem de `https://<kullanıcı>.github.io/<depo>/` gibi bir alt yolda çalışır.
 Çekme istekleri (`pull_request`) yalnızca salt okunur `ci.yml` iş akışını
 çalıştırır; yayın izinleri almaz.
 
-### Alternatif: dal üzerinden statik yayın
+### Elle yayın
 
-Actions kullanmak istemezseniz `npm run build` çıktısını (`dist/` klasörünün
-**içeriğini**) ayrı bir dalın köküne (örn. `gh-pages`) koyup Settings → Pages →
-Source → **Deploy from a branch** ile o dalı seçebilirsiniz. `dist/.nojekyll`
+Actions kullanmadan da yayınlanabilir: `npm run build` çıktısını (`dist/`
+klasörünün **içeriğini**) `gh-pages` dalının köküne koyup gönderin. `dist/.nojekyll`
 dosyası Jekyll işlemesini kapatır.
 
 ## Proje yapısı

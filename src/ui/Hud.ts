@@ -21,6 +21,10 @@ export class Hud {
   private areaEl: HTMLElement;
   private toastEl: HTMLElement;
   private skipEl: HTMLElement;
+  /** Objective + hint: top right in landscape, in the text column in portrait. */
+  private objBox: HTMLElement;
+  /** Toast, prompts and captions (subtitles) stacked in one column. */
+  private stackEl: HTMLElement;
   private objTimer = 0;
   private captionTimer = 0;
   private toastTimer = 0;
@@ -60,31 +64,26 @@ export class Hud {
     });
     if (!fullscreenAvailable()) fsBtn.classList.add('hidden');
     document.addEventListener('fullscreenchange', () => fsBtn.setAttribute('aria-pressed', String(isFullscreen())));
-    const right = h('div', { class: 'hud-right' }, pauseBtn, objBtn, fsBtn, h('div', {}, this.objText, this.hintBtn));
+    const right = h('div', { class: 'hud-right' }, pauseBtn, objBtn, fsBtn);
+    this.objBox = h('div', { class: 'hud-obj' }, this.objText, this.hintBtn);
     this.promptEl = h('div', { class: 'prompt', 'aria-live': 'polite' });
     this.captionEl = h('div', { class: 'caption', 'aria-live': 'polite' });
     this.areaEl = h('div', { class: 'area-title' });
     this.toastEl = h('div', { class: 'toast', role: 'status' });
     this.skipEl = h('div', { class: 'skip-hint hidden' });
-    this.el = h(
-      'div',
-      { class: 'hud hidden' },
-      this.coh,
-      this.focusEl,
-      this.focusLabel,
-      right,
-      this.promptEl,
-      this.captionEl,
-      this.areaEl,
-      this.toastEl,
-      this.skipEl,
-    );
+    this.stackEl = h('div', { class: 'hud-stack' }, this.toastEl, this.promptEl, this.captionEl);
+    this.el = h('div', { class: 'hud hidden' }, this.coh, this.focusEl, this.focusLabel, right, this.objBox, this.stackEl, this.areaEl, this.skipEl);
     stage.append(this.el);
-    this.objText.style.opacity = '0';
   }
 
   show(on: boolean): void {
     this.el.classList.toggle('hidden', !on);
+  }
+
+  /** Portrait keeps the objective in the text column under the game view. */
+  setLayout(portrait: boolean): void {
+    if (portrait) this.stackEl.append(this.objBox);
+    else this.el.insertBefore(this.objBox, this.stackEl);
   }
 
   setCoherence(halves: number, maxHalves: number): void {
@@ -125,7 +124,7 @@ export class Hud {
 
   flashObjective(ms: number): void {
     this.objTimer = ms;
-    this.objText.style.opacity = '1';
+    this.objText.classList.add('show');
   }
 
   setHint(text: string, available: boolean): void {
@@ -176,7 +175,7 @@ export class Hud {
   tick(dt: number): void {
     if (this.objTimer > 0) {
       this.objTimer -= dt;
-      if (this.objTimer <= 0) this.objText.style.opacity = '0';
+      if (this.objTimer <= 0) this.objText.classList.remove('show');
     }
     if (this.captionTimer > 0) {
       this.captionTimer -= dt;

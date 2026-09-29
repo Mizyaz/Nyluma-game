@@ -19,6 +19,8 @@
   --safe-r: env(safe-area-inset-right, 0px);
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
+  /* Portrait: height of the HUD band above the game view. */
+  --band: 60px;
 }
 
 * {
@@ -51,6 +53,14 @@ body {
   inset: 0;
 }
 
+/* Portrait: the game view spans the width under the HUD band; the room
+   below it holds subtitles, panels and the touch controls. */
+#app.portrait #game {
+  inset: auto 0 auto 0;
+  top: calc(var(--safe-t) + var(--band));
+  height: calc(100vw * 9 / 16);
+}
+
 #game canvas {
   display: block;
   outline: none;
@@ -65,7 +75,12 @@ body {
   height: 720px;
   pointer-events: none;
   overflow: hidden;
-  font-size: max(13px, calc(var(--s) * 20px));
+  font-size: max(12px, calc(var(--s) * 16px));
+  /* The game view inside the stage (set by UI.sync). */
+  --gx: 0px;
+  --gy: 0px;
+  --gw: 100%;
+  --gh: 100%;
 }
 
 #stage > * {
@@ -93,6 +108,7 @@ button {
 
 /* ------------------------------------------------------------ menus */
 
+/* Screens fit any viewport: centred when there is room, scrolled when not. */
 .screen {
   position: absolute;
   inset: 0;
@@ -100,6 +116,11 @@ button {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  justify-content: safe center;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: calc(12px + var(--safe-t)) calc(16px + var(--safe-r)) calc(12px + var(--safe-b)) calc(16px + var(--safe-l));
   background: radial-gradient(ellipse at 50% 60%, rgba(25, 23, 40, 0.1), rgba(15, 13, 24, 0.75));
 }
 
@@ -110,7 +131,8 @@ button {
 
 .title {
   font-family: var(--serif);
-  font-size: max(30px, calc(var(--s) * 74px));
+  font-size: max(26px, calc(var(--s) * 56px));
+  line-height: 1.15;
   letter-spacing: 0.04em;
   margin: 0;
   color: var(--ivory);
@@ -121,17 +143,17 @@ button {
 .subtitle {
   font-family: var(--serif);
   font-style: italic;
-  font-size: max(15px, calc(var(--s) * 28px));
+  font-size: max(14px, calc(var(--s) * 22px));
   color: var(--vein);
-  margin: 0.2em 0 1.2em;
+  margin: 0.2em 0 1em;
   text-align: center;
 }
 
 .menu {
   display: flex;
   flex-direction: column;
-  gap: max(6px, calc(var(--s) * 10px));
-  min-width: max(220px, calc(var(--s) * 360px));
+  gap: max(6px, calc(var(--s) * 9px));
+  width: min(100%, max(220px, calc(var(--s) * 340px)));
 }
 
 .btn {
@@ -141,9 +163,9 @@ button {
   background: var(--ink-2);
   color: var(--ivory);
   font-family: var(--serif);
-  font-size: max(16px, calc(var(--s) * 25px));
-  padding: 0.38em 1.1em;
-  min-height: 48px;
+  font-size: max(14px, calc(var(--s) * 19px));
+  padding: 0.34em 1em;
+  min-height: 42px;
   border-radius: 14px 6px 12px 7px / 8px 13px 6px 12px;
   box-shadow: 0 calc(var(--s) * 4px) 0 var(--ink), inset 0 0 0 1px rgba(215, 179, 255, 0.18);
   cursor: pointer;
@@ -195,9 +217,9 @@ button {
 }
 
 .btn.small {
-  font-size: max(14px, calc(var(--s) * 19px));
+  font-size: max(13px, calc(var(--s) * 16px));
   padding: 0.3em 0.8em;
-  min-height: 44px;
+  min-height: 40px;
 }
 
 .btn.center {
@@ -210,16 +232,14 @@ button {
   border: max(2px, calc(var(--s) * 3px)) solid var(--ink);
   box-shadow: 0 0 0 1px rgba(215, 179, 255, 0.25), 0 calc(var(--s) * 8px) 0 rgba(10, 9, 16, 0.6);
   border-radius: 18px 8px 16px 10px / 10px 16px 8px 18px;
-  padding: max(14px, calc(var(--s) * 26px));
-  max-width: 92%;
-  max-height: 88%;
-  overflow: auto;
+  padding: max(12px, calc(var(--s) * 22px));
+  max-width: 100%;
 }
 
 .panel h2 {
   font-family: var(--serif);
   font-weight: normal;
-  font-size: max(20px, calc(var(--s) * 36px));
+  font-size: max(18px, calc(var(--s) * 28px));
   margin: 0 0 0.6em;
   color: var(--ivory);
 }
@@ -241,7 +261,7 @@ button {
   bottom: max(10px, calc(var(--s) * 18px));
   left: 50%;
   transform: translateX(-50%);
-  font-size: max(12px, calc(var(--s) * 16px));
+  font-size: max(11px, calc(var(--s) * 14px));
   color: var(--ivory-dim);
   font-family: var(--serif);
   font-style: italic;
@@ -255,8 +275,8 @@ button {
   grid-template-columns: auto 1fr;
   gap: 0.55em 1.2em;
   align-items: center;
-  font-size: max(14px, calc(var(--s) * 20px));
-  min-width: min(92vw, calc(var(--s) * 640px));
+  font-size: max(13px, calc(var(--s) * 16px));
+  width: min(calc(var(--sw, 100vw) - 72px), max(300px, calc(var(--s) * 620px)));
 }
 
 .settings label {
@@ -280,11 +300,11 @@ button {
   border: 2px solid var(--ink);
   background: var(--ink-2);
   padding: 0.25em 0.7em;
-  min-height: 40px;
+  min-height: 38px;
   border-radius: 8px;
   cursor: pointer;
   font-family: var(--sans);
-  font-size: max(13px, calc(var(--s) * 17px));
+  font-size: max(12px, calc(var(--s) * 14px));
 }
 
 .seg button[aria-pressed='true'] {
@@ -300,7 +320,7 @@ button {
 .chapters {
   display: grid;
   gap: 0.6em;
-  min-width: min(90vw, calc(var(--s) * 560px));
+  width: min(calc(var(--sw, 100vw) - 72px), max(260px, calc(var(--s) * 540px)));
 }
 
 .chapters .btn small {
@@ -313,9 +333,9 @@ button {
 /* journal */
 .journal {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: max(8px, calc(var(--s) * 14px));
-  width: min(94vw, calc(var(--s) * 1040px));
+  grid-template-columns: repeat(auto-fill, minmax(clamp(84px, 20vmin, 190px), 1fr));
+  gap: max(8px, calc(var(--s) * 12px));
+  width: min(calc(var(--sw, 100vw) - 72px), max(300px, calc(var(--s) * 1000px)));
 }
 
 .mem-card {
@@ -327,8 +347,8 @@ button {
   cursor: pointer;
   text-align: center;
   font-family: var(--serif);
-  font-size: max(12px, calc(var(--s) * 17px));
-  min-height: 48px;
+  font-size: max(11px, calc(var(--s) * 14px));
+  min-height: 44px;
 }
 
 .mem-card img {
@@ -352,7 +372,7 @@ button {
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
   gap: 1.2em;
   align-items: center;
-  width: min(94vw, calc(var(--s) * 980px));
+  width: min(calc(var(--sw, 100vw) - 72px), max(300px, calc(var(--s) * 940px)));
 }
 
 .mem-view img {
@@ -362,7 +382,32 @@ button {
 }
 
 .mem-view p {
-  font-size: max(15px, calc(var(--s) * 22px));
+  font-size: max(14px, calc(var(--s) * 18px));
+}
+
+/* Portrait: forms and memory pages in one column. */
+#app.portrait .settings,
+#app.portrait .mem-view {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* Short screens (phones held sideways): the main and pause menus in two
+   columns so every button stays on screen. */
+@media (max-height: 460px) {
+  .menu {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: min(100%, max(300px, calc(var(--s) * 560px)));
+  }
+  .menu > p {
+    grid-column: 1 / -1;
+  }
+  .btn {
+    min-height: 38px;
+  }
+  .subtitle {
+    margin-bottom: 0.6em;
+  }
 }
 
 /* ------------------------------------------------------------ HUD */
@@ -383,17 +428,17 @@ button {
 
 .coherence {
   position: absolute;
-  left: calc(max(10px, calc(var(--s) * 22px)) + var(--safe-l));
-  top: calc(max(8px, calc(var(--s) * 18px)) + var(--safe-t));
+  left: calc(max(10px, calc(var(--s) * 20px)) + var(--safe-l));
+  top: calc(max(8px, calc(var(--s) * 16px)) + var(--safe-t));
   display: flex;
-  gap: max(3px, calc(var(--s) * 6px));
+  gap: max(3px, calc(var(--s) * 5px));
   align-items: center;
   pointer-events: none;
 }
 
 .seg-mark {
-  width: max(14px, calc(var(--s) * 24px));
-  height: max(20px, calc(var(--s) * 34px));
+  width: max(12px, calc(var(--s) * 20px));
+  height: max(17px, calc(var(--s) * 28px));
   position: relative;
 }
 
@@ -405,10 +450,10 @@ button {
 
 .focus-meter {
   position: absolute;
-  left: calc(max(10px, calc(var(--s) * 22px)) + var(--safe-l));
-  top: calc(max(34px, calc(var(--s) * 60px)) + var(--safe-t));
-  width: max(90px, calc(var(--s) * 150px));
-  height: max(9px, calc(var(--s) * 13px));
+  left: calc(max(10px, calc(var(--s) * 20px)) + var(--safe-l));
+  top: calc(max(32px, calc(var(--s) * 52px)) + var(--safe-t));
+  width: max(80px, calc(var(--s) * 130px));
+  height: max(8px, calc(var(--s) * 11px));
   border: 2px solid var(--ink);
   background: rgba(25, 23, 40, 0.8);
   border-radius: 8px 3px 8px 3px;
@@ -429,27 +474,47 @@ button {
 
 .focus-label {
   position: absolute;
-  left: calc(max(104px, calc(var(--s) * 180px)) + var(--safe-l));
-  top: calc(max(30px, calc(var(--s) * 55px)) + var(--safe-t));
-  font-size: max(11px, calc(var(--s) * 15px));
+  left: calc(max(96px, calc(var(--s) * 158px)) + var(--safe-l));
+  top: calc(max(29px, calc(var(--s) * 48px)) + var(--safe-t));
+  font-size: max(10px, calc(var(--s) * 13px));
   color: var(--ivory-dim);
   pointer-events: none;
 }
 
 .hud-right {
   position: absolute;
-  right: calc(max(8px, calc(var(--s) * 18px)) + var(--safe-r));
-  top: calc(max(6px, calc(var(--s) * 14px)) + var(--safe-t));
+  right: calc(max(8px, calc(var(--s) * 16px)) + var(--safe-r));
+  top: calc(max(8px, calc(var(--s) * 12px)) + var(--safe-t));
   display: flex;
-  gap: max(6px, calc(var(--s) * 10px));
+  gap: max(6px, calc(var(--s) * 9px));
   align-items: flex-start;
   flex-direction: row-reverse;
 }
 
+/* Objective and hint: under the buttons (landscape) or in the text column
+   below the game view (portrait, see .hud-stack). */
+.hud .hud-obj {
+  position: absolute;
+  right: calc(max(8px, calc(var(--s) * 16px)) + var(--safe-r));
+  top: calc(max(8px, calc(var(--s) * 12px)) + max(40px, calc(var(--s) * 46px)) + 8px + var(--safe-t));
+  max-width: max(190px, calc(var(--s) * 360px));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.hud .hud-stack .hud-obj {
+  position: static;
+  max-width: 100%;
+  align-items: center;
+}
+
 .icon-btn {
   appearance: none;
-  width: max(44px, calc(var(--s) * 54px));
-  height: max(44px, calc(var(--s) * 54px));
+  width: max(40px, calc(var(--s) * 46px));
+  height: max(40px, calc(var(--s) * 46px));
   border: 3px solid var(--ink);
   background: rgba(37, 34, 56, 0.9);
   border-radius: 14px 7px 12px 8px;
@@ -457,7 +522,7 @@ button {
   display: grid;
   place-items: center;
   padding: 0;
-  font-size: max(16px, calc(var(--s) * 22px));
+  font-size: max(15px, calc(var(--s) * 19px));
   color: var(--ivory);
 }
 
@@ -471,16 +536,23 @@ button {
 }
 
 .objective {
-  max-width: max(200px, calc(var(--s) * 420px));
+  max-width: 100%;
   background: rgba(25, 23, 40, 0.9);
   border: 3px solid var(--ink);
   border-radius: 12px 6px 12px 6px;
-  padding: 0.45em 0.8em;
+  padding: 0.4em 0.75em;
   font-family: var(--serif);
-  font-size: max(13px, calc(var(--s) * 19px));
+  font-size: max(12px, calc(var(--s) * 16px));
   line-height: 1.35;
   pointer-events: none;
-  transition: opacity 0.3s ease;
+}
+
+.objective:not(.show) {
+  display: none;
+}
+
+.objective.show {
+  animation: hud-in 0.3s ease;
 }
 
 .objective b {
@@ -493,21 +565,82 @@ button {
   text-transform: uppercase;
 }
 
-.hint-btn {
+.hud .hint-btn {
   font-family: var(--serif);
-  font-size: max(13px, calc(var(--s) * 18px));
-  min-height: 44px;
+  font-size: max(12px, calc(var(--s) * 15px));
+  min-height: 40px;
+  pointer-events: auto;
+}
+
+/* Toast, prompts and subtitles share one column. Landscape: at the bottom
+   of the game view, like film subtitles. Portrait: under the game view. */
+.hud .hud-stack {
+  position: absolute;
+  left: 50%;
+  bottom: calc(max(10px, calc(var(--s) * 16px)) + var(--safe-b));
+  transform: translateX(-50%);
+  width: min(88%, calc(var(--s) * 900px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: max(6px, calc(var(--s) * 8px));
+  pointer-events: none;
+}
+
+/* Sideways on a touch screen the corners hold the controls. */
+.touch-ui #app:not(.portrait) .hud .hud-stack {
+  width: min(46%, calc(var(--s) * 700px));
+}
+
+/* A dialogue box takes the text column's place while someone speaks. */
+.dialogue-open .hud .hud-stack {
+  visibility: hidden;
+}
+
+#app.portrait .hud .hud-stack {
+  top: calc(var(--gy) + var(--gh) + 10px);
+  bottom: auto;
+  left: calc(12px + var(--safe-l));
+  right: calc(12px + var(--safe-r));
+  width: auto;
+  transform: none;
+}
+
+#app.portrait .hud-stack .caption {
+  order: 1;
+}
+#app.portrait .hud-stack .toast {
+  order: 2;
+}
+#app.portrait .hud-stack .hud-obj {
+  order: 3;
+}
+#app.portrait .hud-stack .prompt {
+  order: 4;
+}
+
+@keyframes hud-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .prompt {
-  position: absolute;
-  left: 50%;
-  bottom: calc(max(64px, calc(var(--s) * 96px)) + var(--safe-b));
-  transform: translateX(-50%);
   display: flex;
-  gap: 0.8em;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6em;
   pointer-events: none;
-  font-size: max(13px, calc(var(--s) * 19px));
+  font-size: max(12px, calc(var(--s) * 16px));
+}
+
+.prompt:empty {
+  display: none;
 }
 
 .prompt span {
@@ -534,31 +667,32 @@ button {
 }
 
 .caption {
-  position: absolute;
-  left: 50%;
-  top: calc(max(58px, calc(var(--s) * 90px)) + var(--safe-t));
-  transform: translateX(-50%);
-  width: min(86%, calc(var(--s) * 980px));
+  max-width: 100%;
+  padding: 0.2em 0.75em;
+  border-radius: 8px;
+  background: rgba(15, 13, 24, 0.62);
   text-align: center;
   font-family: var(--serif);
   font-style: italic;
-  font-size: max(15px, calc(var(--s) * 24px));
+  font-size: max(13px, calc(var(--s) * 19px));
   line-height: 1.4;
   color: var(--ivory);
-  text-shadow: 0 2px 0 var(--ink), 0 0 12px rgba(25, 23, 40, 0.9);
+  text-shadow: 0 1px 0 var(--ink), 0 0 8px rgba(25, 23, 40, 0.9);
   pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.6s ease;
+}
+
+.caption:not(.show) {
+  display: none;
 }
 
 .caption.show {
-  opacity: 1;
+  animation: hud-in 0.5s ease;
 }
 
 .area-title {
   position: absolute;
-  left: 50%;
-  top: 38%;
+  left: calc(var(--gx) + var(--gw) / 2);
+  top: calc(var(--gy) + var(--gh) * 0.4);
   transform: translate(-50%, -50%);
   text-align: center;
   font-family: var(--serif);
@@ -574,61 +708,52 @@ button {
 
 .area-title small {
   display: block;
-  font-size: max(13px, calc(var(--s) * 20px));
+  font-size: max(12px, calc(var(--s) * 16px));
   letter-spacing: 0.3em;
   color: var(--vein);
 }
 
 .area-title span {
-  font-size: max(24px, calc(var(--s) * 50px));
+  font-size: max(22px, calc(var(--s) * 40px));
 }
 
 .toast {
-  position: absolute;
-  right: calc(max(10px, calc(var(--s) * 22px)) + var(--safe-r));
-  bottom: calc(max(80px, calc(var(--s) * 120px)) + var(--safe-b));
   background: rgba(25, 23, 40, 0.94);
   border: 3px solid var(--ink);
   border-left: 6px solid var(--violet);
   border-radius: 10px 5px 10px 5px;
-  padding: 0.5em 0.9em;
+  padding: 0.4em 0.85em;
   font-family: var(--serif);
-  font-size: max(13px, calc(var(--s) * 18px));
-  max-width: 50%;
+  font-size: max(12px, calc(var(--s) * 15px));
+  line-height: 1.35;
+  max-width: min(100%, calc(var(--s) * 620px));
   pointer-events: none;
-  opacity: 0;
-  transform: translateY(8px);
-  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.toast:not(.show) {
+  display: none;
 }
 
 .toast.show {
-  opacity: 1;
-  transform: none;
+  animation: hud-in 0.3s ease;
 }
 
-/* With touch controls the bottom-right corner holds the buttons: toasts sit
-   in the free space between the direction pad and the buttons. */
-.touch-ui .toast {
-  right: auto;
-  left: 50%;
-  bottom: calc(12px + var(--safe-b));
-  max-width: min(40%, 380px);
-  transform: translate(-50%, 8px);
-}
-
-.touch-ui .toast.show {
-  transform: translate(-50%, 0);
-}
-
+/* Top centre of the game view: clear of the HUD corners, the subtitles
+   and the touch controls. */
 .skip-hint {
   position: absolute;
-  right: calc(max(10px, calc(var(--s) * 22px)) + var(--safe-r));
-  bottom: calc(max(10px, calc(var(--s) * 18px)) + var(--safe-b));
+  left: calc(var(--gx) + var(--gw) / 2);
+  top: calc(var(--gy) + max(10px, calc(var(--s) * 16px)));
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 0.5em;
-  font-size: max(12px, calc(var(--s) * 16px));
+  padding: 0.2em 0.7em;
+  border-radius: 999px;
+  background: rgba(15, 13, 24, 0.6);
+  font-size: max(11px, calc(var(--s) * 14px));
   color: var(--ivory-dim);
+  white-space: nowrap;
 }
 
 .skip-hint .ring {
@@ -648,25 +773,35 @@ button {
 .dialogue {
   position: absolute;
   left: 50%;
-  bottom: calc(max(8px, calc(var(--s) * 20px)) + var(--safe-b));
+  bottom: calc(max(8px, calc(var(--s) * 18px)) + var(--safe-b));
   transform: translateX(-50%);
-  width: min(94%, calc(var(--s) * 1040px));
-  min-height: max(84px, calc(var(--s) * 132px));
+  width: min(94%, calc(var(--s) * 1000px));
+  min-height: max(76px, calc(var(--s) * 112px));
   display: flex;
-  gap: max(10px, calc(var(--s) * 18px));
+  gap: max(10px, calc(var(--s) * 16px));
   align-items: flex-start;
   background: rgba(25, 23, 40, 0.94);
   border: max(2px, calc(var(--s) * 3px)) solid var(--ink);
   box-shadow: 0 0 0 1px rgba(215, 179, 255, 0.22), 0 calc(var(--s) * 6px) 0 rgba(10, 9, 16, 0.55);
   border-radius: 20px 8px 18px 10px / 10px 18px 8px 20px;
-  padding: max(10px, calc(var(--s) * 18px)) max(14px, calc(var(--s) * 26px));
+  padding: max(10px, calc(var(--s) * 16px)) max(12px, calc(var(--s) * 22px));
   cursor: pointer;
+}
+
+/* Portrait: dialogue sits under the game view (touch controls are hidden
+   while someone speaks). */
+#app.portrait .dialogue {
+  top: calc(var(--gy) + var(--gh) + 10px);
+  bottom: auto;
+  width: calc(100% - 24px - var(--safe-l) - var(--safe-r));
+  max-height: calc(100% - var(--gy) - var(--gh) - 20px - var(--safe-b));
+  overflow-y: auto;
 }
 
 .dialogue .portrait {
   flex: 0 0 auto;
-  width: max(54px, calc(var(--s) * 96px));
-  height: max(54px, calc(var(--s) * 96px));
+  width: max(48px, calc(var(--s) * 80px));
+  height: max(48px, calc(var(--s) * 80px));
   border-radius: 50%;
   border: 3px solid var(--ink);
   background: #2a2640;
@@ -687,7 +822,7 @@ button {
 .dialogue .name {
   font-family: var(--sans);
   font-weight: 700;
-  font-size: max(12px, calc(var(--s) * 17px));
+  font-size: max(11px, calc(var(--s) * 14px));
   letter-spacing: 0.08em;
   color: var(--vein);
   text-transform: uppercase;
@@ -696,7 +831,7 @@ button {
 
 .dialogue .text {
   font-family: var(--serif);
-  font-size: max(16px, calc(var(--s) * 26px));
+  font-size: max(14px, calc(var(--s) * 20px));
   line-height: 1.42;
   color: var(--ivory);
   min-height: 2.8em;
@@ -711,7 +846,7 @@ button {
   position: absolute;
   right: max(12px, calc(var(--s) * 20px));
   bottom: max(6px, calc(var(--s) * 10px));
-  font-size: max(11px, calc(var(--s) * 15px));
+  font-size: max(10px, calc(var(--s) * 13px));
   color: var(--ivory-dim);
   animation: bob 1.2s ease-in-out infinite;
 }
@@ -742,7 +877,7 @@ button {
   margin: 0 0 0.3em;
   font-family: var(--serif);
   font-weight: normal;
-  font-size: max(16px, calc(var(--s) * 24px));
+  font-size: max(14px, calc(var(--s) * 20px));
 }
 
 .song .pattern {
@@ -750,12 +885,12 @@ button {
   justify-content: center;
   gap: 0.5em;
   margin: 0.3em 0 0.6em;
-  min-height: max(34px, calc(var(--s) * 50px));
+  min-height: max(30px, calc(var(--s) * 44px));
 }
 
 .song .pattern .note {
-  width: max(34px, calc(var(--s) * 50px));
-  height: max(34px, calc(var(--s) * 50px));
+  width: max(30px, calc(var(--s) * 44px));
+  height: max(30px, calc(var(--s) * 44px));
   opacity: 0.45;
   transition: opacity 0.15s ease, transform 0.15s ease;
 }
@@ -781,20 +916,20 @@ button {
   background: var(--ink-2);
   border-radius: 16px 8px 16px 8px;
   padding: 0.3em 0.6em;
-  min-width: max(76px, calc(var(--s) * 140px));
-  min-height: 64px;
+  min-width: max(72px, calc(var(--s) * 120px));
+  min-height: 60px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.15em;
   font-family: var(--serif);
-  font-size: max(13px, calc(var(--s) * 18px));
+  font-size: max(12px, calc(var(--s) * 15px));
 }
 
 .note-btn svg {
-  width: max(30px, calc(var(--s) * 44px));
-  height: max(30px, calc(var(--s) * 44px));
+  width: max(28px, calc(var(--s) * 38px));
+  height: max(28px, calc(var(--s) * 38px));
 }
 
 .note-btn.flash {
@@ -821,7 +956,7 @@ button {
   font-family: var(--serif);
   font-style: italic;
   color: var(--vein);
-  font-size: max(13px, calc(var(--s) * 18px));
+  font-size: max(12px, calc(var(--s) * 15px));
 }
 
 /* ------------------------------------------------------------ puzzle */
@@ -831,7 +966,9 @@ button {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: min(96%, calc(var(--s) * 900px));
+  width: min(96%, max(300px, calc(var(--s) * 860px)));
+  max-height: calc(100% - 16px);
+  overflow-y: auto;
   background: rgba(35, 28, 31, 0.97);
   border: 3px solid var(--ink);
   border-radius: 20px 10px 20px 10px;
@@ -844,21 +981,22 @@ button {
   margin: 0 0 0.2em;
   font-family: var(--serif);
   font-weight: normal;
-  font-size: max(17px, calc(var(--s) * 28px));
+  font-size: max(15px, calc(var(--s) * 22px));
 }
 
 .puzzle .sub {
   font-family: var(--serif);
   font-style: italic;
   color: var(--ivory-dim);
-  font-size: max(13px, calc(var(--s) * 18px));
+  font-size: max(12px, calc(var(--s) * 15px));
   margin: 0 0 0.6em;
 }
 
 .cards {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
-  gap: max(8px, calc(var(--s) * 18px));
+  gap: max(8px, calc(var(--s) * 16px));
   margin: 0.4em 0 0.8em;
 }
 
@@ -868,11 +1006,11 @@ button {
   background: var(--paper);
   border-radius: 10px 4px 10px 4px;
   padding: max(4px, calc(var(--s) * 8px));
-  width: max(88px, calc(var(--s) * 220px));
+  width: clamp(64px, 21vmin, calc(var(--s) * 200px));
   cursor: pointer;
   color: var(--ink);
   font-family: var(--serif);
-  font-size: max(12px, calc(var(--s) * 16px));
+  font-size: max(11px, calc(var(--s) * 14px));
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   touch-action: none;
 }
@@ -919,9 +1057,9 @@ button {
   border: 3px solid var(--ink);
   border-radius: 4px;
   box-shadow: 0 calc(var(--s) * 10px) 0 rgba(10, 9, 16, 0.5), inset 0 0 40px rgba(120, 100, 70, 0.25);
-  padding: max(16px, calc(var(--s) * 34px)) max(18px, calc(var(--s) * 44px));
+  padding: max(14px, calc(var(--s) * 28px)) max(16px, calc(var(--s) * 36px));
   font-family: var(--serif);
-  font-size: max(14px, calc(var(--s) * 20px));
+  font-size: max(13px, calc(var(--s) * 17px));
   line-height: 1.5;
 }
 
@@ -951,7 +1089,7 @@ button {
 }
 
 .doc .portraits img {
-  width: max(64px, calc(var(--s) * 120px));
+  width: max(56px, calc(var(--s) * 100px));
   border: 2px solid #3b332c;
   background: #efe7d6;
 }
@@ -991,21 +1129,22 @@ button {
 
 .ending .final-line {
   font-family: var(--serif);
-  font-size: max(18px, calc(var(--s) * 34px));
+  font-size: max(17px, calc(var(--s) * 28px));
   max-width: 900px;
   line-height: 1.5;
 }
 
 .end-portraits {
   display: flex;
-  gap: max(8px, calc(var(--s) * 18px));
+  flex-wrap: wrap;
+  gap: max(8px, calc(var(--s) * 16px));
   justify-content: center;
   margin: 1em 0;
 }
 
 .end-portraits img {
-  width: max(56px, calc(var(--s) * 110px));
-  height: max(56px, calc(var(--s) * 110px));
+  width: max(48px, calc(var(--s) * 96px));
+  height: max(48px, calc(var(--s) * 96px));
   border-radius: 50%;
   border: 3px solid var(--ink);
   filter: drop-shadow(0 0 calc(var(--s) * 14px) rgba(215, 179, 255, 0.9)) saturate(1.2);
@@ -1025,7 +1164,7 @@ button {
 
 .credits {
   font-family: var(--serif);
-  font-size: max(13px, calc(var(--s) * 19px));
+  font-size: max(12px, calc(var(--s) * 16px));
   color: var(--ivory-dim);
   line-height: 1.6;
   margin: 1.2em 0;
@@ -1121,12 +1260,12 @@ button {
   pointer-events: auto;
   touch-action: none;
   display: flex;
-  gap: 10px;
+  gap: calc(10px * var(--tk, 1));
 }
 
 .tc-pad .half {
-  width: 78px;
-  height: 78px;
+  width: calc(78px * var(--tk, 1));
+  height: calc(78px * var(--tk, 1));
   border: 3px solid rgba(25, 23, 40, 0.9);
   background: rgba(37, 34, 56, 0.55);
   border-radius: 22px 10px 22px 10px;
@@ -1144,25 +1283,19 @@ button {
   height: 44%;
 }
 
-#rotate-hint {
-  position: fixed;
-  left: 50%;
-  bottom: 12px;
-  transform: translateX(-50%);
-  background: rgba(25, 23, 40, 0.92);
-  border: 2px solid var(--ink-3);
-  border-radius: 10px;
-  padding: 0.4em 0.9em;
-  font-family: var(--serif);
-  font-size: 14px;
-  z-index: 6;
-  pointer-events: none;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .dialogue .next {
+  .dialogue .next,
+  .caption.show,
+  .toast.show,
+  .objective.show {
     animation: none;
   }
+}
+
+.reduced-motion .caption.show,
+.reduced-motion .toast.show,
+.reduced-motion .objective.show {
+  animation: none;
 }
 
 /* ------------------------------------------------------------ touch wording */

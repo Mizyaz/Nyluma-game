@@ -249,7 +249,7 @@ test.describe('touch', () => {
 });
 
 test.describe('layout', () => {
-  test('the DOM stage stays aligned with the letterboxed canvas when resized', async ({ page }) => {
+  test('the overlay follows the canvas in landscape and the viewport in portrait', async ({ page }) => {
     await freshPage(page);
     await startNewGame(page, GAME);
     for (const [w, h] of [
@@ -258,18 +258,58 @@ test.describe('layout', () => {
       [1000, 760],
       [800, 380],
       [1366, 600],
+      [390, 844],
+      [360, 640],
+      [768, 1024],
     ] as const) {
       await page.setViewportSize({ width: w, height: h });
-      await page.waitForTimeout(400);
+      await page.waitForTimeout(500);
       const r = await page.evaluate(() => {
         const c = document.querySelector('#game canvas')!.getBoundingClientRect();
         const s = document.getElementById('stage')!.getBoundingClientRect();
-        return { c: [c.left, c.top, c.width, c.height], s: [s.left, s.top, s.width, s.height], sw: document.documentElement.scrollWidth, iw: innerWidth };
+        const t = document.querySelector('.hud-stack')!.getBoundingClientRect();
+        return { c: [c.left, c.top, c.width, c.height], s: [s.left, s.top, s.width, s.height], stackTop: t.top, portrait: document.getElementById('app')!.classList.contains('portrait'), sw: document.documentElement.scrollWidth, iw: innerWidth };
       });
-      for (let i = 0; i < 4; i++) expect(Math.abs(r.c[i]! - r.s[i]!)).toBeLessThan(1.5);
       expect(r.c[2]! / r.c[3]!).toBeCloseTo(16 / 9, 1);
       expect(r.sw).toBeLessThanOrEqual(r.iw);
+      if (h > w * 0.9) {
+        // Portrait: full-width game view under the HUD band, texts below it.
+        expect(r.portrait).toBe(true);
+        expect(Math.abs(r.c[2]! - w)).toBeLessThan(1.5);
+        expect(r.c[1]).toBeGreaterThan(40);
+        for (const [i, v] of [0, 0, w, h].entries()) expect(Math.abs(r.s[i]! - v)).toBeLessThan(1.5);
+        expect(r.stackTop).toBeGreaterThanOrEqual(r.c[1]! + r.c[3]! - 1);
+      } else {
+        expect(r.portrait).toBe(false);
+        for (let i = 0; i < 4; i++) expect(Math.abs(r.c[i]! - r.s[i]!)).toBeLessThan(1.5);
+      }
       await expect(page.locator('.hud')).toBeVisible();
+    }
+  });
+
+  test('every main-menu button is on screen at phone, tablet and desktop sizes', async ({ page }) => {
+    await freshPage(page);
+    for (const [w, h] of [
+      [355, 620],
+      [412, 915],
+      [740, 340],
+      [915, 412],
+      [768, 1024],
+      [1280, 720],
+    ] as const) {
+      await page.setViewportSize({ width: w, height: h });
+      await page.reload();
+      await expect(page.getByRole('button', { name: 'Yeni Oyun' })).toBeVisible({ timeout: 60_000 });
+      const off = await page.locator('.screen .btn').evaluateAll((els) =>
+        els
+          .filter((e) => {
+            const r = e.getBoundingClientRect();
+            return r.left < -1 || r.top < -1 || r.right > innerWidth + 1 || r.bottom > innerHeight + 1;
+          })
+          .map((e) => e.textContent),
+      );
+      expect(off, `${w}×${h}`).toEqual([]);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     }
   });
 });

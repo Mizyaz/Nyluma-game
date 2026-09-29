@@ -1,24 +1,23 @@
 name: Deploy to GitHub Pages
 
-# Builds the static game and publishes dist/ with the official Pages actions.
-# Only pushes to the default branch and manual runs deploy; pull requests use
-# the read-only CI workflow instead.
+# Builds the static game and publishes dist/ on the gh-pages branch, which
+# GitHub Pages serves (Settings → Pages → Deploy from a branch → gh-pages,
+# folder / (root)). Only pushes to the default branch and manual runs deploy;
+# pull requests use the read-only CI workflow instead.
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -36,20 +35,22 @@ jobs:
         run: npm test
       - name: Production build
         run: npm run build
-      - name: Set up Pages
-        uses: actions/configure-pages@v6
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v5
-        with:
-          path: dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v5
+      - name: Publish dist/ on gh-pages
+        run: |
+          git fetch --depth=1 origin +gh-pages:refs/remotes/origin/gh-pages || true
+          git worktree add --detach ../site
+          cd ../site
+          if git rev-parse --verify -q refs/remotes/origin/gh-pages >/dev/null; then
+            git checkout -q -B gh-pages refs/remotes/origin/gh-pages
+          else
+            git checkout -q --orphan gh-pages
+          fi
+          git rm -rq --ignore-unmatch .
+          cp -a "$GITHUB_WORKSPACE/dist/." .
+          git add -A
+          if git diff --cached --quiet; then
+            echo "The site is already up to date."
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "Publish ${GITHUB_SHA::7}"
+          git push origin gh-pages

@@ -80,6 +80,8 @@ export class Dialogue {
     this.idx = 0;
     this.open_ = true;
     this.el.classList.remove('hidden');
+    // Subtitles and toasts share the dialogue's place on screen: they wait.
+    document.documentElement.classList.add('dialogue-open');
     app.input.pushContext('dialogue');
     this.showLine();
     return new Promise((res) => {
@@ -130,6 +132,7 @@ export class Dialogue {
     this.open_ = false;
     this.downAt = 0;
     this.el.classList.add('hidden');
+    document.documentElement.classList.remove('dialogue-open');
     app.input.popContext('dialogue');
     const r = this.resolve;
     this.resolve = null;

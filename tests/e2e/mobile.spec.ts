@@ -6,7 +6,9 @@ import { ROUTES } from './routes';
 // Phone-sized landscape screen with touch only: menus are tapped, the game
 // is played through the on-screen controls (multi-touch pad + buttons) and
 // the song/puzzle/document panels are touched directly. No keyboard input.
-const PHONE = { viewport: { width: 915, height: 412 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 };
+// PHONE_UPRIGHT=1 runs the same tests with the phone held upright.
+const UPRIGHT = !!process.env.PHONE_UPRIGHT;
+const PHONE = { viewport: UPRIGHT ? { width: 412, height: 915 } : { width: 915, height: 412 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 };
 const GAME = `${E2E}?canvas=1`;
 
 async function newGameByTouch(page: Page): Promise<void> {
@@ -38,6 +40,35 @@ test.describe('mobile (touch only)', () => {
     await page.getByRole('button', { name: 'Devam', exact: true }).tap();
     await waitState(page, (s) => !s.paused, 5000, 'resumed by touch');
     expect(errors).toEqual([]);
+  });
+
+  test('touch controls never overlap, held upright or sideways', async ({ page }) => {
+    await newGameByTouch(page);
+    for (const [w, h] of [
+      [915, 412],
+      [740, 340],
+      [412, 915],
+      [355, 620],
+      [320, 568],
+    ] as const) {
+      await page.setViewportSize({ width: w, height: h });
+      await page.waitForTimeout(400);
+      // Show every contextual button too.
+      await page.evaluate(() => document.querySelectorAll('#touch .tc.hidden').forEach((e) => e.classList.remove('hidden')));
+      const r = await page.evaluate(() => {
+        const rs = [...document.querySelectorAll('#touch .tc, #touch .tc-pad')].map((e) => ({ k: (e as HTMLElement).dataset.key ?? 'pad', r: e.getBoundingClientRect() }));
+        const hits: string[] = [];
+        for (let i = 0; i < rs.length; i++)
+          for (let j = i + 1; j < rs.length; j++) {
+            const a = rs[i]!.r;
+            const b = rs[j]!.r;
+            if (a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top) hits.push(`${rs[i]!.k}×${rs[j]!.k}`);
+          }
+        const out = rs.filter((x) => x.r.left < 0 || x.r.top < 0 || x.r.right > innerWidth || x.r.bottom > innerHeight).map((x) => x.k);
+        return { hits, out };
+      });
+      expect(r, `${w}×${h}`).toEqual({ hits: [], out: [] });
+    }
   });
 
   test('@campaign touch-only full playthrough on a phone-sized screen', async ({ page }) => {

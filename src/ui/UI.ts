@@ -49,19 +49,44 @@ export class UI {
     sync();
   }
 
-  /** Aligns the overlay with the canvas rectangle. */
+  /**
+   * Lays the overlay out around the canvas. Landscape (computers, phones held
+   * sideways): the stage is the letterboxed canvas rectangle. Portrait: the
+   * canvas spans the width under a band for the HUD, and the stage is the
+   * whole viewport, so texts, panels and menus use the room around the game.
+   */
   sync(): void {
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    const portrait = H > W * 0.9;
+    const root = document.getElementById('app');
+    if (root && root.classList.contains('portrait') !== portrait) {
+      root.classList.toggle('portrait', portrait);
+      this.hud.setLayout(portrait);
+      // The canvas box changed shape: let Phaser measure it and fit again
+      // (refresh() alone reuses the last measured parent size).
+      if (this.game.isBooted) {
+        this.game.scale.getParentBounds();
+        this.game.scale.refresh();
+      }
+    }
     const canvas = this.game.canvas;
-    const rect = canvas ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+    const r = canvas ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: W, height: H };
+    const box = portrait ? { left: 0, top: 0, width: W, height: H } : r;
     const s = this.stage.style;
-    s.left = `${rect.left}px`;
-    s.top = `${rect.top}px`;
-    s.width = `${rect.width}px`;
-    s.height = `${rect.height}px`;
-    this.stage.style.setProperty('--s', String(rect.width / 1280));
-    const portrait = window.innerHeight > window.innerWidth * 1.05;
-    const hint = document.getElementById('rotate-hint');
-    if (hint) hint.hidden = !(portrait && this.touch.enabled);
+    s.left = `${box.left}px`;
+    s.top = `${box.top}px`;
+    s.width = `${box.width}px`;
+    s.height = `${box.height}px`;
+    // Where the game view lies inside the stage.
+    s.setProperty('--gx', `${r.left - box.left}px`);
+    s.setProperty('--gy', `${r.top - box.top}px`);
+    s.setProperty('--gw', `${r.width}px`);
+    s.setProperty('--gh', `${r.height}px`);
+    s.setProperty('--sw', `${box.width}px`);
+    // One UI scale from the viewport (1 at 1280×720), whatever the orientation.
+    const scale = Math.min(1.4, Math.max(0.5, Math.min(W / 1280, H / 720)));
+    document.documentElement.style.setProperty('--s', scale.toFixed(3));
     this.touch.layout();
   }
 
