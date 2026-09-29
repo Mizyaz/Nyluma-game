@@ -164,7 +164,8 @@ export class WorldScene extends Phaser.Scene {
     // 2.5D depth: crystal tube behind the room, crystals under each step,
     // a contact shadow that stays on the surface while Gorti is airborne.
     const look = warpLook(this.def.theme);
-    this.warpBg = new CrystalWarp(this, app.settings.reducedMotion ? { ...look, speed: look.speed * 0.3, alpha: look.alpha * 0.6 } : look, DEPTH.sky + 5);
+    // Above the parallax layers, behind everything Gorti touches.
+    this.warpBg = new CrystalWarp(this, app.settings.reducedMotion ? { ...look, speed: look.speed * 0.3, alpha: look.alpha * 0.6 } : look, DEPTH.sky + 60);
     this.steps = new StepCrystals(this, look.colors);
     if (hasFrame('fx.shadow')) {
       const sh = frameRef('fx.shadow');
@@ -745,7 +746,8 @@ export class WorldScene extends Phaser.Scene {
         this.drawReachPreview(t.x, t.y, time);
       } else if (t.kind === 'pulse') {
         const c = p.chest();
-        if (this.hazards.anyDispersibleNear(c.x, c.y, 230) || this.script.pulseRelevant?.()) {
+        // Only when a pulse would actually disperse something.
+        if (this.hazards.anyInPulseReach(c.x, c.y, PULSE_RADIUS) || this.script.pulseRelevant?.()) {
           prompts.push({ key: 'E', label: t.label });
         }
         actionLabel = t.label;

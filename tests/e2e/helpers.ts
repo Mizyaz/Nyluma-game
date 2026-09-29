@@ -33,6 +33,7 @@ export interface ProbeState {
   docOpen: boolean;
   endingOpen: boolean;
   heldSources: number;
+  hazards?: { kind: string; x: number; y: number; active: boolean; dispersible: boolean }[];
 }
 
 /** Collects anything that would indicate a broken build. */

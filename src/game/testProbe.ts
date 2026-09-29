@@ -41,6 +41,7 @@ export function installProbe(): void {
         endingOpen: app.ui.ending.isOpen,
         heldSources: app.input.sourceCount(),
         extra: active ? { ...world.probeExtra } : {},
+        hazards: active ? world.hazards.describe() : [],
         prompts: [...document.querySelectorAll('.prompt span')].map((e) => e.textContent ?? ''),
         fps: Math.round(app.game.loop.actualFps),
         simElapsed: active ? world.elapsed : 0,

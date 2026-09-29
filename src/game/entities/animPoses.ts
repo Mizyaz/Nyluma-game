@@ -128,6 +128,9 @@ function browsFor(anim: string, t: number, prm: PoseParams, st: HumanoidStyle): 
     default:
       break;
   }
+  // The torch-bearer is afraid by default; the mechanical form is set hard.
+  if (st === 'coward') b = { raise: b.raise - 1.2, knit: b.knit - 0.32, asym: b.asym };
+  if (st === 'mech') b = { raise: b.raise + 0.6, knit: b.knit + 0.18, asym: b.asym };
   const k = Math.max(0, Math.min(1, prm.emoteK ?? 0));
   if (prm.emote && k > 0) {
     const e = EMOTES[prm.emote](t);
@@ -142,8 +145,8 @@ function browsFor(anim: string, t: number, prm: PoseParams, st: HumanoidStyle): 
  * brow travels less vertically and leans harder instead.
  */
 function applyBrows(p: PoseOut, b: BrowSet, st: HumanoidStyle): void {
-  const lift = st === 'root' ? 0.45 : 1;
-  const lean = st === 'root' ? 1.35 : 1.15;
+  const lift = st === 'root' ? 0.45 : st === 'mech' ? 0.6 : 1;
+  const lean = st === 'root' ? 1.35 : st === 'mech' ? 0.95 : 1.15;
   p.angles.browN = b.knit * lean;
   p.offsets.browN = { x: b.knit * 1.4, y: (b.raise + b.asym * 0.6) * lift };
 }
@@ -512,7 +515,7 @@ export function humanoidPose(rigId: string, anim: string, t: number, prm: PosePa
     a.torch = -((a.torso ?? 0) + (a.armR ?? 0) + (a.foreR ?? 0)) + (anim === 'torchUp' ? 0 : 0.12);
     a.flame = 0.05 * Math.sin(t * 17);
   }
-  if (st === 'root' || st === 'human' || st === 'suit') applyBrows(p, browsFor(anim, t, prm, st), st);
+  applyBrows(p, browsFor(anim, t, prm, st), st);
   return p;
 }
 

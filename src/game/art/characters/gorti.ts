@@ -33,7 +33,7 @@ function part(key: string, box: Box, draw: (ox: number, oy: number) => string, e
 }
 
 /** A solid black eye hollow (no white, no pupil, no glint). */
-function blackEye(cx: number, cy: number, rx: number, ry: number): string {
+export function blackEye(cx: number, cy: number, rx: number, ry: number): string {
   return `<path d="${ellipsePath(cx, cy, rx, ry)}" fill="#07060b"/>`;
 }
 
@@ -42,7 +42,7 @@ function blackEye(cx: number, cy: number, rx: number, ry: number): string {
  * head. The near brow's inner end (toward the nose) is on the right; the far
  * brow, seen past the nose, is mirrored and smaller.
  */
-function brow(key: string, fill: string, len: number, thick: number, far: boolean): PartArt {
+export function brow(key: string, fill: string, len: number, thick: number, far: boolean): PartArt {
   const hl = len / 2;
   return part(key, { x0: -hl - 1, y0: -thick - 2, x1: hl + 1, y1: thick + 1 }, (ox, oy) => {
     const dir = far ? -1 : 1;

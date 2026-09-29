@@ -68,11 +68,15 @@ yerel sunucu için: `npx serve dist` ya da `node scripts/serve.mjs dist 4173 /`.
 | --- | --- |
 | `npm run typecheck` | TypeScript (strict) denetimi |
 | `npm run test` | Birim testleri (Vitest): kayıt, durum normalizasyonu, girdi bağlamları, yetenekler, Güneş karşılaşması, oda verisi doğrulaması |
-| `npm run test:e2e` | Üretim ve e2e derlemelerini alır, Playwright tarayıcı testlerini çalıştırır: kök ve `/kristaller-dunyasi/` alt yolunda açılış, oynanış akışları (hareket, etkileşim, duraklatma, odak kaybı, kontrol noktası + Devam Et, ayarlar, bozuk/erişilemeyen kayıt, bölüm seçimi, son), çoklu dokunma, yeniden boyutlandırma |
-| `npm run test:campaign` | Yeni Oyun'dan son karta kadar tüm kampanyayı yalnızca normal klavye girdileriyle oynayan uzun test (yaklaşık 25–35 dakika) |
+| `npm run test:e2e` | Üretim ve e2e derlemelerini alır, Playwright tarayıcı testlerini çalıştırır: kök ve `/kristaller-dunyasi/` alt yolunda açılış (WebGL), oynanış akışları (hareket, etkileşim, duraklatma, odak kaybı, kontrol noktası + Devam Et, ayarlar, bozuk/erişilemeyen kayıt, bölüm seçimi, son), çoklu dokunma, yeniden boyutlandırma ve telefon boyutlu ekranda yalnızca dokunmatikle ilk oda |
+| `npm run test:campaign` | Yeni Oyun'dan son karta kadar tüm kampanyayı oynayan iki uzun test: masaüstünde yalnızca klavyeyle ve telefon boyutlu ekranda yalnızca dokunmatikle (bu depodaki ölçümde her biri yaklaşık 12 dakika) |
 | `npm run package` | Kaynak ve `dist` arşivlerini `release/` altına üretir |
 
 Tarayıcı testleri için Chromium gerekir (`npx playwright install chromium`).
+Açılış testleri ve referans ekran görüntüleri (`SHOTS=1 npx playwright test
+screenshots`, çıktı: `qa/screenshots/`) WebGL için SwiftShader ile çalışır;
+oynanış testleri Canvas çiziciyle (`?canvas=1`) ve Chromium'un varsayılan
+ayarlarıyla çalışır.
 
 ## GitHub Pages
 
@@ -126,6 +130,16 @@ dev/                        Geliştirici önizlemeleri (npm run dev ile /dev/pre
 yazılır, açılışta bir kez rasterleştirilip 2048×2048 atlas sayfalarına
 paketlenir; karakterler prosedürel iskelet (cutout) animasyonuyla oynatılır.
 Ses efektleri ve müzik Web Audio ile sentezlenir.
+
+Görünüm 2.5D'dir: platformların üst yüzeyi derinlikli çizilir, arka katmanlar
+farklı hızlarda kayar, ön planda odak dışı siluetler geçer ve karakter yere
+gölge düşürür. Her odanın arkasında, kristal halkalarının bükülerek izleyiciye
+doğru aktığı bir tünel katmanı vardır; oda ve bölüm geçişleri aynı tünelin tam
+ekran, hızlanan bir sürümüyle yapılır. Her adımda zeminden parlayan kristaller
+filizlenir, inişlerde kristal bir taç açılır. Oynanan her formun (Gorti'nin kök
+ve insan biçimleri, Korkak ve Mekanik form) gözleri siyahtır; Mekanik formun
+anahtar ve kilit gözleri de siyah silüetlerdir. Duygular, ayrı birer parça olan
+ve her harekete, darbeye, keşfe ve konuşmaya tepki veren kaşlarla taşınır.
 
 ## Haklar ve lisanslar
 

@@ -352,7 +352,12 @@ export function creditsBlock(): HTMLElement {
     h('h3', { text: 'Oyun uyarlaması' }),
     h('div', { text: 'Tasarım, kod, çizimler, animasyon, ses efektleri ve müzik bu proje için özgün olarak üretildi: çizimler kodla yazılmış SVG’lerden, sesler Web Audio sentezinden.' }),
     h('h3', { text: 'Açık kaynak' }),
-    h('div', { text: 'Phaser 3.90 oyun motoru (MIT Lisansı). Ayrıntılar: THIRD_PARTY_NOTICES.md' }),
+    h(
+      'div',
+      {},
+      'Phaser 3.90 oyun motoru (MIT Lisansı) ve içerdiği bileşenler. Ayrıntılar: ',
+      h('a', { href: './THIRD_PARTY_NOTICES.md', target: '_blank', rel: 'noopener', text: 'THIRD_PARTY_NOTICES.md' }),
+    ),
     h('h3', { text: 'Yazı tipleri' }),
     h('div', { text: 'Cihazınızın sistem yazı tipleri kullanılır; dışarıdan yazı tipi yüklenmez.' }),
     h('div', { style: 'margin-top:1em;font-style:italic', text: 'Oynadığınız için teşekkürler.' }),

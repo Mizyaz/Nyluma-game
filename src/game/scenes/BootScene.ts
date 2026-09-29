@@ -3,7 +3,6 @@ import { app } from '../App';
 import { allParts } from '../art/manifest';
 import { buildAtlases } from '../art/TextureFactory';
 import { makeFxTextures } from '../art/fx';
-import { prerasterizeArt } from '../art/memoryArt';
 
 /** Rasterizes all authored artwork once, then opens the menu. */
 export class BootScene extends Phaser.Scene {
@@ -20,8 +19,6 @@ export class BootScene extends Phaser.Scene {
         (window as unknown as { __kdBootMs?: number }).__kdBootMs = performance.now() - started;
         app.ui.loading(null);
         this.scene.start('menu');
-        // Journal/puzzle/portrait illustrations become PNGs in the background.
-        void prerasterizeArt();
       })
       .catch((err: unknown) => {
         console.error(err);

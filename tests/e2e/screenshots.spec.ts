@@ -35,6 +35,13 @@ test.describe('reference screenshots', () => {
     expect(errors).toEqual([]);
   });
 
+  test('crystal tunnel transition', async ({ page }) => {
+    await page.goto(`${E2E}?room=r05`);
+    await waitState(page, (s) => s.scenes.includes('warp'), 120_000, 'tunnel');
+    await page.waitForTimeout(450);
+    await shot(page, '08-crystal-tunnel');
+  });
+
   test('root Gorti in the forest', async ({ page }) => {
     const bot = await jump(page, 'r06', { cp: 'r06_knots', flags: 'r06.shout', form: 'root' });
     await bot.walkTo(860, 10);

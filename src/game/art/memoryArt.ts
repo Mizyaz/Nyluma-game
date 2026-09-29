@@ -1373,11 +1373,11 @@ function portraitCoward(): string {
   s += fillPath(smooth([[40, 96], [42, 76], [52, 62], [68, 58], [84, 64], [92, 80], [92, 100], [84, 114], [66, 118], [48, 112]]), '#231c2a');
   s += line('M42 80l-5 3 4 3M44 104l-6 2 5 4M90 76l6 1 -4 4M91 100l6 3 -5 3M60 60l-1 -6 4 4M76 60l3 -5 1 6', '#433834', 2);
   // Face lit by the torch from the right.
+  // Black eyes under high, frightened brows.
   const face =
-    fillPath(ellipsePath(57, 84, 7.4, 8.8), '#efe6d6') + fillPath(ellipsePath(75.5, 84, 6.6, 8.6), '#efe6d6') +
-    line(ellipsePath(57, 84, 7.4, 8.8), INK, 1.6) + line(ellipsePath(75.5, 84, 6.6, 8.6), INK, 1.6) +
-    dot(60.5, 81, 2.4, INK) + dot(79, 81, 2.3, INK) + dot(61.2, 80.3, 0.7, '#fff') + dot(79.6, 80.3, 0.7, '#fff') +
-    line('M49 75.5Q54 73 60.5 69.6M71 69.6Q77 72.6 82 75.4', INK, 2) +
+    fillPath(ellipsePath(57, 84, 6.6, 7.8), '#07060b') + fillPath(ellipsePath(75.5, 84, 5.9, 7.6), '#07060b') +
+    cel('M47.5 76.5Q53 72.5 61.5 68.2L62.6 71.4Q55 74.4 49.2 79.4Z', { fill: '#3d3438', shade: INK, sx: 0.6, sy: 0.6, stroke: 1.4 }) +
+    cel('M70 68.2Q77.5 71.6 83 75.8L81.6 78.6Q76.4 75.4 69.2 71.4Z', { fill: '#3d3438', shade: INK, sx: 0.6, sy: 0.6, stroke: 1.4 }) +
     line('M59.5 101Q62.5 98.8 65.5 101Q68.5 103 71.5 100.6', INK, 1.7) +
     line('M52 94q3 2 6 1M74 94q3 1.6 5.6 0', '#958aa6', 1.2);
   s += cel(smooth([[46, 88], [49, 74], [59, 65], [74, 65.5], [84, 74], [86, 90], [81, 104], [69, 111], [56, 108], [48, 100]]), {
@@ -1442,14 +1442,15 @@ function portraitMech(): string {
   // Key eye.
   const brass = { fill: P.sun, shade: P.sunDark, light: P.sunLight, sx: 1.5, sy: 1.5, hx: 1, hy: 1, stroke: 2.2 };
   s += cel(`M44 70.5H57V75.5H53V81H50V75.5H48V79H45V75.5H44Z`, brass);
-  s += glow(64, 73, 16, P.fireLight, 0.6);
   s += cel(ellipsePath(64, 73, 9.5, 9.5), { ...brass, stroke: 2.4 });
-  s += dot(64, 73, 4.2, '#fff2c8') + ring(64, 73, 4.2, 4.2, INK, 1.6);
-  // Keyhole eye.
+  s += dot(64, 73, 5, '#07060b');
+  // Keyhole eye: black like the other.
   s += cel(ellipsePath(96, 74, 11, 13), { ...brass, fill: P.metalDark, shade: '#23272f', light: P.metalLight, stroke: 2.4 });
-  s += glow(96, 72, 12, P.vein, 0.5);
-  s += fillPath('M96 64.5A5 5 0 0 1 98.6 73.8L100.2 83.5H91.8L93.4 73.8A5 5 0 0 1 96 64.5Z', '#0b0a12') + line('M96 64.5A5 5 0 0 1 98.6 73.8L100.2 83.5H91.8L93.4 73.8A5 5 0 0 1 96 64.5Z', INK, 1.4);
-  s += dot(96, 69.6, 1.3, P.vein);
+  s += fillPath('M96 64.5A5 5 0 0 1 98.6 73.8L100.2 83.5H91.8L93.4 73.8A5 5 0 0 1 96 64.5Z', '#07060b');
+  // Riveted steel brows, set hard.
+  const steel = { fill: '#343945', shade: INK, light: P.metalLight, sx: 0.8, sy: 0.8, hx: 0.6, hy: 0.6, stroke: 1.8 };
+  s += cel('M50 59.5L73 62.5L72.2 66.8L49.4 64.2Z', steel) + cel('M86 62.8L107 58.8L108 63.4L87.2 67Z', steel);
+  s += dot(53, 62, 1, P.metalLight) + dot(104.4, 61.4, 1, P.metalLight);
   return s;
 }
 
@@ -1691,43 +1692,4 @@ export function fragmentArtUrl(key: string): string {
 /** 160×160 portrait, subject centred for a circular crop. */
 export function portraitUrl(key: string): string {
   return build('portrait', PORTRAITS, key, 160, 160);
-}
-
-/** Draws a vector illustration into a PNG object URL at `scale`× resolution. */
-async function toPng(url: string, w: number, h: number, scale: number): Promise<string> {
-  const img = new Image();
-  img.src = url;
-  await img.decode();
-  const c = document.createElement('canvas');
-  c.width = Math.round(w * scale);
-  c.height = Math.round(h * scale);
-  c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
-  const blob = await new Promise<Blob | null>((res) => c.toBlob(res, 'image/png'));
-  if (!blob) throw new Error('PNG encoding failed');
-  return URL.createObjectURL(blob);
-}
-
-/**
- * Rasterizes every journal, puzzle and portrait illustration once, in the
- * background after loading. The DOM views then show light PNGs instead of
- * re-rendering masked vector art on open, which can stall a frame on slow
- * devices. Any failure keeps the SVG version.
- */
-export async function prerasterizeArt(onProgress?: (done: number, total: number) => void): Promise<void> {
-  const jobs: [string, () => string, number, number][] = [
-    ...MEMORY_ART_KEYS.map((k): [string, () => string, number, number] => [`memory:${k}`, () => memoryArtUrl(k), 320, 200]),
-    ...FRAGMENT_KEYS.map((k): [string, () => string, number, number] => [`fragment:${k}`, () => fragmentArtUrl(k), 200, 150]),
-    ...PORTRAIT_KEYS.map((k): [string, () => string, number, number] => [`portrait:${k}`, () => portraitUrl(k), 160, 160]),
-  ];
-  let done = 0;
-  for (const [ck, get, w, h] of jobs) {
-    // Yield between pictures so menus and gameplay stay responsive.
-    await new Promise((res) => window.setTimeout(res, 60));
-    try {
-      cache.set(ck, await toPng(get(), w, h, 2));
-    } catch {
-      // keep the vector version
-    }
-    onProgress?.(++done, jobs.length);
-  }
 }

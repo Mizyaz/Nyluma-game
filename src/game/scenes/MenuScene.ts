@@ -5,7 +5,7 @@ import { warpLook } from '../fx/crystalFx';
 import type { WarpData } from './WarpScene';
 import { DEPTH, VIEW_H, VIEW_W } from '../constants';
 import { hex, P } from '../art/palette';
-import { frameRef, hasFrame } from '../art/TextureFactory';
+import { addStaticCanvas, artCanvas, frameRef, hasFrame } from '../art/TextureFactory';
 import { themeDef } from '../art/backgrounds';
 import { Rng } from '../art/svg';
 import { RIG_GORTI_ROOT } from '../art/characters/gorti';
@@ -29,15 +29,12 @@ export class MenuScene extends Phaser.Scene {
     const theme = themeDef('chamber');
     this.cameras.main.setBackgroundColor(theme.sky[1]);
     // Background layer (drawn once).
-    const c = document.createElement('canvas');
-    c.width = VIEW_W / 2;
-    c.height = VIEW_H / 2;
-    const ctx = c.getContext('2d')!;
+    const [c, ctx] = artCanvas(VIEW_W / 2, VIEW_H / 2);
     ctx.scale(0.5, 0.5);
     theme.layers[0]!.draw(ctx, { w: VIEW_W, h: VIEW_H, horizon: VIEW_H * 0.6 }, new Rng(14));
     theme.layers[1]!.draw(ctx, { w: VIEW_W, h: VIEW_H, horizon: VIEW_H * 0.6 }, new Rng(382));
     if (this.textures.exists('menu-bg')) this.textures.remove('menu-bg');
-    this.textures.addCanvas('menu-bg', c);
+    addStaticCanvas(this.textures, 'menu-bg', c);
     this.add.image(0, 0, 'menu-bg').setOrigin(0).setScale(2).setDepth(DEPTH.sky);
     const addProp = (key: string, x: number, y: number, s = 1, depth: number = DEPTH.props): void => {
       if (!hasFrame(key)) return;

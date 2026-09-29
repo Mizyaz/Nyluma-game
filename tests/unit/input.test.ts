@@ -32,6 +32,25 @@ describe('input contexts', () => {
     expect(i.consume('action')).toBe(true);
   });
 
+  it('counts a direction tapped between two updates for the next update only', () => {
+    const { i } = mk();
+    i.setContext('gameplay');
+    i.beginFrame();
+    i.sourceDown('key:KeyD', ['right']);
+    i.sourceUp('key:KeyD');
+    expect(i.held('right')).toBe(false);
+    i.beginFrame();
+    expect(i.axisX()).toBe(1);
+    i.beginFrame();
+    expect(i.axisX()).toBe(0);
+    // A hold that an update already saw ends normally on release.
+    i.sourceDown('key:KeyA', ['left']);
+    i.beginFrame();
+    expect(i.axisX()).toBe(-1);
+    i.sourceUp('key:KeyA');
+    expect(i.axisX()).toBe(0);
+  });
+
   it('expires stale presses', () => {
     const { i, t } = mk();
     i.setContext('gameplay');

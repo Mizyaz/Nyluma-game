@@ -44,7 +44,7 @@ export class WarpScene extends Phaser.Scene {
     // A filled shape (not a tinted sprite) so the veil is dark in every renderer.
     this.veil = this.add.rectangle(VIEW_W / 2, VIEW_H / 2, VIEW_W * 1.2, VIEW_H * 1.2, 0x0f0d18, 1).setAlpha(0);
     const look: WarpLook = this.data0.look ?? { count: 60, alpha: 1, speed: 0.3, colors: [0x548cd6, 0x53bfaf, 0xef9a47, 0x9459d8] };
-    this.warp = new CrystalWarp(this, { ...look, count: reduced ? 20 : Math.round(40 + 70 * s), alpha: 1 }, 5);
+    this.warp = new CrystalWarp(this, { ...look, count: reduced ? 36 : Math.round(60 + 84 * s), perRing: 12, size: 2, ribs: 0.55, alpha: 1 }, 5);
     this.warp.cy = VIEW_H / 2;
     const g = frameRef('fx.glow');
     this.core = this.add.image(VIEW_W / 2, VIEW_H / 2, g.atlas, g.frame).setBlendMode(Phaser.BlendModes.ADD).setTint(0xd7b3ff).setAlpha(0).setDepth(6);

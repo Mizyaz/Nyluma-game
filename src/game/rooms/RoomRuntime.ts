@@ -4,7 +4,7 @@ import { hex, P } from '../art/palette';
 import { hashSeed } from '../art/svg';
 import { paintSolid, TERRAIN_MARGIN } from '../art/terrain';
 import { paintForeground, themeDef } from '../art/backgrounds';
-import { frameRef, hasFrame, registerCanvas, unregister } from '../art/TextureFactory';
+import { artCanvas, frameRef, hasFrame, registerCanvas, unregister } from '../art/TextureFactory';
 import { Rng } from '../art/svg';
 import type {
   AnchorDef,
@@ -146,10 +146,7 @@ export class RoomRuntime {
       const pieceW = Math.ceil(lw / pieces);
       for (let pi = 0; pi < pieces; pi++) {
         const cw = Math.min(pieceW, lw - pi * pieceW);
-        const c = document.createElement('canvas');
-        c.width = Math.max(2, Math.ceil(cw * res));
-        c.height = Math.max(2, Math.ceil(Math.min(lh, 2040 / res) * res));
-        const ctx = c.getContext('2d')!;
+        const [c, ctx] = artCanvas(Math.max(2, Math.ceil(cw * res)), Math.max(2, Math.ceil(Math.min(lh, 2040 / res) * res)));
         ctx.scale(res, res);
         ctx.translate(-pi * pieceW, 0);
         const r2 = new Rng(hashSeed(`${this.def.id}:layer:${li}`));
@@ -178,6 +175,9 @@ export class RoomRuntime {
     const x0 = -400;
     const lw = Math.ceil(this.def.width * sf + VIEW_W + 800);
     const zoom = this.def.zoom ?? CAMERA_ZOOM;
+    // Wide framings (the ride, the Sun arena) keep the ground near the bottom
+    // edge, where the strip would cover the player: no foreground there.
+    if (zoom < 1.2) return;
     // Screen-pinned vertically; camera zoom scales about the view centre.
     const bottom = VIEW_H / 2 + (VIEW_H + 12 - VIEW_H / 2) / zoom;
     const maxW = 2040;
@@ -185,10 +185,7 @@ export class RoomRuntime {
     const pieceW = Math.ceil(lw / pieces);
     for (let pi = 0; pi < pieces; pi++) {
       const cw = Math.min(pieceW, lw - pi * pieceW);
-      const c = document.createElement('canvas');
-      c.width = Math.max(2, Math.ceil(cw * res));
-      c.height = Math.ceil(h * res);
-      const ctx = c.getContext('2d')!;
+      const [c, ctx] = artCanvas(Math.max(2, Math.ceil(cw * res)), Math.ceil(h * res));
       ctx.scale(res, res);
       ctx.translate(-pi * pieceW, 0);
       paintForeground(ctx, lw, h, this.def.theme, new Rng(hashSeed(`${this.def.id}:fg`)));
@@ -258,10 +255,8 @@ export class RoomRuntime {
     if (c.image) return;
     // Painted above 1:1 so terrain stays crisp under the zoomed-in camera.
     const res = TERRAIN_RES;
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.ceil(c.w * res);
-    canvas.height = Math.ceil(c.h * res);
-    canvas.getContext('2d')!.scale(res, res);
+    const [canvas, ctx] = artCanvas(Math.ceil(c.w * res), Math.ceil(c.h * res));
+    ctx.scale(res, res);
     const theme = themeDef(this.def.theme);
     paintSolid(canvas, c.solid.def, { x: c.x, y: c.y }, theme.terrain, hashSeed(`${this.def.id}:${c.solid.index}`));
     registerCanvas(this.scene.textures, c.key, canvas, { w: c.w, h: c.h, px: 0, py: 0 }, res);

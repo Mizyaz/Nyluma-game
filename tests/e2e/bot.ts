@@ -130,7 +130,19 @@ export class Bot {
     return true;
   }
 
+  /** The d-pad and jump button never move during play: cache their rects. */
+  private rects = new Map<Control, { r: Rect; at: number }>();
+
   private async controlRect(c: Control): Promise<Rect | null> {
+    const fixed = c === 'left' || c === 'right' || c === 'jump';
+    const hit = this.rects.get(c);
+    if (fixed && hit && Date.now() - hit.at < 2000) return hit.r;
+    const r = await this.lookupRect(c);
+    if (fixed && r) this.rects.set(c, { r, at: Date.now() });
+    return r;
+  }
+
+  private async lookupRect(c: Control): Promise<Rect | null> {
     return this.page.evaluate((name) => {
       const el =
         name === 'left' || name === 'right'
@@ -271,6 +283,27 @@ export class Bot {
     throw new Error(`walkTo ${x} timed out at ${JSON.stringify((await this.s()).player)}`);
   }
 
+  /**
+   * Deals with a wisp before a jump, as a careful player would: pulses once
+   * it is in reach (the prompt says so) and waits while one lurks nearby.
+   */
+  async clearWisps(timeout = 5000): Promise<void> {
+    const t0 = Date.now();
+    while (Date.now() - t0 < timeout) {
+      const st = await this.s();
+      const p = st.player;
+      if (!p || st.context !== 'gameplay') return;
+      const near = (st.hazards ?? []).some((h) => h.kind === 'wisp' && h.dispersible && Math.hypot(h.x - p.x, h.y - (p.y - 50)) < 280);
+      if (!near) return;
+      if (st.prompts.some((x) => x.includes('Rezonans'))) {
+        await this.tap('KeyE');
+        await this.wait(250);
+        continue;
+      }
+      await this.wait(60);
+    }
+  }
+
   /** Turns to face a direction without moving far. */
   async face(dir: 1 | -1): Promise<void> {
     const st = await this.s();
@@ -281,7 +314,10 @@ export class Bot {
 
   /** Jumps and steers in the air toward targetX until landing. */
   async jumpTo(targetX: number, opts: { hold?: number; timeout?: number; tol?: number } = {}): Promise<ProbeState> {
-    const hold = opts.hold ?? 320;
+    // Without an explicit hold the jump button stays down until the rise has
+    // nearly ended, measured in game time: a page busy answering probes can
+    // run slower than the wall clock, and a fixed hold would cut the jump.
+    const hold = opts.hold;
     const tol = opts.tol ?? 6;
     const t0 = Date.now();
     await this.keyDown('Space');
@@ -292,11 +328,12 @@ export class Bot {
     while (Date.now() - t0 < (opts.timeout ?? 4000)) {
       st = await this.s();
       const p = st.player!;
-      if (!released && Date.now() - t0 > hold) {
+      if (!p.onGround || Math.abs(p.y - y0) > 2) left = true;
+      const done = hold !== undefined ? Date.now() - t0 > hold : (left && p.vy > -120) || Date.now() - t0 > 1500;
+      if (!released && done) {
         await this.keyUp('Space');
         released = true;
       }
-      if (!p.onGround || Math.abs(p.y - y0) > 2) left = true;
       const dx = targetX - p.x;
       if (dx > tol) {
         await this.keyUp('KeyA');

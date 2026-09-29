@@ -44,7 +44,12 @@ async function inspect(b: Bot, x: number, label = 'İncele'): Promise<void> {
 }
 
 /** Jumps along a list of ledges from whichever one we stand on. */
-export async function climb(b: Bot, steps: [number, number][], tries = 20): Promise<void> {
+/**
+ * Climbs a list of stand points one jump at a time. `lean` moves the take-off
+ * toward the next step and the aim back toward this one (px), like a player
+ * jumping from the edge of a zig-zag ladder instead of from its middle.
+ */
+export async function climb(b: Bot, steps: [number, number][], tries = 20, lean: { takeoff: number; aim: number } = { takeoff: 0, aim: 0 }): Promise<void> {
   for (let n = 0; n < tries; n++) {
     const st = await b.s();
     const p = st.player!;
@@ -64,14 +69,13 @@ export async function climb(b: Bot, steps: [number, number][], tries = 20): Prom
       if (Math.abs(p.x - top) > 10) await b.walkTo(top, 6, 8000).catch(() => undefined);
       return;
     }
-    if (st.prompts.some((x) => x.includes('Rezonans'))) {
-      await b.tap('KeyE');
-      await b.wait(250);
-    }
+    // A wisp dashes at Gorti mid-air: disperse it before jumping.
+    await b.clearWisps();
     // Take off from this step's stand point: jump distance is limited.
-    const here = steps[idx]![0];
+    const dir = Math.sign(next[0] - steps[idx]![0]);
+    const here = steps[idx]![0] + dir * lean.takeoff;
     if (Math.abs(p.x - here) > 10) await b.walkTo(here, 6, 8000).catch(() => undefined);
-    await b.jumpTo(next[0]);
+    await b.jumpTo(next[0] - dir * lean.aim);
     await b.wait(60);
   }
 }
@@ -171,7 +175,8 @@ export const ROUTES: Record<string, Route> = {
         name: 'reach left',
         when: (s) => on(s, 1440, 820, 1140),
         run: async () => {
-          await b.walkTo(845, 6);
+          // Well inside the ledge (left edge at 820).
+          await b.walkTo(870, 6);
           await b.face(-1);
           await b.reach();
         },
@@ -181,12 +186,13 @@ export const ROUTES: Record<string, Route> = {
         when: (s) => on(s, 1250, 100, 450) || on(s, 1140, 470, 690) || on(s, 1030, 240, 460),
         run: async () => {
           await climb(b, [
-            [420, 1250],
+            [400, 1250],
             [500, 1140],
-            [430, 1030],
+            [415, 1030],
           ]);
           if (on(await b.s(), 1030)) {
-            await b.walkTo(430, 6);
+            // Right edge at 450: stay clear of it, the anchor is still in reach.
+            await b.walkTo(415, 6);
             await b.face(1);
             await b.reach();
           }
@@ -196,11 +202,13 @@ export const ROUTES: Record<string, Route> = {
         name: 'upper ledges',
         when: (s) => on(s, 900, 750, 1130) || on(s, 790, 1170, 1390) || on(s, 680, 890, 1130) || on(s, 570, 840, 1060),
         run: async () => {
+          // Take-offs near the facing edges (with a margin for overshoot):
+          // from the middle of the 790 root, 680 is out of jumping range.
           await climb(b, [
-            [1100, 900],
-            [1260, 790],
+            [1085, 900],
+            [1215, 790],
             [1010, 680],
-            [960, 570],
+            [1025, 570],
             [1200, 460],
           ]);
         },
@@ -305,7 +313,7 @@ export const ROUTES: Record<string, Route> = {
         when: (s) => s.flags.includes('r03.sun') && !s.flags.includes('r03.star') && !!s.player?.onGround,
         run: async (s) => {
           if (on(s, 1180)) await b.walkTo(2400, 8);
-          await climb(b, BR);
+          await climb(b, BR, 20, { takeoff: 55, aim: 25 });
           await b.walkTo(2520, 8, 8000).catch(() => undefined);
           await b.act('Yıldızı topla');
           await b.settle();
@@ -326,7 +334,8 @@ export const ROUTES: Record<string, Route> = {
         when: (s) => s.flags.includes('r03.bloom') && !!s.player?.onGround,
         run: async (s) => {
           if (on(s, 1180)) await b.walkTo(2400, 8);
-          await climb(b, [...BR, ...UP.slice(1)]);
+          // Root ledges 150–200 px wide, 50 px apart: jump from the near edge.
+          await climb(b, [...BR, ...UP.slice(1)], 20, { takeoff: 55, aim: 25 });
           await b.untilRoom('r04', 20_000);
         },
       },

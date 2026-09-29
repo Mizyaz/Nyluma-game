@@ -118,8 +118,9 @@ test.describe('gameplay', () => {
 
     await tap(page, 'Escape');
     await expect(page.getByRole('heading', { name: 'Duraklatıldı' })).toBeVisible();
-    await page.getByRole('button', { name: 'Hedef' }).click();
-    await expect(page.getByText('Odayı tanı: üç şeyi incele.')).toBeVisible();
+    const pauseMenu = page.getByRole('navigation', { name: 'Duraklatma menüsü' });
+    await pauseMenu.getByRole('button', { name: 'Hedef', exact: true }).click();
+    await expect(pauseMenu.getByText('Odayı tanı: üç şeyi incele.')).toBeVisible();
     await page.getByRole('button', { name: 'Anılar' }).click();
     await expect(page.getByRole('heading', { name: 'Anılar' })).toBeVisible();
     await back.click();

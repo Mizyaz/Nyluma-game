@@ -58,6 +58,8 @@ interface Source {
   actions: Set<Action>;
   /** Held since before the last context change: ignored until released. */
   stale: boolean;
+  /** Update frame in which the source went down. */
+  frame: number;
 }
 
 export function actionsForKey(code: string, key: string): Action[] {
@@ -88,6 +90,8 @@ export class InputSystem {
   private edges = new Map<Action, { t: number; frame: number }>();
   /** Update frames seen so far (advanced by the game loop via beginFrame). */
   private frame = 0;
+  /** Directions pressed and released before any update saw them (action → frame). */
+  private taps = new Map<Action, number>();
   private contextStack: InputContext[] = ['none'];
   private listeners = new Set<(e: KeyboardEvent, actions: Action[]) => boolean>();
   private blurListeners = new Set<() => void>();
@@ -154,6 +158,7 @@ export class InputSystem {
   /** Clears pending presses and ignores current holds until they are released. */
   freeze(): void {
     this.edges.clear();
+    this.taps.clear();
     for (const s of this.sources.values()) s.stale = true;
   }
 
@@ -161,6 +166,7 @@ export class InputSystem {
   releaseAll(): void {
     this.sources.clear();
     this.edges.clear();
+    this.taps.clear();
   }
 
   held(a: Action): boolean {
@@ -171,6 +177,7 @@ export class InputSystem {
   /** Marks the start of an update frame (called once per game step). */
   beginFrame(): void {
     this.frame++;
+    for (const [a, f] of this.taps) if (this.frame - f > 1) this.taps.delete(a);
   }
 
   /**
@@ -196,8 +203,14 @@ export class InputSystem {
     return e !== undefined && this.fresh(e);
   }
 
+  /**
+   * Horizontal direction. A quick tap that went down and up between two
+   * updates (slow frames) still counts for the next update, so a short press
+   * always turns Gorti around.
+   */
   axisX(): number {
-    return (this.held('right') ? 1 : 0) - (this.held('left') ? 1 : 0);
+    const dir = (a: Action): boolean => this.held(a) || this.taps.has(a);
+    return (dir('right') ? 1 : 0) - (dir('left') ? 1 : 0);
   }
 
   /** Source-level API shared by keyboard and touch controls. */
@@ -218,7 +231,7 @@ export class InputSystem {
       // Key repeat of a stale hold: stays ignored.
       return;
     }
-    const src: Source = { actions: new Set(), stale: false };
+    const src: Source = { actions: new Set(), stale: false, frame: this.frame };
     for (const a of actions) {
       if (!this.held(a)) this.edges.set(a, { t: this.now(), frame: this.frame });
       src.actions.add(a);
@@ -227,6 +240,10 @@ export class InputSystem {
   }
 
   sourceUp(id: string): void {
+    const src = this.sources.get(id);
+    if (src && !src.stale && src.frame === this.frame) {
+      for (const a of src.actions) if (a === 'left' || a === 'right') this.taps.set(a, this.frame);
+    }
     this.sources.delete(id);
   }
 

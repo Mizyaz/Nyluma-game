@@ -151,10 +151,7 @@ export async function buildAtlases(
     let size = ATLAS_SIZE;
     const maxY = Math.max(...placed.map((q) => q.y + q.h)) + PAD;
     while (size > 256 && maxY <= size / 2) size /= 2;
-    const canvas = document.createElement('canvas');
-    canvas.width = ATLAS_SIZE;
-    canvas.height = size;
-    const ctx = canvas.getContext('2d')!;
+    const [canvas, ctx] = artCanvas(ATLAS_SIZE, size);
     for (const q of placed) {
       ctx.drawImage(q.img, q.x, q.y, q.w, q.h);
       if (q.darken) {
@@ -165,10 +162,35 @@ export async function buildAtlases(
         ctx.restore();
       }
     }
-    const tex = textures.addCanvas(key, canvas);
+    const tex = addStaticCanvas(textures, key, canvas);
     if (!tex) return;
     for (const q of placed) tex.add(q.key, 0, q.x, q.y, q.w, q.h);
   });
+}
+
+/**
+ * A canvas for painting artwork once. It is kept in main memory rather than
+ * on the GPU: paths and SVG images are rasterized right away, instead of
+ * being replayed on the GPU the first time the texture is drawn, which
+ * stalled the first frames for seconds without hardware acceleration.
+ */
+export function artCanvas(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContext2D] {
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  return [c, c.getContext('2d', { willReadFrequently: true })!];
+}
+
+/**
+ * Adds a finished canvas as a plain texture. `textures.addCanvas` would make
+ * a CanvasTexture, which copies every pixel back with getImageData: a
+ * synchronous read-back that took most of the loading time for the atlas
+ * pages and room layers. These canvases never change after upload.
+ */
+export function addStaticCanvas(textures: Phaser.Textures.TextureManager, key: string, canvas: HTMLCanvasElement): Phaser.Textures.Texture | null {
+  const tex = textures.create(key, canvas, canvas.width, canvas.height);
+  tex?.add('__BASE', 0, 0, 0, canvas.width, canvas.height);
+  return tex;
 }
 
 /** Registers a single standalone canvas as a texture frame (props, terrain). */
@@ -180,7 +202,7 @@ export function registerCanvas(
   scale = 1,
 ): FrameRef {
   if (textures.exists(key)) textures.remove(key);
-  textures.addCanvas(key, canvas);
+  addStaticCanvas(textures, key, canvas);
   const ref: FrameRef = { atlas: key, frame: '__BASE', ...logical, scale };
   registry.set(key, ref);
   return ref;

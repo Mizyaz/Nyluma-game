@@ -313,6 +313,9 @@ class Lash extends HazardRt {
   }
 }
 
+/** Extra pulse reach against wisps (px beyond PULSE_RADIUS). */
+const WISP_REACH_BONUS = 55;
+
 export class Hazards {
   list: HazardRt[] = [];
   constructor(scene: Phaser.Scene, defs: readonly HazardDef[], private isOn: (g: Gate) => boolean) {
@@ -344,13 +347,21 @@ export class Hazards {
     for (const h of this.list) if (h.active) h.visual(dtMs, time);
   }
 
+  /**
+   * How far a pulse reaches this hazard: thorn beds count their width, and a
+   * wisp (which dashes at Gorti) is caught a little further out.
+   */
+  private reach(h: HazardRt, radius: number): number {
+    return radius + (h.def.kind === 'thorns' ? h.def.w / 2 : h.def.kind === 'wisp' ? WISP_REACH_BONUS : 0);
+  }
+
   /** Disperses unstable growths within radius. Returns how many. */
   pulse(x: number, y: number, radius: number): number {
     let n = 0;
     for (const h of this.list) {
       if (!h.dispersible()) continue;
       const c = h.center();
-      if (Math.hypot(c.x - x, c.y - y) <= radius + (h.def.kind === 'thorns' ? h.def.w / 2 : 0)) {
+      if (Math.hypot(c.x - x, c.y - y) <= this.reach(h, radius)) {
         h.disperse();
         n++;
       }
@@ -358,12 +369,18 @@ export class Hazards {
     return n;
   }
 
-  anyDispersibleNear(x: number, y: number, r: number): boolean {
+  /** True when a pulse fired from here would disperse something (the prompt). */
+  anyInPulseReach(x: number, y: number, radius: number): boolean {
     return this.list.some((h) => {
       if (!h.dispersible()) return false;
       const c = h.center();
-      return Math.hypot(c.x - x, c.y - y) <= r;
+      return Math.hypot(c.x - x, c.y - y) <= this.reach(h, radius);
     });
+  }
+
+  /** Probe/debug view of the hazards (e2e builds). */
+  describe(): { kind: string; x: number; y: number; active: boolean; dispersible: boolean }[] {
+    return this.list.map((h) => ({ kind: h.def.kind, ...h.center(), active: h.active, dispersible: h.dispersible() }));
   }
 
   resetAll(): void {

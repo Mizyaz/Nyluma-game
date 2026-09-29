@@ -9,6 +9,8 @@ const room = process.env.DEV_ROUTE;
 
 test.describe('dev route', () => {
   test.skip(!room, 'DEV_ROUTE not set');
+  // BOT_INPUT=touch: phone-sized landscape screen with touch controls.
+  if (process.env.BOT_INPUT === 'touch') test.use({ viewport: { width: 915, height: 412 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
   test('run single room route', async ({ page }) => {
     test.setTimeout(600_000);
     const q = new URLSearchParams({ room: room!, canvas: '1' });
