@@ -95,6 +95,46 @@ test.describe('gameplay', () => {
     expect(Math.abs(back.player!.x - 1100)).toBeLessThan(80);
   });
 
+  test('every main-menu and pause-menu button works', async ({ page }) => {
+    const errors = watchErrors(page);
+    await freshPage(page);
+    await page.reload();
+    const back = page.getByRole('button', { name: 'Geri' });
+    for (const [name, heading] of [
+      ['Bölümler', 'Bölümler'],
+      ['Anılar', 'Anılar'],
+      ['Ayarlar', 'Ayarlar'],
+      ['Katkıda Bulunanlar', 'Katkıda Bulunanlar'],
+    ] as const) {
+      await page.getByRole('button', { name, exact: true }).click();
+      await expect(page.getByRole('heading', { name: heading })).toBeVisible();
+      await back.click();
+      await expect(page.getByRole('button', { name: 'Yeni Oyun' })).toBeVisible();
+    }
+    await expect(page.getByRole('button', { name: 'Devam Et' })).toBeDisabled();
+    await page.getByRole('button', { name: 'Yeni Oyun' }).click();
+    await waitState(page, (s) => s.room === 'r01' && !!s.player, 60_000, 'room r01');
+    await new Bot(page).settle();
+
+    await tap(page, 'Escape');
+    await expect(page.getByRole('heading', { name: 'Duraklatıldı' })).toBeVisible();
+    await page.getByRole('button', { name: 'Hedef' }).click();
+    await expect(page.getByText('Odayı tanı: üç şeyi incele.')).toBeVisible();
+    await page.getByRole('button', { name: 'Anılar' }).click();
+    await expect(page.getByRole('heading', { name: 'Anılar' })).toBeVisible();
+    await back.click();
+    await page.getByRole('button', { name: 'Ayarlar' }).click();
+    await expect(page.getByRole('heading', { name: 'Ayarlar' })).toBeVisible();
+    await back.click();
+    await page.getByRole('button', { name: 'Ana Menü' }).click();
+    await page.getByRole('button', { name: 'Evet' }).click();
+    const cont = page.getByRole('button', { name: 'Devam Et' });
+    await expect(cont).toBeEnabled({ timeout: 20_000 });
+    await cont.click();
+    await waitState(page, (s) => s.room === 'r01' && !!s.player && s.context === 'gameplay', 60_000, 'continued');
+    expect(errors).toEqual([]);
+  });
+
   test('settings persist across reloads', async ({ page }) => {
     await freshPage(page);
     await page.reload();
@@ -159,6 +199,12 @@ test.describe('gameplay', () => {
     await expect(page.getByRole('button', { name: 'Yeniden oyna' })).toBeVisible({ timeout: 15_000 });
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('kristaller-dunyasi:save') ?? '{}') as { profile?: { endingSeen?: boolean } });
     expect(saved.profile?.endingSeen).toBe(true);
+    // The card returns to the menu, where every chapter is now open.
+    await page.getByRole('button', { name: 'Ana menü' }).click();
+    await expect(page.getByRole('button', { name: 'Yeni Oyun' })).toBeVisible({ timeout: 20_000 });
+    await page.getByRole('button', { name: 'Bölümler' }).click();
+    for (const r of ['I', 'II', 'III', 'IV', 'V']) await expect(page.getByRole('button', { name: new RegExp(`^${r}\\. `) })).toBeEnabled();
+    await page.getByRole('button', { name: 'Geri' }).click();
   });
 });
 
@@ -183,8 +229,9 @@ test.describe('touch', () => {
     const mid = await probe(page);
     expect(mid.heldSources).toBe(2);
     expect(mid.player!.vx).toBeGreaterThan(50);
-    // Lift the jump finger; the movement finger keeps moving.
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [right] });
+    // Lift the jump finger (touchEnd lists the fingers that lift); the
+    // movement finger keeps moving.
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [j] });
     await page.waitForTimeout(300);
     const one = await probe(page);
     expect(one.heldSources).toBe(1);

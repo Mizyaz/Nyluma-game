@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { app, persist } from '../App';
+import { enterFullscreen } from '../../ui/fullscreen';
 import { DEPTH, VIEW_H, VIEW_W } from '../constants';
 import { hex, P } from '../art/palette';
 import { frameRef, hasFrame } from '../art/TextureFactory';
@@ -107,6 +108,8 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private start(progress: Progress): void {
+    // Phones and tablets: go fullscreen/landscape on the starting tap.
+    if (app.ui.touch.enabled) void enterFullscreen();
     app.audio.unlock();
     app.audio.sfx('ui');
     app.quest = new Quest(progress, app.profile);

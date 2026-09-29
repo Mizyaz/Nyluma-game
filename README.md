@@ -25,7 +25,17 @@ sunucu, hesap, çevrim içi hizmet ya da dış kaynak (CDN, yazı tipi, ses) yok
 | Duraklat / geri | Esc | Sağ üstteki ⏸ |
 | Anılar | M | Duraklatma menüsü |
 | Menü seçimi | Enter | Dokun |
+| Diyaloğu ilerlet | Boşluk / E | Diyalog kutusuna dokun |
 | Ara sahneyi geç | Boşluk / E / Enter basılı tut | Eylem ya da diyalog kutusunu basılı tut |
+| Anı istasyonu (bulmaca) | ← → ile seç, E ile değiştir | Parçaya dokun, sonra yer değiştireceği parçaya dokun (ya da sürükle) |
+| Tam ekran | — | Sağ üstteki ⛶ (dokunmatik cihazlarda oyun başlarken otomatik denenir) |
+
+**Mobil:** Oyun baştan sona yalnızca dokunmatikle oynanabilir. Sol altta yön
+düğmeleri, sağ altta Zıpla ve Eylem; Nefes, Biçim ve Şarkı düğmeleri gerektiği
+yerde belirir. Birden çok parmak aynı anda kullanılabilir (ör. yürürken zıplamak
+ya da nefes tutarken zıplamak). Dokunmatik cihazlarda ekrandaki yönergeler tuş
+adları yerine bu düğmelerin adlarıyla gösterilir. En rahat deneyim için cihazı
+yatay tutun; tarayıcı destekliyorsa oyun tam ekrana ve yatay yöne geçer.
 
 Menüler klavyeyle (↑ ↓, Enter, Esc) ve fareyle kullanılabilir. Ayarlar'da ses
 seviyeleri, azaltılmış hareket, ekran sarsıntısı, metin hızı (anında dahil),

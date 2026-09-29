@@ -1150,3 +1150,21 @@ button {
     animation: none;
   }
 }
+
+/* ------------------------------------------------------------ touch wording */
+
+/* On touch devices key caps (E, F, Esc…) give way to the button labels. */
+.touch-only {
+  display: none;
+}
+.touch-ui .touch-only {
+  display: inline;
+}
+.touch-ui .kbd-only,
+.touch-ui .key,
+.touch-ui .note-btn small {
+  display: none;
+}
+#app {
+  -webkit-touch-callout: none;
+}

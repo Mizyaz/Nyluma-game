@@ -1,4 +1,6 @@
 import { h, ICONS, crystalMark } from './dom';
+import { controlText } from './controlText';
+import { fullscreenAvailable, isFullscreen, toggleFullscreen } from './fullscreen';
 
 export interface PromptItem {
   key: string;
@@ -51,7 +53,14 @@ export class Hud {
       objBtn.blur();
       this.flashObjective(6000);
     });
-    const right = h('div', { class: 'hud-right' }, pauseBtn, objBtn, h('div', {}, this.objText, this.hintBtn));
+    const fsBtn = h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Tam ekran', html: ICONS.fullscreen });
+    fsBtn.addEventListener('click', () => {
+      fsBtn.blur();
+      void toggleFullscreen();
+    });
+    if (!fullscreenAvailable()) fsBtn.classList.add('hidden');
+    document.addEventListener('fullscreenchange', () => fsBtn.setAttribute('aria-pressed', String(isFullscreen())));
+    const right = h('div', { class: 'hud-right' }, pauseBtn, objBtn, fsBtn, h('div', {}, this.objText, this.hintBtn));
     this.promptEl = h('div', { class: 'prompt', 'aria-live': 'polite' });
     this.captionEl = h('div', { class: 'caption', 'aria-live': 'polite' });
     this.areaEl = h('div', { class: 'area-title' });
@@ -128,7 +137,7 @@ export class Hud {
   }
 
   caption(text: string, ms = 4200): void {
-    this.captionEl.textContent = text;
+    this.captionEl.textContent = controlText(text);
     this.captionEl.classList.add('show');
     this.captionTimer = ms;
   }
@@ -146,7 +155,7 @@ export class Hud {
   }
 
   toast(text: string, ms = 3200): void {
-    this.toastEl.textContent = text;
+    this.toastEl.textContent = controlText(text);
     this.toastEl.classList.add('show');
     this.toastTimer = ms;
   }

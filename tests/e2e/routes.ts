@@ -58,7 +58,12 @@ export async function climb(b: Bot, steps: [number, number][], tries = 20): Prom
     });
     if (idx < 0) return;
     const next = steps[idx + 1];
-    if (!next) return;
+    if (!next) {
+      // Top reached: stand on the step's stand point (prompts are local).
+      const top = steps[idx]![0];
+      if (Math.abs(p.x - top) > 10) await b.walkTo(top, 6, 8000).catch(() => undefined);
+      return;
+    }
     if (st.prompts.some((x) => x.includes('Rezonans'))) {
       await b.tap('KeyE');
       await b.wait(250);
@@ -301,6 +306,7 @@ export const ROUTES: Record<string, Route> = {
         run: async (s) => {
           if (on(s, 1180)) await b.walkTo(2400, 8);
           await climb(b, BR);
+          await b.walkTo(2520, 8, 8000).catch(() => undefined);
           await b.act('Yıldızı topla');
           await b.settle();
         },
@@ -736,13 +742,20 @@ export const ROUTES: Record<string, Route> = {
       await b.act('Anıyı geri sar');
       await b.waitFor((s) => s.puzzleOpen, 5000, 'puzzle open');
       await b.wait(600);
-      await b.tap('KeyE');
-      await b.wait(200);
-      await b.tap('ArrowRight');
-      await b.wait(150);
-      await b.tap('ArrowRight');
-      await b.wait(150);
-      await b.tap('KeyE');
+      if (b.touch) {
+        // Touch: tap the first card, then the last one to swap them.
+        await b.touchSelector('.puzzle .card', 0);
+        await b.wait(250);
+        await b.touchSelector('.puzzle .card', 2);
+      } else {
+        await b.tap('KeyE');
+        await b.wait(200);
+        await b.tap('ArrowRight');
+        await b.wait(150);
+        await b.tap('ArrowRight');
+        await b.wait(150);
+        await b.tap('KeyE');
+      }
       await b.waitFor((s) => !s.puzzleOpen, 8000, 'puzzle solved');
       await b.settle();
     };

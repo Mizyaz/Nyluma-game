@@ -158,12 +158,12 @@ export function r11(w: WorldScene): RoomScript {
           if (a.includes('left')) turn(-1);
           else if (a.includes('right')) turn(1);
           else if (a.includes('action') || a.includes('confirm')) tryFit();
-          else if (a.includes('pause')) endAlign(false);
+          else if (a.includes('pause') || a.includes('jump')) endAlign(false);
           else return false;
           return true;
         });
         app.audio.sfx('click');
-        app.ui.hud.toast('← →: anahtar gözünü çevir  ·  E: hizala  ·  Esc: bırak', 5000);
+        app.ui.hud.toast('← →: anahtar gözünü çevir  ·  E: hizala  ·  Esc / Boşluk: bırak', 5000);
         return true;
       }
       if (id === 'lock' && !w.quest.has('r11.m2')) {
@@ -200,7 +200,7 @@ export function r11(w: WorldScene): RoomScript {
         if (left) turn(-1);
         if (right) turn(1);
         if (i.consume('action') || i.consume('confirm')) tryFit();
-        if (aligning && i.consume('pause')) endAlign(false);
+        if (aligning && (i.consume('pause') || i.consume('jump'))) endAlign(false);
         return;
       }
       // Keyhole-eye reveal: breath near the cliff face.

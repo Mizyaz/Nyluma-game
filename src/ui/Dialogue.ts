@@ -33,7 +33,7 @@ export class Dialogue {
       { class: 'dialogue hidden', role: 'dialog', 'aria-live': 'polite' },
       this.portraitEl,
       h('div', { class: 'body' }, this.nameEl, this.textEl),
-      h('div', { class: 'next', text: '▾ Boşluk / E' }),
+      h('div', { class: 'next', html: '<span class="kbd-only">▾ Boşluk / E</span><span class="touch-only">▾ Dokun</span>' }),
     );
     this.el.addEventListener('pointerdown', (e) => {
       e.preventDefault();

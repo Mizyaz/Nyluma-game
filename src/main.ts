@@ -22,6 +22,9 @@ function boot(): void {
   app.audio = new AudioSystem();
   app.audio.applySettings(app.settings);
 
+  // Long-presses on the controls must not open the browser's context menu.
+  document.getElementById('app')?.addEventListener('contextmenu', (e) => e.preventDefault());
+
   const parent = document.getElementById('game')!;
   app.game = new Phaser.Game(gameConfig(parent, params.has('canvas')));
   app.ui = new UI(app.game);

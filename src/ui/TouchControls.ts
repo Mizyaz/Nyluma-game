@@ -159,6 +159,8 @@ export class TouchControls {
   }
 
   private refresh(): void {
+    // Texts and key caps switch to touch wording whenever touch is in use.
+    document.documentElement.classList.toggle('touch-ui', this.enabled);
     const on = this.enabled && this.visibleCtx;
     this.root.classList.toggle('off', !on);
     if (!on) return;
