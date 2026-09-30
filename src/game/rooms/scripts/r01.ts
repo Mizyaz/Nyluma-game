@@ -2,6 +2,7 @@ import type * as Phaser from 'phaser';
 import { app } from '../../App';
 import { DEPTH, VIEW_H, VIEW_W } from '../../constants';
 import { hex } from '../../art/palette';
+import { frameRef, hasFrame } from '../../art/TextureFactory';
 import { P1 } from '../../art/painting1';
 import { CAPTIONS, DIALOGUE } from '../../data/dialogue.tr';
 import { PAINTINGS } from '../../data/paintings';
@@ -9,6 +10,7 @@ import { BOX, ROOM_W, WIDE, WIDE_TOP } from '../../data/rooms/r01Stage';
 import type { CinemaScene } from '../../scenes/CinemaScene';
 import type { WorldScene } from '../../scenes/WorldScene';
 import { GemPortal } from '../../fx/gemPortal';
+import { StoneFrame } from '../../fx/stoneFrame';
 import type { RoomScript } from './types';
 
 /** The bed's mattress (see the room data) and where Gorti steps down. */
@@ -32,6 +34,8 @@ const BEDSIDE = { x: 430, y: 560 };
 /** The startled creature hides when Gorti comes this near, and peeks out again when he is this far. */
 const SHADE_NEAR = 175;
 const SHADE_FAR = 330;
+/** Where its "!!!" stands, over its curled hand (bottom centre). */
+const BANG_AT = { x: 1206, y: 580 };
 
 // Chapter I — the 14th Room, as the first painting shows it. The game opens
 // on the painting; the room dissolves out of it in a wide shot of the whole
@@ -46,6 +50,8 @@ export function r01(w: WorldScene): RoomScript {
   let sleptMs = 0;
   let zzz: Phaser.Time.TimerEvent | null = null;
   let portal: GemPortal | null = null;
+  /** The painting's cracked stone round the screen (not in the wide shot, which has its own). */
+  let frame: StoneFrame | null = null;
   /** The opening's pending steps and the painting over the screen. */
   let opening: Phaser.Time.TimerEvent[] = [];
   let overlay: Phaser.GameObjects.GameObject[] = [];
@@ -53,6 +59,7 @@ export function r01(w: WorldScene): RoomScript {
   // The startled creature and its "!!!".
   let shade: Phaser.GameObjects.Image | null = null;
   let bang: Phaser.GameObjects.Image | null = null;
+  let bangScale = 1;
   let shadeHome = 0;
   let shadeHidden = false;
   let shadeAwayMs = 0;
@@ -91,10 +98,16 @@ export function r01(w: WorldScene): RoomScript {
       w.tweens.add({ targets: img, angle: img.flipX ? 0.9 : -0.9, duration: 3400, ease: 'Sine.easeInOut', yoyo: true, repeat: -1 });
     }
     shade = propImages('p1.shade')[0] ?? null;
-    bang = propImages('p1.bang')[0] ?? null;
     shadeHome = shade?.y ?? 0;
-    // As painted, the "!!!" is there while the room is only a picture.
-    bang?.setAlpha(sleeping ? 1 : 0);
+    // Its "!!!" belongs to the script (the room's props are re-shown on
+    // every flag change). As painted, it is there while the room is only a
+    // picture.
+    if (shade && hasFrame('p1.bang')) {
+      const f = frameRef('p1.bang');
+      bangScale = 1 / f.scale;
+      bang = w.add.image(BANG_AT.x, BANG_AT.y, f.atlas, f.frame).setOrigin(0.5, 1).setScale(bangScale).setDepth(shade.depth + 1);
+      bang.setAlpha(sleeping ? 1 : 0);
+    }
   };
 
   /** The dark creature sees Gorti coming: "!!!", and down it goes behind the floor. */
@@ -104,9 +117,8 @@ export function r01(w: WorldScene): RoomScript {
     shadeAwayMs = 0;
     if (bang) {
       w.tweens.killTweensOf(bang);
-      const s = bang.scale;
-      bang.setAlpha(1).setScale(s * 0.6);
-      w.tweens.add({ targets: bang, scale: s, duration: 260, ease: 'Back.easeOut' });
+      bang.setAlpha(1).setScale(bangScale * 0.6);
+      w.tweens.add({ targets: bang, scale: bangScale, duration: 260, ease: 'Back.easeOut' });
       w.tweens.add({ targets: bang, alpha: 0, delay: 900, duration: 500 });
     }
     w.tweens.killTweensOf(shade);
@@ -213,6 +225,7 @@ export function r01(w: WorldScene): RoomScript {
     });
     later(OPENING_END, () => {
       openBounds(false);
+      frame?.show(true, 1400);
       app.ui.hud.caption(CAPTIONS.intro2, 5200);
       app.ui.hud.toast(app.ui.touch.enabled ? 'Uyandırmak için dokun' : 'Uyandırmak için bir tuşa bas', 4200);
     });
@@ -275,6 +288,7 @@ export function r01(w: WorldScene): RoomScript {
     waking = true;
     endSleep();
     endOpening(true);
+    frame?.show(true, 900);
     bang?.setAlpha(0);
     const p = w.player;
     const cinema = (): CinemaScene | null => (w.scene.isActive('cinema') ? (w.scene.get('cinema') as CinemaScene) : null);
@@ -377,11 +391,14 @@ export function r01(w: WorldScene): RoomScript {
     setup() {
       // At the end of the root tunnel, the way on: a living mouth of the gem tunnel.
       portal = new GemPortal(w, 2162, 660, 104, 214, -35);
+      frame = new StoneFrame(w);
       if (w.quest.set('r01.intro')) goToSleep();
+      else frame.show(true, 0);
       idleLife();
     },
     onUpdate(dtMs) {
       portal?.update(dtMs);
+      frame?.update();
       updateShade(dtMs);
     },
     onFixed(dt) {
@@ -408,6 +425,8 @@ export function r01(w: WorldScene): RoomScript {
       openBounds(false);
       portal?.destroy();
       portal = null;
+      frame?.destroy();
+      frame = null;
     },
   };
 }

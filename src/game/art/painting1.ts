@@ -188,7 +188,7 @@ function group(transform: string, body: string): string {
 
 /** A closed eye: a lid line curving down (content, not smiling). */
 function closedEye(cx: number, cy: number, r: number, color: string, w = 1.6): string {
-  return ln(`M${n2(cx - r)} ${n2(cy)}Q${n2(cx)} ${n2(cy + r * 0.75)} ${n2(cx + r)} ${n2(cy)}`, color, w);
+  return ln(`M${n2(cx - r)} ${n2(cy)}Q${n2(cx)} ${n2(cy + r * 0.45)} ${n2(cx + r)} ${n2(cy)}`, color, w);
 }
 
 /** A small spark of short spikes (the star creatures' hands and feet). */
@@ -357,7 +357,7 @@ function cube(): PartArt {
   const whale = smooth([[136, 238], [148, 222], [176, 214], [206, 216], [226, 228], [222, 242], [196, 250], [160, 250]]);
   s += shape(`M140 236L120 220L118 236L124 250Z`, P1.glyphBlue, 1.8);
   s += shape(whale, P1.glyphBlue, 2, { inner: fill(smooth([[140, 246], [170, 240], [206, 238], [230, 240], [226, 262], [140, 262]]), P1.glyphBlueLight) });
-  s += closedEye(208, 228, 3.4, lineFor(P1.glyphBlue), 1.6) + ln(open([[222, 238], [212, 240], [204, 239]]), lineFor(P1.glyphBlue), 1.4);
+  s += closedEye(208, 228, 3.4, lineFor(P1.glyphBlue), 1.6) + ln(open([[222, 239], [212, 239.4], [204, 240.4]]), lineFor(P1.glyphBlue), 1.4);
   // (1,2) a little standing figure.
   s += shape(circle(286, 212, 8), P1.glyphFigure, 1.4);
   s += ln('M270 226H302M286 220V230M276 250L282 226H290L296 250ZM280 250L276 262M292 250L296 262', P1.glyphFigure, 3.2);
@@ -709,7 +709,7 @@ function whaleToy(): PartArt {
   }
   paint += ln(open([[26, 44], [50, 45], [76, 43], [90, 40]]), P1.woodDark, 1.1) + ln(open([[36, 38], [58, 40], [80, 38]]), P1.woodDark, 1, 0.8);
   s += shape(body, P1.wood, 1.8, { inner: paint });
-  s += closedEye(76, 30, 3.4, lineFor(P1.wood), 1.5) + ln(open([[93, 38], [84, 40], [78, 39]]), lineFor(P1.wood), 1.3);
+  s += closedEye(76, 30, 3.4, lineFor(P1.wood), 1.5) + ln(open([[93, 39], [84, 39.4], [78, 40.4]]), lineFor(P1.wood), 1.3);
   s += ln('M86 16L85 9', lineFor(P1.wood), 1.6) + shape(circle(83, 6, 3), P1.paintBlue, 1.1) + shape(circle(89, 5, 2.6), P1.paintBlue, 1.1);
   return part('p1.whale', 104, 64, 52, 64, s);
 }
@@ -1186,6 +1186,38 @@ export function paintBoxForeground(ctx: Ctx, w: number, h: number, rng: Rng): vo
     }
     x += rng.range(260, 560);
   }
+  ctx.restore();
+  applyGrain(ctx, -2, -2, w + 4, h + 4);
+}
+
+/**
+ * A thin border of the painting's cracked stone round the screen (`w` × `h`,
+ * `t` thick): grey slabs parted by cracks, a ragged inner edge.
+ */
+export function paintScreenFrame(ctx: Ctx, w: number, h: number, t: number, rng: Rng): void {
+  const inner = roughen([[t, t], [w - t, t], [w - t, h - t], [t, h - t], [t, t]], 26, () => rng.range(-t * 0.22, t * 0.22));
+  const edge = smooth(inner, 0.6);
+  ctx.save();
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.fillStyle = P1.stone;
+  ctx.fill(new Path2D(`M-4 -4H${w + 4}V${h + 4}H-4Z${edge}`), 'evenodd');
+  const crack = lineFor(P1.stone);
+  // Cracks across the band part it into slabs.
+  const across = (x0: number, y0: number, x1: number, y1: number): void => {
+    const mx = (x0 + x1) / 2 + rng.range(-3, 3);
+    const my = (y0 + y1) / 2 + rng.range(-3, 3);
+    stroke(ctx, `M${x0} ${y0}L${mx} ${my}L${x1} ${y1}`, crack, 1.8);
+  };
+  for (let x = rng.range(40, 120); x < w - 30; x += rng.range(90, 170)) {
+    across(x, t - 1, x + rng.range(-6, 6), -2);
+    across(x + rng.range(-30, 30), h - t + 1, x + rng.range(-6, 6), h + 2);
+  }
+  for (let y = rng.range(50, 120); y < h - 30; y += rng.range(90, 160)) {
+    across(t - 1, y, -2, y + rng.range(-6, 6));
+    across(w - t + 1, y + rng.range(-30, 30), w + 2, y + rng.range(-6, 6));
+  }
+  paint(ctx, edge, null, 2.4, crack);
   ctx.restore();
   applyGrain(ctx, -2, -2, w + 4, h + 4);
 }

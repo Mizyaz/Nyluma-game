@@ -9,7 +9,8 @@ const WOOD = 0x5b3b24;
 const WOOD_LIGHT = 0x86603c;
 const WOOD_DARK = 0x3a2416;
 const GOLD = 0xc9a45a;
-const INK = 0x191728;
+/** Contours in the wood's own darker tone (no black outlines). */
+const INK = 0x483637;
 /** Height of the easel's ledge above the floor. */
 const EASEL_LEDGE = 64;
 
