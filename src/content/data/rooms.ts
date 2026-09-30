@@ -71,7 +71,8 @@ export function chapterOfRoom(id: RoomId): ChapterJson | undefined {
 
 /** The Moon and the Sun over a room: the room file's, else its chapter's. */
 export function skyOf(id: RoomId): Required<SkyJson> {
-  return specs.get(id)?.sky ?? chapterOfRoom(id)?.sky ?? { moon: 'none', sun: 'none' };
+  const ch = chapterOfRoom(id)?.sky;
+  return specs.get(id)?.sky ?? { moon: 'none', sun: 'none', out: 'none', ...ch };
 }
 
 /** Room that follows `id` in the story (scripted transitions use this too). */

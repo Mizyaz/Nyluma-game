@@ -3,7 +3,8 @@ import { DEPTH } from '../../engine/constants';
 import { CreaturePool } from '../actors/Creatures';
 import type { WorldScene } from '../../engine/scenes/WorldScene';
 import { ensureMoveArt } from './moveArt';
-import { BloomMove, EarthMove, SparkMove } from './moves';
+import { BloomMove, SparkMove } from './moves';
+import { LaughMove } from './laugh';
 import { tierOf } from './tiers';
 import type { Effect, Move, MoveContext } from './types';
 
@@ -24,7 +25,8 @@ export class MoveSystem {
 
   constructor(private readonly world: WorldScene) {
     ensureMoveArt(world.textures);
-    this.moves = [new BloomMove(() => this.birds()), new EarthMove(), new SparkMove()];
+    // The human form's stomp (EarthMove) is the break move now: WorldScene.smash.
+    this.moves = [new BloomMove(() => this.birds()), new LaughMove(), new SparkMove()];
   }
 
   /** Whether a move may start now. */

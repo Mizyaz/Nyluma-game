@@ -17,6 +17,8 @@ import {
 import type { RigDef } from '../render/2d/rig/rigTypes';
 import { humanRigFor, rootRigFor, RIG_GORTI_SUIT } from '../content/characters/gorti';
 import { RIG_COWARD, RIG_MECH } from '../content/characters/forms';
+import { RIG_GORTI_HUMAN, RIG_GORTI_HUMAN_SUN } from '../content/characters/sivasli';
+import type { SkyOut } from '../engine/content/types';
 import { FocusMeter, bezier } from './AbilitySystem';
 import type { FormId, PlayerKind, RoomId } from '../engine/state/types';
 import { humanoidPose, idleStartFor, styleOf, type Emote, type IdleKind, type PoseParams } from '../render/2d/rig/animPoses';
@@ -46,11 +48,22 @@ function currentRoom(): RoomId {
  * (root) body is the one of his life stage in the room, and his human form
  * wears the Sun or the Moon as its head, as the room's sky has it.
  */
-export function rigFor(kind: PlayerKind, form: FormId, room: RoomId = currentRoom()): RigDef {
+/**
+ * The Sivaslı amca's head: bald when nothing is out, the Sun's or the Moon's
+ * face when his kahkaha has brought one out.
+ */
+const HUMAN_HEADS: Record<SkyOut, RigDef> = {
+  none: RIG_GORTI_HUMAN,
+  sun: RIG_GORTI_HUMAN_SUN,
+  moon: RIG_GORTI_HUMAN,
+};
+
+export function rigFor(kind: PlayerKind, form: FormId, room: RoomId = currentRoom(), head?: SkyOut): RigDef {
   if (kind === 'coward') return RIG_COWARD;
   if (kind === 'mech') return RIG_MECH;
   if (kind === 'suit') return RIG_GORTI_SUIT;
-  return form === 'human' ? humanRigFor(room) : rootRigFor(room);
+  if (form !== 'human') return rootRigFor(room);
+  return head ? HUMAN_HEADS[head] : humanRigFor(room);
 }
 
 export function tuningFor(kind: PlayerKind, form: FormId): MoveTuning {
@@ -105,6 +118,7 @@ export class Player {
   /** Extra fixed-step hook for held/pressed input used by scripts. */
   canJump = true;
   speedScale = 1;
+  private head: SkyOut = 'none';
 
   constructor(scene: Phaser.Scene, x: number, feetY: number, kind: PlayerKind, form: FormId) {
     this.scene = scene;
@@ -116,7 +130,7 @@ export class Player {
     this.body = this.zone.body as Phaser.Physics.Arcade.Body;
     this.body.setCollideWorldBounds(true);
     this.body.setMaxVelocityY(MAX_FALL);
-    this.rig = new RigView(scene, rigFor(kind, this.form), (a, t, p, id) => humanoidPose(id, a, t, p), x, feetY, DEPTH.player);
+    this.rig = new RigView(scene, rigFor(kind, this.form, undefined, this.head), (a, t, p, id) => humanoidPose(id, a, t, p), x, feetY, DEPTH.player);
     this.rootLine = scene.add.graphics().setDepth(DEPTH.player - 1);
     if (kind === 'suit') this.canJump = false;
   }
@@ -166,7 +180,16 @@ export class Player {
     if (this.kind !== 'gorti') return;
     this.form = form;
     this.tuning = tuningFor(this.kind, form);
-    this.rig.setRig(rigFor(this.kind, form));
+    this.rig.setRig(rigFor(this.kind, form, undefined, this.head));
+    this.rig.setFacing(this.facing);
+  }
+
+  /** The human form's head follows what is out in the sky (bald when nothing is). */
+  setHead(head: SkyOut): void {
+    if (this.head === head) return;
+    this.head = head;
+    if (this.kind !== 'gorti' || this.form !== 'human') return;
+    this.rig.setRig(rigFor(this.kind, this.form, undefined, head));
     this.rig.setFacing(this.facing);
   }
 
@@ -175,7 +198,7 @@ export class Player {
     this.form = kind === 'gorti' ? form : 'root';
     this.tuning = tuningFor(kind, this.form);
     this.canJump = kind !== 'suit';
-    this.rig.setRig(rigFor(kind, this.form));
+    this.rig.setRig(rigFor(kind, this.form, undefined, this.head));
     this.rig.setFacing(this.facing);
   }
 

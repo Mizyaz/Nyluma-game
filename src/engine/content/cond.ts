@@ -6,6 +6,7 @@
 //   flag:bloom            the same, spelled out
 //   form:human            Gorti is in the human form
 //   room:r03              the current room is r03
+//   sky:moon              the Moon is out (sky:sun, sky:none): Gorti's kahkaha swaps them
 //   !flag:bloom           not
 //   a & b, a | b, (a | b) & c   and binds tighter than or
 //
@@ -15,6 +16,7 @@ export type Cond =
   | { k: 'flag'; name: string }
   | { k: 'form'; name: string }
   | { k: 'room'; name: string }
+  | { k: 'sky'; name: string }
   | { k: 'not'; c: Cond }
   | { k: 'and'; cs: Cond[] }
   | { k: 'or'; cs: Cond[] }
@@ -24,6 +26,8 @@ export interface CondCtx {
   has(flag: string): boolean;
   form: string;
   room: string;
+  /** Which one shines: 'sun', 'moon' or 'none' (default). */
+  sky?: string;
 }
 
 const ATOM = /^[A-Za-z0-9_.:-]+/;
@@ -71,13 +75,13 @@ export function parseCond(src: string | undefined): Cond {
       return c;
     }
     const m = ATOM.exec(s.slice(i));
-    if (!m) return fail('expected a flag, form: or room:');
+    if (!m) return fail('expected a flag, form:, room: or sky:');
     i += m[0].length;
     const [kind, ...rest] = m[0].split(':');
     const name = rest.join(':');
     if (!rest.length) return { k: 'flag', name: kind! };
     if (!name) return fail(`empty name after ${kind}:`);
-    if (kind === 'flag' || kind === 'form' || kind === 'room') return { k: kind, name };
+    if (kind === 'flag' || kind === 'form' || kind === 'room' || kind === 'sky') return { k: kind, name };
     // A flag whose own name holds a colon.
     return { k: 'flag', name: m[0] };
   };
@@ -109,6 +113,8 @@ export function evalCond(c: Cond | string | undefined, ctx: CondCtx): boolean {
       return ctx.form === c.name;
     case 'room':
       return ctx.room === c.name;
+    case 'sky':
+      return (ctx.sky ?? 'none') === c.name;
     case 'not':
       return !evalCond(c.c, ctx);
     case 'and':

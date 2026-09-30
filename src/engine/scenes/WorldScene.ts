@@ -28,6 +28,10 @@ import { ROMAN } from '../../ui/Menus';
 import type { AmbienceId } from '../systems/AudioSystem';
 import { stage } from '../../render/2.5d/hooks';
 import type { SkyScene } from './SkyScene';
+import type { SkyJson, SkyOut } from '../content/types';
+
+/** Holding the laugh this long (s) makes it a kahkaha. */
+const KAHKAHA_S = 0.75;
 
 /** How much closer the view comes while Gorti stands still (diorama only). */
 const PUSH_IN = 0.1;
@@ -280,7 +284,11 @@ export class WorldScene extends Phaser.Scene {
       this.shake(0.0014, 90);
     });
 
-    this.scene.launch('sky', { sky: skyOf(this.def.id) });
+    const sky = skyOf(this.def.id);
+    this.scene.launch('sky', { sky });
+    this.skyOut = sky.out;
+    this.room.sky = sky.out;
+    this.player.setHead(sky.out);
     this.script = createScript(this.def.id, this);
     this.script.setup();
     this.room.refresh(false);
@@ -323,6 +331,13 @@ export class WorldScene extends Phaser.Scene {
     if (gameplay && p.controllable) {
       this.target = this.resolveTarget();
       if (i.consume('action')) this.doAction();
+      if (this.laughHold >= 0) {
+        if (!i.held('action')) this.laughHold = -1;
+        else if ((this.laughHold += dt) >= KAHKAHA_S) {
+          this.laughHold = -1;
+          this.kahkaha();
+        }
+      }
       // R: Gorti changes form (root ⇄ human) once it has learned how.
       if (i.consume('form') && p.kind === 'gorti' && p.state !== 'transform' && this.quest.hasAbility('form')) this.transform(p.form === 'root' ? 'human' : 'root');
       this.glance();
@@ -416,7 +431,7 @@ export class WorldScene extends Phaser.Scene {
     }
     if (best) return { kind: 'interact', id: best.id, label: best.prompt, x: best.x, y: best.y };
     // 2) Nothing to look at: the Rezonans move.
-    return { kind: 'move', label: 'Rezonans' };
+    return { kind: 'move', label: this.moves.pick()?.id === 'laugh' ? 'Gül' : 'Rezonans' };
   }
 
   private doAction(): void {
@@ -435,6 +450,8 @@ export class WorldScene extends Phaser.Scene {
     if (this.moves.ready && this.pulseWind <= 0) {
       this.pulseWind = PULSE_WINDUP_MS;
       p.interactT = 0.25;
+      // The amca's laugh: held on, it becomes a kahkaha.
+      if (this.moves.pick()?.id === 'laugh') this.laughHold = 0;
     }
   }
 
@@ -500,6 +517,36 @@ export class WorldScene extends Phaser.Scene {
   }
 
   /** Sets a flag, refreshes gated elements and saves. Returns true the first time. */
+  /** Which one shines (the Sun, the Moon or neither): Gorti's kahkaha swaps them. */
+  skyOut: SkyOut = 'none';
+  /** Seconds the laugh has been held (-1: not laughing). */
+  private laughHold = -1;
+
+  /** Changes the sky: what is out lights the room, turns the amca's head and opens `sky:` gates. */
+  setSky(sky: SkyJson): void {
+    this.sky?.set(sky);
+    if (!sky.out || sky.out === this.skyOut) return;
+    this.skyOut = sky.out;
+    this.room.sky = sky.out;
+    this.player.setHead(sky.out);
+    this.room.refresh(true);
+  }
+
+  /** The Sivaslı amca's big laugh: the Sun and the Moon swap. */
+  kahkaha(): void {
+    const next: SkyOut = this.skyOut === 'sun' ? 'moon' : 'sun';
+    const p = this.player;
+    const c = p.chest();
+    p.pose('kahkaha', 1.3, true);
+    p.emote('joy', 2000);
+    this.comic.pop(c.x, c.y - 180, next === 'sun' ? 'HAHAHA!' : 'HOHOHO!', 'storm', true);
+    this.comic.focusLines(c.x, c.y - 60, 1);
+    this.shake(0.006, 520);
+    this.flash(next === 'sun' ? 0xffe2a0 : 0x9aa8ff, 0.35);
+    app.audio.sfx('rumble', { vol: 0.5 });
+    this.time.delayedCall(380, () => this.setSky({ out: next }));
+  }
+
   /** The Moon and the Sun over the room (its own scene). */
   get sky(): SkyScene | null {
     return this.scene.isActive('sky') ? (this.scene.get('sky') as SkyScene) : null;
@@ -771,7 +818,8 @@ export class WorldScene extends Phaser.Scene {
       }
     }
     hud.setPrompts(prompts);
-    app.ui.touch.setAvail({ focus: false, form: false, song: false, actionLabel, jump: p.canJump });
+    const canForm = p.kind === 'gorti' && this.quest.hasAbility('form');
+    app.ui.touch.setAvail({ focus: false, form: canForm, song: false, actionLabel, jump: p.canJump });
   }
 
   // ------------------------------------------------------------ fx helpers

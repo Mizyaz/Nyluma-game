@@ -2,11 +2,98 @@
   "$schema": "../room.schema.json",
   "id": "b02",
   "chapter": "c6",
-  "title": "Boş Oda",
+  "title": "Ay Kapısı",
   "theme": "hill",
-  "width": 1800,
+  "width": 2400,
   "spawn": {
     "x": 220,
     "facing": 1
-  }
+  },
+  "form": "human",
+  "sky": {
+    "out": "sun"
+  },
+  "enter": [
+    {
+      "say": [
+        {
+          "text": "Güneş tepede. Kapı ise geceyi bekliyor."
+        },
+        {
+          "who": "gorti",
+          "text": "Göbeğimi tutup bir gülsem..."
+        }
+      ]
+    }
+  ],
+  "props": [
+    {
+      "key": "prop.tree",
+      "x": 560,
+      "depth": -70
+    },
+    {
+      "key": "prop.shrine",
+      "x": 1120,
+      "depth": -30
+    },
+    {
+      "key": "prop.bush",
+      "x": 1850
+    }
+  ],
+  "npcs": [
+    {
+      "id": "gunesBasli",
+      "who": "sunMan",
+      "x": 820,
+      "facing": -1,
+      "when": "sky:sun",
+      "talk": [
+        {
+          "who": "sunMan",
+          "text": "Ben varken o kapı açılmaz."
+        },
+        {
+          "who": "sunMan",
+          "text": "E'yi basılı tut, kahkahayı bas: Ay çıksın, ben gideyim."
+        }
+      ],
+      "again": [
+        {
+          "who": "sunMan",
+          "text": "Kahkaha! E'yi basılı tut."
+        }
+      ]
+    }
+  ],
+  "gates": [
+    {
+      "id": "gece",
+      "x": 1450,
+      "open": "sky:moon",
+      "look": "crystal",
+      "hint": "Bu kapı yalnızca Ay çıkınca açılır. (E'yi basılı tut: kahkaha)"
+    }
+  ],
+  "triggers": [
+    {
+      "id": "gecti",
+      "x": 1750,
+      "do": [
+        {
+          "word": "GECE!"
+        },
+        {
+          "flag": "b02.passed"
+        }
+      ]
+    }
+  ],
+  "exits": [
+    {
+      "to": "b03",
+      "when": "b02.passed"
+    }
+  ]
 }

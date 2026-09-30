@@ -96,12 +96,12 @@ test.describe('experience', () => {
     await jump(page, { room: 'r06', form: 'human' });
     const s0 = await probe(page);
     expect(s0.player!.form).toBe('human');
-    expect(s0.moves!.next).toBe('earth');
+    expect(s0.moves!.next).toBe('laugh');
 
     await tap(page, 'KeyE');
     const seen = await watchMoves(page, (s) => s.moves!.count === 1 && s.moves!.running.length === 0, 12_000, 'stomp over');
     expect(seen.kinds).toEqual(new Set(['timeline', 'cracks', 'moon', 'horse']));
-    expect((await probe(page)).moves!.last).toBe('earth');
+    expect((await probe(page)).moves!.last).toBe('laugh');
     expect(errors).toEqual([]);
   });
 

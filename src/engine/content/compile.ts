@@ -83,7 +83,7 @@ export function compileRoom(r: RoomJson, ch: ChapterJson): CompiledRoom {
     spec: {
       id: r.id,
       floor,
-      sky: { ...ch.sky, ...r.sky },
+      sky: { out: 'none', ...ch.sky, ...r.sky },
       enter: r.enter ?? [],
       npcs: r.npcs ?? [],
       gates,

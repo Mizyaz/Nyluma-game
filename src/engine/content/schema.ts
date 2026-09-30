@@ -17,6 +17,7 @@ export const SkySchema = z
   .object({
     moon: z.enum(['baby', 'old', 'none']).optional().describe('Sol üstteki Ay: bebek, yaşlı ya da hiç'),
     sun: z.enum(['calm', 'laugh', 'none']).optional().describe('Sağ üstteki Güneş: sakin, gülüyor ya da hiç'),
+    out: z.enum(['sun', 'moon', 'none']).optional().describe('Hangisi parlıyor (Gorti\'nin kahkahası değiştirir); koşullarda sky:sun, sky:moon'),
   })
   .strict();
 
@@ -152,7 +153,7 @@ export const ChapterSchema = z
     id: id.describe('Bölüm adı, ör. "c6"'),
     number: z.number().int().positive().describe('Bölüm numarası (menüde Romen rakamı)'),
     title: z.string().min(1),
-    sky: z.object({ moon: SkySchema.shape.moon.unwrap(), sun: SkySchema.shape.sun.unwrap() }).strict().describe('Bu bölümde Ay ve Güneş'),
+    sky: z.object({ moon: SkySchema.shape.moon.unwrap(), sun: SkySchema.shape.sun.unwrap(), out: SkySchema.shape.out }).strict().describe('Bu bölümde Ay ve Güneş'),
     rooms: z.array(z.string()).min(1).describe('Odalar, hikâye sırasıyla'),
   })
   .strict();

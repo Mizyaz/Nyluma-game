@@ -148,7 +148,7 @@ export class ContentScript implements RoomScript {
       else if ('unflag' in a) w.unflag(a.unflag);
       else if ('form' in a) await this.changeForm(a.form);
       else if ('unlock' in a) w.quest.grant(a.unlock);
-      else if ('sky' in a) w.sky?.set(a.sky);
+      else if ('sky' in a) w.setSky(a.sky);
       else if ('go' in a) this.leaveTo = a.go;
       else if ('word' in a) w.comic.pop(w.player.x, w.player.feetY - 170, a.word, 'call', true);
       else if ('wait' in a) await cs?.wait(a.wait);

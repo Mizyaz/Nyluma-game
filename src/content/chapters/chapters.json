@@ -35,7 +35,8 @@
       "title": "Mor At ve Güneş",
       "sky": {
         "moon": "old",
-        "sun": "laugh"
+        "sun": "laugh",
+        "out": "sun"
       },
       "rooms": [
         "r07",
@@ -78,7 +79,8 @@
       },
       "rooms": [
         "b01",
-        "b02"
+        "b02",
+        "b03"
       ]
     }
   ]

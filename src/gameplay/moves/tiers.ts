@@ -10,11 +10,14 @@ import type { MoveFamily } from './types';
  *   flock → a flower bed and a great flock.
  * - earth (Gorti as the Sivaslı amca): the ground shakes → and the Moon rises
  *   → and a purple horse comes out of the ground (the horse is born in r06).
+ * - laugh (Gorti as the Sivaslı amca): he holds his belly and laughs; held,
+ *   the kahkaha swaps the Sun and the Moon. Always the same.
  * - spark (the other forms): coloured crystals, always the same.
  */
 export const MOVE_TIERS: Record<MoveFamily, Partial<Record<RoomId, number>>> = {
   bloom: { r01: 1, r03: 2, r06: 3 },
   earth: { r04: 1, r05: 2, r06: 3 },
+  laugh: { r01: 1 },
   spark: { r01: 1 },
 };
 

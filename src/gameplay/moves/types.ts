@@ -32,4 +32,4 @@ export interface Move {
   perform(ctx: MoveContext, run: RunEffect): void;
 }
 
-export type MoveFamily = 'bloom' | 'earth' | 'spark';
+export type MoveFamily = 'bloom' | 'earth' | 'laugh' | 'spark';

@@ -24,3 +24,5 @@ export type {
 
 export type MoonKind = NonNullable<SkyJson['moon']>;
 export type SunMood = NonNullable<SkyJson['sun']>;
+/** Which one shines: Gorti's kahkaha swaps the Sun and the Moon. */
+export type SkyOut = NonNullable<SkyJson['out']>;

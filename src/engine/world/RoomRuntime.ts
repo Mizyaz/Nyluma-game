@@ -23,6 +23,7 @@ import type {
 } from '../../content/data/roomTypes';
 import type { Quest } from '../state/GameState';
 import { evalCond, type CondCtx } from '../content/cond';
+import type { SkyOut } from '../content/types';
 import { WhalePlatforms } from '../../gameplay/whales/WhalePlatforms';
 import { stage } from '../../render/2.5d/hooks';
 import { isWhalePlatform } from '../../gameplay/whales/whalePlan';
@@ -119,8 +120,11 @@ export class RoomRuntime {
   }
 
   /** The state conditions are read against. */
+  /** Which one shines now (the world scene keeps it: Gorti's kahkaha swaps it). */
+  sky: SkyOut = 'none';
+
   condCtx(): CondCtx {
-    return { has: (f) => this.quest.has(f), form: this.quest.progress.form, room: this.def.id };
+    return { has: (f) => this.quest.has(f), form: this.quest.progress.form, room: this.def.id, sky: this.sky };
   }
 
   build(): void {
