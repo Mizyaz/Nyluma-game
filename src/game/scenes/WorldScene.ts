@@ -21,6 +21,8 @@ import type { ExtraInteract, RoomScript } from '../rooms/scripts/types';
 import type { Interactable } from '../world/Interactable';
 import { PaintingGallery } from '../world/PaintingGallery';
 import { MoveSystem } from '../moves/MoveSystem';
+import { applyComicLook } from '../fx/comicFx';
+import { ComicWords, WORDS, pick } from '../fx/comicWords';
 import { FaceDialogue } from '../cinematics/FaceDialogue';
 import { ROMAN } from '../../ui/Menus';
 import type { AmbienceId } from '../systems/AudioSystem';
@@ -85,6 +87,8 @@ export class WorldScene extends Phaser.Scene {
   /** Self-contained things to inspect (paintings…), besides the room's interacts. */
   private features: Interactable[] = [];
   gallery: PaintingGallery | null = null;
+  /** Comic sound words and focus lines. */
+  comic!: ComicWords;
   /** The Rezonans button's moves (flowers and birds, the earth, crystals). */
   moves!: MoveSystem;
 
@@ -166,6 +170,9 @@ export class WorldScene extends Phaser.Scene {
     this.particles.setDepth(DEPTH.fx);
     this.gallery = new PaintingGallery(this);
     this.moves = new MoveSystem(this);
+    // The comic-book look and its sound words.
+    applyComicLook(this);
+    this.comic = new ComicWords(this);
     this.cleanups.push(() => this.moves.destroy());
     this.cleanups.push(() => {
       this.gallery?.destroy();
@@ -239,11 +246,13 @@ export class WorldScene extends Phaser.Scene {
     app.audio.setAmbience(AMBIENCE[this.def.theme] ?? 'none');
 
     this.events.on('player-land', (x: number, y: number, v: number) => {
+      if (v > 560) this.comic.pop(x, y - 36, pick(WORDS.land), 'land');
       if (v > 500) this.shake(0.003, 90);
       this.dust(x, y, 6);
       if (v > 260) this.steps?.land(x, y, Math.min(1, (v - 260) / 600));
     });
     this.events.on('player-jump', (x: number, y: number) => {
+      this.comic.pop(x - this.player.facing * 30, y - 70, pick(WORDS.jump), 'jump');
       this.dust(x, y, 4);
       this.steps?.step(x, y);
     });
@@ -682,6 +691,8 @@ export class WorldScene extends Phaser.Scene {
   /** Gorti's reaction to a colour bombardment: startled, then delighted. */
   private onColorStorm(): void {
     const p = this.player;
+    const v = this.cameras.main.worldView;
+    this.comic.pop(v.centerX, v.y + v.height * 0.3, pick(WORDS.storm), 'storm');
     p.emote('surprise', 700);
     p.lookFor(-0.3, 3000);
     this.time.delayedCall(650, () => {

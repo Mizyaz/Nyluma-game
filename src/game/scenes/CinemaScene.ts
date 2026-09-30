@@ -5,6 +5,7 @@ import { CAST } from '../cinematics/cast';
 import { CAST_NAMES, type CastId } from '../cinematics/castNames';
 import type { Portrait, PortraitWindow } from '../cinematics/portraits';
 import { voiceOf } from '../cinematics/voice';
+import { applyComicLook } from '../fx/comicFx';
 
 export interface CinemaData {
   cast: readonly CastId[];
@@ -45,6 +46,7 @@ export class CinemaScene extends Phaser.Scene {
 
   create(data: CinemaData): void {
     this.scene.bringToTop();
+    applyComicLook(this);
     this.slots = [];
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdownSlots());
     this.closing = false;

@@ -17,6 +17,7 @@ import { isRoomId } from '../state/types';
 import { roomDef } from '../data/rooms';
 import type { Progress } from '../state/types';
 import type { WorldData } from './WorldScene';
+import { applyComicLook } from '../fx/comicFx';
 
 /** Title screen: an animated crystal chamber behind the DOM main menu. */
 export class MenuScene extends Phaser.Scene {
@@ -28,6 +29,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   create(): void {
+    applyComicLook(this);
     const theme = themeDef('chamber');
     this.cameras.main.setBackgroundColor(theme.sky[1]);
     // Background layer (drawn once).

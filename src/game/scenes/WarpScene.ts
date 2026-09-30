@@ -3,6 +3,7 @@ import { app } from '../App';
 import { VIEW_H, VIEW_W } from '../constants';
 import { CrystalWarp, type WarpLook } from '../fx/crystalFx';
 import { GemArt } from '../fx/gemArt';
+import { applyComicLook } from '../fx/comicFx';
 
 export interface WarpData {
   /** Called once, at the opaque peak: swap rooms/scenes here. */
@@ -56,6 +57,7 @@ export class WarpScene extends Phaser.Scene {
   }
 
   create(): void {
+    applyComicLook(this);
     this.scene.bringToTop();
     const s = Math.max(0.2, Math.min(1, this.data0.strength ?? 1));
     const reduced = app.settings.reducedMotion;

@@ -158,6 +158,7 @@ export function r01(w: WorldScene): RoomScript {
         void w.zoomTo(null, 0);
         cinema()?.close();
         p.thump(0.45);
+        w.comic.pop(p.x + 20, p.feetY - 120, 'HOP!', 'wake', true);
         p.startIdle('stretch');
         w.quest.set('r01.awake');
         w.time.delayedCall(900, () => app.ui.hud.caption(CAPTIONS.intro3, 4200));

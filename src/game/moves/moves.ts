@@ -2,6 +2,7 @@ import { app } from '../App';
 import { hex, P } from '../art/palette';
 import type { Player } from '../entities/Player';
 import { floorBelow } from '../world/geometry';
+import { pick, WORDS } from '../fx/comicWords';
 import { FlowerBloom, GroundCracks, HorseEmerge, MoonRise, releaseBirds, Timeline } from './effects';
 import type { Move, MoveContext, RunEffect } from './types';
 import type { CreaturePool } from '../entities/Creatures';
@@ -51,6 +52,9 @@ export class BloomMove implements Move {
         new FlowerBloom(world, x, y, i * 0.12, colorBase + i, size, (hx, hy) => {
           releaseBirds(this.birds(), hx, hy, perFlower, f);
           if (tier >= 3) world.bursts.burst(hx, hy, 10);
+          // The comic words: the first flower pops, a flock chirps.
+          if (i === 0) world.comic.pop(hx, hy - 40, pick(WORDS.bloom), 'bloom', true);
+          if (i === count - 1 && tier >= 2) world.comic.pop(hx + f * 40, hy - 80, pick(WORDS.birds), 'call', true);
         }),
       );
     }
@@ -90,6 +94,8 @@ export class EarthMove implements Move {
               app.audio.sfx('stamp');
               app.audio.sfx('rumble', { vol: 0.6 });
               world.shake(0.008, 420);
+              world.comic.pop(x + f * 30, y - 60, pick(WORDS.stomp), 'stomp', true);
+              world.comic.focusLines(x, y - 60, tier >= 2 ? 1 : 0.7);
               world.dust(x + f * 16, y, 10);
               world.crystalCrown(x + f * 12, y, 0.9);
               run(new GroundCracks(world, x + f * 12, y, ctx.reduced ? 90 : 150));
@@ -100,7 +106,9 @@ export class EarthMove implements Move {
             run: () => {
               if (tier < 2) return;
               const v = world.cameras.main.worldView;
-              run(new MoonRise(world, x - f * 170, Math.max(v.y + 90, y - 300), x, y - 100));
+              const my = Math.max(v.y + 90, y - 300);
+              run(new MoonRise(world, x - f * 170, my, x, y - 100));
+              world.time.delayedCall(700, () => world.comic.pop(x - f * 170, my + 70, pick(WORDS.moon), 'call', true));
             },
           },
           {
@@ -113,6 +121,7 @@ export class EarthMove implements Move {
               run(new GroundCracks(world, hx, hy, 120));
               world.dust(hx, hy, 14);
               run(new HorseEmerge(world, hx, hy, f));
+              world.time.delayedCall(800, () => world.comic.pop(hx, hy - 150, pick(WORDS.horse), 'call', true));
             },
           },
         ],
