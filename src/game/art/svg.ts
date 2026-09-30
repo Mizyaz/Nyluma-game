@@ -1,5 +1,5 @@
 import { P } from './palette';
-import { DETAIL, INK, OUTLINE } from './style';
+import { DETAIL, INK, OUTLINE, lineFor } from './style';
 
 // Small toolkit for authoring SVG artwork in code. Shapes are point lists
 // smoothed with Catmull-Rom splines; `cel()` renders a filled shape the way
@@ -210,7 +210,7 @@ export interface CelOpts {
 function isInk(color: string | undefined): boolean {
   if (!color) return true;
   const c = color.toLowerCase();
-  return c === INK || c === P.ink || c === '#191728';
+  return c === INK || c === P.ink || c === '#191728' || c === '#1d1b1e';
 }
 
 /**
@@ -229,7 +229,7 @@ export function inkWidth(w: number): number {
  * have no cel shading, shadow crescents or rim highlights.
  */
 export function cel(d: string, o: CelOpts): string {
-  const ink = isInk(o.ink) ? INK : o.ink!;
+  const ink = isInk(o.ink) ? lineFor(o.fill) : o.ink!;
   const sw = inkWidth(o.stroke ?? OUTLINE);
   let s = `<g${o.opacity !== undefined ? ` opacity="${o.opacity}"` : ''}>`;
   s += `<path d="${d}" fill="${o.fill}"/>`;

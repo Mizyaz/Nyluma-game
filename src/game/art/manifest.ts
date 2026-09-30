@@ -1,4 +1,5 @@
 import type { PartArt, RigDef } from './rigTypes';
+import { softPastelMarkup } from './palette';
 import {
   gortiParts,
   RIG_GORTI_CHILD,
@@ -18,7 +19,9 @@ let partsCache: PartArt[] | null = null;
 /** Every rasterized part/sprite of the game (characters, creatures, props). */
 export function allParts(): PartArt[] {
   if (partsCache) return partsCache;
-  partsCache = [...gortiParts(), ...formParts(), ...horseParts(), ...creatureParts(), ...propParts()];
+  // The characters in softer pastels than the scenery around them.
+  const soft = (parts: PartArt[]): PartArt[] => parts.map((p) => ({ ...p, body: softPastelMarkup(p.body) }));
+  partsCache = [...soft(gortiParts()), ...soft(formParts()), ...soft(horseParts()), ...creatureParts(), ...propParts()];
   const seen = new Set<string>();
   for (const p of partsCache) {
     if (seen.has(p.key)) throw new Error(`Duplicate art key ${p.key}`);

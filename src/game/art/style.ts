@@ -5,12 +5,28 @@ import { cel } from './svg';
 // no cel shading; a coloured-pencil grain inside every fill (added once at
 // rasterization, see TextureFactory). All new and restyled art uses these.
 
-/** Contour colour: near-black, a touch warm. */
-export const INK = '#1d1b1e';
+/**
+ * Line colour: a soft dark plum, not black (black contours read as cheap
+ * plastic). Filled shapes are outlined in a darker tone of their own
+ * colour instead (see `lineFor`); this is for lines on their own.
+ */
+export const INK = '#4f4557';
 /** Contour width of a part's outline, logical px (parts rasterize at 2×). */
-export const OUTLINE = 2.2;
+export const OUTLINE = 1.5;
 /** Width of inner detail lines (stitches, creases, labels). */
-export const DETAIL = 1.4;
+export const DETAIL = 1.0;
+/** What a shape's contour darkens toward. */
+const LINE_DARK = '#3b3245';
+
+/** A shape's contour: its own colour, darker (coloured line art). */
+export function lineFor(fill: string): string {
+  if (!/^#[0-9a-fA-F]{6}$/.test(fill)) return INK;
+  const a = parseInt(fill.slice(1), 16);
+  const b = parseInt(LINE_DARK.slice(1), 16);
+  const t = 0.58;
+  const ch = (sh: number): number => Math.round(((a >> sh) & 255) * (1 - t) + ((b >> sh) & 255) * t);
+  return `#${((ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).padStart(6, '0')}`;
+}
 
 /** Pastel colours sampled from the paintings. */
 export const PASTEL = {

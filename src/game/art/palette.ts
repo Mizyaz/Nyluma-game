@@ -4,7 +4,7 @@
 // is the pastel counterpart of what it used to be. "Dark"/"Light" variants
 // are now gentle steps used for details and patches, not for shading.
 export const P = {
-  ink: '#1d1b1e',
+  ink: '#4f4557',
   inkSoft: '#4a4549',
   soil: '#c9b596',
   soilDeep: '#b09c80',
@@ -150,4 +150,30 @@ export function pastel(color: string, deep = false): string {
 /** `pastel()` applied to every #rrggbb colour of an SVG fragment. */
 export function pastelMarkup(svg: string, deep = false): string {
   return svg.replace(/#[0-9a-fA-F]{6}\b/g, (c) => pastel(c, deep));
+}
+
+const softCache = new Map<string, string>();
+
+/**
+ * The characters' colours, softened toward pastel: lighter and a little
+ * less saturated. The darkest details stay dark enough to read.
+ */
+export function softPastel(color: string): string {
+  const key = color.toLowerCase();
+  const hit = softCache.get(key);
+  if (hit) return hit;
+  const [h, s, l] = toHsl(key);
+  const out = l < 0.16 ? key : fromHsl(h, s * 0.92, l + (0.93 - l) * 0.14);
+  softCache.set(key, out);
+  return out;
+}
+
+/**
+ * `softPastel()` applied to the fills of an SVG fragment (fills and
+ * gradient stops); the contours keep their depth so the figure still reads.
+ */
+export function softPastelMarkup(svg: string): string {
+  return svg
+    .replace(/(fill|stop-color)="(#[0-9a-fA-F]{6})"/g, (_m, attr: string, c: string) => `${attr}="${softPastel(c)}"`)
+    .replace(/stroke="(#[0-9a-fA-F]{6})"/g, (_m, c: string) => `stroke="${mix(c, '#3b3245', 0.38)}"`);
 }

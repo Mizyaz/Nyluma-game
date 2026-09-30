@@ -43,7 +43,7 @@ export function r01(w: WorldScene): RoomScript {
         fontSize: big ? '26px' : '19px',
         fontStyle: 'italic',
         color: '#dccdf0',
-        stroke: '#1d1b1e',
+        stroke: '#4f4557',
         strokeThickness: 3,
       })
       .setOrigin(0.5)
