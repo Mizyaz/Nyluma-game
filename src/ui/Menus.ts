@@ -18,6 +18,19 @@ export interface MenuActions {
 
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V'];
 
+/**
+ * Comic-cover lettering: every letter in its own box (so styles can set each
+ * one by hand), words kept whole; assistive tech reads the plain text.
+ */
+function comicTitle(text: string): HTMLElement {
+  const letters = h('span', { 'aria-hidden': 'true' });
+  text.split(' ').forEach((word, i) => {
+    if (i) letters.append(' ');
+    letters.append(h('span', { class: 'word' }, ...Array.from(word, (c) => h('span', { class: 'ch', text: c }))));
+  });
+  return h('h1', { class: 'title' }, h('span', { class: 'sr-only', text }), letters);
+}
+
 /** Semantic DOM menus with keyboard focus navigation and Escape = back. */
 export class Menus {
   private root: HTMLElement;
@@ -121,7 +134,7 @@ export class Menus {
       h(
         'header',
         { class: 'title-block' },
-        h('h1', { class: 'title', text: 'Kristaller Dünyası' }),
+        comicTitle('Kristaller Dünyası'),
         h('p', { class: 'subtitle', text: '14. Oda' }),
       ),
       menu,
@@ -246,7 +259,7 @@ export class Menus {
       const card = h(
         'button',
         { class: `mem-card ${have ? '' : 'locked'}`, type: 'button', 'aria-label': have ? m.title : 'Bulunmamış anı', disabled: !have },
-        have ? h('img', { src: memoryArtUrl(m.art), alt: '' }) : h('div', { style: 'aspect-ratio:16/10;display:grid;place-items:center;font-size:2em', text: '?' }),
+        have ? h('img', { src: memoryArtUrl(m.art), alt: '' }) : h('div', { class: 'blank', text: '?' }),
         h('div', { text: have ? m.title : '—' }),
       );
       if (have) {

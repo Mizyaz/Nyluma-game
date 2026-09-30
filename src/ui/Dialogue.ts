@@ -1,4 +1,5 @@
 import { app } from '../game/App';
+import { NAMES } from '../game/data/dialogue.tr';
 import { h } from './dom';
 
 export interface Line {
@@ -9,6 +10,12 @@ export interface Line {
 }
 
 const CPS: Record<string, number> = { slow: 24, normal: 45, fast: 95, instant: 1e9 };
+
+/** Speaker name → its key in NAMES (the name tag takes that speaker's pastel). */
+const WHO = new Map<string, string>(Object.entries(NAMES).map(([k, v]) => [v, k]));
+
+/** The speech balloon's tail (UI aims it at the speaker). */
+const TAIL = '<svg viewBox="0 0 30 26" preserveAspectRatio="none"><path d="M4 26.5C7 18 7.5 9 5 1c6 8 12 16 20 25.5"/></svg>';
 
 /** Bottom dialogue box with typewriter text; one to three short boxes per beat. */
 export class Dialogue {
@@ -36,6 +43,7 @@ export class Dialogue {
     this.el = h(
       'div',
       { class: 'dialogue hidden', role: 'dialog', 'aria-live': 'polite' },
+      h('span', { class: 'tail', 'aria-hidden': 'true', html: TAIL }),
       this.portraitEl,
       h('div', { class: 'body' }, this.nameEl, this.textEl),
       h('div', { class: 'next', html: '<span class="kbd-only">▾ Boşluk / E</span><span class="touch-only">▾ Dokun</span>' }),
@@ -108,6 +116,10 @@ export class Dialogue {
     this.nameEl.textContent = l.who ?? '';
     this.nameEl.classList.toggle('hidden', !l.who);
     this.textEl.classList.toggle('whisper', !!l.whisper);
+    // Balloon for speech (dashed when whispered), narration box without a speaker.
+    this.el.dataset.who = WHO.get(l.who ?? '') ?? '';
+    this.el.classList.toggle('narration', !l.who);
+    this.el.classList.toggle('whisper', !!l.whisper);
     this.full = l.text;
     this.shown = 0;
     this.textEl.textContent = '';

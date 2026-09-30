@@ -1,5 +1,8 @@
 import type * as Phaser from 'phaser';
 import { app } from '../game/App';
+import { VIEW_W } from '../game/constants';
+import { CAST_NAMES, type CastId } from '../game/cinematics/castNames';
+import { NAMES } from '../game/data/dialogue.tr';
 import type { Settings } from '../game/state/types';
 import { ColorStorm } from './ColorStorm';
 import { Dialogue } from './Dialogue';
@@ -23,12 +26,16 @@ export class UI {
   private loadingEl: HTMLElement | null = null;
   private game: Phaser.Game;
   private last = performance.now();
+  /** The speech balloon, and who its tail was last aimed at. */
+  private balloon: HTMLElement | null;
+  private aimed = '';
 
   constructor(game: Phaser.Game) {
     this.game = game;
     this.stage = document.getElementById('stage')!;
     this.hud = new Hud(this.stage);
     this.dialogue = new Dialogue(this.stage);
+    this.balloon = this.stage.querySelector<HTMLElement>('.dialogue');
     this.doc = new DocView(this.stage);
     this.ending = new EndingView(this.stage);
     this.menus = new Menus(this.stage);
@@ -82,10 +89,51 @@ export class UI {
     s.setProperty('--gw', `${r.width}px`);
     s.setProperty('--gh', `${r.height}px`);
     s.setProperty('--sw', `${box.width}px`);
+    s.setProperty('--sh', `${box.height}px`);
     // One UI scale from the viewport (1 at 1280×720), whatever the orientation.
     const scale = Math.min(1.4, Math.max(0.5, Math.min(W / 1280, H / 720)));
     document.documentElement.style.setProperty('--s', scale.toFixed(3));
     this.touch.layout();
+    this.aimTail(true);
+  }
+
+  /**
+   * Points the speech balloon's tail at whoever speaks: their window in a
+   * face scene, Gorti himself in the world, else the balloon's left side.
+   * Presentation only: it reads the scenes and never changes them.
+   */
+  private aimTail(force = false): void {
+    const who = this.dialogue.speaker;
+    const at = who ? this.speakerX(who) : null;
+    const key = `${who}|${at ?? ''}`;
+    if (!force && key === this.aimed) return;
+    const el = this.balloon;
+    const box = el && who ? el.getBoundingClientRect() : null;
+    // Closed or not laid out yet: try again next frame.
+    this.aimed = box && !box.width ? '' : key;
+    if (!el || !box || !box.width) return;
+    const view = this.game.canvas?.getBoundingClientRect();
+    const x = at !== null && view ? view.left + at * view.width - box.left : box.width * 0.16;
+    const edge = Math.min(box.width / 2, 42);
+    const tx = Math.max(edge, Math.min(box.width - edge, x));
+    el.style.setProperty('--tail-x', `${Math.round(tx)}px`);
+    el.dataset.tail = tx > box.width * 0.55 ? 'r' : 'l';
+  }
+
+  /** Where the speaker is across the game view (0…1, in 1% steps), when known. */
+  private speakerX(who: string): number | null {
+    const scenes = this.game.scene;
+    if (scenes.isActive('cinema')) {
+      const cinema = scenes.getScene('cinema') as unknown as { windows?: readonly { id: CastId; win: { cx: number } }[] };
+      const slot = cinema.windows?.find((s) => CAST_NAMES[s.id] === who);
+      if (slot) return Math.round((slot.win.cx / VIEW_W) * 100) / 100;
+    }
+    if (who === NAMES.gorti && scenes.isActive('world')) {
+      const world = scenes.getScene('world') as unknown as { player?: { x: number }; cameras?: { main?: { worldView: { x: number; width: number } } } };
+      const view = world.cameras?.main?.worldView;
+      if (world.player && view && view.width > 0) return Math.round(((world.player.x - view.x) / view.width) * 100) / 100;
+    }
+    return null;
   }
 
   applySettings(s: Settings): void {
@@ -99,6 +147,7 @@ export class UI {
     this.last = now;
     this.hud.tick(dt);
     this.dialogue.tick(dt);
+    this.aimTail();
     const ctx = app.input.context;
     this.touch.setGameplay(ctx === 'gameplay' || ctx === 'cutscene');
   }

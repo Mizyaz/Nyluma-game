@@ -1,20 +1,72 @@
+/* ============================================================ tokens */
+
+/* The interface is paper and pencil, like the paintings: cream sheets with
+   a coloured-pencil grain, thin soft plum-grey contours (never heavy black)
+   and the paintings' pastels. The comic-book language: speech balloons,
+   butter-yellow narration boxes, caption tags, paper tabs and tags. */
 :root {
-  --ink: #191728;
-  --ink-2: #252238;
-  --ink-3: #322e48;
-  --ivory: #e8dcca;
-  --ivory-dim: #b9ae9d;
-  --violet: #9459d8;
-  --vein: #d7b3ff;
-  --teal: #53bfaf;
-  --blue: #548cd6;
-  --orange: #de9960;
-  --paper: #d8ceba;
-  --paper-dark: #b8ab92;
+  /* Pastels sampled from the paintings (mirrors PASTEL in src/game/art/style.ts). */
+  --pastel-periwinkle: #97a3dc;
+  --pastel-periwinkle-deep: #7d8bcc;
+  --pastel-sand: #d8c09e;
+  --pastel-sand-light: #e8d7b8;
+  --pastel-cream: #f7eddc;
+  --pastel-blush: #f7dbf2;
+  --pastel-pink: #f0b2cf;
+  --pastel-pink-deep: #dd8db3;
+  --pastel-lilac: #c3a3dc;
+  --pastel-lilac-deep: #a07fc4;
+  --pastel-lavender: #dccdf0;
+  --pastel-mint: #b6dcc6;
+  --pastel-mint-deep: #8fc4ad;
+  --pastel-sage: #b2c2b3;
+  --pastel-teal: #8fbfb4;
+  --pastel-aqua: #bfdcd8;
+  --pastel-lime: #c3dc8c;
+  --pastel-leaf: #9cc47a;
+  --pastel-butter: #f3e08e;
+  --pastel-apricot: #f4b27c;
+  --pastel-coral: #e98a7a;
+  --pastel-stone: #c9c7c4;
+  --pastel-stone-dark: #8f8b8b;
+  --pastel-slate: #7c8794;
+  --pastel-night: #3d5248;
+  --pastel-night-deep: #2f4038;
+  --pastel-bark: #a58a78;
+  --pastel-bark-deep: #7f6657;
+
+  /* Paper. */
+  --page: #ece3d3; /* the comic page around the game view */
+  --paper: #fbf6ea; /* sheets, balloons, tabs */
+  --paper-tone: #f5f0e6; /* paper + grain on average: flat fills beside grained paper */
+  --cream: var(--pastel-cream);
+  --narr: #f7e9a8; /* narration boxes: pale butter */
+  --wall: #e6e1ee; /* the gallery wall behind a painting */
+
+  /* Ink. Text contrast on paper, cream and butter: ink ≥ 11:1, soft ≥ 5.9:1;
+     ink stays ≥ 5.9:1 on every pastel fill used behind text. */
+  --ink: #2e2734;
+  --ink-soft: #5d5364;
+  --ink-faint: #857b8c; /* disabled only */
+  --line: #4a4152; /* contours: soft plum-grey */
+  --lw: 1.5px;
+  --focus: #5b3a8c; /* focus ring: ≥ 3.5:1 on paper and on the pastel fills */
+  --shade: rgba(74, 65, 82, 0.26); /* the soft offset shadow of a sheet */
   --stamp: #944958;
+
+  /* Coloured-pencil grain: fine stretched noise (inline SVG) plus a faint
+     diagonal hatch. Layered over any fill: `background: var(--grain), X`. */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75 .3' numOctaves='3' seed='5' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .29 0 0 0 0 .25 0 0 0 0 .32 .6 0 0 0 -.26'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23g)'/%3E%3C/svg%3E");
+  --pencil: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2 .35' numOctaves='2' seed='9' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .3 0 0 0 0 .26 0 0 0 0 .33 .8 0 0 0 -.34'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23g)'/%3E%3C/svg%3E");
+  --hatch: repeating-linear-gradient(-58deg, rgba(74, 65, 82, 0.035) 0 1px, transparent 1px 5px);
+  /* Comic halftone dots for dimmed backgrounds. */
+  --halftone: radial-gradient(rgba(74, 65, 82, 0.15) 0.9px, transparent 1.5px);
+
   --s: 1;
   --serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, 'Times New Roman', serif;
   --sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif;
+  /* Heavy lettering for titles and tags: system fonts only. */
+  --display: 'Avenir Next Condensed', 'Franklin Gothic Heavy', 'Arial Black', 'Segoe UI Black', 'Roboto Condensed', 'Helvetica Neue', system-ui, sans-serif;
   --safe-l: env(safe-area-inset-left, 0px);
   --safe-r: env(safe-area-inset-right, 0px);
   --safe-b: env(safe-area-inset-bottom, 0px);
@@ -33,8 +85,8 @@ body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #0f0d18;
-  color: var(--ivory);
+  background: var(--grain), var(--hatch), var(--page);
+  color: var(--ink);
   font-family: var(--sans);
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
@@ -61,9 +113,11 @@ body {
   height: calc(100vw * 9 / 16);
 }
 
+/* The game view is a comic panel on the page: a thin ink frame. */
 #game canvas {
   display: block;
   outline: none;
+  box-shadow: 0 0 0 var(--lw) var(--line), 3px 5px 0 var(--lw) var(--shade);
 }
 
 /* The stage overlay tracks the letterboxed canvas rectangle. */
@@ -97,8 +151,29 @@ button {
   color: inherit;
 }
 
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+a {
+  color: var(--focus);
+}
+
 .hidden {
   display: none !important;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 .noscript {
@@ -120,32 +195,102 @@ button {
   overflow-y: auto;
   overscroll-behavior: contain;
   touch-action: pan-y;
-  padding: calc(12px + var(--safe-t)) calc(16px + var(--safe-r)) calc(12px + var(--safe-b)) calc(16px + var(--safe-l));
-  background: radial-gradient(ellipse at 50% 60%, rgba(25, 23, 40, 0.1), rgba(15, 13, 24, 0.75));
+  padding: calc(14px + var(--safe-t)) calc(16px + var(--safe-r)) calc(12px + var(--safe-b)) calc(16px + var(--safe-l));
+  background: radial-gradient(ellipse at 50% 52%, rgba(251, 246, 234, 0.3) 20%, rgba(251, 246, 234, 0) 55%, rgba(74, 65, 82, 0.2));
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
 }
 
+/* Behind panels the picture dims softly under a halftone screen. */
 .screen.dim {
-  background: rgba(15, 13, 24, 0.78);
-  backdrop-filter: blur(2px);
+  background: var(--halftone) 0 0 / 6px 6px, rgba(58, 49, 66, 0.42);
+  backdrop-filter: blur(1.5px);
 }
 
+/* Comic-cover lettering: heavy system type, a pastel fill with a soft ink
+   outline and shadow, hand-set letters, the whole title tilted. */
 .title {
-  font-family: var(--serif);
-  font-size: max(26px, calc(var(--s) * 56px));
-  line-height: 1.15;
-  letter-spacing: 0.04em;
+  --o: max(1.5px, calc(var(--s) * 2.2px));
   margin: 0;
-  color: var(--ivory);
-  text-shadow: 0 0 calc(var(--s) * 24px) rgba(148, 89, 216, 0.55), 0 calc(var(--s) * 3px) 0 var(--ink);
+  font-family: var(--display);
+  font-weight: 900;
+  font-synthesis: none;
+  font-size: max(28px, calc(var(--s) * 60px));
+  line-height: 1.12;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
   text-align: center;
+  color: var(--pastel-butter);
+  rotate: -2.5deg;
 }
 
+.title .sr-only {
+  text-transform: none;
+}
+
+.title .word {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.title .ch {
+  display: inline-block;
+  color: var(--c, var(--pastel-butter));
+  rotate: var(--r, 0deg);
+  translate: 0 var(--y, 0em);
+  text-shadow:
+    var(--o) 0 0 var(--line),
+    calc(var(--o) * -1) 0 0 var(--line),
+    0 var(--o) 0 var(--line),
+    0 calc(var(--o) * -1) 0 var(--line),
+    calc(var(--o) * 0.7) calc(var(--o) * 0.7) 0 var(--line),
+    calc(var(--o) * -0.7) calc(var(--o) * 0.7) 0 var(--line),
+    calc(var(--o) * 0.7) calc(var(--o) * -0.7) 0 var(--line),
+    calc(var(--o) * -0.7) calc(var(--o) * -0.7) 0 var(--line),
+    calc(var(--o) * 2.2) calc(var(--o) * 2.8) 0 rgba(74, 65, 82, 0.38);
+}
+
+/* One pastel per word, and every letter set by hand. */
+.title .word:nth-child(3n + 1) {
+  --c: var(--pastel-pink);
+}
+.title .word:nth-child(3n + 2) {
+  --c: var(--pastel-butter);
+}
+.title .word:nth-child(3n + 3) {
+  --c: var(--pastel-mint);
+}
+.title .ch:nth-child(4n + 1) {
+  --r: -3deg;
+  --y: 0.02em;
+}
+.title .ch:nth-child(4n + 2) {
+  --r: 2.5deg;
+  --y: -0.035em;
+}
+.title .ch:nth-child(4n + 3) {
+  --r: -1deg;
+  --y: 0.045em;
+}
+.title .ch:nth-child(4n + 4) {
+  --r: 4deg;
+  --y: -0.01em;
+}
+
+/* A narration box under the title (and "Son" at the end). */
 .subtitle {
   font-family: var(--serif);
   font-style: italic;
-  font-size: max(14px, calc(var(--s) * 22px));
-  color: var(--vein);
-  margin: 0.2em 0 1em;
+  font-size: max(14px, calc(var(--s) * 20px));
+  line-height: 1.3;
+  color: var(--ink);
+  width: fit-content;
+  margin: 0.55em auto 1em;
+  padding: 0.12em 0.75em;
+  background: var(--grain), var(--narr);
+  border: var(--lw) solid var(--line);
+  box-shadow: 2px 3px 0 var(--shade);
+  rotate: 1.5deg;
   text-align: center;
 }
 
@@ -156,60 +301,83 @@ button {
   width: min(100%, max(220px, calc(var(--s) * 340px)));
 }
 
+/* Paper tabs: a pastel edge at rest, filled with the pastel on hover/focus. */
 .btn {
+  --tab: var(--pastel-periwinkle);
   position: relative;
   appearance: none;
-  border: max(2px, calc(var(--s) * 3px)) solid var(--ink);
-  background: var(--ink-2);
-  color: var(--ivory);
-  font-family: var(--serif);
-  font-size: max(14px, calc(var(--s) * 19px));
-  padding: 0.34em 1em;
+  border: var(--lw) solid var(--line);
+  background: linear-gradient(90deg, var(--tab) 0 0.3em, transparent 0.3em), var(--grain), var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: max(14px, calc(var(--s) * 18px));
+  line-height: 1.3;
+  padding: 0.36em 1em 0.36em 1.05em;
   min-height: 42px;
-  border-radius: 14px 6px 12px 7px / 8px 13px 6px 12px;
-  box-shadow: 0 calc(var(--s) * 4px) 0 var(--ink), inset 0 0 0 1px rgba(215, 179, 255, 0.18);
+  border-radius: 6px 12px 7px 11px / 11px 7px 12px 6px;
+  box-shadow: 2px 3px 0 var(--shade);
   cursor: pointer;
   text-align: left;
-  transition: transform 0.08s ease, background 0.12s ease;
+  transition: padding 0.12s ease, transform 0.08s ease, box-shadow 0.08s ease;
+}
+
+.btn:nth-child(6n + 2) {
+  --tab: var(--pastel-mint);
+}
+.btn:nth-child(6n + 3) {
+  --tab: var(--pastel-pink);
+}
+.btn:nth-child(6n + 4) {
+  --tab: var(--pastel-butter);
+}
+.btn:nth-child(6n + 5) {
+  --tab: var(--pastel-lilac);
+}
+.btn:nth-child(6n + 6) {
+  --tab: var(--pastel-apricot);
 }
 
 .btn::before {
   content: '';
   position: absolute;
-  left: 0.45em;
+  left: 0.55em;
   top: 50%;
-  width: 0.38em;
-  height: 0.38em;
+  width: 0.4em;
+  height: 0.4em;
   transform: translateY(-50%) rotate(45deg) scale(0);
-  background: var(--vein);
-  border: 2px solid var(--ink);
+  background: var(--paper);
+  border: var(--lw) solid var(--line);
   transition: transform 0.12s ease;
 }
 
-.btn:hover,
+.btn:not([disabled]):hover,
 .btn:focus-visible {
-  background: var(--ink-3);
-  outline: none;
-  padding-left: 1.5em;
+  background: var(--pencil), var(--tab);
+  padding-left: 1.55em;
 }
 
-.btn:hover::before,
+.btn:not([disabled]):hover::before,
 .btn:focus-visible::before {
   transform: translateY(-50%) rotate(45deg) scale(1);
 }
 
 .btn:focus-visible {
-  box-shadow: 0 calc(var(--s) * 4px) 0 var(--ink), 0 0 0 3px var(--violet);
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
 }
 
-.btn:active {
-  transform: translateY(2px);
+.btn:not([disabled]):active {
+  transform: translate(1px, 2px);
+  box-shadow: 1px 1px 0 var(--shade);
 }
 
 .btn[disabled] {
-  opacity: 0.42;
   cursor: default;
-  padding-left: 1.1em;
+  color: var(--ink-faint);
+  background: var(--grain), var(--cream);
+  border-style: dashed;
+  box-shadow: none;
 }
 
 .btn[disabled]::before {
@@ -218,30 +386,80 @@ button {
 
 .btn.small {
   font-size: max(13px, calc(var(--s) * 16px));
-  padding: 0.3em 0.8em;
+  padding: 0.3em 0.85em 0.3em 0.95em;
   min-height: 40px;
+}
+
+.btn.small:not([disabled]):hover,
+.btn.small:focus-visible {
+  padding-left: 1.45em;
 }
 
 .btn.center {
   text-align: center;
 }
 
+.btn.center:not([disabled]):hover,
+.btn.center:focus-visible {
+  padding-left: 1.45em;
+  padding-right: 0.45em;
+}
+
+/* A sheet taped over the picture. */
 .panel {
   position: relative;
-  background: rgba(25, 23, 40, 0.95);
-  border: max(2px, calc(var(--s) * 3px)) solid var(--ink);
-  box-shadow: 0 0 0 1px rgba(215, 179, 255, 0.25), 0 calc(var(--s) * 8px) 0 rgba(10, 9, 16, 0.6);
-  border-radius: 18px 8px 16px 10px / 10px 16px 8px 18px;
+  background: var(--grain), var(--hatch), var(--paper);
+  color: var(--ink);
+  border: var(--lw) solid var(--line);
+  border-radius: 12px 18px 10px 16px / 16px 10px 18px 12px;
+  box-shadow: 5px 7px 0 var(--shade);
   padding: max(12px, calc(var(--s) * 22px));
   max-width: 100%;
 }
 
+.panel::before {
+  content: '';
+  position: absolute;
+  top: calc(max(7px, calc(var(--s) * 11px)) * -1);
+  left: 50%;
+  width: max(62px, calc(var(--s) * 104px));
+  height: max(14px, calc(var(--s) * 22px));
+  translate: -50% 0;
+  rotate: -2.5deg;
+  background: var(--grain), rgba(195, 163, 220, 0.55);
+  /* torn ends */
+  clip-path: polygon(0 10%, 3% 0, 97% 6%, 100% 0, 98% 30%, 100% 55%, 97% 78%, 100% 100%, 3% 94%, 0 100%, 2% 70%, 0 45%, 3% 25%);
+  pointer-events: none;
+}
+
+/* Headings in heavy lettering with a pastel marker stroke. */
 .panel h2 {
-  font-family: var(--serif);
-  font-weight: normal;
-  font-size: max(18px, calc(var(--s) * 28px));
-  margin: 0 0 0.6em;
-  color: var(--ivory);
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 0.7em;
+  padding: 0 0.2em;
+  font-family: var(--display);
+  font-weight: 900;
+  font-synthesis: none;
+  font-size: max(16px, calc(var(--s) * 24px));
+  line-height: 1.25;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink);
+  --marker: var(--pastel-butter);
+  rotate: -1deg;
+}
+
+/* A pastel marker stroke under headings: a thick underline, painted under
+   the letters, so it follows every line when a heading wraps. */
+.panel h2,
+.doc h4,
+.credits h3 {
+  text-decoration-line: underline;
+  text-decoration-color: var(--marker);
+  text-decoration-thickness: 0.42em;
+  text-underline-offset: -0.26em;
+  text-decoration-skip-ink: none;
 }
 
 .panel p {
@@ -261,8 +479,15 @@ button {
   bottom: max(10px, calc(var(--s) * 18px));
   left: 50%;
   transform: translateX(-50%);
-  font-size: max(11px, calc(var(--s) * 14px));
-  color: var(--ivory-dim);
+  margin: 0;
+  max-width: calc(100% - 24px);
+  padding: 0.15em 0.7em;
+  font-size: max(12px, calc(var(--s) * 14px));
+  color: var(--ink);
+  background: var(--grain), var(--paper);
+  border: var(--lw) solid var(--line);
+  border-radius: 3px;
+  box-shadow: 2px 3px 0 var(--shade);
   font-family: var(--serif);
   font-style: italic;
   text-align: center;
@@ -281,39 +506,49 @@ button {
 
 .settings label {
   font-family: var(--serif);
+  color: var(--ink);
 }
 
 .settings input[type='range'] {
   width: 100%;
-  accent-color: var(--violet);
+  accent-color: #6570b8;
   min-height: 32px;
 }
 
 .seg {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3em;
+  gap: 0.35em;
 }
 
 .seg button {
   appearance: none;
-  border: 2px solid var(--ink);
-  background: var(--ink-2);
-  padding: 0.25em 0.7em;
+  border: var(--lw) solid var(--line);
+  background: var(--grain), var(--paper);
+  color: var(--ink);
+  padding: 0.25em 0.75em;
   min-height: 38px;
-  border-radius: 8px;
+  border-radius: 5px 9px 6px 8px / 8px 6px 9px 5px;
+  box-shadow: 1px 2px 0 var(--shade);
   cursor: pointer;
   font-family: var(--sans);
+  font-weight: 500;
   font-size: max(12px, calc(var(--s) * 14px));
 }
 
+.seg button:hover {
+  background: var(--pencil), var(--pastel-lavender);
+}
+
 .seg button[aria-pressed='true'] {
-  background: var(--violet);
-  color: #fff;
+  background: var(--pencil), var(--pastel-periwinkle);
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px var(--line);
 }
 
 .seg button:focus-visible {
-  outline: 3px solid var(--vein);
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
 }
 
 /* chapters */
@@ -325,70 +560,143 @@ button {
 
 .chapters .btn small {
   display: block;
-  font-size: 0.62em;
-  color: var(--ivory-dim);
+  font-size: 0.66em;
+  font-weight: 500;
+  color: var(--ink-soft);
   font-family: var(--sans);
+}
+
+.chapters .btn:not([disabled]):hover small,
+.chapters .btn:focus-visible small {
+  color: var(--ink);
+}
+
+.chapters .btn[disabled] small {
+  color: var(--ink-faint);
 }
 
 /* every scene (while everything is open) */
 .scenes {
   display: grid;
-  gap: 0.35em;
+  gap: 0.4em;
   width: min(calc(var(--sw, 100vw) - 72px), max(280px, calc(var(--s) * 640px)));
   max-height: min(62vh, calc(var(--sh, 100vh) - 190px));
   overflow-y: auto;
-  padding-right: 6px;
+  padding: 2px 8px 6px 2px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
 }
 
+/* Chapter headings: little narration boxes. */
 .scenes h3 {
-  margin: 0.7em 0 0.1em;
-  font-family: var(--serif);
-  font-weight: normal;
-  color: var(--vein);
-  font-size: max(14px, calc(var(--s) * 18px));
+  justify-self: start;
+  margin: 0.8em 0 0.15em;
+  padding: 0.1em 0.6em;
+  font-family: var(--display);
+  font-weight: 900;
+  font-synthesis: none;
+  font-size: max(12px, calc(var(--s) * 14px));
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--grain), var(--narr);
+  border: var(--lw) solid var(--line);
+  box-shadow: 2px 2px 0 var(--shade);
+  rotate: -1deg;
+}
+
+.scenes h3:first-child {
+  margin-top: 0.2em;
 }
 
 .scenes .btn.scene {
   text-align: left;
   justify-content: flex-start;
+  padding-left: 1.1em;
+  font-weight: 500;
+}
+
+.scenes .btn.scene:not([disabled]):hover,
+.scenes .btn.scene:focus-visible {
   padding-left: 1.7em;
 }
 
-/* journal */
+/* journal: small pasted-in cards */
 .journal {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(clamp(84px, 20vmin, 190px), 1fr));
-  gap: max(8px, calc(var(--s) * 12px));
+  gap: max(10px, calc(var(--s) * 14px));
   width: min(calc(var(--sw, 100vw) - 72px), max(300px, calc(var(--s) * 1000px)));
+  padding: 4px;
 }
 
 .mem-card {
   appearance: none;
-  border: 3px solid var(--ink);
-  background: var(--ink-2);
-  border-radius: 12px 6px 12px 6px;
-  padding: 0.35em;
+  border: var(--lw) solid var(--line);
+  background: var(--grain), var(--paper);
+  color: var(--ink);
+  border-radius: 3px;
+  padding: 0.35em 0.35em 0.45em;
+  box-shadow: 2px 3px 0 var(--shade);
   cursor: pointer;
   text-align: center;
   font-family: var(--serif);
   font-size: max(11px, calc(var(--s) * 14px));
+  line-height: 1.25;
   min-height: 44px;
+  rotate: -1deg;
+  transition: rotate 0.12s ease, translate 0.12s ease;
+}
+
+.mem-card:nth-child(even) {
+  rotate: 1.2deg;
+}
+
+.mem-card:nth-child(3n) {
+  rotate: -0.4deg;
 }
 
 .mem-card img {
   width: 100%;
   display: block;
-  border-radius: 6px;
-  background: #2a2640;
+  margin-bottom: 0.3em;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--cream);
+}
+
+/* A memory not found yet: an empty dashed frame. */
+.mem-card .blank {
+  aspect-ratio: 16 / 10;
+  display: grid;
+  place-items: center;
+  margin-bottom: 0.3em;
+  border: var(--lw) dashed var(--ink-faint);
+  border-radius: 2px;
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: 2em;
+  color: var(--ink-faint);
+}
+
+.mem-card:not([disabled]):hover,
+.mem-card:focus-visible {
+  background: var(--pencil), var(--pastel-butter);
+  rotate: 0deg;
+  translate: 0 -2px;
 }
 
 .mem-card.locked {
   cursor: default;
-  opacity: 0.55;
+  color: var(--ink-faint);
+  background: var(--grain), var(--cream);
+  border-style: dashed;
+  box-shadow: none;
 }
 
 .mem-card:focus-visible {
-  outline: 3px solid var(--vein);
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
 }
 
 .mem-view {
@@ -401,8 +709,11 @@ button {
 
 .mem-view img {
   width: 100%;
-  border: 3px solid var(--ink);
-  border-radius: 10px;
+  border: var(--lw) solid var(--line);
+  border-radius: 3px;
+  box-shadow: 3px 4px 0 var(--shade);
+  background: var(--cream);
+  rotate: -0.8deg;
 }
 
 .mem-view p {
@@ -414,6 +725,7 @@ button {
    below it, so the picture's edge never runs through a button. */
 #app.portrait .title-screen {
   isolation: isolate;
+  background: none;
 }
 
 #app.portrait .title-screen::before,
@@ -424,18 +736,21 @@ button {
   right: 0;
   z-index: -1;
   pointer-events: none;
+  background: var(--grain), var(--hatch), var(--page);
 }
 
 #app.portrait .title-screen::before {
-  top: calc(var(--gy) - 1px);
+  top: calc(var(--gy) - 3px);
   height: calc(var(--gh) * 0.22);
-  background: linear-gradient(to bottom, #0f0d18, rgba(15, 13, 24, 0));
+  -webkit-mask-image: linear-gradient(to bottom, #000 3px, transparent);
+  mask-image: linear-gradient(to bottom, #000 3px, transparent);
 }
 
 #app.portrait .title-screen::after {
   top: calc(var(--gy) + var(--gh) * 0.6);
-  height: calc(var(--gh) * 0.4 + 1px);
-  background: linear-gradient(to bottom, rgba(15, 13, 24, 0), #0f0d18);
+  height: calc(var(--gh) * 0.4 + 9px);
+  -webkit-mask-image: linear-gradient(to top, #000 9px, transparent);
+  mask-image: linear-gradient(to top, #000 9px, transparent);
 }
 
 #app.portrait.roomy .title-screen {
@@ -468,7 +783,7 @@ button {
   .menu {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    width: min(100%, max(300px, calc(var(--s) * 560px)));
+    width: min(100%, max(400px, calc(var(--s) * 640px)));
   }
   .menu > p {
     grid-column: 1 / -1;
@@ -513,24 +828,40 @@ button {
   appearance: none;
   width: max(40px, calc(var(--s) * 46px));
   height: max(40px, calc(var(--s) * 46px));
-  border: 3px solid var(--ink);
-  background: rgba(37, 34, 56, 0.9);
-  border-radius: 14px 7px 12px 8px;
+  border: var(--lw) solid var(--line);
+  background: var(--grain), var(--paper);
+  border-radius: 9px 14px 10px 13px / 13px 10px 14px 9px;
+  box-shadow: 2px 3px 0 var(--shade);
   cursor: pointer;
   display: grid;
   place-items: center;
   padding: 0;
   font-size: max(15px, calc(var(--s) * 19px));
-  color: var(--ivory);
+  color: var(--ink);
+}
+
+.icon-btn:hover,
+.icon-btn:focus-visible {
+  background: var(--pencil), var(--pastel-lavender);
+}
+
+.icon-btn[aria-pressed='true'] {
+  background: var(--pencil), var(--pastel-periwinkle);
+}
+
+.icon-btn:active {
+  translate: 1px 2px;
+  box-shadow: 1px 1px 0 var(--shade);
 }
 
 .icon-btn:focus-visible {
-  outline: 3px solid var(--vein);
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
 }
 
 .icon-btn svg {
-  width: 60%;
-  height: 60%;
+  width: 56%;
+  height: 56%;
 }
 
 /* Toast, prompts and subtitles share one column. Landscape: at the bottom
@@ -580,11 +911,11 @@ button {
 @keyframes hud-in {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    translate: 0 4px;
   }
   to {
     opacity: 1;
-    transform: none;
+    translate: 0 0;
   }
 }
 
@@ -601,12 +932,22 @@ button {
   display: none;
 }
 
+/* "E İncele": a paper chip with a key cap. */
 .prompt span {
-  background: rgba(25, 23, 40, 0.88);
-  border: 2px solid var(--ink);
-  border-radius: 10px 5px 10px 5px;
-  padding: 0.25em 0.7em;
+  display: inline-flex;
+  align-items: center;
+  background: var(--grain), var(--paper);
+  color: var(--ink);
+  font-weight: 600;
+  border: var(--lw) solid var(--line);
+  border-radius: 7px 11px 8px 10px / 10px 8px 11px 7px;
+  box-shadow: 2px 3px 0 var(--shade);
+  padding: 0.22em 0.75em 0.22em 0.35em;
   white-space: nowrap;
+}
+
+.touch-ui .prompt span {
+  padding-left: 0.75em;
 }
 
 .key {
@@ -614,28 +955,32 @@ button {
   min-width: 1.6em;
   text-align: center;
   padding: 0 0.3em;
-  margin-right: 0.35em;
-  border: 2px solid var(--ivory-dim);
+  margin-right: 0.45em;
+  background: var(--pastel-mint);
+  border: var(--lw) solid var(--line);
   border-bottom-width: 3px;
   border-radius: 5px;
   font-family: var(--sans);
-  font-weight: 600;
+  font-weight: 700;
   font-size: 0.85em;
-  color: var(--ivory);
+  line-height: 1.35;
+  color: var(--ink);
 }
 
+/* Subtitles: comic narration boxes. */
 .caption {
   max-width: 100%;
-  padding: 0.2em 0.75em;
-  border-radius: 8px;
-  background: rgba(15, 13, 24, 0.62);
+  padding: 0.3em 0.85em;
+  border: var(--lw) solid var(--line);
+  border-radius: 1px;
+  background: var(--grain), var(--narr);
+  box-shadow: 3px 4px 0 var(--shade);
   text-align: center;
   font-family: var(--serif);
   font-style: italic;
   font-size: max(13px, calc(var(--s) * 19px));
   line-height: 1.4;
-  color: var(--ivory);
-  text-shadow: 0 1px 0 var(--ink), 0 0 8px rgba(25, 23, 40, 0.9);
+  color: var(--ink);
   pointer-events: none;
 }
 
@@ -647,17 +992,22 @@ button {
   animation: hud-in 0.5s ease;
 }
 
+/* Chapter title over the game view: a caption tag and lettering. */
 .area-title {
   position: absolute;
   left: calc(var(--gx) + var(--gw) / 2);
   top: calc(var(--gy) + var(--gh) * 0.4);
   transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35em;
+  width: max-content;
+  max-width: calc(var(--gw) - 24px);
   text-align: center;
-  font-family: var(--serif);
   pointer-events: none;
   opacity: 0;
   transition: opacity 1s ease;
-  text-shadow: 0 3px 0 var(--ink), 0 0 18px rgba(25, 23, 40, 0.9);
 }
 
 .area-title.show {
@@ -666,26 +1016,80 @@ button {
 
 .area-title small {
   display: block;
-  font-size: max(12px, calc(var(--s) * 16px));
-  letter-spacing: 0.3em;
-  color: var(--vein);
+  padding: 0.12em 0.7em;
+  font-family: var(--display);
+  font-weight: 900;
+  font-synthesis: none;
+  font-size: max(11px, calc(var(--s) * 14px));
+  letter-spacing: 0.24em;
+  color: var(--ink);
+  background: var(--grain), var(--narr);
+  border: var(--lw) solid var(--line);
+  box-shadow: 2px 3px 0 var(--shade);
+  rotate: -1.5deg;
 }
 
 .area-title span {
-  font-size: max(22px, calc(var(--s) * 40px));
+  --o: max(1.2px, calc(var(--s) * 1.8px));
+  font-family: var(--display);
+  font-weight: 900;
+  font-synthesis: none;
+  font-size: max(22px, calc(var(--s) * 42px));
+  line-height: 1.1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--paper);
+  rotate: -1.5deg;
+  text-shadow:
+    var(--o) 0 0 var(--line),
+    calc(var(--o) * -1) 0 0 var(--line),
+    0 var(--o) 0 var(--line),
+    0 calc(var(--o) * -1) 0 var(--line),
+    calc(var(--o) * 0.7) calc(var(--o) * 0.7) 0 var(--line),
+    calc(var(--o) * -0.7) calc(var(--o) * 0.7) 0 var(--line),
+    calc(var(--o) * 0.7) calc(var(--o) * -0.7) 0 var(--line),
+    calc(var(--o) * -0.7) calc(var(--o) * -0.7) 0 var(--line),
+    calc(var(--o) * 2) calc(var(--o) * 2.6) 0 rgba(74, 65, 82, 0.38);
 }
 
+/* Toasts: little luggage tags. The contour and the paper are two clipped
+   layers behind the text (Hud sets the text with textContent). */
 .toast {
-  background: rgba(25, 23, 40, 0.94);
-  border: 3px solid var(--ink);
-  border-left: 6px solid var(--violet);
-  border-radius: 10px 5px 10px 5px;
-  padding: 0.4em 0.85em;
-  font-family: var(--serif);
+  --notch: 1.05em;
+  position: relative;
+  isolation: isolate;
+  padding: 0.42em 0.95em 0.42em 1.95em;
+  font-family: var(--sans);
+  font-weight: 500;
   font-size: max(12px, calc(var(--s) * 15px));
   line-height: 1.35;
+  color: var(--ink);
   max-width: min(100%, calc(var(--s) * 620px));
+  rotate: -1deg;
+  filter: drop-shadow(2px 3px 0 var(--shade));
   pointer-events: none;
+}
+
+.toast::before,
+.toast::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+}
+
+.toast::before {
+  inset: 0;
+  background: var(--line);
+  clip-path: polygon(var(--notch) 0, 100% 0, 100% 100%, var(--notch) 100%, 0 50%);
+}
+
+.toast::after {
+  inset: var(--lw);
+  background:
+    radial-gradient(circle at 0.95em 50%, var(--pastel-sand-light) 0 0.2em, var(--line) 0.2em calc(0.2em + 1.5px), transparent calc(0.2em + 2px)),
+    var(--grain),
+    var(--pastel-cream);
+  clip-path: polygon(calc(var(--notch) - 0.5px) 0, 100% 0, 100% 100%, calc(var(--notch) - 0.5px) 100%, 0 50%);
 }
 
 .toast:not(.show) {
@@ -706,11 +1110,14 @@ button {
   display: flex;
   align-items: center;
   gap: 0.5em;
-  padding: 0.2em 0.7em;
+  padding: 0.22em 0.8em 0.22em 0.3em;
+  border: var(--lw) solid var(--line);
   border-radius: 999px;
-  background: rgba(15, 13, 24, 0.6);
+  background: var(--grain), var(--paper);
+  box-shadow: 2px 3px 0 var(--shade);
   font-size: max(11px, calc(var(--s) * 14px));
-  color: var(--ivory-dim);
+  font-weight: 600;
+  color: var(--ink);
   white-space: nowrap;
 }
 
@@ -718,7 +1125,8 @@ button {
   width: 1.4em;
   height: 1.4em;
   border-radius: 50%;
-  background: conic-gradient(var(--vein) calc(var(--p, 0) * 1turn), rgba(255, 255, 255, 0.12) 0);
+  border: var(--lw) solid var(--line);
+  background: conic-gradient(var(--pastel-periwinkle-deep) calc(var(--p, 0) * 1turn), var(--pastel-cream) 0);
 }
 
 .skip-btn {
@@ -728,31 +1136,126 @@ button {
 
 /* ------------------------------------------------------------ dialogue */
 
+/* A speech balloon: rounded paper with a tail pointing at the speaker
+   (UI aims it: --tail-x, data-tail) and the speaker's name on a small
+   caption tag in the speaker's pastel (data-who). Lines without a speaker
+   turn the balloon into a narration box. */
 .dialogue {
+  --who: var(--pastel-lavender);
+  --tail-x: 16%;
+  --tail-h: max(20px, calc(var(--s) * 32px));
   position: absolute;
   left: 50%;
   bottom: calc(max(8px, calc(var(--s) * 18px)) + var(--safe-b));
-  transform: translateX(-50%);
+  translate: -50% 0;
   width: min(94%, calc(var(--s) * 1000px));
-  min-height: max(76px, calc(var(--s) * 112px));
+  min-height: max(76px, calc(var(--s) * 108px));
   display: flex;
   gap: max(10px, calc(var(--s) * 16px));
   align-items: flex-start;
-  background: rgba(25, 23, 40, 0.94);
-  border: max(2px, calc(var(--s) * 3px)) solid var(--ink);
-  box-shadow: 0 0 0 1px rgba(215, 179, 255, 0.22), 0 calc(var(--s) * 6px) 0 rgba(10, 9, 16, 0.55);
-  border-radius: 20px 8px 18px 10px / 10px 18px 8px 20px;
-  padding: max(10px, calc(var(--s) * 16px)) max(12px, calc(var(--s) * 22px));
+  background: var(--grain), var(--paper);
+  color: var(--ink);
+  border: var(--lw) solid var(--line);
+  box-shadow: 3px 5px 0 var(--shade);
+  border-radius: 30px 38px 32px 28px / 28px 32px 38px 30px;
+  padding: max(12px, calc(var(--s) * 20px)) max(16px, calc(var(--s) * 30px)) max(16px, calc(var(--s) * 26px));
   cursor: pointer;
+  animation: balloon-in 0.18s ease-out;
+}
+
+@keyframes balloon-in {
+  from {
+    opacity: 0;
+    translate: -50% 6px;
+  }
+  to {
+    opacity: 1;
+    translate: -50% 0;
+  }
+}
+
+/* Per speaker (keys of NAMES in src/game/data/dialogue.tr.ts). */
+.dialogue[data-who='gorti'] {
+  --who: var(--pastel-lime);
+}
+.dialogue[data-who='babyMoon'] {
+  --who: var(--pastel-aqua);
+}
+.dialogue[data-who='oldMoon'] {
+  --who: var(--pastel-periwinkle);
+}
+.dialogue[data-who='sun'] {
+  --who: var(--pastel-butter);
+}
+.dialogue[data-who='horse'] {
+  --who: var(--pastel-lilac);
+}
+.dialogue[data-who='coward'] {
+  --who: var(--pastel-apricot);
+}
+.dialogue[data-who='forms'] {
+  --who: var(--pastel-pink);
+}
+.dialogue[data-who='voice'] {
+  --who: var(--pastel-lavender);
+}
+.dialogue[data-who='one'] {
+  --who: var(--pastel-stone);
+}
+.dialogue[data-who='two'] {
+  --who: var(--pastel-sand);
+}
+.dialogue[data-who='three'] {
+  --who: var(--pastel-sage);
+}
+
+/* The tail: paper with ink sides, its base over the balloon's contour. */
+.dialogue .tail {
+  position: absolute;
+  bottom: calc(100% - 1.5px);
+  left: var(--tail-x);
+  width: calc(var(--tail-h) * 1.1);
+  height: var(--tail-h);
+  translate: -17% 0;
+  pointer-events: none;
+}
+
+.dialogue .tail svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.dialogue .tail path {
+  fill: var(--paper-tone);
+  stroke: var(--line);
+  stroke-width: var(--lw);
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.dialogue[data-tail='r'] .tail {
+  translate: -83% 0;
+  scale: -1 1;
+}
+
+.dialogue.narration .tail {
+  display: none;
 }
 
 /* Portrait: dialogue sits under the game view (touch controls are hidden
-   while someone speaks). */
+   while someone speaks). The text scrolls inside if it ever runs long, so
+   the tail and the name tag stay outside the balloon's edge. */
 #app.portrait .dialogue {
-  top: calc(var(--gy) + var(--gh) + 10px);
+  top: calc(var(--gy) + var(--gh) + 12px);
   bottom: auto;
   width: calc(100% - 24px - var(--safe-l) - var(--safe-r));
-  max-height: calc(100% - var(--gy) - var(--gh) - 20px - var(--safe-b));
+  max-height: calc(100% - var(--gy) - var(--gh) - 22px - var(--safe-b));
+}
+
+#app.portrait .dialogue .body {
+  max-height: calc(var(--sh, 100vh) - var(--gy) - var(--gh) - 22px - var(--safe-b) - max(12px, calc(var(--s) * 20px)) - max(16px, calc(var(--s) * 26px)) - 3px);
   overflow-y: auto;
 }
 
@@ -761,8 +1264,8 @@ button {
   width: max(48px, calc(var(--s) * 80px));
   height: max(48px, calc(var(--s) * 80px));
   border-radius: 50%;
-  border: 3px solid var(--ink);
-  background: #2a2640;
+  border: var(--lw) solid var(--line);
+  background: var(--cream);
   overflow: hidden;
 }
 
@@ -777,35 +1280,82 @@ button {
   min-width: 0;
 }
 
+/* The speaker's caption tag, stuck on the balloon's top edge beside the
+   tail (on the tail's other side when it points right). */
 .dialogue .name {
-  font-family: var(--sans);
-  font-weight: 700;
+  position: absolute;
+  top: 0;
+  left: calc(var(--tail-x) + var(--tail-h) + 0.3em);
+  translate: 0 -55%;
+  rotate: -2deg;
+  max-width: calc(100% - 2em);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0.14em 0.65em;
+  font-family: var(--display);
+  font-weight: 900;
+  font-synthesis: none;
   font-size: max(11px, calc(var(--s) * 14px));
   letter-spacing: 0.08em;
-  color: var(--vein);
   text-transform: uppercase;
-  margin-bottom: 0.2em;
+  color: var(--ink);
+  background: var(--pencil), var(--who);
+  border: var(--lw) solid var(--line);
+  border-radius: 2px;
+  box-shadow: 2px 2px 0 var(--shade);
 }
 
+.dialogue[data-tail='r'] .name {
+  left: auto;
+  right: calc(100% - var(--tail-x) + var(--tail-h) + 0.3em);
+  rotate: 2deg;
+}
+
+/* Speech: lettering in a clear sans. */
 .dialogue .text {
-  font-family: var(--serif);
+  font-family: var(--sans);
+  font-weight: 500;
   font-size: max(14px, calc(var(--s) * 20px));
   line-height: 1.42;
-  color: var(--ivory);
+  color: var(--ink);
   min-height: 2.8em;
+}
+
+/* A whisper: the balloon's contour goes dashed, the words lean. */
+.dialogue.whisper {
+  border-style: dashed;
+}
+
+.dialogue.whisper .tail path {
+  stroke-dasharray: 5 3.5;
 }
 
 .dialogue .text.whisper {
   font-style: italic;
-  color: #dfe3f0;
+  color: var(--ink-soft);
+}
+
+/* Narration: a butter-yellow box with square corners, italic serif. */
+.dialogue.narration {
+  background: var(--grain), var(--narr);
+  border-radius: 1px;
+  box-shadow: 3px 5px 0 var(--shade);
+}
+
+.dialogue.narration .text {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
 }
 
 .dialogue .next {
   position: absolute;
-  right: max(12px, calc(var(--s) * 20px));
+  right: max(14px, calc(var(--s) * 24px));
   bottom: max(6px, calc(var(--s) * 10px));
   font-size: max(10px, calc(var(--s) * 13px));
-  color: var(--ivory-dim);
+  font-weight: 600;
+  color: var(--ink-soft);
   animation: bob 1.2s ease-in-out infinite;
 }
 
@@ -817,6 +1367,7 @@ button {
 
 /* ------------------------------------------------------------ documents */
 
+/* A paper page, clipped together. */
 .doc {
   position: absolute;
   left: 50%;
@@ -825,21 +1376,41 @@ button {
   width: min(92%, calc(var(--s) * 760px));
   max-height: 92%;
   overflow: auto;
-  background: var(--paper);
-  color: #2a2420;
-  border: 3px solid var(--ink);
-  border-radius: 4px;
-  box-shadow: 0 calc(var(--s) * 10px) 0 rgba(10, 9, 16, 0.5), inset 0 0 40px rgba(120, 100, 70, 0.25);
-  padding: max(14px, calc(var(--s) * 28px)) max(16px, calc(var(--s) * 36px));
+  background: var(--grain), var(--hatch), var(--paper);
+  color: var(--ink);
+  border: var(--lw) solid var(--line);
+  border-radius: 3px 4px 2px 5px;
+  box-shadow: 6px 8px 0 var(--shade);
+  padding: max(16px, calc(var(--s) * 32px)) max(16px, calc(var(--s) * 38px)) max(14px, calc(var(--s) * 26px));
   font-family: var(--serif);
   font-size: max(13px, calc(var(--s) * 17px));
   line-height: 1.5;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.doc::before {
+  content: '';
+  position: absolute;
+  top: max(-6px, calc(var(--s) * -8px));
+  right: max(18px, calc(var(--s) * 34px));
+  width: max(14px, calc(var(--s) * 20px));
+  height: max(40px, calc(var(--s) * 58px));
+  rotate: 8deg;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 58'%3E%3Cpath d='M6 40V11a4 4 0 0 1 8 0v34a6.5 6.5 0 0 1-13 0V7a6 6 0 0 1 12 0' fill='none' stroke='%234a4152' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  pointer-events: none;
 }
 
 .doc h4 {
-  margin: 0 0 0.4em;
-  font-size: 1.05em;
-  letter-spacing: 0.04em;
+  width: fit-content;
+  margin: 0 0 0.6em;
+  padding: 0 0.15em;
+  font-family: var(--display);
+  font-weight: 900;
+  font-synthesis: none;
+  font-size: 0.95em;
+  letter-spacing: 0.06em;
+  --marker: var(--pastel-aqua);
 }
 
 .doc .ru {
@@ -849,7 +1420,7 @@ button {
 
 .doc .gloss {
   font-style: italic;
-  color: #5a4f45;
+  color: var(--ink-soft);
   font-size: 0.9em;
 }
 
@@ -863,37 +1434,45 @@ button {
 
 .doc .portraits img {
   width: max(56px, calc(var(--s) * 100px));
-  border: 2px solid #3b332c;
-  background: #efe7d6;
+  border: var(--lw) solid var(--line);
+  background: var(--cream);
+  box-shadow: 2px 3px 0 var(--shade);
 }
 
 .doc .stamp {
   display: inline-block;
   margin-top: 0.6em;
   padding: 0.12em 0.6em;
-  border: 5px double var(--stamp);
+  border: 4px double var(--stamp);
+  border-radius: 4px;
   color: var(--stamp);
-  font-family: var(--sans);
-  font-weight: 800;
+  font-family: var(--display);
+  font-weight: 900;
+  font-synthesis: none;
   letter-spacing: 0.14em;
   font-size: 2.1em;
   transform: rotate(-8deg);
   opacity: 0.9;
+  mix-blend-mode: multiply;
 }
 
 .doc .close {
   margin-top: 1em;
 }
 
-/* A painting shown large (paintings at chapter starts). */
+/* A painting shown large: a matted print on the gallery wall with a small
+   museum label. */
 .doc.painting {
   transform: translate(-50%, -50%);
   width: min(94%, calc(var(--s) * 620px));
-  background: #1d1a26;
-  color: var(--paper);
-  border-color: #0c0b12;
-  box-shadow: 0 calc(var(--s) * 10px) 0 rgba(10, 9, 16, 0.5), inset 0 0 60px rgba(0, 0, 0, 0.45);
+  background: var(--grain), var(--wall);
+  color: var(--ink);
+  border-radius: 4px;
   text-align: center;
+}
+
+.doc.painting::before {
+  display: none;
 }
 
 .painting-card {
@@ -902,10 +1481,11 @@ button {
 
 .painting-card .frame {
   display: inline-block;
-  padding: max(6px, calc(var(--s) * 12px));
-  background: linear-gradient(135deg, #86603c, #5b3b24 45%, #3a2416);
-  border: 2px solid #0c0b12;
-  box-shadow: inset 0 0 0 max(2px, calc(var(--s) * 3px)) #c9a45a;
+  padding: max(7px, calc(var(--s) * 14px));
+  background: var(--grain), var(--paper);
+  border: var(--lw) solid var(--line);
+  border-radius: 2px;
+  box-shadow: 4px 6px 0 var(--shade);
 }
 
 .painting-card img {
@@ -915,29 +1495,41 @@ button {
   max-height: min(58vh, calc(var(--s) * 470px));
   aspect-ratio: 1;
   object-fit: contain;
+  border: 1px solid var(--line);
 }
 
 .painting-card figcaption {
-  display: flex;
+  display: inline-flex;
   flex-direction: column;
   gap: 0.15em;
-  margin-top: 0.7em;
+  margin-top: 0.8em;
+  padding: 0.35em 0.9em;
+  background: var(--grain), var(--paper);
+  border: var(--lw) solid var(--line);
+  border-radius: 2px;
+  box-shadow: 2px 3px 0 var(--shade);
+  rotate: -1deg;
 }
 
 .painting-card figcaption b {
-  font-size: 1.1em;
-  letter-spacing: 0.04em;
+  font-family: var(--display);
+  font-weight: 900;
+  font-synthesis: none;
+  font-size: 1em;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .painting-card figcaption span {
-  opacity: 0.8;
+  color: var(--ink-soft);
+  font-style: italic;
   font-size: 0.9em;
 }
 
 .painting-card .line {
   margin: 0.8em 0 0;
   font-style: italic;
-  color: #d7b3ff;
+  color: var(--ink);
 }
 
 /* ------------------------------------------------------------ ending */
@@ -949,17 +1541,28 @@ button {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: rgba(15, 13, 24, 0.9);
+  justify-content: safe center;
+  background: var(--grain), var(--hatch), var(--page);
+  color: var(--ink);
   text-align: center;
   padding: 4%;
   overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
 }
 
+/* The last line: the story's final narration box. */
 .ending .final-line {
   font-family: var(--serif);
+  font-style: italic;
   font-size: max(17px, calc(var(--s) * 28px));
   max-width: 900px;
-  line-height: 1.5;
+  line-height: 1.45;
+  margin: 0.2em 0;
+  padding: 0.3em 0.9em;
+  background: var(--grain), var(--narr);
+  border: var(--lw) solid var(--line);
+  box-shadow: 4px 5px 0 var(--shade);
 }
 
 .end-portraits {
@@ -967,23 +1570,24 @@ button {
   flex-wrap: wrap;
   gap: max(8px, calc(var(--s) * 16px));
   justify-content: center;
-  margin: 1em 0;
+  margin: 0.9em 0;
 }
 
 .end-portraits img {
   width: max(48px, calc(var(--s) * 96px));
   height: max(48px, calc(var(--s) * 96px));
   border-radius: 50%;
-  border: 3px solid var(--ink);
-  filter: drop-shadow(0 0 calc(var(--s) * 14px) rgba(215, 179, 255, 0.9)) saturate(1.2);
+  border: var(--lw) solid var(--line);
+  background: var(--paper);
+  filter: drop-shadow(0 0 calc(var(--s) * 12px) rgba(160, 127, 196, 0.85)) saturate(1.15);
   transition: filter 3.2s ease, border-radius 3.2s ease, background 3.2s ease, padding 3.2s ease;
 }
 
 .end-portraits.printed img {
   border-radius: 3px;
   padding: 4px;
-  background: var(--paper);
-  filter: grayscale(1) sepia(0.55) contrast(0.85) brightness(0.95);
+  background: var(--cream);
+  filter: grayscale(1) sepia(0.55) contrast(0.85) brightness(0.97);
 }
 
 .reduced-motion .end-portraits img {
@@ -993,16 +1597,36 @@ button {
 .credits {
   font-family: var(--serif);
   font-size: max(12px, calc(var(--s) * 16px));
-  color: var(--ivory-dim);
+  color: var(--ink-soft);
   line-height: 1.6;
   margin: 1.2em 0;
   max-width: 820px;
 }
 
 .credits h3 {
-  color: var(--ivory);
-  font-weight: normal;
-  margin: 0.8em 0 0.2em;
+  width: fit-content;
+  margin: 0.9em auto 0.2em;
+  padding: 0 0.2em;
+  font-family: var(--display);
+  font-weight: 900;
+  font-synthesis: none;
+  font-size: 0.85em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  --marker: var(--pastel-mint);
+}
+
+.ending .credits {
+  margin: 0.4em 0 1em;
+}
+
+.panel .credits {
+  text-align: left;
+}
+
+.panel .credits h3 {
+  margin-left: 0;
 }
 
 /* ------------------------------------------------------------ loading */
@@ -1015,15 +1639,19 @@ button {
   align-items: center;
   justify-content: center;
   gap: 1em;
-  background: #0f0d18;
+  background: var(--grain), var(--hatch), var(--page);
+  color: var(--ink);
   font-family: var(--serif);
+  font-style: italic;
 }
 
 .loading .bar {
   width: min(60%, 420px);
-  height: 12px;
-  border: 3px solid var(--ink-3);
-  border-radius: 8px 3px 8px 3px;
+  height: 16px;
+  background: var(--paper);
+  border: var(--lw) solid var(--line);
+  border-radius: 8px 4px 9px 3px / 4px 8px 3px 9px;
+  box-shadow: 2px 3px 0 var(--shade);
   overflow: hidden;
 }
 
@@ -1031,7 +1659,8 @@ button {
   display: block;
   height: 100%;
   width: 0;
-  background: linear-gradient(90deg, var(--teal), var(--vein));
+  background: var(--pencil), repeating-linear-gradient(-45deg, var(--pastel-periwinkle) 0 7px, var(--pastel-lilac) 7px 14px);
+  border-right: var(--lw) solid var(--line);
 }
 
 /* ------------------------------------------------------------ touch */
@@ -1047,13 +1676,15 @@ button {
   display: none;
 }
 
+/* Paper discs and pads; a pastel fills them while held. */
 .tc {
   position: absolute;
   pointer-events: auto;
   touch-action: none;
-  border: 3px solid rgba(25, 23, 40, 0.9);
-  background: rgba(37, 34, 56, 0.55);
-  color: var(--ivory);
+  border: var(--lw) solid var(--line);
+  background: var(--grain), rgba(251, 246, 234, 0.8);
+  box-shadow: 2px 3px 0 var(--shade);
+  color: var(--ink);
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -1065,20 +1696,26 @@ button {
 }
 
 .tc.held {
-  background: rgba(148, 89, 216, 0.7);
+  background: var(--pencil), var(--pastel-periwinkle);
+  translate: 1px 2px;
+  box-shadow: 0 1px 0 var(--shade);
 }
 
 .tc svg {
-  width: 46%;
-  height: 46%;
+  width: 44%;
+  height: 44%;
   pointer-events: none;
 }
 
 .tc span {
   position: absolute;
-  bottom: -1.5em;
+  bottom: -1.55em;
+  padding: 0 0.4em;
   font-size: 12px;
-  text-shadow: 0 1px 2px #000;
+  line-height: 1.35;
+  color: var(--ink);
+  background: rgba(251, 246, 234, 0.9);
+  border-radius: 3px;
   white-space: nowrap;
   pointer-events: none;
 }
@@ -1094,34 +1731,56 @@ button {
 .tc-pad .half {
   width: calc(78px * var(--tk, 1));
   height: calc(78px * var(--tk, 1));
-  border: 3px solid rgba(25, 23, 40, 0.9);
-  background: rgba(37, 34, 56, 0.55);
-  border-radius: 22px 10px 22px 10px;
+  border: var(--lw) solid var(--line);
+  background: var(--grain), rgba(251, 246, 234, 0.8);
+  box-shadow: 2px 3px 0 var(--shade);
+  color: var(--ink);
+  border-radius: 20px 12px 22px 10px / 12px 20px 10px 22px;
   display: grid;
   place-items: center;
   pointer-events: none;
 }
 
+.tc-pad .half + .half {
+  border-radius: 12px 20px 10px 22px / 20px 12px 22px 10px;
+}
+
 .tc-pad .half.held {
-  background: rgba(148, 89, 216, 0.7);
+  background: var(--pencil), var(--pastel-mint);
+  translate: 1px 2px;
+  box-shadow: 0 1px 0 var(--shade);
 }
 
 .tc-pad svg {
-  width: 44%;
-  height: 44%;
+  width: 42%;
+  height: 42%;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .dialogue,
   .dialogue .next,
   .caption.show,
   .toast.show {
     animation: none;
   }
+  .btn,
+  .btn::before,
+  .mem-card {
+    transition: none;
+  }
 }
 
+.reduced-motion .dialogue,
+.reduced-motion .dialogue .next,
 .reduced-motion .caption.show,
 .reduced-motion .toast.show {
   animation: none;
+}
+
+.reduced-motion .btn,
+.reduced-motion .btn::before,
+.reduced-motion .mem-card {
+  transition: none;
 }
 
 /* ------------------------------------------------------------ colour storm */

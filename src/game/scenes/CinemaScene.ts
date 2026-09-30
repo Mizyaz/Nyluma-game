@@ -24,7 +24,7 @@ interface Slot {
   lit: number;
 }
 
-const INK = 0x1d1b1e;
+const INK = 0x4f4557;
 
 /**
  * Face-animated dialogue: black bars close in, the room dims, and the
@@ -73,9 +73,10 @@ export class CinemaScene extends Phaser.Scene {
 
   private makeSlot(id: CastId, win: PortraitWindow): Slot {
     const half = win.size / 2;
-    // Frame: thin ink border, paper ground with a pale periwinkle disc.
+    // Frame: a paper mat (no heavy black border), paper ground with a pale
+    // periwinkle disc; a soft plum rim is drawn over it below.
     const frame = this.add.graphics();
-    frame.fillStyle(INK, 1).fillRoundedRect(win.cx - half - 6, win.cy - half - 6, win.size + 12, win.size + 12, 18);
+    frame.fillStyle(0xfbf6ea, 1).fillRoundedRect(win.cx - half - 7, win.cy - half - 7, win.size + 14, win.size + 14, 18);
     frame.fillStyle(0xf3ead8, 1).fillRoundedRect(win.cx - half, win.cy - half, win.size, win.size, 14);
     frame.fillStyle(0xc9cfee, 1).fillCircle(win.cx, win.cy - win.size * 0.05, win.size * 0.36);
     const portrait = CAST[id](this, win);
@@ -83,11 +84,17 @@ export class CinemaScene extends Phaser.Scene {
     shape.fillStyle(0xffffff, 1).fillRoundedRect(win.cx - half, win.cy - half, win.size, win.size, 14);
     portrait.root.setMask(shape.createGeometryMask());
     const veil = this.add.rectangle(win.cx, win.cy, win.size, win.size, 0xf3ead8, 1).setAlpha(0.45);
-    // A thin ink rim on top of everything.
+    // A thin soft rim on top of everything.
     const rim = this.add.graphics();
-    rim.lineStyle(2, INK, 0.9).strokeRoundedRect(win.cx - half - 2, win.cy - half - 2, win.size + 4, win.size + 4, 16);
+    rim.lineStyle(1.5, INK, 0.75).strokeRoundedRect(win.cx - half - 2, win.cy - half - 2, win.size + 4, win.size + 4, 16);
+    rim.lineStyle(1, INK, 0.35).strokeRoundedRect(win.cx - half - 7, win.cy - half - 7, win.size + 14, win.size + 14, 18);
     for (const o of [frame, portrait.root, rim]) o.setData('fadeable', true);
     return { id, win, portrait, mask: shape, veil, lit: 0 };
+  }
+
+  /** Who is framed where (the dialogue balloon points its tail at the speaker). */
+  get windows(): readonly { id: CastId; win: PortraitWindow }[] {
+    return this.slots;
   }
 
   /** Slides everything away and stops the scene. */
