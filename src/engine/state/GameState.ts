@@ -1,3 +1,4 @@
+import story from '../../content/chapters/chapters.json';
 import { ROOMS, roomDef } from '../../content/data/rooms';
 import { MEMORY_IDS } from '../../content/data/memories';
 import {
@@ -15,21 +16,10 @@ import {
   type Settings,
 } from './types';
 
-export const CHAPTER_START: Record<number, RoomId> = {
-  1: 'r01',
-  2: 'r04',
-  3: 'r07',
-  4: 'r09',
-  5: 'r12',
-};
+/** Each chapter's first room and its title (src/content/chapters/chapters.json). */
+export const CHAPTER_START: Record<number, RoomId> = Object.fromEntries(story.chapters.map((c) => [c.number, c.rooms[0]!]));
 
-export const CHAPTER_TITLES: Record<number, string> = {
-  1: '14. Oda',
-  2: 'Yüzey ve Yalanlar',
-  3: 'Mor At ve Güneş',
-  4: 'İç Koğuş',
-  5: 'Hak Aktarımı',
-};
+export const CHAPTER_TITLES: Record<number, string> = Object.fromEntries(story.chapters.map((c) => [c.number, c.title]));
 
 export function chapterOf(room: RoomId): number {
   return roomDef(room).chapter;
@@ -200,6 +190,14 @@ export class Quest {
     if (this.flagSet.has(flag)) return false;
     this.flagSet.add(flag);
     this.progress.flags.push(flag);
+    this.emit('flag', flag);
+    return true;
+  }
+
+  /** Clears a flag. Returns true when it was set. */
+  unset(flag: string): boolean {
+    if (!this.flagSet.delete(flag)) return false;
+    this.progress.flags = this.progress.flags.filter((f) => f !== flag);
     this.emit('flag', flag);
     return true;
   }

@@ -1,6 +1,8 @@
 import type { RoomId } from '../../engine/state/types';
 import type { WorldScene } from '../../engine/scenes/WorldScene';
 import type { RoomScript, ScriptFactory } from './types';
+import { roomSpec } from '../data/rooms';
+import { ContentScript } from '../../engine/content/ContentScript';
 import { r01 } from './r01';
 import { r02 } from './r02';
 import { r03 } from './r03';
@@ -31,6 +33,9 @@ const SCRIPTS: Partial<Record<RoomId, ScriptFactory>> = {
   r12,
 };
 
+/** A room's behaviour: its TypeScript script, or what its room file says. */
 export function createScript(id: RoomId, w: WorldScene): RoomScript {
+  const spec = roomSpec(id);
+  if (spec) return new ContentScript(w, spec);
   return (SCRIPTS[id] ?? EMPTY)(w);
 }

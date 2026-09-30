@@ -1,0 +1,12 @@
+{
+  "$schema": "../room.schema.json",
+  "id": "b02",
+  "chapter": "c6",
+  "title": "Boş Oda",
+  "theme": "hill",
+  "width": 1800,
+  "spawn": {
+    "x": 220,
+    "facing": 1
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "chapters": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-zA-Z0-9_]*$",
+            "description": "Bölüm adı, ör. \"c6\""
+          },
+          "number": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Bölüm numarası (menüde Romen rakamı)"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sky": {
+            "type": "object",
+            "properties": {
+              "moon": {
+                "type": "string",
+                "enum": [
+                  "baby",
+                  "old",
+                  "none"
+                ]
+              },
+              "sun": {
+                "type": "string",
+                "enum": [
+                  "calm",
+                  "laugh",
+                  "none"
+                ]
+              }
+            },
+            "required": [
+              "moon",
+              "sun"
+            ],
+            "additionalProperties": false,
+            "description": "Bu bölümde Ay ve Güneş"
+          },
+          "rooms": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Odalar, hikâye sırasıyla"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "title",
+          "sky",
+          "rooms"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "chapters"
+  ],
+  "additionalProperties": false
+}

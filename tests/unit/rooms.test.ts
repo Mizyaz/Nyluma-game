@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NEXT_ROOM, ROOMS } from '../../src/content/data/rooms';
+import { NEXT_ROOM, ROOMS, STORY } from '../../src/content/data/rooms';
 import { MEMORIES } from '../../src/content/data/memories';
 import { allParts } from '../../src/content/art/manifest';
 import { HULL_H, HULL_W, REACH_RANGE } from '../../src/engine/constants';
@@ -19,9 +19,10 @@ function hullClear(solids: SolidDef[], x: number, y: number): boolean {
 }
 
 describe('room data', () => {
-  it('declares all twelve rooms in five chapters', () => {
-    expect(rooms.map((r) => r.id)).toEqual([...ROOM_IDS]);
-    expect(new Set(rooms.map((r) => r.chapter))).toEqual(new Set([1, 2, 3, 4, 5]));
+  it('declares every room of the story, in chapter order', () => {
+    expect(rooms.map((r) => r.id).sort()).toEqual([...ROOM_IDS].sort());
+    expect(new Set(rooms.map((r) => r.chapter))).toEqual(new Set(STORY.chapters.map((c) => c.number)));
+    for (const c of STORY.chapters) for (const id of c.rooms) expect(ROOMS[id]!.chapter).toBe(c.number);
   });
 
   it('has unique, prefixed checkpoints that stand on ground with clearance', () => {
@@ -48,7 +49,7 @@ describe('room data', () => {
       }
     }
     const scripted = ['r06', 'r07', 'r09', 'r10', 'r11', 'r12'];
-    for (const r of rooms) if (!r.exits.length) expect(scripted).toContain(r.id);
+    for (const r of rooms) if (!r.exits.length && r.id !== ROOM_IDS.at(-1)) expect(scripted).toContain(r.id);
   });
 
   it('places the eight optional memories across chapters I–IV exactly once', () => {

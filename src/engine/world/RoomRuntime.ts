@@ -22,6 +22,7 @@ import type {
   TriggerDef,
 } from '../../content/data/roomTypes';
 import type { Quest } from '../state/GameState';
+import { evalCond, type CondCtx } from '../content/cond';
 import { WhalePlatforms } from '../../gameplay/whales/WhalePlatforms';
 import { stage } from '../../render/2.5d/hooks';
 import { isWhalePlatform } from '../../gameplay/whales/whalePlan';
@@ -109,11 +110,17 @@ export class RoomRuntime {
     this.group = scene.physics.add.staticGroup();
   }
 
+  /** Whether a gated thing is there now: its `when` holds and its `unless` does not (cond.ts). */
   isOn(g: Gate | undefined): boolean {
     if (!g) return true;
-    if (g.when && !this.quest.has(g.when)) return false;
-    if (g.unless && this.quest.has(g.unless)) return false;
+    if (g.when && !evalCond(g.when, this.condCtx())) return false;
+    if (g.unless && evalCond(g.unless, this.condCtx())) return false;
     return true;
+  }
+
+  /** The state conditions are read against. */
+  condCtx(): CondCtx {
+    return { has: (f) => this.quest.has(f), form: this.quest.progress.form, room: this.def.id };
   }
 
   build(): void {

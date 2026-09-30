@@ -1,0 +1,685 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-zA-Z0-9_]*$",
+      "description": "Oda adı (dosya adıyla aynı)"
+    },
+    "chapter": {
+      "type": "string",
+      "description": "Bölüm (chapters.json'daki id)"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Odanın adı"
+    },
+    "theme": {
+      "type": "string",
+      "enum": [
+        "nursery",
+        "roots",
+        "chamber",
+        "surface",
+        "hill",
+        "forest",
+        "ride",
+        "sun",
+        "clearing",
+        "dorm",
+        "mech",
+        "office"
+      ],
+      "description": "Görünüş: gökyüzü, uzak katmanlar, ışık"
+    },
+    "music": {
+      "description": "Müzik (varsayılan none)",
+      "type": "string",
+      "enum": [
+        "none",
+        "menu",
+        "roots",
+        "forest",
+        "ride",
+        "sun",
+        "inner",
+        "final",
+        "tension"
+      ]
+    },
+    "width": {
+      "type": "number",
+      "minimum": 640,
+      "maximum": 12000,
+      "description": "Genişlik (px); ekran 1280"
+    },
+    "height": {
+      "description": "Yükseklik (varsayılan 900)",
+      "type": "number",
+      "minimum": 720,
+      "maximum": 3000
+    },
+    "floor": {
+      "description": "Yer çizgisi y (varsayılan height - 180)",
+      "type": "number"
+    },
+    "ground": {
+      "description": "Yerin görünüşü (varsayılan soil)",
+      "type": "string",
+      "enum": [
+        "soil",
+        "root",
+        "crystal",
+        "wood",
+        "stone",
+        "moss",
+        "floor",
+        "metal",
+        "bed",
+        "office",
+        "paper",
+        "none"
+      ]
+    },
+    "player": {
+      "description": "Oynanan beden (varsayılan gorti)",
+      "type": "string",
+      "enum": [
+        "gorti",
+        "horse",
+        "coward",
+        "mech",
+        "suit"
+      ]
+    },
+    "form": {
+      "description": "Girişte Gorti'nin formu",
+      "type": "string",
+      "enum": [
+        "root",
+        "human"
+      ]
+    },
+    "spawn": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number",
+          "description": "Dünya pikseli"
+        },
+        "facing": {
+          "anyOf": [
+            {
+              "type": "number",
+              "const": 1
+            },
+            {
+              "type": "number",
+              "const": -1
+            }
+          ]
+        }
+      },
+      "required": [
+        "x"
+      ],
+      "additionalProperties": false,
+      "description": "Başlangıç yeri"
+    },
+    "sky": {
+      "description": "Bölümün Ay/Güneş'ini bu odada değiştirir",
+      "type": "object",
+      "properties": {
+        "moon": {
+          "description": "Sol üstteki Ay: bebek, yaşlı ya da hiç",
+          "type": "string",
+          "enum": [
+            "baby",
+            "old",
+            "none"
+          ]
+        },
+        "sun": {
+          "description": "Sağ üstteki Güneş: sakin, gülüyor ya da hiç",
+          "type": "string",
+          "enum": [
+            "calm",
+            "laugh",
+            "none"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "enter": {
+      "description": "Odaya ilk girişte bir kez olanlar",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/__schema0"
+      }
+    },
+    "props": {
+      "description": "Dekor",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Çizim adı (kd list props), ör. \"prop.tree\""
+          },
+          "x": {
+            "type": "number",
+            "description": "Dünya pikseli"
+          },
+          "y": {
+            "description": "Taban çizgisi (varsayılan: yerde)",
+            "type": "number"
+          },
+          "scale": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "depth": {
+            "description": "Derinlik: eksi = daha arkada (px)",
+            "type": "number"
+          },
+          "flip": {
+            "description": "Yatay çevir",
+            "type": "boolean"
+          },
+          "when": {
+            "type": "string",
+            "description": "Koşul: bayrak adı, \"form:human\", \"room:b01\"; ! değil, & ve, | veya, ( ). Örnek: \"b01.told & !form:root\""
+          },
+          "unless": {
+            "type": "string",
+            "description": "Koşul: bayrak adı, \"form:human\", \"room:b01\"; ! değil, & ve, | veya, ( ). Örnek: \"b01.told & !form:root\""
+          }
+        },
+        "required": [
+          "key",
+          "x"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "npcs": {
+      "description": "Konuşulabilen karakterler",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-zA-Z0-9_]*$"
+          },
+          "who": {
+            "type": "string",
+            "description": "Kadrodan biri (kd list cast)"
+          },
+          "x": {
+            "type": "number",
+            "description": "Dünya pikseli"
+          },
+          "facing": {
+            "description": "1 sağa, -1 sola bakar",
+            "anyOf": [
+              {
+                "type": "number",
+                "const": 1
+              },
+              {
+                "type": "number",
+                "const": -1
+              }
+            ]
+          },
+          "when": {
+            "description": "Bu koşul tutarken odada durur",
+            "type": "string"
+          },
+          "talk": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "who": {
+                  "description": "Konuşan: kadrodan biri (kd list cast) ya da gorti, sun, moon...; yoksa anlatıcı kutusu",
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Söylenen söz"
+                },
+                "whisper": {
+                  "description": "Fısıltı (kesik çizgili balon)",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "text"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Gorti ilk konuştuğunda söyledikleri"
+          },
+          "again": {
+            "description": "Sonraki konuşmalarda (varsayılan: talk'un son satırı)",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "who": {
+                  "description": "Konuşan: kadrodan biri (kd list cast) ya da gorti, sun, moon...; yoksa anlatıcı kutusu",
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Söylenen söz"
+                },
+                "whisper": {
+                  "description": "Fısıltı (kesik çizgili balon)",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "text"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "then": {
+            "description": "İlk konuşmadan sonra olanlar",
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/__schema0"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "who",
+          "x",
+          "talk"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "gates": {
+      "description": "Koşul tutana dek kapalı duran kapılar",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-zA-Z0-9_]*$"
+          },
+          "x": {
+            "type": "number",
+            "description": "Dünya pikseli"
+          },
+          "open": {
+            "type": "string",
+            "description": "Kapı bu koşul tutunca açılır, ör. \"form:human\""
+          },
+          "look": {
+            "description": "Görünüş (varsayılan stone)",
+            "type": "string",
+            "enum": [
+              "soil",
+              "root",
+              "crystal",
+              "wood",
+              "stone",
+              "moss",
+              "floor",
+              "metal",
+              "bed",
+              "office",
+              "paper",
+              "none"
+            ]
+          },
+          "h": {
+            "description": "Yükseklik (varsayılan 260)",
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "hint": {
+            "description": "Kapalıyken Gorti yaklaşınca çıkan ipucu",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "x",
+          "open"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "triggers": {
+      "description": "Gorti girince çalışan şeritler",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-zA-Z0-9_]*$"
+          },
+          "x": {
+            "type": "number",
+            "description": "Dünya pikseli"
+          },
+          "w": {
+            "description": "Genişlik (varsayılan 80)",
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "repeat": {
+            "description": "Her ziyarette çalışır (varsayılan: oyun boyunca bir kez)",
+            "type": "boolean"
+          },
+          "when": {
+            "type": "string",
+            "description": "Koşul: bayrak adı, \"form:human\", \"room:b01\"; ! değil, & ve, | veya, ( ). Örnek: \"b01.told & !form:root\""
+          },
+          "do": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/__schema0"
+            },
+            "description": "Gorti buraya girince olanlar"
+          }
+        },
+        "required": [
+          "id",
+          "x",
+          "do"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "exits": {
+      "description": "Çıkışlar",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "to": {
+            "type": "string",
+            "description": "Gidilen oda"
+          },
+          "side": {
+            "description": "Hangi kenarda (varsayılan right)",
+            "type": "string",
+            "enum": [
+              "left",
+              "right"
+            ]
+          },
+          "x": {
+            "type": "number",
+            "description": "Dünya pikseli"
+          },
+          "when": {
+            "description": "Bu koşul tutunca açılır",
+            "type": "string"
+          }
+        },
+        "required": [
+          "to"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "memories": {
+      "description": "Toplanan anılar",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "x": {
+            "type": "number",
+            "description": "Dünya pikseli"
+          }
+        },
+        "required": [
+          "id",
+          "x"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "id",
+    "chapter",
+    "title",
+    "theme",
+    "width",
+    "spawn"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "__schema0": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "say": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "who": {
+                    "description": "Konuşan: kadrodan biri (kd list cast) ya da gorti, sun, moon...; yoksa anlatıcı kutusu",
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Söylenen söz"
+                  },
+                  "whisper": {
+                    "description": "Fısıltı (kesik çizgili balon)",
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "text"
+                ],
+                "additionalProperties": false
+              },
+              "description": "Konuşma balonları, sırayla"
+            }
+          },
+          "required": [
+            "say"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "flag": {
+              "type": "string",
+              "description": "Bayrak koy (kalıcı, kayda geçer)"
+            }
+          },
+          "required": [
+            "flag"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "unflag": {
+              "type": "string",
+              "description": "Bayrağı kaldır"
+            }
+          },
+          "required": [
+            "unflag"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "form": {
+              "type": "string",
+              "enum": [
+                "root",
+                "human"
+              ],
+              "description": "Gorti bu forma dönüşür"
+            }
+          },
+          "required": [
+            "form"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "unlock": {
+              "type": "string",
+              "enum": [
+                "pulse",
+                "reach",
+                "song",
+                "focus",
+                "form"
+              ],
+              "description": "Yetenek aç (form = R ile dönüşme)"
+            }
+          },
+          "required": [
+            "unlock"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "sky": {
+              "type": "object",
+              "properties": {
+                "moon": {
+                  "description": "Sol üstteki Ay: bebek, yaşlı ya da hiç",
+                  "type": "string",
+                  "enum": [
+                    "baby",
+                    "old",
+                    "none"
+                  ]
+                },
+                "sun": {
+                  "description": "Sağ üstteki Güneş: sakin, gülüyor ya da hiç",
+                  "type": "string",
+                  "enum": [
+                    "calm",
+                    "laugh",
+                    "none"
+                  ]
+                }
+              },
+              "additionalProperties": false,
+              "description": "Ay ve Güneş değişir (oda yeniden yüklenene dek)"
+            }
+          },
+          "required": [
+            "sky"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "go": {
+              "type": "string",
+              "description": "Bu odaya geç"
+            }
+          },
+          "required": [
+            "go"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "word": {
+              "type": "string",
+              "maxLength": 12,
+              "description": "Gorti'nin üstünde çizgi roman sesi, ör. \"OLDU!\""
+            }
+          },
+          "required": [
+            "word"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "wait": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 10000,
+              "description": "Bekle (ms)"
+            }
+          },
+          "required": [
+            "wait"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "if": {
+              "type": "string",
+              "description": "Koşul: bayrak adı, \"form:human\", \"room:b01\"; ! değil, & ve, | veya, ( ). Örnek: \"b01.told & !form:root\""
+            },
+            "then": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema0"
+              }
+            },
+            "else": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema0"
+              }
+            }
+          },
+          "required": [
+            "if"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

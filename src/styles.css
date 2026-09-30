@@ -1004,63 +1004,56 @@ a {
 }
 
 /* Chapter title over the game view: a caption tag and lettering. */
+/* Chapter card: a comic caption box across the top of the panel, clear of
+   the figures (the Moon and the Sun keep the corners). */
 .area-title {
+  --b-ink: #231a2b;
+  --b-lw: max(2.5px, calc(var(--s) * 3.5px));
   position: absolute;
   left: calc(var(--gx) + var(--gw) / 2);
-  top: calc(var(--gy) + var(--gh) * 0.4);
-  transform: translate(-50%, -50%);
+  top: calc(var(--gy) + var(--gh) * 0.085);
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.35em;
+  align-items: baseline;
+  gap: 0.7em;
   width: max-content;
-  max-width: calc(var(--gw) - 24px);
+  max-width: calc(var(--gw) - 240px);
+  padding: 0.3em 1.05em 0.36em;
   text-align: center;
   pointer-events: none;
+  background: var(--grain), var(--narr);
+  border: var(--b-lw) solid var(--b-ink);
+  box-shadow: 5px 6px 0 rgba(35, 26, 43, 0.82);
   opacity: 0;
-  transition: opacity 1s ease;
+  transform: translateX(-50%) rotate(-1.2deg) scale(0.9);
+  transition:
+    opacity 0.3s ease,
+    transform 0.34s cubic-bezier(0.2, 1.5, 0.45, 1);
 }
 
 .area-title.show {
   opacity: 1;
+  transform: translateX(-50%) rotate(-1.2deg) scale(1);
 }
 
 .area-title small {
-  display: block;
-  padding: 0.12em 0.7em;
   font-family: var(--display);
   font-weight: 900;
   font-synthesis: none;
-  font-size: max(11px, calc(var(--s) * 14px));
-  letter-spacing: 0.24em;
-  color: var(--ink);
-  background: var(--grain), var(--narr);
-  border: var(--lw) solid var(--line);
-  box-shadow: 2px 3px 0 var(--shade);
-  rotate: -1.5deg;
+  font-size: max(10px, calc(var(--s) * 13px));
+  letter-spacing: 0.22em;
+  color: var(--b-ink);
+  white-space: nowrap;
 }
 
 .area-title span {
-  --o: max(1.2px, calc(var(--s) * 1.8px));
   font-family: var(--display);
   font-weight: 900;
   font-synthesis: none;
-  font-size: max(22px, calc(var(--s) * 42px));
+  font-size: max(18px, calc(var(--s) * 30px));
   line-height: 1.1;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: var(--paper);
-  rotate: -1.5deg;
-  text-shadow:
-    var(--o) 0 0 var(--line),
-    calc(var(--o) * -1) 0 0 var(--line),
-    0 var(--o) 0 var(--line),
-    0 calc(var(--o) * -1) 0 var(--line),
-    calc(var(--o) * 0.7) calc(var(--o) * 0.7) 0 var(--line),
-    calc(var(--o) * -0.7) calc(var(--o) * 0.7) 0 var(--line),
-    calc(var(--o) * 0.7) calc(var(--o) * -0.7) 0 var(--line),
-    calc(var(--o) * -0.7) calc(var(--o) * -0.7) 0 var(--line),
-    calc(var(--o) * 2) calc(var(--o) * 2.6) 0 rgba(74, 65, 82, 0.38);
+  color: var(--b-ink);
 }
 
 /* Toasts: little luggage tags. The contour and the paper are two clipped

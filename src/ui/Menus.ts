@@ -16,7 +16,7 @@ export interface MenuActions {
   quitToMenu: () => void;
 }
 
-const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V'];
+const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 
 /**
  * Comic-cover lettering: every letter in its own box (so styles can set each
@@ -199,7 +199,7 @@ export class Menus {
   showChapters(back: () => void): void {
     const reached = new Set(app.profile.chaptersReached);
     const list = h('div', { class: 'chapters' });
-    for (let c = 1; c <= 5; c++) {
+    for (const c of Object.keys(CHAPTER_TITLES).map(Number)) {
       const open = OPEN_ALL || reached.has(c) || app.profile.endingSeen;
       const b = this.btn(
         `${ROMAN[c]}. ${CHAPTER_TITLES[c]}<small>${open ? 'Bu bölümün başından oyna' : 'Henüz ulaşılmadı'}</small>`,

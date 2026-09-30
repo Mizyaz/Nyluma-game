@@ -4,7 +4,7 @@ import { DEPTH, HULL_H, HULL_W, PULSE_RADIUS, PULSE_WINDUP_MS, VIEW_W, VIEW_H, C
 import { hex, P } from '../../render/2d/palette';
 import { frameRef, hasFrame } from '../../render/2d/TextureFactory';
 import { themeDef } from '../../render/2d/painters/backgrounds';
-import { roomDef } from '../../content/data/rooms';
+import { chapterOfRoom, roomDef, skyOf } from '../../content/data/rooms';
 import { NAMES } from '../../content/data/dialogue.tr';
 import { burstMode, ColorBursts } from '../../render/2d/fx/colorBurst';
 import { CrystalWarp, StepCrystals, warpLook } from '../../render/2d/fx/crystalFx';
@@ -27,6 +27,7 @@ import { FaceDialogue } from '../cinematics/FaceDialogue';
 import { ROMAN } from '../../ui/Menus';
 import type { AmbienceId } from '../systems/AudioSystem';
 import { stage } from '../../render/2.5d/hooks';
+import type { SkyScene } from './SkyScene';
 
 /** How much closer the view comes while Gorti stands still (diorama only). */
 const PUSH_IN = 0.1;
@@ -279,6 +280,7 @@ export class WorldScene extends Phaser.Scene {
       this.shake(0.0014, 90);
     });
 
+    this.scene.launch('sky', { sky: skyOf(this.def.id) });
     this.script = createScript(this.def.id, this);
     this.script.setup();
     this.room.refresh(false);
@@ -286,7 +288,7 @@ export class WorldScene extends Phaser.Scene {
     // First visit of a chapter's opening room shows the chapter card.
     if (isEntry && this.def.checkpoints[0]!.id === cp.id) {
       const ch = chapterOf(this.def.id);
-      const firstRoomOfChapter = ['r01', 'r04', 'r07', 'r09', 'r12'].includes(this.def.id);
+      const firstRoomOfChapter = chapterOfRoom(this.def.id)?.rooms[0] === this.def.id;
       if (firstRoomOfChapter && quest.set(`chapterCard:${ch}`)) {
         app.ui.hud.areaTitle(`BÖLÜM ${ROMAN[ch]}`, CHAPTER_TITLES[ch]!, 3600);
       }
@@ -457,6 +459,8 @@ export class WorldScene extends Phaser.Scene {
       // Same navigation hull for both forms: validate clearance anyway.
       p.setForm(to);
       this.quest.setForm(to);
+      // Form gates ("form:human") open and close with the form.
+      this.room.refresh(true);
       this.flash(0xd7b3ff, 0.25);
     });
     this.time.delayedCall(680, () => {
@@ -494,6 +498,11 @@ export class WorldScene extends Phaser.Scene {
   }
 
   /** Sets a flag, refreshes gated elements and saves. Returns true the first time. */
+  /** The Moon and the Sun over the room (its own scene). */
+  get sky(): SkyScene | null {
+    return this.scene.isActive('sky') ? (this.scene.get('sky') as SkyScene) : null;
+  }
+
   flag(f: string, animate = true): boolean {
     const first = this.quest.set(f);
     if (first) {
@@ -501,6 +510,16 @@ export class WorldScene extends Phaser.Scene {
       persist();
     }
     return first;
+  }
+
+  /** Clears a flag (content files' `unflag`). */
+  unflag(f: string, animate = true): boolean {
+    const was = this.quest.unset(f);
+    if (was) {
+      this.room.refresh(animate);
+      persist();
+    }
+    return was;
   }
 
   /** Reforms Gorti at the current checkpoint after a fall. */
@@ -606,6 +625,8 @@ export class WorldScene extends Phaser.Scene {
     this.room.animateMarkers(time);
     this.narrative.tick(dt);
     this.script.onUpdate?.(dt, time);
+    const cam = this.cameras.main;
+    this.sky?.look((this.player.x - cam.worldView.x) * cam.zoom, (this.player.feetY - 80 - cam.worldView.y) * cam.zoom);
     this.updateCamera(dt);
     this.pushIn(dt);
     this.room.stream(this.cameras.main.scrollX);
@@ -832,6 +853,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private cleanup(): void {
+    this.scene.stop('sky');
     // The physics plugin may already have torn its world down on shutdown.
     this.physics?.world?.off(Phaser.Physics.Arcade.Events.WORLD_STEP, this.fixedStep, this);
     this.offFocusLost?.();

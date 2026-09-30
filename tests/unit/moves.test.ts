@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { MOVE_TIERS, tierOf } from '../../src/gameplay/moves/tiers';
 import type { MoveFamily } from '../../src/gameplay/moves/types';
 import { ROOM_IDS } from '../../src/engine/state/types';
+import { BUILT_IN_ROOMS } from '../../src/content/data/rooms';
 
 const FAMILIES = Object.keys(MOVE_TIERS) as MoveFamily[];
 
@@ -28,7 +29,7 @@ describe('Rezonans move tiers', () => {
   });
 
   it('grows the flower move from one flower to a flock by chapter II', () => {
-    expect(ROOM_IDS.map((r) => tierOf('bloom', r))).toEqual([1, 1, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3]);
+    expect(Object.keys(BUILT_IN_ROOMS).map((r) => tierOf('bloom', r))).toEqual([1, 1, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3]);
   });
 
   it('opens the stomp with the human body and adds the horse once it is born', () => {

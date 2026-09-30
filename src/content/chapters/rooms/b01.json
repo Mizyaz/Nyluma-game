@@ -1,0 +1,106 @@
+{
+  "$schema": "../room.schema.json",
+  "id": "b01",
+  "chapter": "c6",
+  "title": "Form Kapısı",
+  "theme": "surface",
+  "width": 2600,
+  "spawn": {
+    "x": 240,
+    "facing": 1
+  },
+  "form": "root",
+  "enter": [
+    {
+      "say": [
+        {
+          "text": "Boş bir oda. Bir kapı, bir de biri."
+        }
+      ]
+    }
+  ],
+  "props": [
+    {
+      "key": "prop.tree",
+      "x": 620,
+      "depth": -60
+    },
+    {
+      "key": "prop.bush",
+      "x": 1080
+    },
+    {
+      "key": "prop.tree",
+      "x": 2050,
+      "depth": -80,
+      "flip": true
+    }
+  ],
+  "npcs": [
+    {
+      "id": "ayBasli",
+      "who": "moonMan",
+      "x": 900,
+      "facing": -1,
+      "talk": [
+        {
+          "who": "moonMan",
+          "text": "Kök hâlinle o kapıdan geçemezsin."
+        },
+        {
+          "who": "gorti",
+          "text": "Ne yapmam lazım?"
+        },
+        {
+          "who": "moonMan",
+          "text": "İnsan ol. R tuşu formunu değiştirir."
+        }
+      ],
+      "again": [
+        {
+          "who": "moonMan",
+          "text": "R: form değiştir. Kapı insana açılır."
+        }
+      ],
+      "then": [
+        {
+          "unlock": "form"
+        }
+      ]
+    }
+  ],
+  "gates": [
+    {
+      "id": "kapi",
+      "x": 1500,
+      "open": "form:human",
+      "look": "wood",
+      "hint": "Bu kapı yalnızca insan formuna açılıyor. (R)"
+    }
+  ],
+  "triggers": [
+    {
+      "id": "gecti",
+      "x": 1800,
+      "do": [
+        {
+          "word": "OLDU!"
+        },
+        {
+          "sky": {
+            "sun": "laugh"
+          }
+        },
+        {
+          "flag": "b01.passed"
+        }
+      ]
+    }
+  ],
+  "exits": [
+    {
+      "to": "b02",
+      "when": "b01.passed"
+    }
+  ]
+}

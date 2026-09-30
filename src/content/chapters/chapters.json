@@ -1,0 +1,85 @@
+{
+  "$schema": "./chapters.schema.json",
+  "chapters": [
+    {
+      "id": "c1",
+      "number": 1,
+      "title": "14. Oda",
+      "sky": {
+        "moon": "baby",
+        "sun": "calm"
+      },
+      "rooms": [
+        "r01",
+        "r02",
+        "r03"
+      ]
+    },
+    {
+      "id": "c2",
+      "number": 2,
+      "title": "Yüzey ve Yalanlar",
+      "sky": {
+        "moon": "baby",
+        "sun": "calm"
+      },
+      "rooms": [
+        "r04",
+        "r05",
+        "r06"
+      ]
+    },
+    {
+      "id": "c3",
+      "number": 3,
+      "title": "Mor At ve Güneş",
+      "sky": {
+        "moon": "old",
+        "sun": "laugh"
+      },
+      "rooms": [
+        "r07",
+        "r08"
+      ]
+    },
+    {
+      "id": "c4",
+      "number": 4,
+      "title": "İç Koğuş",
+      "sky": {
+        "moon": "old",
+        "sun": "calm"
+      },
+      "rooms": [
+        "r09",
+        "r10",
+        "r11"
+      ]
+    },
+    {
+      "id": "c5",
+      "number": 5,
+      "title": "Hak Aktarımı",
+      "sky": {
+        "moon": "old",
+        "sun": "laugh"
+      },
+      "rooms": [
+        "r12"
+      ]
+    },
+    {
+      "id": "c6",
+      "number": 6,
+      "title": "Boş Odalar",
+      "sky": {
+        "moon": "baby",
+        "sun": "calm"
+      },
+      "rooms": [
+        "b01",
+        "b02"
+      ]
+    }
+  ]
+}

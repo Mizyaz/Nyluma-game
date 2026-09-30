@@ -65,6 +65,15 @@ export function installProbe(): void {
           : null,
       };
     },
+    /** The world scene, for inspection from a test or the console. */
+    world(): WorldScene | null {
+      return app.game.scene.isActive('world') ? (app.game.scene.getScene('world') as WorldScene) : null;
+    },
+    /** Puts Gorti at `x` on the ground below (screenshots of a room's parts). */
+    tp(x: number): void {
+      const w = app.game.scene.getScene('world') as WorldScene;
+      w.player.teleport(x, w.player.feetY);
+    },
     /**
      * Renders `seconds` of a cue's generated music (piano or strings) offline
      * at the default music volume and reports the mix's peak and RMS level.

@@ -3,6 +3,7 @@ import { GRAVITY, VIEW_H, VIEW_W } from './constants';
 import { BootScene } from './scenes/BootScene';
 import { MenuScene } from './scenes/MenuScene';
 import { WorldScene } from './scenes/WorldScene';
+import { SkyScene } from './scenes/SkyScene';
 import { EndingScene } from './scenes/EndingScene';
 import { WarpScene } from './scenes/WarpScene';
 import { CinemaScene } from './scenes/CinemaScene';
@@ -58,6 +59,6 @@ export function gameConfig(parent: HTMLElement, forceCanvas: boolean, diorama = 
     disableContextMenu: true,
     banner: false,
     audio: { noAudio: true },
-    scene: [BootScene, MenuScene, WorldScene, EndingScene, WarpScene, CinemaScene],
+    scene: [BootScene, MenuScene, WorldScene, SkyScene, EndingScene, WarpScene, CinemaScene],
   };
 }

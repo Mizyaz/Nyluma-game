@@ -1,11 +1,13 @@
-export const ROOM_IDS = [
-  'r01', 'r02', 'r03', 'r04', 'r05', 'r06',
-  'r07', 'r08', 'r09', 'r10', 'r11', 'r12',
-] as const;
-export type RoomId = (typeof ROOM_IDS)[number];
+import story from '../../content/chapters/chapters.json';
+
+/** Every room, in story order (src/content/chapters/chapters.json). */
+export const ROOM_IDS: readonly string[] = story.chapters.flatMap((c) => c.rooms);
+/** A room's id: one of the TypeScript rooms or a room file. */
+export type RoomId = string;
 
 export type FormId = 'root' | 'human';
-export type PlayerKind = 'gorti' | 'horse' | 'coward' | 'mech' | 'suit';
+export const PLAYER_KINDS = ['gorti', 'horse', 'coward', 'mech', 'suit'] as const;
+export type PlayerKind = (typeof PLAYER_KINDS)[number];
 export type Ability = 'pulse' | 'reach' | 'song' | 'focus' | 'form';
 export const ABILITIES: readonly Ability[] = ['pulse', 'reach', 'song', 'focus', 'form'];
 export type Note = 'low' | 'mid' | 'high';
@@ -13,7 +15,7 @@ export type TextSpeed = 'slow' | 'normal' | 'fast' | 'instant';
 export type TouchMode = 'auto' | 'on' | 'off';
 
 export function isRoomId(v: unknown): v is RoomId {
-  return typeof v === 'string' && (ROOM_IDS as readonly string[]).includes(v);
+  return typeof v === 'string' && ROOM_IDS.includes(v);
 }
 
 export function isFormId(v: unknown): v is FormId {

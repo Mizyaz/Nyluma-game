@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { PAINTING_LINE, PAINTING_ORDER, PAINTING_PLACEMENTS, PAINTINGS, paintingsIn } from '../../src/content/data/paintings';
-import { ROOMS } from '../../src/content/data/rooms';
+import { BUILT_IN_ROOMS } from '../../src/content/data/rooms';
 import type { RoomDef } from '../../src/content/data/roomTypes';
-import { ROOM_IDS, type RoomId } from '../../src/engine/state/types';
+import type { RoomId } from '../../src/engine/state/types';
 import { floorBelow } from '../../src/engine/world/geometry';
 
-const rooms = ROOM_IDS.map((id) => ROOMS[id] as RoomDef);
+// The hand-written story (chapters I–V); room files come after it.
+const rooms = Object.values(BUILT_IN_ROOMS) as RoomDef[];
 /** Frame and wire around the canvas, world px (generous). */
 const FRAME = 24;
 
@@ -38,7 +39,7 @@ describe('paintings', () => {
 
   it('places every painting inside its room, walls clear of the floor, easels on the ground', () => {
     for (const [id, list] of Object.entries(PAINTING_PLACEMENTS) as [RoomId, NonNullable<(typeof PAINTING_PLACEMENTS)[RoomId]>][]) {
-      const def = ROOMS[id] as RoomDef;
+      const def = BUILT_IN_ROOMS[id] as RoomDef;
       for (const p of list) {
         const where = `${p.art} in ${id}`;
         expect(p.x - p.width / 2 - FRAME, where).toBeGreaterThan(0);

@@ -17,20 +17,9 @@ export interface Gate {
   unless?: string;
 }
 
-export type SolidStyle =
-  | 'soil'
-  | 'root'
-  | 'crystal'
-  | 'wood'
-  | 'stone'
-  | 'moss'
-  | 'floor'
-  | 'metal'
-  | 'bed'
-  | 'office'
-  /** A paper box's floor (the 14th Room): no boards, a few pencil creases. */
-  | 'paper'
-  | 'none';
+/** Terrain looks; 'paper' is a paper box's floor (the 14th Room): no boards, a few pencil creases. */
+export const SOLID_STYLES = ['soil', 'root', 'crystal', 'wood', 'stone', 'moss', 'floor', 'metal', 'bed', 'office', 'paper', 'none'] as const;
+export type SolidStyle = (typeof SOLID_STYLES)[number];
 
 /**
  * A whale platform's part in a set piece (a lift, a spiral, a bridge): the
@@ -157,25 +146,14 @@ export interface PropDef extends Gate {
   oy?: number;
 }
 
-export type ThemeId =
-  | 'nursery'
-  | 'roots'
-  | 'chamber'
-  | 'surface'
-  | 'hill'
-  | 'forest'
-  | 'ride'
-  | 'sun'
-  | 'clearing'
-  | 'dorm'
-  | 'mech'
-  | 'office';
+export const THEME_IDS = ['nursery', 'roots', 'chamber', 'surface', 'hill', 'forest', 'ride', 'sun', 'clearing', 'dorm', 'mech', 'office'] as const;
+export type ThemeId = (typeof THEME_IDS)[number];
 
 export type MusicId = MusicCue | 'none';
 
 export interface RoomDef {
   id: RoomId;
-  chapter: 1 | 2 | 3 | 4 | 5;
+  chapter: number;
   title: string;
   width: number;
   height: number;
