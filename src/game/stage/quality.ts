@@ -25,7 +25,7 @@ export interface Tier {
 
 export const TIERS: Record<TierName, Tier> = {
   high: { name: 'high', dprCap: 1.5, maxPixels: 2.6e6, shadow: 2048, samples: 4, dof: 32, spotShadows: false, target: 58 },
-  mid: { name: 'mid', dprCap: 1.3, maxPixels: 1.25e6, shadow: 1024, samples: 4, dof: 12, spotShadows: false, target: 30 },
+  mid: { name: 'mid', dprCap: 2, maxPixels: 1.2e6, shadow: 1024, samples: 4, dof: 12, spotShadows: false, target: 30 },
   low: { name: 'low', dprCap: 1, maxPixels: 0.7e6, shadow: 1024, samples: 0, dof: 0, spotShadows: false, target: 28 },
 };
 

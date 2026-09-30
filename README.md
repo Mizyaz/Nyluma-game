@@ -1,7 +1,8 @@
 # Kristaller Dünyası — 14. Oda
 
-Tarayıcıda oynanan, el çizimi / cel-shaded görünümlü, 2D yan kaydırmalı
-gerçeküstü bir macera. Beş bölüm ve on iki oda boyunca Gorti Evaskinan'ın
+Tarayıcıda oynanan, el çizimi / cel-shaded görünümlü, 2.5B yan kaydırmalı
+gerçeküstü bir macera: her oda gerçek derinliği olan bir kâğıt dioramada,
+oyunun kendi çizimleri kalınlığı olan kartonlar olarak sahnelenir. Beş bölüm ve on iki oda boyunca Gorti Evaskinan'ın
 382. Dünya'daki yolculuğu: 14. Oda'dan yüzeye, mor atla Güneş'e, iç koğuşa ve
 boş masadaki hak aktarımına.
 
@@ -116,11 +117,30 @@ yerel sunucu için: `npx serve dist` ya da `node scripts/serve.mjs dist 4173 /`.
 | Komut | Ne yapar |
 | --- | --- |
 | `npm run typecheck` | TypeScript (strict) denetimi |
-| `npm run test` | Birim testleri (Vitest): kayıt, durum normalizasyonu, girdi bağlamları, yetenekler, Güneş karşılaşması, oda verisi doğrulaması, animasyon, Rezonans hareketlerinin büyümesi, tabloların yerleri, yüz sahnelerinin kadrosu, müzik bestecileri (piyano, yaylılar), diyalog müziğine geçiş ve müzik kütüphanesi |
+| `npm run test` | Birim testleri (Vitest): diorama geometrisi, kayıt, durum normalizasyonu, girdi bağlamları, yetenekler, Güneş karşılaşması, oda verisi doğrulaması, animasyon, Rezonans hareketlerinin büyümesi, tabloların yerleri, yüz sahnelerinin kadrosu, müzik bestecileri (piyano, yaylılar), diyalog müziğine geçiş ve müzik kütüphanesi |
 | `npm run music:check` | Yalnızca müzik testleri: bestecilerin kuralları, diyalog müziğine geçiş ve `music/tracks.json` ile lisans notlarının denetimi |
 | `npm run test:e2e` | Üretim ve e2e derlemelerini alır, Playwright tarayıcı testlerini çalıştırır: kök ve `/kristaller-dunyasi/` alt yolunda açılış (WebGL), oynanış akışları (hareket, etkileşim, duraklatma, odak kaybı, kontrol noktası + Devam Et, ayarlar, bozuk/erişilemeyen kayıt, bölüm seçimi, son), tabloyu inceleme, Rezonans hareketleri (çiçek ve kuşlar, yeri sarsma, Ay ve mor at), yüz animasyonlu diyalog sahnesi ve yaylılar, çoklu dokunma, dikey ve yatay ekran düzeni, menülerin her boyutta ekrana sığması, dokunmatik düğmelerin çakışmaması ve telefon boyutlu ekranda yalnızca dokunmatikle ilk oda (`PHONE_UPRIGHT=1` ile telefon dik tutulmuş olarak) |
 | `npm run test:campaign` | Yeni Oyun'dan son karta kadar tüm kampanyayı oynayan iki uzun test: masaüstünde yalnızca klavyeyle ve yatay tutulan telefon boyutlu ekranda yalnızca dokunmatikle (bu depodaki ölçümde her biri yaklaşık 11 dakika). `PHONE_UPRIGHT=1 npx playwright test mobile --grep @campaign` dokunmatik koşuyu telefon dik tutulmuş olarak oynar |
 | `npm run package` | Kaynak ve `dist` arşivlerini `release/` altına üretir |
+
+### Kâğıt diorama (3B sahne)
+
+Dünya sahnesi Phaser tuvalinin altındaki bir three.js tuvalinde çizilir
+(`src/game/stage/`): odalar önü açık kâğıt kutulardır (arazi derinliği olan
+kartonlar, kutunun yan duvarları ve kenarı), paralaks katmanları kaydırma
+oranlarının gerektirdiği derinlikte durur, proplar, karakterler ve balinalar
+kalın kartonlar olarak kalkar; yumuşak gölgeler, Gorti'ye odaklanan alan
+derinliği ve çizgi roman baskısı vardır. Phaser kendi çizdiklerini (efektler,
+ses sözcükleri, maskeler, geçişler, sinema bantları) şeffaf tuvalinde üstte
+çizmeye devam eder; iki resim z = 0 düzleminde birebir örtüşür. Birinci
+bölümün kutusu birinci tablodan gelir (`src/game/stage/themes.ts`).
+
+- `?flat`: düz (2B) çizim. WebGL2 yoksa, 3B sahne kurulamazsa ya da Canvas
+  çizici (`?canvas=1`) seçilmişse de düz çizim kullanılır.
+- `?q=high|mid|low`: kalite kademesini sabitler (varsayılan: cihaza göre
+  seçilir; kare süresi uzarsa çözünürlük ve kademe kendiliğinden düşer).
+- Oda verisinde bir prop ya da katmana `z` verilirse 3B'de o derinlikte durur
+  (bkz. `PropDef.z`).
 
 Tarayıcı testleri için Chromium gerekir (`npx playwright install chromium`).
 Açılış testleri ve referans ekran görüntüleri (`SHOTS=1 npx playwright test
@@ -167,6 +187,7 @@ src/game/moves/             Rezonans hareketleri: hareket arayüzü, bölümlere
 src/game/cinematics/        Yüz animasyonlu diyalog sahneleri: portreler (iskelet, Ay/Güneş yüzü, resim), kadro ve sahne yöneticisi
 src/game/world/             Kendi etkileşimini yöneten nesneler için arayüz, tablo galerisi, zemin geometrisi
 src/game/fx/                Pastel mücevher tüneli (çizim, çerçeve düzeni, bölüm görünümleri) ve adım efektleri, renk patlamaları ve renk bombardımanı
+src/game/stage/             Kâğıt diorama: three.js sahnesi, kamera eşlemesi, kaldırılan nesneler, kutu, ışıklar, odak bulanıklığı ve baskı, kalite
 src/game/systems/           Girdi bağlamları, kayıt, ses (Web Audio), anlatı/ara sahne
 src/game/data/              12 odanın verisi, diyaloglar, anılar, Güneş karşılaşması durum makinesi
 src/game/rooms/             Oda kurucu (arazi, kapılar/bayraklar) ve oda betikleri

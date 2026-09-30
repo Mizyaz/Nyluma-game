@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { ROOMS } from '../../src/game/data/rooms';
+import { boxTheme } from '../../src/game/stage/themes';
 import { bandZ, offAxis, phaserScreen, pinAt, placeScrolled, projectToPlane, restCentre, scrollDepth, viewRect, type CamState } from '../../src/game/stage/depth';
 
 // The diorama must look exactly like the flat game from the middle of the
@@ -100,5 +102,16 @@ describe('diorama geometry', () => {
     const b = screenOf(still, p.x, p.y, p.z);
     expect(a[0] - b[0]).toBeCloseTo(4, 6);
     expect(a[1] - b[1]).toBeCloseTo(-3, 6);
+  });
+
+  it('stages chapter I as the first painting\'s box: pink, no back wall of its own, two stage lamps', () => {
+    for (const room of [ROOMS.r01, ROOMS.r02, ROOMS.r03]) {
+      const t = boxTheme(room);
+      expect(t.backWall).toBe(false);
+      expect(t.lights.spots).toHaveLength(2);
+      expect(t.rim).toBe(boxTheme(ROOMS.r01).rim);
+    }
+    // Other rooms take their own colours.
+    expect(boxTheme(ROOMS.r05).floor).not.toBe(boxTheme(ROOMS.r01).floor);
   });
 });

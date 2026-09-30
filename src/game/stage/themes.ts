@@ -32,6 +32,8 @@ export interface SpotDef {
   penumbra: number;
   /** Size of the soft glow drawn at the bulb (px across; 0 for none). */
   glow: number;
+  /** Builds the lamp itself (grey hood, peach bulb); off where the room draws its own lamp. */
+  body?: boolean;
 }
 
 /** A warm light inside a prop (the hanging lamp's crystal). */
@@ -104,8 +106,8 @@ const NEUTRAL: LightRig = {
 };
 
 /** A stage lamp of the first painting: a grey hood with a peach bulb, shining inward. */
-function lamp(at: SpotDef['at'], to: SpotDef['to']): SpotDef {
-  return { at, to, color: 0xffd9c2, intensity: 1.15, angle: 40, penumbra: 0.9, glow: 130 };
+function lamp(at: SpotDef['at'], to: SpotDef['to'], body = true): SpotDef {
+  return { at, to, color: 0xffd9c2, intensity: 1.15, angle: 40, penumbra: 0.9, glow: 130, body };
 }
 
 /** The two stage lamps at the box's ends. */
@@ -175,17 +177,22 @@ const FAMILY: Record<ThemeId, { lights: Partial<LightRig>; backWall: boolean; wa
  * Positions use world px; see SpotDef.
  */
 const ROOMS: Partial<Record<RoomId, { spots?: readonly SpotDef[] }>> = {
-  // The nursery: the lamps stand just inside its walls, above the floor.
-  r01: { spots: [lamp([230, 380, 70], [820, 'floor', -60]), lamp([1650, 380, 70], [1060, 'floor', -60])] },
+  // The nursery: the lamps stand just inside its walls, above the floor (the
+  // room draws the lamps themselves; the stage adds their light).
+  r01: { spots: [lamp([230, 380, 70], [820, 'floor', -60], false), lamp([1650, 380, 70], [1060, 'floor', -60], false)] },
   // The fossil-root shaft: at the foot of the climb.
   r02: { spots: [lamp([170, 1990, 70], [800, 'floor', -60]), lamp([1430, 1990, 70], [800, 'floor', -60])] },
   // The crystal-tree chamber: by the entrance and by the tree.
   r03: { spots: [lamp([180, 900, 70], [700, 'floor', -60]), lamp([2900, 880, 70], [2350, 'floor', -60])] },
 };
 
-/** Does a solid carry the box itself (floors, walls), rather than stand in it (ledges)? */
+/** Styles that are things in the box (branches, crystals, furniture), not the box itself. */
+const THINGS = new Set<SolidDef['style']>(['root', 'crystal', 'wood', 'bed', 'metal']);
+
+/** Does a solid carry the box itself (floors, walls, earth ledges), rather than stand in it? */
 export function structural(s: SolidDef): boolean {
-  return !s.oneWay && s.h > 30;
+  if (s.oneWay || s.latent) return false;
+  return s.h > 30 || (s.h >= 24 && !THINGS.has(s.style));
 }
 
 /** The room's main floor line: the top most of the floor's width stands on. */

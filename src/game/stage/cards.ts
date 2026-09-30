@@ -107,7 +107,11 @@ export function setQuadUV(g: THREE.BufferGeometry, u0: number, v0: number, u1: n
 
 let paperTile: HTMLCanvasElement | null = null;
 
-/** Opaque paper with the coloured-pencil grain of the paintings (multiplied by a colour). */
+/**
+ * Opaque paper with the coloured-pencil grain of the paintings (multiplied
+ * by a colour): the grain laid twice, turned, so large faces of the box
+ * read as coloured paper rather than flat colour.
+ */
 export function paperCanvas(): HTMLCanvasElement {
   if (paperTile) return paperTile;
   const src = grainCanvas();
@@ -115,9 +119,14 @@ export function paperCanvas(): HTMLCanvasElement {
   c.width = src.width;
   c.height = src.height;
   const ctx = c.getContext('2d')!;
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = '#fbfaf8';
   ctx.fillRect(0, 0, c.width, c.height);
   ctx.drawImage(src, 0, 0);
+  ctx.globalAlpha = 0.8;
+  ctx.translate(c.width / 2, c.height / 2);
+  ctx.rotate(Math.PI);
+  // Turned half round, the tile still repeats without seams.
+  ctx.drawImage(src, -c.width / 2, -c.height / 2);
   paperTile = c;
   return c;
 }

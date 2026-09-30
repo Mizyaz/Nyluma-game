@@ -46,6 +46,20 @@ interface RoomLink {
   onShutdown: () => void;
 }
 
+/**
+ * Phaser's additive blend, made to add light without adding coverage: where
+ * its canvas is see-through, a glow then brightens the diorama beneath it
+ * (the browser composites premultiplied colour with zero alpha as light)
+ * instead of hazing it. Over opaque pixels it blends exactly as before.
+ */
+function additiveOverDiorama(game: Phaser.Game, on: boolean): void {
+  const r = game.renderer;
+  if (!(r instanceof Phaser.Renderer.WebGL.WebGLRenderer)) return;
+  const gl = r.gl;
+  const add = r.blendModes[Phaser.BlendModes.ADD] as { func: number[] } | undefined;
+  if (add) add.func = on ? [gl.ONE, gl.DST_ALPHA, gl.ZERO, gl.ONE] : [gl.ONE, gl.DST_ALPHA];
+}
+
 /** The game's clear colour: transparent while the diorama shows through, else the flat one. */
 function phaserClear(game: Phaser.Game, clear: boolean): void {
   const bg = game.config.backgroundColor;
@@ -110,6 +124,7 @@ export class Stage implements StageDriver {
     parent.insertBefore(canvas, parent.firstChild);
     canvas.style.visibility = 'hidden';
     game.events.on(Phaser.Core.Events.POST_RENDER, this.frame, this);
+    additiveOverDiorama(game, true);
     console.info(`[stage] diorama on (${tier.name}${forced ? ', forced' : ''}; ${gpu || 'unknown GPU'})`);
   }
 
@@ -226,6 +241,8 @@ export class Stage implements StageDriver {
     this.link = null;
     l.world.events.off(Phaser.Scenes.Events.PRE_RENDER, l.onPreRender);
     l.world.events.off(Phaser.Scenes.Events.SHUTDOWN, l.onShutdown);
+    // A world that goes on flat gets its sky back.
+    if (l.world.sys.isActive()) l.world.cameras.main.setBackgroundColor(`#${this.sky.getHexString(THREE.SRGBColorSpace)}`);
     l.mirror.destroy();
     l.box.dispose();
     l.lights.dispose();
@@ -245,6 +262,7 @@ export class Stage implements StageDriver {
     }
     this.dead = true;
     phaserClear(this.game, false);
+    additiveOverDiorama(this.game, false);
     this.hide();
     hooks.setDriver(null);
   }

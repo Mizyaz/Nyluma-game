@@ -91,9 +91,10 @@ export class Lights {
         light.shadow.intensity = rig.shadow * 0.7;
       }
       g.add(light, light.target);
+      if (s.body !== false) g.add(this.lampBody(pos, aim));
       if (s.glow > 0) {
         const glow = glowSprite(this.glowTex, s.color, s.glow, 0.5);
-        glow.position.copy(pos);
+        glow.position.copy(pos).addScaledVector(aim.clone().sub(pos).normalize(), 14);
         g.add(glow);
       }
       this.spots.push({ light, aim, phase: i * 1.7 });
@@ -106,6 +107,36 @@ export class Lights {
       this.lamps.push({ a, light, glow });
     }
   }
+
+  /**
+   * A stage lamp as the first painting has it: a grey paper hood, open
+   * toward where it shines, with a peach bulb in its mouth.
+   */
+  private lampBody(pos: THREE.Vector3, aim: THREE.Vector3): THREE.Group {
+    const lamp = new THREE.Group();
+    const hoodMat = new THREE.MeshLambertMaterial({ color: 0xc3cccb, side: THREE.DoubleSide });
+    const rimMat = new THREE.MeshLambertMaterial({ color: 0xa3adad });
+    const bulbMat = new THREE.MeshBasicMaterial({ color: 0xf6dccf });
+    // The hood: a cone opening toward +y (turned to the aim below).
+    const hood = new THREE.Mesh(new THREE.CylinderGeometry(15, 34, 62, 18, 1, true), hoodMat);
+    hood.castShadow = true;
+    const back = new THREE.Mesh(new THREE.CircleGeometry(15, 18), rimMat);
+    back.position.y = -31;
+    back.rotation.x = Math.PI / 2;
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(34, 2.6, 6, 24), rimMat);
+    rim.position.y = 31;
+    rim.rotation.x = Math.PI / 2;
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(22, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), bulbMat);
+    bulb.position.y = 18;
+    bulb.scale.y = 0.75;
+    lamp.add(hood, back, rim, bulb);
+    lamp.position.copy(pos);
+    lamp.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), aim.clone().sub(pos).normalize());
+    this.owned.push(hoodMat, rimMat, bulbMat, hood.geometry, back.geometry, rim.geometry, bulb.geometry);
+    return lamp;
+  }
+
+  private readonly owned: { dispose(): void }[] = [];
 
   setShadowSize(n: number): void {
     if (n === this.shadowSize) return;
@@ -184,6 +215,7 @@ export class Lights {
   }
 
   dispose(): void {
+    for (const o of this.owned) o.dispose();
     this.key.shadow.map?.dispose();
     for (const s of this.spots) s.light.shadow.map?.dispose();
     for (const l of this.lamps) l.glow.material.dispose();
