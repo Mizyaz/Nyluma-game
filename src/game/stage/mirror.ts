@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import * as THREE from 'three';
 import { DEPTH } from '../constants';
-import { affine, bandZ, depthScale, itrs, mul, scrollDepth, type Affine } from './depth';
+import { affine, boxedZ, depthScale, itrs, mul, scrollDepth, type Affine } from './depth';
 import { EDGE_TINT, cardMaterial, quadGeometry, setCardAlpha, setQuadUV, type CardMaterial } from './cards';
 import { stage as hooks, type LiftOpts } from './hooks';
 import type { TextureCache } from './textures';
@@ -16,6 +16,12 @@ import type { SolidDef } from '../data/roomTypes';
 // the children of a container stand a hair apart in their draw order.
 
 type GO = Phaser.GameObjects.GameObject;
+
+/**
+ * Scroll factors of near planes (a room's own back wall, things hung just
+ * before the box): they stand still in 3D. Farther planes follow the eye.
+ */
+const NEAR_PLANES = [0.8, 1.25] as const;
 type Img = Phaser.GameObjects.Image | Phaser.GameObjects.Sprite;
 
 /** What the mirror needs to know about the frame being drawn. */
@@ -29,6 +35,11 @@ export interface MirrorFrame {
   /** The view's centre on z = 0 (the resting eye). */
   cx: number;
   cy: number;
+  /** The eye itself this frame (lifted, trailing): far planes are pinned to it. */
+  ex: number;
+  ey: number;
+  /** Depth of the box's back (band depths fit in front of it). */
+  back: number;
   /** Phaser camera origin in screen px (640, 360). */
   ox: number;
   oy: number;
@@ -245,6 +256,8 @@ function snapshotGraphics(g: Phaser.GameObjects.Graphics, box: { x: number; y: n
 export class Mirror {
   readonly group = new THREE.Group();
   private readonly lifted = new Map<GO, Lifted>();
+  /** This frame's parallax layers: 2D depth and 3D depth. */
+  private readonly layers: { depth: number; z: number }[] = [];
   private readonly seen = new WeakSet<GO>();
   private frameNo = 0;
   /** Card textures for Graphics snapshots (not in Phaser's texture manager). */
@@ -325,10 +338,13 @@ export class Mirror {
   sync(f: MirrorFrame): void {
     this.frameNo++;
     const list = this.scene.children.list;
-    // Ties in depth keep Phaser's order: a hair nearer for each later one.
+    // Ties keep Phaser's order, a hair nearer for each later one: among
+    // things of one depth, and among things on one parallax plane (a wall
+    // and what hangs on it).
     let lastDepth = NaN;
     let tie = 0;
     const order = new Map<GO, number>();
+    const onPlane = new Map<number, number>();
     for (const go of list) {
       const d = (go as unknown as { depth: number }).depth;
       if (d === lastDepth) tie++;
@@ -336,7 +352,23 @@ export class Mirror {
         tie = 0;
         lastDepth = d;
       }
-      if (this.lifted.has(go)) order.set(go, tie);
+      if (!this.lifted.has(go)) continue;
+      const sf = (go as unknown as { scrollFactorX: number }).scrollFactorX;
+      if (sf === 1) order.set(go, tie);
+      else {
+        const n = onPlane.get(sf) ?? 0;
+        onPlane.set(sf, n + 1);
+        order.set(go, n);
+      }
+    }
+    // The parallax layers' depths, in 2D order: screen-pinned backdrops (the
+    // tunnel behind a room) slot in between the layers they lie between.
+    this.layers.length = 0;
+    for (const l of this.lifted.values()) {
+      const o = l.obj as unknown as { scrollFactorX: number; scrollFactorY: number; depth: number };
+      if (o.scrollFactorX === o.scrollFactorY && o.scrollFactorX > 0 && o.scrollFactorX < 1 && l.opts.z === undefined) {
+        this.layers.push({ depth: o.depth, z: scrollDepth(o.scrollFactorX, f.D) });
+      }
     }
     for (const l of this.lifted.values()) {
       const go = l.obj;
@@ -381,15 +413,17 @@ export class Mirror {
       P.e = 0;
       P.f = 0;
     } else if (sfx === 1 && sfy === 1) {
-      z = (o.z ?? bandZ(go.depth)) + tie * 0.01;
+      z = (o.z ?? boxedZ(go.depth, f.back)) + tie * 0.01;
       P.a = 1;
       P.b = 0;
       P.c = 0;
       P.d = 1;
       P.e = 0;
       P.f = 0;
-    } else if (o.z === undefined && sfx === sfy && sfx > 0) {
-      // A parallax layer: static at the depth its scroll factor implies.
+    } else if (o.z === undefined && sfx === sfy && sfx >= NEAR_PLANES[0] && sfx <= NEAR_PLANES[1]) {
+      // A near parallax plane (the room's own back wall, charms before the
+      // box): static at the depth its scroll factor implies, so it keeps
+      // its place against the box as the eye moves.
       z = scrollDepth(sfx, f.D) + tie * 0.05;
       const k = 1 / sfx;
       P.a = k;
@@ -398,6 +432,17 @@ export class Mirror {
       P.d = k;
       P.e = f.ox * (1 - k);
       P.f = f.oy * (1 - k);
+    } else if (o.z === undefined && sfx === sfy && sfx > 0) {
+      // A far plane (sky, hills, the stone world): at its depth, but pinned
+      // to the eye itself, so its composition holds whatever the eye's lift.
+      z = scrollDepth(sfx, f.D) + tie * 0.05;
+      const k = sfx;
+      P.a = 1 / k;
+      P.b = 0;
+      P.c = 0;
+      P.d = 1 / k;
+      P.e = ((1 - sfx) * f.scrollX) / k + f.ex * (1 - 1 / k);
+      P.f = ((1 - sfy) * f.scrollY) / k + f.ey * (1 - 1 / k);
     } else if (o.z !== undefined && sfx === sfy) {
       z = o.z + tie * 0.01;
       P.a = 1;
@@ -409,14 +454,14 @@ export class Mirror {
     } else {
       // Pinned to the screen on an axis: placed anew each frame so that it
       // looks where Phaser would draw it.
-      z = o.z ?? (sfx > 0 && sfx !== 1 ? scrollDepth(sfx, f.D) : f.backdropZ);
+      z = o.z ?? (sfx > 0 && sfx !== 1 ? scrollDepth(sfx, f.D) : this.backdropZ(go.depth, f));
       const k = depthScale(z, f.D);
       P.a = 1 / k;
       P.b = 0;
       P.c = 0;
       P.d = 1 / k;
-      P.e = ((1 - sfx) * f.scrollX) / k + f.cx * (1 - 1 / k);
-      P.f = ((1 - sfy) * f.scrollY) / k + f.cy * (1 - 1 / k);
+      P.e = ((1 - sfx) * f.scrollX) / k + f.ex * (1 - 1 / k);
+      P.f = ((1 - sfy) * f.scrollY) / k + f.ey * (1 - 1 / k);
     }
     // Far layers and screen-pinned backdrops are not lit.
     const lit = o.lit ?? (Math.abs(z) < f.litDepth && !(sfx === 0 && sfy === 0));
@@ -424,14 +469,35 @@ export class Mirror {
     const dz = o.dz ?? (rig ? 0.7 : 0.3);
     const decal = o.as === 'decal';
     const terrain = o.as === 'terrain';
-    const thick = o.thick ?? (decal || terrain || !lit ? 0 : rig ? 0.35 : go.depth <= -50 ? 1.2 : 3);
+    // Paper edges: thin on figures, none on planes (a wall's things are glued to it).
+    const plane = sfx !== 1 || sfy !== 1;
+    const thick = o.thick ?? (decal || terrain || plane || !lit ? 0 : rig ? 0.35 : go.depth <= -50 ? 1.2 : 3);
     const cast = o.cast ?? (lit && !decal && !terrain && thick > 0);
     // Sway: things hung from their top swing gently about it.
     const sway = o.sway ? swayAngle(f.t, go.x ?? 0, f.calm) : 0;
     // A lean about the upright through its anchor (world x of the object).
     const yaw = o.lean ? leanAngle(go.x ?? 0, go.y ?? 0) : 0;
-    const ctx: WalkCtx = { l, f, z, dz, lit, cast, thick, rig, decal, terrain, idx: 0, sway, yaw, ax: P.a * (go.x ?? 0) + P.e, cropTop: terrain && o.solid ? o.solid.y : null };
+    // Terrain art is cut just below the solid's top line: the slab's own top
+    // (and its rim) replaces the painted top face and its contour.
+    const ctx: WalkCtx = { l, f, z, dz, lit, cast, thick, rig, decal, terrain, idx: 0, sway, yaw, ax: P.a * (go.x ?? 0) + P.e, cropTop: terrain && o.solid ? o.solid.y + 2 : null };
     this.walk(go, ctx, P, 1, true);
+  }
+
+  /**
+   * Depth of a screen-pinned backdrop drawn at `depth` in 2D: in front of
+   * the layers drawn under it, behind those drawn over it, and behind the
+   * box's inside.
+   */
+  private backdropZ(depth: number, f: MirrorFrame): number {
+    let below = -Infinity;
+    let above = Infinity;
+    for (const L of this.layers) {
+      if (L.depth <= depth) below = Math.max(below, L.z);
+      else above = Math.min(above, L.z);
+    }
+    let z = Number.isFinite(below) ? below + 30 : Number.isFinite(above) ? above - 60 : f.backdropZ;
+    if (Number.isFinite(above)) z = Math.min(z, above - 10);
+    return Math.min(z, f.back - 20);
   }
 
   private walk(go: GO, c: WalkCtx, parent: Affine, alpha: number, top: boolean): void {

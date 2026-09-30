@@ -161,7 +161,7 @@ export class Post {
       tDiffuse: { value: null },
       uResolution: { value: new THREE.Vector2(1280, 720) },
       uStrength: { value: 1 },
-      uVignette: { value: 0.16 },
+      uVignette: { value: 0.07 },
     };
     this.printQuad = new FullScreenQuad(new THREE.ShaderMaterial({ uniforms: this.printU, vertexShader: QUAD_VERT, fragmentShader: PRINT_FRAG, depthTest: false, depthWrite: false }));
   }
@@ -208,10 +208,14 @@ export class Post {
     (this.printU.uResolution!.value as THREE.Vector2).set(this.w, this.h);
   }
 
-  /** Where the focus lies (view depth, px) and how quickly things blur away from it. */
-  focus(depth: number, scale: number): void {
+  /**
+   * Where the focus lies (view depth, px), how quickly things blur away
+   * from it, and how far the widest blur reaches (1 = 8 px on 720 lines).
+   */
+  focus(depth: number, scale: number, reach = 1): void {
     this.dofU.uFocus!.value = depth;
     this.dofU.uScale!.value = scale;
+    this.dofU.uMaxBlur!.value = 8 * (this.h / 720) * reach;
   }
 
   set strength(v: number) {

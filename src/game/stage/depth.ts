@@ -150,6 +150,21 @@ const BANDS: readonly (readonly [number, number])[] = [
   [100, 80],
 ];
 
+/** The box depth the band table is laid out for. */
+export const NOMINAL_BACK = 240;
+
+/**
+ * A band depth inside a box whose back stands at `back` (negative): the
+ * part behind the actors shrinks with a shallower box, so nothing that the
+ * flat game draws in front of the room's own back wall ends up behind it.
+ */
+export function boxedZ(depth: number, back: number): number {
+  const z = bandZ(depth);
+  if (z >= 0) return z;
+  const k = Math.min(1, -back / NOMINAL_BACK);
+  return Math.max(back + 1.5, z * k);
+}
+
 export function bandZ(depth: number): number {
   const first = BANDS[0]!;
   if (depth <= first[0]) return first[1];

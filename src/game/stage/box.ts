@@ -109,6 +109,19 @@ class Faces {
 
 const ORDER: readonly Face[] = ['top', 'front', 'side', 'bottom', 'rim'];
 
+/**
+ * Tops face the sky, not the key light: a little brighter paper keeps them
+ * the colour the flat game paints them (as the prototype's floor did).
+ */
+const TOP_LIFT = 1.18;
+
+/** A face's paper colour as three.js takes it (tops brighter). */
+function faceColor(f: Face, c: number): THREE.Color {
+  const col = new THREE.Color(c);
+  if (f === 'top' || f === 'rim') col.multiplyScalar(TOP_LIFT);
+  return col;
+}
+
 export class PaperBox {
   readonly group = new THREE.Group();
   private readonly slabs: Slab[] = [];
@@ -123,21 +136,28 @@ export class PaperBox {
     readonly frame: BoxFrame,
     private readonly paper: THREE.Texture,
     private readonly skip: (s: SolidDef) => boolean,
+    /** The room paints its own box (back and side walls): the stage builds none. */
+    ownWalls = false,
   ) {
     this.group.name = 'box';
     this.thin = Math.min(44, theme.frontDepth);
     this.buildSlabs(solids);
-    this.buildWalls();
+    if (!ownWalls) this.buildWalls();
+  }
+
+  /** A paper floor painted for the box (the 14th Room's): its own colours and art. */
+  private static painted(s: SolidDef): boolean {
+    return s.style === 'paper';
   }
 
   /** Depth of the front face of a solid's slab; NaN where its painted art is not shown (clean paper). */
   frontZ(s: SolidDef): number {
     if (!structural(s)) return this.thin;
-    return this.theme.terrainArt || !this.theme.paperSlabs ? this.frame.front : NaN;
+    return this.theme.terrainArt || !this.theme.paperSlabs || PaperBox.painted(s) ? this.frame.front : NaN;
   }
 
-  private material(color: number): THREE.MeshLambertMaterial {
-    const m = new THREE.MeshLambertMaterial({ color, map: this.paper });
+  private material(face: Face, color: number): THREE.MeshLambertMaterial {
+    const m = new THREE.MeshLambertMaterial({ color: faceColor(face, color), map: this.paper });
     this.shared.push(m);
     return m;
   }
@@ -145,9 +165,11 @@ export class PaperBox {
   /** Colours of a slab: the box's paper, or its own terrain style's. */
   private colors(s: SolidDef): Record<Face, number> {
     const t = this.theme;
-    if (t.paperSlabs && structural(s)) return { top: t.floor, front: t.front, side: t.inner, bottom: t.inner, rim: t.rim };
     const c = colorsFor(s.style, themeDef(this.room.theme).terrain);
     const hex = (h: string): number => parseInt(h.replace('#', ''), 16);
+    // A painted paper floor: its sheet on top, the box's front below, its lid's pink along the edge.
+    if (PaperBox.painted(s)) return { top: hex(c.top), front: hex(c.base), side: hex(mix(c.base, '#6f6478', 0.08)), bottom: hex(mix(c.base, '#6f6478', 0.14)), rim: hex(c.accent) };
+    if (t.paperSlabs && structural(s)) return { top: t.floor, front: t.front, side: t.inner, bottom: t.inner, rim: t.rim };
     return {
       top: hex(mix(c.top, '#ffffff', 0.18)),
       front: hex(c.base),
@@ -171,7 +193,7 @@ export class PaperBox {
       faces.box(s.x, s.y, s.x + s.w, s.y + s.h, z0, z1, { rimBand: deep ? 12 : 0 });
       const dynamic = !!(s.when || s.unless || s.latent || s.grow);
       if (dynamic) {
-        const mats = ORDER.map((f) => new THREE.MeshLambertMaterial({ color: colors[f], map: this.paper, transparent: false }));
+        const mats = ORDER.map((f) => new THREE.MeshLambertMaterial({ color: faceColor(f, colors[f]), map: this.paper, transparent: false }));
         const mesh = new THREE.Mesh(faces.geometry(ORDER), mats);
         mesh.receiveShadow = true;
         this.group.add(mesh);
@@ -184,7 +206,7 @@ export class PaperBox {
       else g.faces.box(s.x, s.y, s.x + s.w, s.y + s.h, z0, z1, { rimBand: deep ? 12 : 0 });
     }
     for (const { faces, colors } of groups.values()) {
-      const mats = ORDER.map((f) => this.material(colors[f]));
+      const mats = ORDER.map((f) => this.material(f, colors[f]));
       const mesh = new THREE.Mesh(faces.geometry(ORDER), mats);
       mesh.receiveShadow = true;
       this.group.add(mesh);
@@ -204,12 +226,12 @@ export class PaperBox {
     walls.box(f.x1, f.rim, f.x1 + T, f.bottom, f.back - T, f.front, { rimBand: 0, top: 'rim', noBottom: true });
     if (t.backWall) faces.box(f.x0 - T, f.rim, f.x1 + T, f.bottom, f.back - T, f.back, { top: 'rim', noBottom: true, sides: false });
     const cols: Record<Face, number> = { top: t.rim, front: t.box, side: t.inner, bottom: t.inner, rim: t.rim };
-    const wallMats = ORDER.map((k) => this.material(k === 'front' ? t.box : k === 'side' ? t.inner : cols[k]));
+    const wallMats = ORDER.map((k) => this.material(k, k === 'front' ? t.box : k === 'side' ? t.inner : cols[k]));
     const wm = new THREE.Mesh(walls.geometry(ORDER), wallMats);
     wm.receiveShadow = true;
     this.group.add(wm);
     if (!faces.empty) {
-      const backMats = ORDER.map((k) => this.material(k === 'front' ? t.back : cols[k]));
+      const backMats = ORDER.map((k) => this.material(k, k === 'front' ? t.back : cols[k]));
       const bm = new THREE.Mesh(faces.geometry(ORDER), backMats);
       bm.receiveShadow = true;
       this.group.add(bm);

@@ -7,7 +7,7 @@ import type { WorldScene } from '../scenes/WorldScene';
 import { isWhalePlatform } from '../rooms/whalePlan';
 import { PaperBox, type SolidView } from './box';
 import { paperCanvas } from './cards';
-import { bandZ, eyeDistance, offAxis, restCentre, scrollDepth, viewRect, type CamState, type Rect } from './depth';
+import { boxedZ, eyeDistance, offAxis, restCentre, scrollDepth, viewRect, type CamState, type Rect } from './depth';
 import { stage as hooks, type LiftOpts, type StageDriver } from './hooks';
 import { Lights, type LampAnchor } from './lights';
 import { Mirror, swayAngle, type MirrorFrame } from './mirror';
@@ -169,14 +169,14 @@ export class Stage implements StageDriver {
     const def = world.def;
     const theme = boxTheme(def);
     const D = eyeDistance(VIEW_H, world.baseZoom || 1.5, FOV);
-    // The box's back is where the room paints its own back wall (an entry
-    // with a depth of its own), else the theme's.
-    const back = this.boxBack(world, theme);
+    // The box's back is where the room paints its own back wall (a near
+    // plane, or an entry with a depth of its own), else the theme's.
+    const { back, own } = this.boxBack(world, theme, D);
     const frame = boxFrame(def, theme, back);
     const solids = world.room.solids as unknown as SolidView[];
-    const box = new PaperBox(def, solids, theme, frame, this.paper, (s: SolidDef) => isWhalePlatform(s));
+    const box = new PaperBox(def, solids, theme, frame, this.paper, (s: SolidDef) => isWhalePlatform(s), own);
     const mirror = new Mirror(world, this.textures);
-    const anchors = this.lampAnchors(world, theme);
+    const anchors = this.lampAnchors(world, theme, back);
     const tier = this.governor.tier;
     const lights = new Lights(theme.lights, frame, anchors, tier.shadow, tier.spotShadows);
     this.scene.add(box.group, mirror.group, lights.group);
@@ -195,29 +195,35 @@ export class Stage implements StageDriver {
     return { world, mirror, box, lights, theme, frame, D, far, onPreRender, onShutdown };
   }
 
-  /** The deepest box-like depth the room's entries ask for (their own back wall), if any. */
-  private boxBack(world: WorldScene, theme: BoxTheme): number {
-    let back = -theme.depth;
+  /**
+   * Where the box's back is. A room that paints its own back wall (a plane
+   * scrolling at 0.85 and up, like the 14th Room's, or an entry given a
+   * depth of its own) sets it there, and the stage then builds no walls of
+   * its own; else the theme's depth.
+   */
+  private boxBack(world: WorldScene, theme: BoxTheme, D: number): { back: number; own: boolean } {
     const zs: number[] = [];
-    for (const p of world.def.props ?? []) if (p.z !== undefined) zs.push(p.z);
+    for (const p of world.def.props ?? []) if (p.z !== undefined && p.z < -30 && p.z > -900) zs.push(p.z);
     for (const go of world.children.list) {
       const z = hooks.mark(go)?.z;
-      if (z !== undefined) zs.push(z);
+      if (z !== undefined && z < -30 && z > -900) zs.push(z);
+      const o = go as unknown as { scrollFactorX?: number; scrollFactorY?: number };
+      const sf = o.scrollFactorX ?? 1;
+      if (z === undefined && go instanceof Phaser.GameObjects.Image && sf === o.scrollFactorY && sf >= 0.85 && sf < 1) zs.push(scrollDepth(sf, D));
     }
-    const inside = zs.filter((z) => z < -60 && z > -900);
-    if (inside.length) back = Math.min(...inside) - 2;
-    return back;
+    if (!zs.length) return { back: -theme.depth, own: false };
+    return { back: Math.min(...zs) - 1, own: true };
   }
 
   /** Lights inside the room's lamp props (the hanging lamp's crystal), following their sway. */
-  private lampAnchors(world: WorldScene, theme: BoxTheme): LampAnchor[] {
+  private lampAnchors(world: WorldScene, theme: BoxTheme, back: number): LampAnchor[] {
     const out: LampAnchor[] = [];
     for (const lamp of theme.lights.lamps) {
       for (const p of world.room.props) {
         if (p.def.key !== lamp.key || !p.img) continue;
         const img = p.img;
         const scale = p.def.scale ?? 1;
-        const z = p.def.z ?? bandZ(p.def.depth ?? 10);
+        const z = p.def.z ?? boxedZ(p.def.depth ?? 10, back);
         const hung = (p.def.oy ?? 1) === 0;
         out.push({
           color: lamp.color,
@@ -385,7 +391,10 @@ export class Stage implements StageDriver {
       this.eyeX = Math.max(cx - lim, Math.min(cx + lim, this.eyeX));
     }
     const ex = this.eyeX;
-    const ey = cy - vh * LIFT;
+    // The lift follows the view in close-ups but not past the room's
+    // resting framing: a wide shot looks at the box as the painting does.
+    const baseH = cam.height / (l.world.baseZoom || 1.5);
+    const ey = cy - Math.min(vh, baseH) * LIFT;
     const D = l.D;
     const near = D * 0.2;
     const far = l.far;
@@ -405,6 +414,9 @@ export class Stage implements StageDriver {
       scrollY: cam.scrollY,
       cx,
       cy,
+      ex,
+      ey,
+      back: l.frame.back,
       ox: cam.width * cam.originX,
       oy: cam.height * cam.originY,
       coverage: this.post.settings.samples > 0,
@@ -416,8 +428,10 @@ export class Stage implements StageDriver {
     l.mirror.sync(f);
     l.box.update();
     l.lights.update(rect as Rect, l.frame.back, l.frame.front, t, calm);
-    // Focus on the actors' plane; the box blurs gently away from it.
-    this.post.focus(D, 1150);
+    // Focus on the actors' plane; the box blurs gently away from it. A wide
+    // shot keeps more in focus, a close-up less (as a lens would).
+    const lens = Math.max(0.35, Math.min(1.4, cam.zoom / (l.world.baseZoom || 1.5)));
+    this.post.focus(D, 1150 * lens, lens);
     this.post.strength = calm ? 0.85 : 1;
     this.renderer.setClearColor(this.sky, 1);
     this.renderer.info.reset();

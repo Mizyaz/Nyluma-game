@@ -107,7 +107,7 @@ const NEUTRAL: LightRig = {
 
 /** A stage lamp of the first painting: a grey hood with a peach bulb, shining inward. */
 function lamp(at: SpotDef['at'], to: SpotDef['to'], body = true): SpotDef {
-  return { at, to, color: 0xffd9c2, intensity: 1.15, angle: 40, penumbra: 0.9, glow: 130, body };
+  return { at, to, color: 0xffdcc6, intensity: 0.9, angle: 40, penumbra: 0.9, glow: 110, body };
 }
 
 /** The two stage lamps at the box's ends. */
@@ -124,7 +124,9 @@ const CHAPTER_I: Omit<BoxTheme, 'sky'> = {
   front: 0xf5d9ef,
   back: 0xf3e2f2,
   depth: 240,
-  frontDepth: 120,
+  // A thin front: the painting's box shows little of its front, and the
+  // 14th Room's charms hang just before it.
+  frontDepth: 48,
   wallHeight: 300,
   // The room paints the box's back wall and its torn paper itself.
   backWall: false,
@@ -132,10 +134,11 @@ const CHAPTER_I: Omit<BoxTheme, 'sky'> = {
   paperSlabs: true,
   lights: {
     ...NEUTRAL,
-    // A soft warm key from the upper left, the lamps warm from the sides.
-    key: { color: 0xfff0dc, intensity: 1.75, dir: [-0.5, 0.46, 0.73] },
-    fill: { color: 0xf1ecff, intensity: 0.55, dir: [0.75, 0.2, 0.62] },
-    hemi: { sky: 0xfbf3ff, ground: 0xf6ece0, intensity: 1.25 },
+    // A soft key from the upper left, barely warm, so the painting's
+    // pastels stay what they are; the peach lamps warm it from the sides.
+    key: { color: 0xfffcf7, intensity: 1.7, dir: [-0.5, 0.46, 0.73] },
+    fill: { color: 0xf6f5ff, intensity: 0.6, dir: [0.75, 0.2, 0.62] },
+    hemi: { sky: 0xfdfcff, ground: 0xfaf7f1, intensity: 1.45 },
     shadow: 0.58,
     spots: STAGE_LAMPS,
     lamps: [NURSERY_LAMP],
@@ -173,17 +176,14 @@ const FAMILY: Record<ThemeId, { lights: Partial<LightRig>; backWall: boolean; wa
 };
 
 /**
- * Per-room adjustments (the lamps' places follow the room's own lamp art).
- * Positions use world px; see SpotDef.
+ * Per-room adjustments: where a room draws its own stage lamps, their light
+ * comes from there (world px; see SpotDef). Other chapter I rooms get the
+ * lamps at the box's two ends.
  */
 const ROOMS: Partial<Record<RoomId, { spots?: readonly SpotDef[] }>> = {
-  // The nursery: the lamps stand just inside its walls, above the floor (the
-  // room draws the lamps themselves; the stage adds their light).
-  r01: { spots: [lamp([230, 380, 70], [820, 'floor', -60], false), lamp([1650, 380, 70], [1060, 'floor', -60], false)] },
-  // The fossil-root shaft: at the foot of the climb.
-  r02: { spots: [lamp([170, 1990, 70], [800, 'floor', -60]), lamp([1430, 1990, 70], [800, 'floor', -60])] },
-  // The crystal-tree chamber: by the entrance and by the tree.
-  r03: { spots: [lamp([180, 900, 70], [700, 'floor', -60]), lamp([2900, 880, 70], [2350, 'floor', -60])] },
+  // The 14th Room draws its stage lamps at the box's ends (props p1.lamp at
+  // x 80 and 2120, y 330); the stage adds their light, shining in.
+  r01: { spots: [lamp([80, 330, 12], [760, 'floor', -20], false), lamp([2120, 330, 12], [1440, 'floor', -20], false)] },
 };
 
 /** Styles that are things in the box (branches, crystals, furniture), not the box itself. */
