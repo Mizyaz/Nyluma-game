@@ -1,5 +1,7 @@
 import { app } from './App';
 import { GORTI_VOICES, SIVASLI_VOICE, playWord, voiceFor } from './audio/voices';
+import { scheduleWhaleCall, whaleCallLength, type WhaleCallKind } from './audio/whaleCalls';
+import type { WhaleSpecies } from './art/characters/whales';
 import type { WorldScene } from './scenes/WorldScene';
 import { Ensemble, composeCue, type MusicCue } from '../music';
 
@@ -83,6 +85,21 @@ export function installProbe(): void {
     async musicWav(cue: MusicCue, seconds: number, seed = 1): Promise<string> {
       const { buf } = await renderOffline(cue, seconds, seed);
       return wavBase64(buf);
+    },
+    /** Whale calls one after another, as a WAV file (base64). */
+    async whaleWav(calls: { species: WhaleSpecies; kind: WhaleCallKind }[]): Promise<string> {
+      const rate = 44100;
+      const total = calls.reduce((s, c) => s + whaleCallLength(c.species, c.kind) + 0.6, 0.3);
+      const ctx = new OfflineAudioContext(2, Math.ceil(rate * total), rate);
+      const bus = ctx.createGain();
+      bus.gain.value = 0.6 * 0.8;
+      bus.connect(ctx.destination);
+      let t = 0.2;
+      for (const c of calls) {
+        scheduleWhaleCall(ctx, bus, t, c.species, c.kind);
+        t += whaleCallLength(c.species, c.kind) + 0.6;
+      }
+      return wavBase64(await ctx.startRendering());
     },
     /**
      * Dialogue lines in the characters' voices, typed at the normal speed, as
