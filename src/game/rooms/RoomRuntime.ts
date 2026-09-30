@@ -22,6 +22,8 @@ import type {
   TriggerDef,
 } from '../data/roomTypes';
 import type { Quest } from '../state/GameState';
+import { WhalePlatforms } from './WhalePlatforms';
+import { isWhalePlatform } from './whalePlan';
 
 export interface SolidRt {
   def: SolidDef;
@@ -84,6 +86,8 @@ export class RoomRuntime {
   private texKeys = new Set<string>();
   private layerImages: Phaser.GameObjects.Image[] = [];
   latentActive = false;
+  /** Whales swimming where the wooden and root jumps were. */
+  whales: WhalePlatforms | null = null;
 
   constructor(scene: Phaser.Scene, def: RoomDef, quest: Quest) {
     this.scene = scene;
@@ -234,6 +238,12 @@ export class RoomRuntime {
     const rt: SolidRt = { def, index, zone, body, images: [], active: true, reveal: def.latent ? 0 : 1, grace: 0 };
     this.solids.push(rt);
     if (def.hidden || def.style === 'none') return;
+    // Wooden and root jumps are whales now: one floats where the platform
+    // was, its back on the platform's top line. Nothing is painted.
+    if (isWhalePlatform(def)) {
+      (this.whales ??= new WhalePlatforms(this.scene, this.def)).add(rt);
+      return;
+    }
     const m = TERRAIN_MARGIN;
     const x0 = def.x - m;
     const y0 = def.y - m;

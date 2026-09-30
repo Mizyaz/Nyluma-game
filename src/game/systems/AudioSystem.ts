@@ -1,6 +1,8 @@
 import type { Settings } from '../state/types';
 import type { MusicId } from '../data/roomTypes';
 import { MusicPlayer, loadLibrary, type MusicCue, type MusicState, type Track } from '../../music';
+import type { WhaleSpecies } from '../art/characters/whales';
+import { scheduleWhaleCall, whaleCallLength, type WhaleCallKind, type WhaleCallOptions } from '../audio/whaleCalls';
 
 // Original synthesized soundscape (Web Audio). One audio graph, three buses,
 // voice limits, short gain ramps, and nodes disconnected when they end.
@@ -73,6 +75,9 @@ export class AudioSystem {
   private ambBus!: GainNode;
   private noise!: AudioBuffer;
   private voices: Voice[] = [];
+  /** Whale calls: two near ones at a time, one far one. */
+  private whaleVoices: Voice[] = [];
+  private farWhaleVoices: Voice[] = [];
   /** The room's cue (what currentMusic() reports). */
   private theme: MusicId = 'none';
   /** A scene's cue playing over the room's, e.g. 'tension' during a dialogue. */
@@ -399,8 +404,8 @@ export class AudioSystem {
         this.noiseBurst(t, 0.9, 0.08 * v, out, { type: 'bandpass', f0: 500, f1: 300, q: 1.5 }, 0.05);
         break;
       case 'whale':
-        this.osc('sine', 170, t, 2.6, 0.12 * v, out, { f1: 110, glide: 1.4, attack: 0.5, vib: 0.01, vibRate: 3 });
-        this.osc('sine', 340, t + 0.2, 2.2, 0.03 * v, out, { f1: 230, glide: 1.4, attack: 0.5 });
+        // The whale memory: a blue whale's long call, deep, middle and high.
+        scheduleWhaleCall(c, out, t, 'blue', 'long', { vol: v * 0.8, pitch: p, seed: 14 });
         break;
       case 'shard':
         this.chime(t, 1320 * p, 0.05 * v, out, 0.6);
@@ -457,6 +462,19 @@ export class AudioSystem {
       default:
         break;
     }
+  }
+
+  /**
+   * A whale's call (src/game/audio/whaleCalls.ts): short ones answer a
+   * landing on the sfx bus; long ones drift in from afar on the ambience bus.
+   * Both follow the sfx volume.
+   */
+  whaleCall(species: WhaleSpecies, kind: WhaleCallKind, opt: WhaleCallOptions = {}): void {
+    const c = this.ok();
+    if (!c) return;
+    const far = kind === 'long';
+    if (!this.claim(far ? this.farWhaleVoices : this.whaleVoices, far ? 1 : 2, whaleCallLength(species, kind))) return;
+    scheduleWhaleCall(c, far ? this.ambBus : this.sfxBus, c.currentTime + 0.01, species, kind, opt);
   }
 
   // ------------------------------------------------------------ ambience

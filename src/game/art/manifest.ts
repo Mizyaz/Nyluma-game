@@ -13,6 +13,7 @@ import { formParts, RIG_COWARD, RIG_MECH } from './characters/forms';
 import { horseParts, RIG_HORSE } from './characters/horse';
 import { creatureParts } from './characters/creatures';
 import { propParts } from './props';
+import { whaleParts } from './characters/whales';
 
 let partsCache: PartArt[] | null = null;
 
@@ -22,6 +23,8 @@ export function allParts(): PartArt[] {
   // The characters in softer pastels than the scenery around them.
   const soft = (parts: PartArt[]): PartArt[] => parts.map((p) => ({ ...p, body: softPastelMarkup(p.body) }));
   partsCache = [...soft(gortiParts()), ...soft(formParts()), ...soft(horseParts()), ...creatureParts(), ...propParts()];
+  // Whales (sperm, blue, bowhead): the jump platforms and the whale memory.
+  partsCache.push(...whaleParts());
   const seen = new Set<string>();
   for (const p of partsCache) {
     if (seen.has(p.key)) throw new Error(`Duplicate art key ${p.key}`);
