@@ -3,8 +3,10 @@ import { app } from '../App';
 import { DEPTH } from '../constants';
 import { frameRef, hasFrame } from '../art/TextureFactory';
 
-// Celestial faces: the infant Moon, the ancient Moon and the Sun. Eyes,
-// lids and mouths animate slowly; the gaze follows Gorti. No UI frame.
+// Celestial faces: the infant Moon, the ancient Moon and the Sun, as the
+// author paints them: each Moon a crescent with a single eye (the ancient
+// one crying), the Sun a round sad face in a ring of spiky rays. Eyes, lids
+// and mouths animate slowly; the gaze follows Gorti. No UI frame.
 
 function img(scene: Phaser.Scene, key: string): Phaser.GameObjects.Image | null {
   if (!hasFrame(key)) return null;
@@ -24,10 +26,15 @@ interface FaceLayout {
 }
 
 const LAYOUTS: Record<'baby' | 'old' | 'sun', FaceLayout> = {
-  baby: { disk: 'moon.baby', eye: 'moon.baby.eye', lid: 'moon.baby.lid', mouth: 'moon.baby.mouth', eyes: [[-35, -12], [35, -12]], mouthAt: [0, 48], size: 260 },
-  old: { disk: 'moon.old', eye: 'moon.old.eye', lid: 'moon.old.lid', mouth: 'moon.old.mouth', laugh: 'moon.old.mouth.laugh', eyes: [[-45, -18], [45, -18]], mouthAt: [0, 60], size: 300 },
-  sun: { disk: 'sun.disk', eye: 'sun.eye', lid: 'sun.lid', mouth: 'sun.mouth', laugh: 'sun.mouth.open', eyes: [[-50, -20], [50, -20]], mouthAt: [0, 68], size: 320 },
+  baby: { disk: 'moon.baby', eye: 'moon.baby.eye', lid: 'moon.baby.lid', mouth: 'moon.baby.mouth', eyes: [[-68, -12]], mouthAt: [-34, 46], size: 260 },
+  old: { disk: 'moon.old', eye: 'moon.old.eye', lid: 'moon.old.lid', mouth: 'moon.old.mouth', laugh: 'moon.old.mouth.laugh', eyes: [[-88, -26]], mouthAt: [-46, 46], size: 300 },
+  sun: { disk: 'sun.disk', eye: 'sun.eye', lid: 'sun.lid', mouth: 'sun.mouth', laugh: 'sun.mouth.open', eyes: [[-46, -18], [46, -18]], mouthAt: [0, 54], size: 320 },
 };
+
+/** The Sun's ring of spikes: how many, where their bases sit, which are bent. */
+const RAYS = 24;
+const RAY_R = 128;
+const isBroken = (i: number): boolean => i % 4 === 1;
 
 export class Face {
   readonly c: Phaser.GameObjects.Container;
@@ -52,15 +59,15 @@ export class Face {
     this.layout = LAYOUTS[kind];
     this.c = scene.add.container(x, y).setDepth(depth);
     if (kind === 'sun') {
-      for (let i = 0; i < 12; i++) {
-        const a = (i / 12) * Math.PI * 2;
-        const r = img(scene, i % 3 === 1 ? 'sun.ray.broken' : 'sun.ray');
+      for (let i = 0; i < RAYS; i++) {
+        const a = (i / RAYS) * Math.PI * 2;
+        const r = img(scene, isBroken(i) ? 'sun.ray.broken' : 'sun.ray');
         if (!r) continue;
         r.setRotation(a + Math.PI / 2);
-        r.setPosition(Math.cos(a) * 150, Math.sin(a) * 150);
+        r.setPosition(Math.cos(a) * RAY_R, Math.sin(a) * RAY_R);
         r.setData('a', a);
         this.c.add(r);
-        (i % 3 === 1 ? this.brokenRays : this.rays).push(r);
+        (isBroken(i) ? this.brokenRays : this.rays).push(r);
       }
     }
     const disk = img(scene, this.layout.disk);
@@ -150,7 +157,7 @@ export class Face {
       const f = frameRef(this.brokenRays.includes(r) ? 'sun.ray.broken' : 'sun.ray');
       r.setScale(1 / f.scale, (1 / f.scale) * Math.max(0.001, len));
       r.setAlpha(this.rayLevel <= 0.01 ? 0 : 0.9 - cough * 0.4 * (i % 2));
-      r.setPosition(Math.cos(a) * 150, Math.sin(a) * 150);
+      r.setPosition(Math.cos(a) * RAY_R, Math.sin(a) * RAY_R);
     });
   }
 

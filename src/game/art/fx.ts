@@ -1,4 +1,5 @@
 import type * as Phaser from 'phaser';
+import { INK } from './style';
 import { addStaticCanvas, artCanvas, registerCanvas } from './TextureFactory';
 
 /** Hues of the coloured effect frames (see `fx.hues`). */
@@ -45,8 +46,8 @@ export function makeFxTextures(tex: Phaser.Textures.TextureManager): void {
   {
     const [c, x] = artCanvas(18, 12);
     x.fillStyle = '#ffffff';
-    x.strokeStyle = '#191728';
-    x.lineWidth = 1.5;
+    x.strokeStyle = INK;
+    x.lineWidth = 1.2;
     x.beginPath();
     x.ellipse(9, 6, 7.5, 4.2, 0.3, 0, Math.PI * 2);
     x.fill();
@@ -77,8 +78,8 @@ export function makeFxTextures(tex: Phaser.Textures.TextureManager): void {
     // Soft vignette used for focus / cutscene framing.
     const [c, x] = artCanvas(256, 144);
     const g = x.createRadialGradient(128, 72, 40, 128, 72, 150);
-    g.addColorStop(0, 'rgba(25,23,40,0)');
-    g.addColorStop(1, 'rgba(25,23,40,1)');
+    g.addColorStop(0, 'rgba(29,27,30,0)');
+    g.addColorStop(1, 'rgba(29,27,30,1)');
     x.fillStyle = g;
     x.fillRect(0, 0, 256, 144);
     reg('fx.vignette', c);
@@ -91,30 +92,34 @@ export function makeFxTextures(tex: Phaser.Textures.TextureManager): void {
     reg('fx.white', c);
   }
   {
-    // Faceted crystal (white, tinted at runtime): warp tube, step sprouts.
+    // Crystal (white, tinted at runtime): warp tube, step sprouts. Flat,
+    // like the paintings' crystals: one facet line and a thin contour.
     const [c, x] = artCanvas(40, 96);
-    const facet = (pts: [number, number][], fill: string): void => {
+    const outline = (): void => {
       x.beginPath();
-      x.moveTo(pts[0]![0], pts[0]![1]);
-      for (const [px, py] of pts.slice(1)) x.lineTo(px, py);
+      x.moveTo(20, 2);
+      x.lineTo(36, 30);
+      x.lineTo(30, 94);
+      x.lineTo(10, 94);
+      x.lineTo(4, 30);
       x.closePath();
-      x.fillStyle = fill;
-      x.fill();
     };
-    facet([[20, 2], [36, 30], [30, 94], [10, 94], [4, 30]], '#d9d9e8');
-    facet([[20, 2], [4, 30], [10, 94], [17, 94], [15, 30]], '#ffffff');
-    facet([[20, 2], [36, 30], [30, 94], [25, 94], [27, 32]], '#9d9db4');
-    facet([[20, 2], [15, 30], [27, 32]], '#f3f3ff');
-    x.strokeStyle = 'rgba(25,23,40,0.85)';
-    x.lineWidth = 2.5;
-    x.lineJoin = 'round';
+    outline();
+    x.fillStyle = '#ffffff';
+    x.fill();
+    x.strokeStyle = 'rgba(29,27,30,0.55)';
+    x.lineWidth = 1.2;
     x.beginPath();
     x.moveTo(20, 2);
+    x.lineTo(22, 94);
+    x.moveTo(4, 30);
+    x.lineTo(21, 36);
     x.lineTo(36, 30);
-    x.lineTo(30, 94);
-    x.lineTo(10, 94);
-    x.lineTo(4, 30);
-    x.closePath();
+    x.stroke();
+    x.strokeStyle = INK;
+    x.lineWidth = 2;
+    x.lineJoin = 'round';
+    outline();
     x.stroke();
     registerCanvas(tex, 'fx.crystal', c, { w: 40, h: 96, px: 20, py: 94 });
   }
@@ -146,38 +151,52 @@ export function makeFxTextures(tex: Phaser.Textures.TextureManager): void {
     x.fill();
     registerCanvas(tex, 'fx.shard', c, { w: 48, h: 112, px: 24, py: 56 });
   }
-  // Coloured glows and shards, one pair per hue ('d0'…'d11', 's0'…'s11'),
-  // painted in their colours: the Canvas renderer cannot tint, and the colour
-  // bursts must be colourful in both renderers.
+  // Coloured confetti, one pair per hue ('d0'…'d11' little stars,
+  // 's0'…'s11' crystal shards), painted in their colours: the Canvas
+  // renderer cannot tint, and the colour bursts must be colourful in both
+  // renderers. Pastel fills with a thin ink contour, like the paintings'
+  // stars and crystals.
   {
     const cell = 40;
     const [c, x] = artCanvas(cell * HUE_STEPS, cell * 2);
+    x.lineJoin = 'round';
     for (let i = 0; i < HUE_STEPS; i++) {
       const hue = (i * 360) / HUE_STEPS;
       const ox = i * cell;
-      const g = x.createRadialGradient(ox + 20, 20, 0, ox + 20, 20, 19);
-      g.addColorStop(0, 'rgba(255,255,255,1)');
-      g.addColorStop(0.25, `hsla(${hue},100%,72%,0.95)`);
-      g.addColorStop(0.6, `hsla(${hue},95%,58%,0.45)`);
-      g.addColorStop(1, `hsla(${hue},95%,50%,0)`);
-      x.fillStyle = g;
-      x.fillRect(ox, 0, cell, cell);
+      x.save();
+      x.translate(ox + 20, 20);
+      x.beginPath();
+      for (let k = 0; k < 10; k++) {
+        const a = -Math.PI / 2 + (k * Math.PI) / 5;
+        const r = k % 2 ? 6.5 : 14;
+        x.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+      }
+      x.closePath();
+      x.fillStyle = `hsl(${hue},72%,80%)`;
+      x.fill();
+      x.strokeStyle = INK;
+      x.lineWidth = 1.6;
+      x.stroke();
+      x.restore();
       x.save();
       x.translate(ox + 20, cell + 20);
-      x.shadowColor = `hsla(${hue},100%,65%,0.9)`;
-      x.shadowBlur = 6;
       x.beginPath();
       x.moveTo(0, -17);
       x.lineTo(6, -4);
       x.lineTo(0, 17);
       x.lineTo(-6, -4);
       x.closePath();
-      const sg = x.createLinearGradient(-6, 0, 6, 0);
-      sg.addColorStop(0, `hsl(${hue},90%,55%)`);
-      sg.addColorStop(0.5, `hsl(${hue},100%,86%)`);
-      sg.addColorStop(1, `hsl(${hue},85%,45%)`);
-      x.fillStyle = sg;
+      x.fillStyle = `hsl(${hue},66%,78%)`;
       x.fill();
+      x.strokeStyle = INK;
+      x.lineWidth = 1.6;
+      x.stroke();
+      x.beginPath();
+      x.moveTo(0, -17);
+      x.lineTo(0.8, 17);
+      x.lineWidth = 1;
+      x.globalAlpha = 0.6;
+      x.stroke();
       x.restore();
     }
     const t = addStaticCanvas(tex, 'fx.hues', c);
@@ -190,9 +209,9 @@ export function makeFxTextures(tex: Phaser.Textures.TextureManager): void {
   {
     const [c, x] = artCanvas(128, 40);
     const g = x.createRadialGradient(64, 20, 0, 64, 20, 64);
-    g.addColorStop(0, 'rgba(8,6,14,0.75)');
-    g.addColorStop(0.55, 'rgba(8,6,14,0.35)');
-    g.addColorStop(1, 'rgba(8,6,14,0)');
+    g.addColorStop(0, 'rgba(29,27,30,0.42)');
+    g.addColorStop(0.55, 'rgba(29,27,30,0.2)');
+    g.addColorStop(1, 'rgba(29,27,30,0)');
     x.setTransform(1, 0, 0, 40 / 128, 0, 0);
     x.fillStyle = g;
     x.fillRect(0, 0, 128, 128);

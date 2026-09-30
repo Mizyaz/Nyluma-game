@@ -1,5 +1,13 @@
 import type { PartArt, RigDef } from './rigTypes';
-import { gortiParts, RIG_GORTI_HUMAN, RIG_GORTI_ROOT, RIG_GORTI_SUIT } from './characters/gorti';
+import {
+  gortiParts,
+  RIG_GORTI_CHILD,
+  RIG_GORTI_HUMAN,
+  RIG_GORTI_HUMAN_SUN,
+  RIG_GORTI_SUIT,
+  RIG_GORTI_WARRIOR,
+  RIG_GORTI_YOUTH,
+} from './characters/gorti';
 import { formParts, RIG_COWARD, RIG_MECH } from './characters/forms';
 import { horseParts, RIG_HORSE } from './characters/horse';
 import { creatureParts } from './characters/creatures';
@@ -20,5 +28,5 @@ export function allParts(): PartArt[] {
 }
 
 export function allRigs(): RigDef[] {
-  return [RIG_GORTI_ROOT, RIG_GORTI_HUMAN, RIG_GORTI_SUIT, RIG_COWARD, RIG_MECH, RIG_HORSE];
+  return [RIG_GORTI_CHILD, RIG_GORTI_YOUTH, RIG_GORTI_WARRIOR, RIG_GORTI_HUMAN, RIG_GORTI_HUMAN_SUN, RIG_GORTI_SUIT, RIG_COWARD, RIG_MECH, RIG_HORSE];
 }

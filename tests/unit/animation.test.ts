@@ -2,7 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { humanoidPose, idleAction } from '../../src/game/entities/animPoses';
 import { allParts, allRigs } from '../../src/game/art/manifest';
 import { RIG_COWARD } from '../../src/game/art/characters/forms';
-import { RIG_GORTI_HUMAN, RIG_GORTI_ROOT, RIG_GORTI_SUIT } from '../../src/game/art/characters/gorti';
+import {
+  humanRigFor,
+  RIG_GORTI_CHILD,
+  RIG_GORTI_HUMAN,
+  RIG_GORTI_HUMAN_SUN,
+  RIG_GORTI_SUIT,
+  RIG_GORTI_WARRIOR,
+  RIG_GORTI_YOUTH,
+  rootRigFor,
+} from '../../src/game/art/characters/gorti';
 
 const hipsY = (p: ReturnType<typeof humanoidPose>): number => p.offsets.hips?.y ?? 0;
 
@@ -91,7 +100,7 @@ describe('rig parts', () => {
   });
 
   it('gives Gorti and the torch-bearer every eye and mouth shape', () => {
-    for (const rig of [RIG_GORTI_ROOT, RIG_GORTI_HUMAN, RIG_GORTI_SUIT, RIG_COWARD]) {
+    for (const rig of [RIG_GORTI_CHILD, RIG_GORTI_YOUTH, RIG_GORTI_WARRIOR, RIG_GORTI_HUMAN, RIG_GORTI_HUMAN_SUN, RIG_GORTI_SUIT, RIG_COWARD]) {
       const eye = rig.joints.find((j) => j.id === 'eyeN')!.part!;
       const mouth = rig.joints.find((j) => j.id === 'mouth')!.part!;
       for (const v of ['happy', 'sad', 'shut']) expect(keys.has(`${eye}.${v}`), `${rig.id} ${eye}.${v}`).toBe(true);
@@ -99,12 +108,23 @@ describe('rig parts', () => {
     }
   });
 
-  it('lets the branch hair sway on springs', () => {
-    const hair = RIG_GORTI_ROOT.joints.filter((j) => j.id.startsWith('hair'));
-    expect(hair).toHaveLength(4);
+  it('lets the youth\'s branch tendrils sway on springs', () => {
+    const hair = RIG_GORTI_YOUTH.joints.filter((j) => j.id.startsWith('hair'));
+    expect(hair).toHaveLength(5);
     for (const j of hair) {
       expect(j.parent).toBe('head');
       expect(j.spring?.k).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('Gorti grows up and his head follows the sky', () => {
+  it('picks the body of the life stage and the Sun or Moon head per room', () => {
+    expect(rootRigFor('r01')).toBe(RIG_GORTI_CHILD);
+    expect(rootRigFor('r05')).toBe(RIG_GORTI_YOUTH);
+    expect(rootRigFor('r09')).toBe(RIG_GORTI_WARRIOR);
+    expect(humanRigFor('r06')).toBe(RIG_GORTI_HUMAN);
+    expect(humanRigFor('r07')).toBe(RIG_GORTI_HUMAN_SUN);
+    expect(humanRigFor('r08')).toBe(RIG_GORTI_HUMAN_SUN);
   });
 });

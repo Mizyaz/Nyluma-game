@@ -15,10 +15,10 @@ import {
   type MoveTuning,
 } from '../constants';
 import type { RigDef } from '../art/rigTypes';
-import { RIG_GORTI_HUMAN, RIG_GORTI_ROOT, RIG_GORTI_SUIT } from '../art/characters/gorti';
+import { humanRigFor, rootRigFor, RIG_GORTI_SUIT } from '../art/characters/gorti';
 import { RIG_COWARD, RIG_MECH } from '../art/characters/forms';
 import { FocusMeter, bezier } from '../systems/AbilitySystem';
-import type { FormId, PlayerKind } from '../state/types';
+import type { FormId, PlayerKind, RoomId } from '../state/types';
 import { humanoidPose, idleStartFor, styleOf, type Emote, type IdleKind, type PoseParams } from './animPoses';
 import { RigView } from './RigView';
 
@@ -36,11 +36,21 @@ function approach(v: number, target: number, step: number): number {
   return v;
 }
 
-export function rigFor(kind: PlayerKind, form: FormId): RigDef {
+/** The room of the active run (where the player is). */
+function currentRoom(): RoomId {
+  return app.quest?.progress.room ?? 'r01';
+}
+
+/**
+ * The body the player has: the inner forms have their own; Gorti's own
+ * (root) body is the one of his life stage in the room, and his human form
+ * wears the Sun or the Moon as its head, as the room's sky has it.
+ */
+export function rigFor(kind: PlayerKind, form: FormId, room: RoomId = currentRoom()): RigDef {
   if (kind === 'coward') return RIG_COWARD;
   if (kind === 'mech') return RIG_MECH;
   if (kind === 'suit') return RIG_GORTI_SUIT;
-  return form === 'human' ? RIG_GORTI_HUMAN : RIG_GORTI_ROOT;
+  return form === 'human' ? humanRigFor(room) : rootRigFor(room);
 }
 
 export function tuningFor(kind: PlayerKind, form: FormId): MoveTuning {
@@ -402,6 +412,19 @@ export class Player {
   }
 
   /** Turns the head for a while (negative looks up). */
+  /** Stride length follows the legs of the body he has now (the warrior's are long). */
+  private get legScale(): number {
+    const rig = this.rig.rig;
+    if (rig === this.legRig) return this.legK;
+    const j = (id: string): number => rig.joints.find((x) => x.id === id)?.y ?? 0;
+    const leg = j('shinR') + j('footR');
+    // Tuned on legs of 46 px (the youth's and the old root body's).
+    this.legK = this.kind === 'gorti' && this.form === 'root' && leg > 0 ? Math.max(0.75, Math.min(1.4, leg / 46)) : 1;
+    this.legRig = rig;
+    return this.legK;
+  }
+  private legRig: RigDef | null = null;
+  private legK = 1;
   private visVx = 0;
   private accLean = 0;
 
@@ -508,7 +531,7 @@ export class Player {
       prm.impact = this.landImpact;
     } else if (Math.abs(b.velocity.x) > 12) {
       anim = this.pushing ? 'push' : 'walk';
-      const strideLen = this.kind === 'gorti' && this.form === 'root' ? 124 : this.kind === 'suit' ? 70 : 92;
+      const strideLen = (this.kind === 'gorti' && this.form === 'root' ? 124 : this.kind === 'suit' ? 70 : 92) * this.legScale;
       this.walkPhase += (Math.abs(b.velocity.x) * dtMs) / 1000 / strideLen * Math.PI * 2;
       prm.phase = this.walkPhase;
       prm.speed = speed;

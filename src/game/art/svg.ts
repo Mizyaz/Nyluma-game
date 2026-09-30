@@ -1,9 +1,11 @@
 import { P } from './palette';
+import { DETAIL, INK, OUTLINE } from './style';
 
-// Small toolkit for authoring cel-shaded SVG artwork in code. Shapes are
-// point lists smoothed with Catmull-Rom splines; `cel()` renders a filled
-// shape with a hard-edged shadow crescent, a rim highlight and an ink
-// contour so the cel look lives in the artwork itself.
+// Small toolkit for authoring SVG artwork in code. Shapes are point lists
+// smoothed with Catmull-Rom splines; `cel()` renders a filled shape the way
+// the author's paintings do: a flat fill and a thin, even, near-black
+// contour. The coloured-pencil grain is added at rasterization
+// (TextureFactory), so no shading is baked into the artwork.
 
 export type Pt = [number, number];
 
@@ -204,33 +206,38 @@ export interface CelOpts {
   opacity?: number;
 }
 
-/** A cel-shaded filled shape with contour. */
+/** True for the contour colour (the old palette ink or the style's INK). */
+function isInk(color: string | undefined): boolean {
+  if (!color) return true;
+  const c = color.toLowerCase();
+  return c === INK || c === P.ink || c === '#191728';
+}
+
+/**
+ * Contour width in the paintings' manner: thin and even. Requests above the
+ * style's OUTLINE (old cartoon contours of 3–5 px) are pulled down to it;
+ * finer detail lines keep their width.
+ */
+export function inkWidth(w: number): number {
+  if (!(w > 0)) return 0;
+  return w > OUTLINE ? OUTLINE : w;
+}
+
+/**
+ * A flat-filled shape with a thin contour. `shade`, `light`, `shadeD` and
+ * the offsets are accepted for compatibility but ignored: the paintings
+ * have no cel shading, shadow crescents or rim highlights.
+ */
 export function cel(d: string, o: CelOpts): string {
-  const id = nextId();
-  const sx = o.sx ?? 4;
-  const sy = o.sy ?? 4;
-  const hx = o.hx ?? 3;
-  const hy = o.hy ?? 3;
-  const ink = o.ink ?? P.ink;
-  const sw = o.stroke ?? 4;
+  const ink = isInk(o.ink) ? INK : o.ink!;
+  const sw = inkWidth(o.stroke ?? OUTLINE);
   let s = `<g${o.opacity !== undefined ? ` opacity="${o.opacity}"` : ''}>`;
-  s += `<clipPath id="c${id}"><path d="${d}"/></clipPath>`;
   s += `<path d="${d}" fill="${o.fill}"/>`;
-  s += `<g clip-path="url(#c${id})">`;
-  if (o.inner) s += o.inner;
-  if (o.light) {
-    s += `<mask id="h${id}"><rect x="-4000" y="-4000" width="8000" height="8000" fill="#fff"/><path d="${d}" fill="#000" transform="translate(${hx},${hy})"/></mask>`;
-    s += `<path d="${d}" fill="${o.light}" mask="url(#h${id})"/>`;
+  if (o.inner || o.over) {
+    const id = nextId();
+    s += `<clipPath id="c${id}"><path d="${d}"/></clipPath>`;
+    s += `<g clip-path="url(#c${id})">${o.inner ?? ''}${o.over ?? ''}</g>`;
   }
-  if (o.shade) {
-    if (sx !== 0 || sy !== 0) {
-      s += `<mask id="m${id}"><rect x="-4000" y="-4000" width="8000" height="8000" fill="#fff"/><path d="${d}" fill="#000" transform="translate(${-sx},${-sy})"/></mask>`;
-      s += `<path d="${d}" fill="${o.shade}" mask="url(#m${id})"/>`;
-    }
-    if (o.shadeD) s += `<path d="${o.shadeD}" fill="${o.shade}"/>`;
-  }
-  if (o.over) s += o.over;
-  s += `</g>`;
   if (sw > 0) s += `<path d="${d}" fill="none" stroke="${ink}" stroke-width="${sw}" stroke-linejoin="round" stroke-linecap="round"/>`;
   s += `</g>`;
   return s;
@@ -238,17 +245,27 @@ export function cel(d: string, o: CelOpts): string {
 
 /** Plain ink stroke along a path (details, cracks, veins). */
 export function line(d: string, color: string, w: number, opacity = 1): string {
-  return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"${opacity !== 1 ? ` opacity="${opacity}"` : ''}/>`;
+  // Ink lines stay thin and even (see inkWidth); coloured strokes keep their
+  // width, since many of them are shapes (stems, hair, ribbons).
+  const ink = isInk(color);
+  const c = ink ? INK : color;
+  const sw = ink ? inkWidth(w) : w;
+  return `<path d="${d}" fill="none" stroke="${c}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"${opacity !== 1 ? ` opacity="${opacity}"` : ''}/>`;
 }
 
 export function fillPath(d: string, color: string, opacity = 1): string {
   return `<path d="${d}" fill="${color}"${opacity !== 1 ? ` opacity="${opacity}"` : ''}/>`;
 }
 
-/** Soft radial glow (used sparingly for emissive features). */
+/**
+ * Soft halo around an emissive feature, like the pale crayon halo round the
+ * sun in the paintings: a flat, faint disc that fades out at its edge, not
+ * a glossy hot spot.
+ */
 export function glow(cx: number, cy: number, r: number, color: string, opacity = 0.6): string {
   const id = nextId('g');
-  return `<radialGradient id="${id}"><stop offset="0" stop-color="${color}" stop-opacity="${opacity}"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></radialGradient><circle cx="${f(cx)}" cy="${f(cy)}" r="${f(r)}" fill="url(#${id})"/>`;
+  const o = Math.min(0.32, opacity * 0.5);
+  return `<radialGradient id="${id}"><stop offset="0" stop-color="${color}" stop-opacity="${f(o)}"/><stop offset="0.55" stop-color="${color}" stop-opacity="${f(o * 0.8)}"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></radialGradient><circle cx="${f(cx)}" cy="${f(cy)}" r="${f(r)}" fill="url(#${id})"/>`;
 }
 
 /** Wraps markup into a standalone SVG document rasterized at `scale`. */
@@ -256,7 +273,12 @@ export function svgDoc(w: number, h: number, body: string, scale = 2): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.ceil(w * scale)}" height="${Math.ceil(h * scale)}" viewBox="0 0 ${w} ${h}">${body}</svg>`;
 }
 
-/** Faceted crystal cluster standing at (x, y) with height h. */
+/**
+ * Crystal cluster standing at (x, y) with height h, drawn like the crystals
+ * in the paintings: flat pastel shards, a thin contour and one inner line
+ * for the facet edge. `colors.shade`/`light` are kept for callers but only
+ * `fill` is used.
+ */
 export function crystalCluster(
   x: number,
   y: number,
@@ -264,7 +286,7 @@ export function crystalCluster(
   rng: Rng,
   colors: { fill: string; shade: string; light: string },
   count = 3,
-  stroke = 3,
+  stroke = OUTLINE,
 ): string {
   let s = '';
   const shards: { dx: number; hh: number; w: number; lean: number }[] = [];
@@ -292,24 +314,8 @@ export function crystalCluster(
       [bx + hw + sh.lean * shoulder, y - shoulder],
       [bx + hw, y + 2],
     ];
-    const d = poly(pts);
-    const facet = poly([
-      [tipX, tipY],
-      [bx + hw + sh.lean * shoulder, y - shoulder],
-      [bx + hw, y + 2],
-      [bx + sh.lean * shoulder * 0.2 + hw * 0.1, y + 2],
-    ]);
-    s += cel(d, {
-      fill: colors.fill,
-      shade: colors.shade,
-      light: colors.light,
-      sx: 0,
-      sy: 0,
-      hx: 2.5,
-      hy: 2,
-      shadeD: facet,
-      stroke,
-    });
+    const edge = `M${f(tipX)} ${f(tipY)}L${f(bx + sh.lean * shoulder * 0.25 + hw * 0.15)} ${f(y + 2)}`;
+    s += cel(poly(pts), { fill: colors.fill, stroke, over: line(edge, INK, Math.min(DETAIL, stroke), 0.85) });
   }
   return s;
 }

@@ -1,4 +1,4 @@
-import { P, mix } from './palette';
+import { P, mix, pastelMarkup } from './palette';
 import { Rng, cel, crystalCluster, ellipsePath, fillPath, glow, limb, line, mixed, nextId, poly, rrect, smooth, svgDoc, taper, type Pt } from './svg';
 
 // Hand-authored illustrations for the memory journal (320×200 vignettes), the
@@ -1635,6 +1635,45 @@ export const MEMORY_ART_KEYS: string[] = Object.keys(MEMORY);
 export const FRAGMENT_KEYS: string[] = Object.keys(FRAGMENTS);
 export const PORTRAIT_KEYS: string[] = Object.keys(PORTRAITS);
 
+/**
+ * The paintings' coloured-pencil grain for pictures shown as DOM images
+ * (the atlas gets it at rasterization instead): a tile of short hatch
+ * strokes, light and dark, laid over the whole picture.
+ */
+let grainTileSvg = '';
+function grainFilter(w: number, h: number): string {
+  if (!grainTileSvg) {
+    const rng = new Rng(0x9a17);
+    const T = 96;
+    const light: string[] = [];
+    const dark: string[] = [];
+    for (let i = 0; i < 230; i++) {
+      const x = rng.range(0, T);
+      const y = rng.range(0, T);
+      const a = rng.chance(0.75) ? -0.62 + rng.range(-0.18, 0.18) : -1.25 + rng.range(-0.15, 0.15);
+      const len = rng.range(4, 14) / 2;
+      const dx = Math.cos(a) * len;
+      const dy = Math.sin(a) * len;
+      for (const ox of [-T, 0, T]) {
+        for (const oy of [-T, 0, T]) {
+          const x0 = x - dx + ox;
+          const y0 = y - dy + oy;
+          const x1 = x + dx + ox;
+          const y1 = y + dy + oy;
+          if (Math.max(x0, x1) < 0 || Math.min(x0, x1) > T || Math.max(y0, y1) < 0 || Math.min(y0, y1) > T) continue;
+          (rng.chance(0.6) ? light : dark).push(`M${n2(x0)} ${n2(y0)}L${n2(x1)} ${n2(y1)}`);
+        }
+      }
+    }
+    grainTileSvg =
+      `<pattern id="pgrain" width="${T}" height="${T}" patternUnits="userSpaceOnUse">` +
+      `<path d="${light.join('')}" stroke="#fffdf7" stroke-opacity="0.12" stroke-width="1" stroke-linecap="round" fill="none"/>` +
+      `<path d="${dark.join('')}" stroke="#342c3a" stroke-opacity="0.08" stroke-width="1" stroke-linecap="round" fill="none"/>` +
+      `</pattern>`;
+  }
+  return `${grainTileSvg}<rect x="0" y="0" width="${w}" height="${h}" fill="url(#pgrain)" pointer-events="none"/>`;
+}
+
 const cache = new Map<string, string>();
 
 function toUrl(svg: string): string {
@@ -1647,8 +1686,8 @@ function neutral(w: number, h: number): string {
   return svgDoc(
     w,
     h,
-    `<path d="${rrect(2, 2, w - 4, h - 4, r)}" fill="#2a2640" stroke="${INK}" stroke-width="3"/>` +
-      `<path d="${rrect(10, 10, w - 20, h - 20, r * 0.6)}" fill="none" stroke="#3a3550" stroke-width="2"/>`,
+    `<path d="${rrect(2, 2, w - 4, h - 4, r)}" fill="#e9e3ec" stroke="${INK}" stroke-width="2.2"/>` +
+      `<path d="${rrect(10, 10, w - 20, h - 20, r * 0.6)}" fill="none" stroke="#b9b1c4" stroke-width="1.4"/>`,
   );
 }
 
@@ -1670,7 +1709,7 @@ function build(kind: string, table: Record<string, Draw>, key: string, w: number
   if (hit) return hit;
   let svg: string;
   try {
-    svg = has ? stableIds(svgDoc(w, h, table[k]!())) : neutral(w, h);
+    svg = has ? stableIds(svgDoc(w, h, pastelMarkup(table[k]!(), true) + grainFilter(w, h))) : neutral(w, h);
   } catch {
     svg = neutral(w, h);
   }

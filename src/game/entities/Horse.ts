@@ -3,11 +3,11 @@ import { app } from '../App';
 import { DEPTH } from '../constants';
 import { hex, P } from '../art/palette';
 import { RIG_HORSE } from '../art/characters/horse';
-import { RIG_GORTI_HUMAN, RIG_GORTI_ROOT } from '../art/characters/gorti';
 import { frameRef } from '../art/TextureFactory';
 import type { FormId } from '../state/types';
 import { humanoidPose } from './animPoses';
 import { GALLOP_OFFSETS, horsePose } from './horsePoses';
+import { rigFor } from './Player';
 import { RigView } from './RigView';
 
 /**
@@ -42,7 +42,8 @@ export class Horse {
       this.rider = null;
       return;
     }
-    const rig = form === 'human' ? RIG_GORTI_HUMAN : RIG_GORTI_ROOT;
+    // Gorti in the body he has now (the Sun head on the ride to the Sun).
+    const rig = rigFor('gorti', form);
     if (!this.rider) {
       this.rider = new RigView(this.scene, rig, (a, t, p, id) => humanoidPose(id, a, t, p), this.x, this.y, this.rig.container.depth + 1);
     } else this.rider.setRig(rig);

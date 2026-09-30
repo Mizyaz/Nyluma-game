@@ -1,215 +1,243 @@
-import { P } from '../palette';
-import { cel, glow, limb, line, poly, rrect, smooth, taper, type Pt } from '../svg';
+import { glow, limb, type Pt } from '../svg';
+import { DETAIL, flat, INK, PASTEL } from '../style';
 import type { PartArt, RigDef } from '../rigTypes';
-import { brow, eyeParts, humanoidRig, mouthParts, type HumanoidDims } from './gorti';
+import { almondEye, browPart, eyeSet, mouthSet, paintedMouth } from './face';
+import { barkLines, claws, fillOnly, ink, label, maze, part, path, roundPoly, stitches, tr } from './kit';
+import { humanoidRig, type HumanoidDims } from './skeleton';
 
-// The inner forms of Chapter IV: the cowardly torch-bearer and the
-// mechanical key-and-lock form.
+// The inner forms of Chapter IV in the paintings' manner: the cowardly
+// torch-bearer wrapped in a patched dormitory blanket, and the mechanical
+// key-and-lock form of segmented grey panels, stitches and a pink maze
+// (painting 3's robot parts).
 
-const tr = (pts: readonly Pt[], ox: number, oy: number): Pt[] => pts.map(([x, y]) => [x + ox, y + oy]);
+const COW = {
+  blanket: '#c9b8e4',
+  blanketDeep: '#a995cf',
+  face: '#f3e2dc',
+  faceLine: '#cfa9a8',
+  hair: '#4d3f4f',
+  pyjama: '#aeb8d2',
+  pyjamaLine: '#8290b4',
+  foot: '#f1ddd8',
+  wood: '#c09469',
+  wrap: '#f4ead6',
+  flame: '#f7c46b',
+  flameCore: '#fff0b8',
+  flameEdge: '#ef9a5c',
+} as const;
 
-function part(key: string, box: { x0: number; y0: number; x1: number; y1: number }, draw: (ox: number, oy: number) => string, extra: Partial<PartArt> = {}): PartArt {
-  const m = 5;
-  const ox = -box.x0 + m;
-  const oy = -box.y0 + m;
-  return { key, w: Math.ceil(box.x1 - box.x0 + m * 2), h: Math.ceil(box.y1 - box.y0 + m * 2), px: ox, py: oy, body: draw(ox, oy), ...extra };
-}
-
-const SKIN = '#c8b4a4';
-const SKIN_D = '#a38f82';
-const RAG = '#6b5d57';
-const RAG_D = '#524640';
-const RAG_L = '#83756e';
+const MECH = {
+  plate: '#bdbcc4',
+  plateDeep: '#9a99a4',
+  joint: '#dddbe2',
+  yellow: '#f2d878',
+  pink: '#f2adcb',
+  maze: '#e27fae',
+  blue: '#8fa2c4',
+  photo: '#f7eddc',
+} as const;
 
 // ---------------------------------------------------------------- coward
 
 function cowardHead(): PartArt {
-  return part('coward.head', { x0: -16, y0: -34, x1: 17, y1: 4 }, (ox, oy) => {
+  return part('coward.head', { x0: -19, y0: -38, x1: 18, y1: 6 }, (ox, oy) => {
     const o = (pts: Pt[]): Pt[] => tr(pts, ox, oy);
-    const skull: Pt[] = [[-5, 1], [-9, -8], [-11, -17], [-9, -25], [-3, -29], [5, -29], [11, -24], [13, -18], [14, -13], [12, -10], [12, -6], [9, -2], [4, 1]];
-    const hair = cel(smooth(o([[-12, -18], [-12, -27], [-6, -32], [3, -33], [11, -28], [14, -22], [8, -25], [4, -21], [0, -26], [-4, -21], [-8, -24], [-9, -14]])), {
-      fill: '#3d3438', shade: '#2a2327', sx: 1.5, sy: 1.5, stroke: 2.4,
+    const face: Pt[] = [[2, -2], [-4, -8], [-5, -20], [0, -27], [8, -27], [12, -22], [13, -17], [16, -13], [12.5, -11], [12.5, -7], [9, -3]];
+    let s = flat(path(o(face)) + 'Z', COW.face, {
+      over: ink(path(o([[13, -17], [15.5, -13], [12.5, -12]])), DETAIL) + ink(path(o([[2, -12], [5, -10]])), DETAIL * 0.8, COW.faceLine),
     });
-    // The eye, the mouth and the brow are separate, animated parts.
-    const face =
-      line(smooth(o([[-2, -12], [1, -9]]), 1, false), SKIN_D, 1) +
-      line(smooth(o([[4, -26], [1, -22]]), 1, false), P.violet, 0.9, 0.6);
-    return cel(smooth(o(skull)), { fill: SKIN, shade: SKIN_D, light: '#dccbbd', sx: 3, sy: 2, hx: 1.2, hy: 1.2, stroke: 2.8, over: face }) + hair;
+    // A dark tuft under the hood.
+    s += flat(path(o([[-1, -26], [4, -30], [10, -28], [9, -24], [5, -26], [2, -23]])) + 'Z', COW.hair, { stroke: DETAIL });
+    // The blanket hood around the back of the head, its front edge stitched.
+    const hood: Pt[] = [[-15, 4], [-18, -10], [-16, -25], [-8, -34], [4, -36], [12, -31], [14, -26], [7, -28], [2, -27], [-2, -21], [-2, -9], [2, 1], [-5, 5]];
+    s += flat(path(o(hood)) + 'Z', COW.blanket, {
+      inner: flat(roundPoly(o([[-16, -18], [-9, -19], [-8, -11], [-15, -10]]), 1.5), PASTEL.mint, { stroke: DETAIL, over: stitches(o([[-15.5, -14.5], [-8.5, -15]]), 2.6, 1.2) }),
+      over: stitches(o([[10, -30], [4, -28], [-1, -22], [-1, -10], [2, 0]]), 3.4, 1.5),
+    });
+    return s;
   });
 }
 
+function cowardEyes(): PartArt[] {
+  // Big and worried.
+  return eyeSet('coward', { x0: -7, y0: -8, x1: 7, y1: 7 }, (v, ox, oy) => almondEye(v, ox, oy, 3.6, 3.3, { outer: -1, iris: '#4b3f5a', look: 0.35, pupil: 0.55, lidFill: COW.face }));
+}
+
+function cowardMouth(): PartArt[] {
+  const m = 2.6;
+  return mouthSet('coward', { x0: -m - 3, y0: -m - 3, x1: m + 3, y1: m + 3 }, (v, ox, oy) => paintedMouth(v, ox, oy, m, { lip: '#e7a3b0', inside: '#5a2a3c', sad: 0.6 }));
+}
+
 function cowardTorso(): PartArt {
-  return part('coward.torso', { x0: -11, y0: -35, x1: 12, y1: 8 }, (ox, oy) => {
+  return part('coward.torso', { x0: -16, y0: -40, x1: 16, y1: 12 }, (ox, oy) => {
     const o = (pts: Pt[]): Pt[] => tr(pts, ox, oy);
-    const pts: Pt[] = [[-8, 6], [-9, -4], [-8, -16], [-8, -26], [-5, -32], [0, -34], [5, -33], [8, -27], [9, -17], [8, -6], [10, 4], [6, 7], [3, 3], [0, 7], [-3, 3]];
-    const details =
-      line(smooth(o([[-5, -24], [-2, -20], [1, -23]]), 1, false), RAG_D, 1.2) +
-      `<path d="${rrect(ox - 6, oy - 14, 6, 6, 1)}" fill="${RAG_L}" stroke="${P.ink}" stroke-width="1.2"/>` +
-      line(`M${ox - 5} ${oy - 11}l4 0M${ox - 3} ${oy - 13}l0 4`, P.ink, 0.8) +
-      line(smooth(o([[-7, -2], [-3, 0], [2, -1], [7, 1]]), 1, false), RAG_D, 1.2);
-    return cel(smooth(o(pts)), { fill: RAG, shade: RAG_D, light: RAG_L, sx: 3, sy: 2, hx: 1.2, hy: 1, stroke: 2.8, over: details });
+    // The blanket wrapped round the shoulders, a ragged hem.
+    const pts: Pt[] = [[-11, 8], [-13, -4], [-13, -18], [-11, -29], [-3, -35], [6, -34], [11, -28], [12, -16], [11, -3], [13, 7], [9, 5], [7, 10], [3, 6], [0, 10], [-3, 6], [-7, 10]];
+    const inner =
+      flat(roundPoly(o([[-12, -26], [-4, -27], [-3, -18], [-11, -17]]), 1.5), PASTEL.butter, { stroke: DETAIL, over: stitches(o([[-11.5, -21.5], [-3.5, -22.5]]), 2.8, 1.2) }) +
+      flat(roundPoly(o([[2, -12], [10, -13], [10, -4], [3, -3]]), 1.5), PASTEL.pink, { stroke: DETAIL }) +
+      ink(path(o([[-8, -8], [-3, -6], [1, -9]])), DETAIL, COW.blanketDeep) +
+      ink(path(o([[3, -32], [5, -24], [3, -16]])), DETAIL, COW.blanketDeep);
+    return flat(`M${pts.map(([x, y]) => `${ox + x} ${oy + y}`).join('L')}Z`, COW.blanket, { inner, over: label(ox - 2, oy - 5, 8, 4.5, PASTEL.cream, 5, -8) });
   });
 }
 
 function cowardArm(): PartArt {
-  return part('coward.arm', { x0: -5, y0: -4, x1: 5, y1: 20 }, (ox, oy) =>
-    cel(limb([ox, oy], [ox, 16 + oy], 7, 6, 0.3), { fill: RAG, shade: RAG_D, light: RAG_L, sx: 2, sy: 0, hx: 1, hy: 0, stroke: 2.4 }),
-    { far: true },
-  );
+  return part('coward.arm', { x0: -7, y0: -5, x1: 7, y1: 21 }, (ox, oy) =>
+    flat(limb([ox, oy], [ox, oy + 16], 9, 8, 0.4), COW.blanket, { over: ink(`M${ox - 3} ${oy + 12}q3 2 6 0`, DETAIL, COW.blanketDeep) }),
+  { far: true });
 }
 
 function cowardFore(): PartArt {
-  return part('coward.fore', { x0: -6, y0: -4, x1: 7, y1: 27 }, (ox, oy) => {
-    let s = cel(limb([ox, oy], [ox, 18 + oy], 5.5, 5, 0.2), { fill: SKIN, shade: SKIN_D, sx: 1.5, sy: 0, stroke: 2.3 });
-    s += cel(smooth(tr([[-3, 17], [3, 17], [4.5, 21], [3, 25], [-1, 26], [-3.5, 22]], ox, oy)), { fill: SKIN, shade: SKIN_D, sx: 1, sy: 1, stroke: 2.2 });
-    s += cel(smooth(tr([[-4, -1], [4, -1], [4.5, 5], [0, 7], [-4.5, 5]], ox, oy)), { fill: RAG_D, shade: '#3d332e', sx: 1, sy: 1, stroke: 2 });
+  return part('coward.fore', { x0: -7, y0: -4, x1: 8, y1: 27 }, (ox, oy) => {
+    let s = flat(path(tr([[-3, 16], [3, 16], [4.5, 20], [3, 24], [-1, 25], [-3.5, 21]], ox, oy)) + 'Z', COW.face, { stroke: DETAIL * 1.2 });
+    s += flat(limb([ox, oy], [ox, oy + 17], 8, 7, 0.2), COW.blanket, { over: ink(`M${ox - 4} ${oy + 14}H${ox + 4}`, DETAIL, COW.blanketDeep) });
     return s;
   }, { far: true });
 }
 
 function cowardThigh(): PartArt {
-  return part('coward.thigh', { x0: -6, y0: -4, x1: 6, y1: 22 }, (ox, oy) =>
-    cel(limb([ox, oy], [ox, 19 + oy], 8, 7, 0.3), { fill: '#5a4f4a', shade: '#433a36', light: '#6f6460', sx: 2, sy: 0, hx: 1, hy: 0, stroke: 2.6 }),
-    { far: true },
-  );
+  return part('coward.thigh', { x0: -7, y0: -4, x1: 7, y1: 23 }, (ox, oy) =>
+    flat(limb([ox, oy], [ox, oy + 19], 9.5, 8, 0.3), COW.pyjama, { inner: ink(`M${ox - 2} ${oy - 2}V${oy + 22}M${ox + 2} ${oy - 2}V${oy + 22}`, 0.9, COW.pyjamaLine) }),
+  { far: true });
 }
 
 function cowardShin(): PartArt {
-  return part('coward.shin', { x0: -5, y0: -4, x1: 5, y1: 22 }, (ox, oy) =>
-    cel(limb([ox, oy], [ox, 19 + oy], 7, 6, 0.2), { fill: '#5a4f4a', shade: '#433a36', sx: 2, sy: 0, stroke: 2.5, over: line(`M${ox - 3} ${oy + 10}l6 2`, '#433a36', 1) }),
-    { far: true },
-  );
+  return part('coward.shin', { x0: -6, y0: -4, x1: 6, y1: 22 }, (ox, oy) =>
+    flat(limb([ox, oy], [ox, oy + 19], 8, 7, 0.2), COW.pyjama, { inner: ink(`M${ox - 1.5} ${oy - 2}V${oy + 21}M${ox + 2} ${oy - 2}V${oy + 21}`, 0.9, COW.pyjamaLine) }),
+  { far: true });
 }
 
 function cowardFoot(): PartArt {
-  return part('coward.foot', { x0: -7, y0: -4, x1: 12, y1: 7 }, (ox, oy) =>
-    cel(smooth(tr([[-4, -2], [-6, 2], [-5, 5], [6, 5], [11, 4], [9, 0], [3, -2]], ox, oy)), { fill: '#8a7a6c', shade: '#6d5f53', sx: 1, sy: 1.5, stroke: 2.3, over: line(`M${ox - 3} ${oy + 1}l7 1`, '#6d5f53', 1) }),
-    { far: true },
-  );
+  return part('coward.foot', { x0: -8, y0: -4, x1: 13, y1: 8 }, (ox, oy) =>
+    flat(path(tr([[-4, -2], [-6, 2], [-5, 6], [6, 6], [11.5, 5], [10, 1.5], [3, -2]], ox, oy)) + 'Z', COW.foot, { stroke: DETAIL * 1.2, over: ink(`M${ox + 8} ${oy + 5.5}l0.5 -2M${ox + 5.5} ${oy + 5.8}l0.4 -2`, DETAIL * 0.7) }),
+  { far: true });
 }
 
 function torch(): PartArt {
-  // Oversized torch; pivot at the grip (held around its middle).
-  return part('coward.torch', { x0: -8, y0: -58, x1: 8, y1: 26 }, (ox, oy) => {
-    let s = cel(limb([ox, 24 + oy], [ox + 1, -40 + oy], 6, 7, 0.4), { fill: '#7a5a44', shade: '#5c4232', light: '#98765c', sx: 2, sy: 0, hx: 1, hy: 0, stroke: 2.6 });
-    s += cel(rrect(ox - 7, oy - 52, 15, 14, 4), { fill: '#6e5140', shade: '#533c30', sx: 2, sy: 2, stroke: 2.6, over: line(`M${ox - 6} ${oy - 47}l13 0M${ox - 6} ${oy - 42}l13 0`, P.ink, 1.1) });
+  // An oversized torch; pivot at the grip (held around its middle).
+  return part('coward.torch', { x0: -9, y0: -58, x1: 9, y1: 26 }, (ox, oy) => {
+    let s = flat(limb([ox, oy + 24], [ox + 1, oy - 40], 6, 7, 0.3), COW.wood, { over: barkLines([ox, oy + 20], [ox + 1, oy - 36], 5, 61, { n: 2, knots: 1 }) });
+    s += flat(roundPoly([[ox - 7, oy - 53], [ox + 8, oy - 53], [ox + 8, oy - 38], [ox - 7, oy - 38]], 3), COW.wrap, {
+      stroke: DETAIL * 1.3,
+      over: ink(`M${ox - 7} ${oy - 48}l15 2M${ox - 7} ${oy - 43}l15 2`, DETAIL),
+    });
     return s;
   });
 }
 
 function flame(): PartArt {
-  return part('coward.flame', { x0: -12, y0: -30, x1: 12, y1: 4 }, (ox, oy) => {
+  return part('coward.flame', { x0: -13, y0: -32, x1: 13, y1: 5 }, (ox, oy) => {
     const o = (pts: Pt[]): Pt[] => tr(pts, ox, oy);
-    let s = glow(ox, oy - 10, 14, P.fireLight, 0.5);
-    s += cel(smooth(o([[-9, 0], [-10, -9], [-5, -17], [-3, -26], [2, -18], [6, -24], [9, -12], [9, -2], [3, 2]])), { fill: P.fire, shade: '#d9853a', sx: 2, sy: 0, stroke: 2.4 });
-    s += `<path d="${smooth(o([[-4, -1], [-5, -8], [-1, -14], [3, -9], [4, -2]]))}" fill="${P.fireLight}"/>`;
+    let s = glow(ox, oy - 10, 15, PASTEL.butter, 0.5);
+    s += flat(path(o([[-9, 0], [-10, -9], [-5, -17], [-3, -27], [2, -18], [6, -25], [9, -12], [9, -2], [3, 2]])) + 'Z', COW.flame, { stroke: DETAIL * 1.3, inner: fillOnly(path(o([[-10, 2], [-8, -6], [-2, -4], [4, -7], [10, -3], [10, 4]])) + 'Z', COW.flameEdge, 0.8) });
+    s += `<path d="${path(o([[-4, -1], [-5, -8], [-1, -14], [3, -9], [4, -2]]))}Z" fill="${COW.flameCore}"/>`;
     return s;
-  }, { scale: 2 });
+  });
 }
 
 // ---------------------------------------------------------------- mech
 
 function mechHead(): PartArt {
-  return part('mech.head', { x0: -14, y0: -30, x1: 16, y1: 4 }, (ox, oy) => {
+  return part('mech.head', { x0: -16, y0: -44, x1: 18, y1: 5 }, (ox, oy) => {
     const o = (pts: Pt[]): Pt[] => tr(pts, ox, oy);
-    let s = cel(poly(o([[-9, 1], [-12, -10], [-10, -24], [-2, -29], [9, -27], [14, -20], [15, -8], [11, -2], [4, 2]])), {
-      fill: P.metal, shade: P.metalDark, light: P.metalLight, sx: 3, sy: 2, hx: 1.2, hy: 1.2, stroke: 2.8,
-      over:
-        line(poly(o([[-10, -14], [14, -14]]), false), P.metalDark, 1.2) +
-        `<circle cx="${ox - 8}" cy="${oy - 20}" r="1.3" fill="${P.metalLight}"/><circle cx="${ox - 8}" cy="${oy - 6}" r="1.3" fill="${P.metalLight}"/>`,
-    });
-    // Eyes are black like every form's: the front one is a key (bow ring,
-    // shaft, bits), the lower one a keyhole.
-    const kx = 8 + ox;
-    const ky = -19 + oy;
-    s += `<circle cx="${kx - 2}" cy="${ky}" r="2.9" fill="#07060b"/>`;
-    s += line(`M${kx + 0.5} ${ky}L${kx + 7} ${ky}M${kx + 5} ${ky}l0 2.4M${kx + 7} ${ky}l0 3`, '#07060b', 2);
-    const hx = 3 + ox;
-    const hy = -9 + oy;
-    s += `<path d="M${hx - 2.2} ${hy - 1}a2.4 2.4 0 1 1 4.4 0l1.2 5.2h-6.8z" fill="#07060b" stroke="#07060b" stroke-width="1.1" stroke-linejoin="round"/>`;
-    // Bone strut crest
-    s += cel(taper(o([[-6, -27], [-9, -33], [-8, -38]]), 3.2, 1.4), { fill: P.bone, shade: '#b3a992', sx: 1, sy: 0, stroke: 1.8 });
+    // An antenna with a pink bead: something alive left in the machine.
+    let s = ink(`M${ox - 5} ${oy - 29}L${ox - 8} ${oy - 38}`, 1.8) + `<circle cx="${ox - 8.5}" cy="${oy - 39}" r="2.2" fill="${MECH.pink}" stroke="${INK}" stroke-width="${DETAIL}"/>`;
+    const box = roundPoly(o([[-12, -26], [-5, -30], [10, -29], [15, -22], [16, -8], [12, -1], [-9, 0], [-13, -8]]), 4);
+    const inner =
+      fillOnly(`M${ox - 20} ${oy - 34}H${ox - 5}V${oy + 4}H${ox - 20}Z`, MECH.plateDeep) +
+      ink(`M${ox - 5} ${oy - 30}V${oy}`, DETAIL) +
+      ink(`M${ox - 5} ${oy - 15}H${ox + 16}`, DETAIL) +
+      `<circle cx="${ox - 9}" cy="${oy - 22}" r="1.2" fill="${MECH.joint}" stroke="${INK}" stroke-width="0.8"/><circle cx="${ox - 9}" cy="${oy - 6}" r="1.2" fill="${MECH.joint}" stroke="${INK}" stroke-width="0.8"/>` +
+      stitches(o([[-3, -26], [4, -27.5]]), 2.6, 1.2);
+    s += flat(box, MECH.plate, { inner });
+    // The eye is a key (bow ring, shaft, bits); the mouth a keyhole.
+    const kx = ox + 8;
+    const ky = oy - 20;
+    s += `<circle cx="${kx - 2}" cy="${ky}" r="3.2" fill="${MECH.yellow}" stroke="${INK}" stroke-width="${DETAIL * 1.2}"/><circle cx="${kx - 2}" cy="${ky}" r="1.2" fill="${INK}"/>`;
+    s += ink(`M${kx + 1.2} ${ky}L${kx + 7} ${ky}M${kx + 5} ${ky}l0 2.4M${kx + 7} ${ky}l0 3`, 1.8);
+    s += `<path d="M${ox + 6.8} ${oy - 10}a2.4 2.4 0 1 1 4.4 0l1.2 5.2h-6.8z" fill="${INK}"/>`;
     return s;
   });
 }
 
 function mechTorso(): PartArt {
-  return part('mech.torso', { x0: -12, y0: -36, x1: 13, y1: 5 }, (ox, oy) => {
+  return part('mech.torso', { x0: -16, y0: -42, x1: 17, y1: 8 }, (ox, oy) => {
     const o = (pts: Pt[]): Pt[] => tr(pts, ox, oy);
-    let s = cel(poly(o([[-8, 3], [-10, -10], [-9, -28], [-4, -35], [5, -35], [10, -28], [11, -10], [8, 3]])), {
-      fill: P.metalDark, shade: '#23262e', light: P.metal, sx: 3, sy: 1, hx: 1, hy: 1, stroke: 2.8,
+    const shell = roundPoly(o([[-10, 5], [-12, -10], [-12, -30], [-6, -38], [7, -38], [13, -31], [13, -10], [10, 5]]), 4);
+    let cols = '';
+    [-8, -3, 2, 7].forEach((x, i) => {
+      cols += flat(`M${ox + x} ${oy + 2}V${oy - 10}L${ox + x + 1.6} ${oy - 12.5}L${ox + x + 2.6} ${oy - 10}L${ox + x + 3.6} ${oy - 12.5}L${ox + x + 4.8} ${oy - 10}V${oy + 2}Z`, i % 2 ? MECH.pink : MECH.yellow, { stroke: DETAIL });
     });
-    // Bone ribs inside the cage
-    for (let i = 0; i < 4; i++) {
-      const y = -28 + i * 7;
-      s += line(`M${ox - 7} ${oy + y}q7 3 15 0`, P.bone, 2.2);
-    }
-    s += line(`M${ox} ${oy - 33}L${ox} ${oy + 1}`, P.metalLight, 2.2);
-    // A lodged memory fragment (small photo)
-    s += cel(rrect(ox + 1, oy - 20, 7, 8, 1), { fill: P.paper, shade: P.paperDark, sx: 1, sy: 1, stroke: 1.4, over: `<circle cx="${ox + 4.5}" cy="${oy - 16.5}" r="1.8" fill="${P.violet}"/>` });
-    s += `<circle cx="${ox - 8}" cy="${oy - 30}" r="2" fill="${P.metalLight}" stroke="${P.ink}" stroke-width="1"/><circle cx="${ox + 9}" cy="${oy - 30}" r="2" fill="${P.metalLight}" stroke="${P.ink}" stroke-width="1"/>`;
-    return s;
+    const over =
+      ink(`M${ox - 12} ${oy - 15}H${ox + 13}`, DETAIL) +
+      flat(roundPoly(o([[-9, -34], [3, -34], [3, -19], [-9, -19]]), 2), '#f6e8ef', { stroke: DETAIL * 1.1, inner: maze(ox - 8, oy - 33, 10, 13, MECH.maze, 3, 1.1) }) +
+      // A lodged memory: a little photo.
+      flat(roundPoly(o([[5, -33], [11, -33], [11, -25], [5, -25]]), 1), MECH.photo, { stroke: DETAIL, inner: `<circle cx="${ox + 8}" cy="${oy - 30}" r="1.6" fill="${PASTEL.lilac}"/>` }) +
+      stitches(o([[6, -22], [11, -21]]), 2.4, 1.2) +
+      cols;
+    return flat(shell, MECH.plate, { over });
   });
 }
 
 function mechArm(): PartArt {
-  return part('mech.arm', { x0: -5, y0: -5, x1: 5, y1: 23 }, (ox, oy) =>
-    cel(rrect(ox - 3, oy - 2, 6, 22, 2), { fill: P.metal, shade: P.metalDark, light: P.metalLight, sx: 1.5, sy: 0, hx: 1, hy: 0, stroke: 2.2 }) +
-    `<circle cx="${ox}" cy="${oy}" r="3.2" fill="${P.metalLight}" stroke="${P.ink}" stroke-width="1.6"/>`,
-    { far: true },
-  );
+  return part('mech.arm', { x0: -7, y0: -7, x1: 7, y1: 25 }, (ox, oy) =>
+    flat(roundPoly([[ox - 4, oy], [ox + 4, oy], [ox + 3.6, oy + 21], [ox - 3.6, oy + 21]], 2), MECH.plate, { stroke: DETAIL * 1.2, over: stitches([[ox, oy + 5], [ox, oy + 17]], 3.2, 1.6) }) +
+    flat(roundPoly([[ox - 6, oy - 5], [ox + 6, oy - 5], [ox + 5.5, oy + 5], [ox - 5.5, oy + 5]], 2.5), MECH.blue, { stroke: DETAIL * 1.2 }),
+  { far: true });
 }
 
 function mechFore(): PartArt {
-  return part('mech.fore', { x0: -7, y0: -5, x1: 7, y1: 32 }, (ox, oy) => {
-    let s = cel(taper(tr([[0, 0], [0, 12], [0, 22]], ox, oy), 4.5, 3.5), { fill: P.bone, shade: '#b3a992', sx: 1.2, sy: 0, stroke: 2 });
-    s += `<circle cx="${ox}" cy="${oy}" r="3" fill="${P.metalLight}" stroke="${P.ink}" stroke-width="1.5"/>`;
-    // Clamp hand
-    s += cel(poly(tr([[-4, 21], [4, 21], [5, 29], [2, 27], [0, 31], [-2, 27], [-5, 29]], ox, oy)), { fill: P.metal, shade: P.metalDark, sx: 1, sy: 1, stroke: 2 });
+  return part('mech.fore', { x0: -8, y0: -5, x1: 8, y1: 33 }, (ox, oy) => {
+    let s = claws([ox, oy + 22], Math.PI / 2, 0.8, [7, 8, 7], 2.8, MECH.plateDeep, 71, 0.2);
+    s += flat(roundPoly([[ox - 3.6, oy], [ox + 3.6, oy], [ox + 3.2, oy + 22], [ox - 3.2, oy + 22]], 2), MECH.plate, { stroke: DETAIL * 1.2, over: ink(`M${ox - 3} ${oy + 8}H${ox + 3}M${ox - 3} ${oy + 15}H${ox + 3}`, DETAIL * 0.9) });
+    s += `<circle cx="${ox}" cy="${oy}" r="3.2" fill="${MECH.joint}" stroke="${INK}" stroke-width="${DETAIL * 1.1}"/>`;
     return s;
   }, { far: true });
 }
 
 function mechThigh(): PartArt {
-  return part('mech.thigh', { x0: -6, y0: -5, x1: 6, y1: 24 }, (ox, oy) =>
-    cel(rrect(ox - 4, oy - 2, 8, 22, 2), { fill: P.metal, shade: P.metalDark, light: P.metalLight, sx: 2, sy: 0, hx: 1, hy: 0, stroke: 2.4, over: line(`M${ox} ${oy + 3}l0 14`, P.bone, 2) }) +
-    `<circle cx="${ox}" cy="${oy}" r="3.4" fill="${P.metalLight}" stroke="${P.ink}" stroke-width="1.5"/>`,
-    { far: true },
-  );
+  return part('mech.thigh', { x0: -7, y0: -6, x1: 7, y1: 25 }, (ox, oy) =>
+    flat(roundPoly([[ox - 5, oy - 1], [ox + 5, oy - 1], [ox + 4.4, oy + 21], [ox - 4.4, oy + 21]], 2.5), MECH.plate, {
+      stroke: DETAIL * 1.2,
+      over: flat(roundPoly([[ox - 4, oy + 9], [ox + 4, oy + 9], [ox + 4, oy + 15], [ox - 4, oy + 15]], 1), MECH.pink, { stroke: DETAIL }) + stitches([[ox + 1, oy + 2], [ox + 1, oy + 8]], 2.6, 1.3),
+    }) + `<circle cx="${ox}" cy="${oy}" r="3.4" fill="${MECH.joint}" stroke="${INK}" stroke-width="${DETAIL * 1.1}"/>`,
+  { far: true });
 }
 
 function mechShin(): PartArt {
-  return part('mech.shin', { x0: -5, y0: -5, x1: 5, y1: 24 }, (ox, oy) =>
-    cel(taper(tr([[0, 0], [0, 10], [0, 21]], ox, oy), 5, 4), { fill: P.bone, shade: '#b3a992', sx: 1.5, sy: 0, stroke: 2.2 }) +
-    `<circle cx="${ox}" cy="${oy}" r="3.2" fill="${P.metalLight}" stroke="${P.ink}" stroke-width="1.5"/>`,
-    { far: true },
-  );
+  return part('mech.shin', { x0: -6, y0: -6, x1: 6, y1: 25 }, (ox, oy) =>
+    flat(roundPoly([[ox - 4.2, oy - 1], [ox + 4.2, oy - 1], [ox + 3.6, oy + 21], [ox - 3.6, oy + 21]], 2), MECH.plate, { stroke: DETAIL * 1.2, over: stitches([[ox, oy + 4], [ox, oy + 17]], 3, 1.5) }) +
+    `<circle cx="${ox}" cy="${oy}" r="3.2" fill="${MECH.joint}" stroke="${INK}" stroke-width="${DETAIL * 1.1}"/>`,
+  { far: true });
 }
 
 function mechFoot(): PartArt {
-  return part('mech.foot', { x0: -7, y0: -4, x1: 13, y1: 6 }, (ox, oy) =>
-    cel(poly(tr([[-5, -2], [-6, 4], [12, 4], [12, 1], [4, -2]], ox, oy)), { fill: P.metalDark, shade: '#23262e', light: P.metal, sx: 1, sy: 1, stroke: 2.2 }),
-    { far: true },
-  );
+  return part('mech.foot', { x0: -8, y0: -4, x1: 14, y1: 8 }, (ox, oy) =>
+    flat(roundPoly(tr([[-6, -2], [4, -2], [13, 2], [13, 6], [-7, 6]], ox, oy), [2, 2, 2, 1.5, 1.5]), MECH.plateDeep, { stroke: DETAIL * 1.2, over: fillOnly(`M${ox - 8} ${oy + 3.5}H${ox + 14}V${oy + 7}H${ox - 8}Z`, MECH.yellow) + ink(`M${ox - 7} ${oy + 3.5}H${ox + 13}`, DETAIL) }),
+  { far: true });
 }
 
 export function formParts(): PartArt[] {
   return [
     cowardHead(), cowardTorso(), cowardArm(), cowardFore(), cowardThigh(), cowardShin(), cowardFoot(), torch(), flame(),
-    brow('coward.brow', '#1f191c', 11.5, 5, false),
-    ...eyeParts('coward', 3, 3.3),
-    ...mouthParts('coward', 1.9, '#6e4a44', '#3a1f1d'),
+    browPart('coward.brow', COW.hair, 9, 2.8, { sad: 1, stroke: DETAIL }),
+    ...cowardEyes(),
+    ...cowardMouth(),
     mechHead(), mechTorso(), mechArm(), mechFore(), mechThigh(), mechShin(), mechFoot(),
-    brow('mech.brow', '#343945', 12, 4.8, false),
+    browPart('mech.brow', '#5b5d6b', 10, 3, { stroke: DETAIL }),
   ];
 }
 
 const COWARD_DIMS: HumanoidDims = {
-  hip: 40, thigh: 19, shin: 19, torso: 32, shoulderY: 29, shoulderX: 2, upper: 16, hipX: 3, headX: 1, eye: [7.6, -17],
-  brow: { part: 'coward.brow', up: 4.6, dx: 0 },
-  face: { eye: 'coward', mouth: 'coward', mouthAt: [10.8, -7] },
+  hip: 42, thigh: 19, shin: 19, torso: 34, shoulderY: 30, shoulderX: 2, upper: 16, hipX: 3, headX: 1, hand: 22, eye: [7.4, -18.5],
+  brow: { part: 'coward.brow', up: 5.2, dx: 0 },
+  face: { eye: 'coward', mouth: 'coward', mouthAt: [10.5, -7.5] },
 };
-const MECH_DIMS: HumanoidDims = { hip: 42, thigh: 20, shin: 20, torso: 34, shoulderY: 30, shoulderX: 2, upper: 20, hipX: 4, headX: 1, eye: [9, -19], brow: { part: 'mech.brow', up: 5.8, dx: -1.5 } };
+const MECH_DIMS: HumanoidDims = {
+  hip: 46, thigh: 21, shin: 21, torso: 38, shoulderY: 33, shoulderX: 2, upper: 21, hipX: 4, headX: 1, hand: 28, eye: [7, -20],
+  brow: { part: 'mech.brow', up: 6, dx: -1.5 },
+};
 
 export const RIG_COWARD: RigDef = (() => {
   const r = humanoidRig('coward', 'coward', COWARD_DIMS, false);

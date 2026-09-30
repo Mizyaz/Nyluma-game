@@ -48,9 +48,9 @@ export class MenuScene extends Phaser.Scene {
     addProp('prop.crystals.blue', 1180, 700, 0.9);
     // Ground strip
     const g = this.add.graphics().setDepth(DEPTH.terrain);
-    g.fillStyle(hex('#2a2640'));
+    g.fillStyle(hex('#c7bfd0'));
     g.fillRect(0, 690, VIEW_W, 40);
-    g.lineStyle(4, hex(P.ink));
+    g.lineStyle(2.2, hex(P.ink));
     g.lineBetween(0, 690, VIEW_W, 690);
     this.rig = new RigView(this, RIG_GORTI_ROOT, (a, t, p) => humanoidPose('gorti.root', a, t, p), 330, 690, DEPTH.player);
     this.rig.scale = 1.6;

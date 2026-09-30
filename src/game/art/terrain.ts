@@ -1,39 +1,58 @@
-import { P } from './palette';
+import { P, mix } from './palette';
 import { Rng, type Pt } from './svg';
+import { DETAIL, INK, OUTLINE, PASTEL } from './style';
+import { applyGrain } from './TextureFactory';
 import type { SolidDef, SolidStyle } from '../data/roomTypes';
 
-// Canvas painter for collision-aligned terrain. The top edge of every piece
-// stays within ±2 px of the collider top so feet read as grounded; sides and
-// undersides wobble freely. Decoration is seeded per piece.
+// Canvas painter for collision-aligned terrain, in the manner of the
+// paintings: flat pastel fills, one thin near-black contour, naive details
+// (pebbles, root threads, planks, little sprouts) and the coloured-pencil
+// grain. The top edge of every piece stays within ±2 px of the collider top
+// so feet read as grounded; sides and undersides wobble freely. Decoration
+// is seeded per piece.
 
 export interface StyleColors {
+  /** Main fill. */
   base: string;
+  /** Kept for palette overrides; the flat look does not shade. */
   shade: string;
+  /** Pebbles and other small light patches. */
   light: string;
+  /** Top band (grass, planks' upper face, moss). */
   top: string;
   topShade: string;
+  /** Inner detail lines. */
   detail: string;
+  /** Embedded crystals and small highlights. */
   accent: string;
 }
 
 export type TerrainPalette = Partial<Record<SolidStyle, Partial<StyleColors>>>;
 
+function mk(base: string, top: string, detail: string, accent: string, light?: string): StyleColors {
+  return { base, shade: base, light: light ?? mix(base, '#ffffff', 0.32), top, topShade: top, detail, accent };
+}
+
 const DEFAULTS: Record<SolidStyle, StyleColors> = {
-  soil: { base: '#3a3550', shade: '#2a2640', light: '#4a4463', top: '#4c4466', topShade: '#3d3656', detail: '#2a2640', accent: P.crystalTeal },
-  root: { base: P.bark, shade: P.barkDark, light: P.barkLight, top: '#806c83', topShade: P.barkDark, detail: '#4a3c50', accent: P.violet },
-  crystal: { base: P.crystalTeal, shade: P.crystalTealDark, light: P.crystalTealLight, top: P.crystalTealLight, topShade: P.crystalTeal, detail: '#2d7b70', accent: '#e8fffb' },
-  wood: { base: '#7a5a44', shade: '#5c4232', light: '#98765c', top: '#8d6a50', topShade: '#6b4f3c', detail: '#4d3628', accent: P.crystalOrange },
-  stone: { base: '#6a6478', shade: '#4f4a5d', light: '#857f93', top: '#79738a', topShade: '#5f596f', detail: '#443f52', accent: P.crystalBlue },
-  moss: { base: '#3a3446', shade: '#2a2536', light: '#4a4358', top: '#3f6b5e', topShade: '#2d4d45', detail: '#28222f', accent: P.crystalBlue },
-  floor: { base: '#6e5140', shade: '#533c30', light: '#87654f', top: '#8a6a52', topShade: '#6e5140', detail: '#4a3428', accent: P.ivory },
-  metal: { base: P.metal, shade: P.metalDark, light: P.metalLight, top: '#5d6475', topShade: P.metalDark, detail: '#262a33', accent: '#9aa3b8' },
-  bed: { base: '#6e5140', shade: '#533c30', light: '#87654f', top: '#8a6a52', topShade: '#6e5140', detail: '#4a3428', accent: P.ivory },
-  office: { base: '#8c8578', shade: '#6f695e', light: '#a39c8e', top: '#9d968a', topShade: '#7c766b', detail: '#5d584f', accent: '#c9c1b0' },
-  none: { base: '#000', shade: '#000', light: '#000', top: '#000', topShade: '#000', detail: '#000', accent: '#000' },
+  soil: mk('#cdb9a0', '#e2d3bb', '#98836d', P.crystalTeal),
+  root: mk(P.bark, P.barkLight, P.barkDark, P.violet),
+  crystal: mk(P.crystalTeal, P.crystalTealLight, '#5f9d90', '#ffffff'),
+  wood: mk('#d9b48f', '#e8cdb0', '#a07e62', P.crystalOrange),
+  stone: mk('#c6c3c7', '#dcdadd', '#8e8a90', P.crystalBlue),
+  moss: mk(PASTEL.sand, '#a9cf8f', '#8d7a62', P.crystalBlue),
+  floor: mk('#dcb99a', '#ead3bc', '#9e7f66', P.ivory),
+  metal: mk('#aeb5c1', '#c8cdd6', '#7f8897', PASTEL.butter),
+  bed: mk('#dcb99a', '#ead3bc', '#9e7f66', P.ivory),
+  office: mk('#cfc9b4', '#e2ddca', '#9d977f', '#e9e2c9'),
+  none: mk('#000000', '#000000', '#000000', '#000000', '#000000'),
 };
 
 export function colorsFor(style: SolidStyle, pal?: TerrainPalette): StyleColors {
-  return { ...DEFAULTS[style], ...(pal?.[style] ?? {}) };
+  const over = pal?.[style] ?? {};
+  const c = { ...DEFAULTS[style], ...over };
+  // A palette that only names a new base gets matching light patches.
+  if (over.base && !over.light) c.light = mix(over.base, '#ffffff', 0.32);
+  return c;
 }
 
 export const TERRAIN_MARGIN = 26;
@@ -91,6 +110,31 @@ function ellipse(ctx: CanvasRenderingContext2D, x: number, y: number, rx: number
   ctx.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2);
 }
 
+function inkLine(ctx: CanvasRenderingContext2D, w: number, a = 1, color: string = INK): void {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = w;
+  ctx.globalAlpha = a;
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+/** A little creature doodle (fish or bird) locked inside a crystal. */
+function critter(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, fish: boolean): void {
+  ctx.beginPath();
+  if (fish) {
+    ctx.ellipse(cx, cy, s * 0.5, s * 0.24, -0.3, 0, Math.PI * 2);
+    ctx.moveTo(cx - s * 0.45, cy + s * 0.12);
+    ctx.lineTo(cx - s * 0.8, cy - s * 0.05);
+    ctx.lineTo(cx - s * 0.72, cy + s * 0.35);
+    ctx.closePath();
+  } else {
+    ctx.moveTo(cx - s * 0.6, cy);
+    ctx.quadraticCurveTo(cx - s * 0.3, cy - s * 0.5, cx, cy);
+    ctx.quadraticCurveTo(cx + s * 0.3, cy - s * 0.5, cx + s * 0.6, cy);
+  }
+  inkLine(ctx, 1.1, 0.75);
+}
+
 function crystalShard(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -104,65 +148,27 @@ function crystalShard(
   const w = h * 0.34;
   const tipX = x + lean * h;
   const tipY = y - h;
-  ctx.beginPath();
-  ctx.moveTo(x - w / 2, y);
-  ctx.lineTo(x - w / 2 + lean * h * 0.7, y - h * 0.72);
-  ctx.lineTo(tipX, tipY);
-  ctx.lineTo(x + w / 2 + lean * h * 0.7, y - h * 0.72);
-  ctx.lineTo(x + w / 2, y);
-  ctx.closePath();
+  const shape = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(x - w / 2, y);
+    ctx.lineTo(x - w / 2 + lean * h * 0.7, y - h * 0.72);
+    ctx.lineTo(tipX, tipY);
+    ctx.lineTo(x + w / 2 + lean * h * 0.7, y - h * 0.72);
+    ctx.lineTo(x + w / 2, y);
+    ctx.closePath();
+  };
+  shape();
   ctx.fillStyle = c.fill;
   ctx.fill();
-  ctx.save();
-  ctx.clip();
-  ctx.fillStyle = c.shade;
+  if (trapped) critter(ctx, x + lean * h * 0.4, y - h * 0.42, w * 0.9, rng.chance(0.5));
+  // One facet line, then the contour.
   ctx.beginPath();
   ctx.moveTo(tipX, tipY);
-  ctx.lineTo(x + w / 2 + lean * h * 0.7, y - h * 0.72);
-  ctx.lineTo(x + w / 2, y);
-  ctx.lineTo(x + lean * h * 0.2, y);
-  ctx.closePath();
-  ctx.fill();
-  if (trapped) {
-    // A creature's silhouette locked inside the crystal.
-    ctx.fillStyle = 'rgba(25,23,40,0.55)';
-    const cx = x + lean * h * 0.4;
-    const cy = y - h * 0.4;
-    if (rng.chance(0.5)) {
-      ellipse(ctx, cx, cy, w * 0.26, w * 0.12, -0.4);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(cx - w * 0.22, cy + w * 0.08);
-      ctx.lineTo(cx - w * 0.38, cy - w * 0.04);
-      ctx.lineTo(cx - w * 0.36, cy + w * 0.2);
-      ctx.fill();
-    } else {
-      ellipse(ctx, cx, cy, w * 0.14, w * 0.1, 0);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(cx - w * 0.05, cy);
-      ctx.lineTo(cx - w * 0.3, cy - w * 0.18);
-      ctx.lineTo(cx + w * 0.05, cy - w * 0.05);
-      ctx.fill();
-    }
-  }
-  ctx.strokeStyle = c.light;
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(x - w / 2 + 2 + lean * h * 0.6, y - h * 0.62);
-  ctx.lineTo(tipX - 1, tipY + 4);
-  ctx.stroke();
-  ctx.restore();
-  ctx.strokeStyle = P.ink;
-  ctx.lineWidth = 2.5;
+  ctx.lineTo(x + lean * h * 0.15 + w * 0.08, y);
+  inkLine(ctx, DETAIL * 0.8, 0.8);
+  shape();
   ctx.lineJoin = 'round';
-  ctx.beginPath();
-  ctx.moveTo(x - w / 2, y);
-  ctx.lineTo(x - w / 2 + lean * h * 0.7, y - h * 0.72);
-  ctx.lineTo(tipX, tipY);
-  ctx.lineTo(x + w / 2 + lean * h * 0.7, y - h * 0.72);
-  ctx.lineTo(x + w / 2, y);
-  ctx.stroke();
+  inkLine(ctx, DETAIL + 0.3);
 }
 
 export const CRYSTAL_COLORS = {
@@ -170,6 +176,7 @@ export const CRYSTAL_COLORS = {
   teal: { fill: P.crystalTeal, shade: P.crystalTealDark, light: P.crystalTealLight },
   orange: { fill: P.crystalOrange, shade: P.crystalOrangeDark, light: P.crystalOrangeLight },
   violet: { fill: P.violet, shade: P.violetDark, light: P.vein },
+  pink: { fill: PASTEL.pink, shade: PASTEL.pinkDeep, light: PASTEL.blush },
 };
 
 function details(ctx: CanvasRenderingContext2D, style: SolidStyle, w: number, h: number, c: StyleColors, rng: Rng, thin: boolean): void {
@@ -177,25 +184,22 @@ function details(ctx: CanvasRenderingContext2D, style: SolidStyle, w: number, h:
   switch (style) {
     case 'soil':
     case 'moss': {
-      const n = Math.floor(area / 5000);
+      // Pebbles: small light ovals with a thin contour.
+      const n = Math.floor(area / 7000);
       for (let i = 0; i < n; i++) {
         const x = rng.range(10, w - 10);
-        const y = rng.range(22, Math.min(h, 420) - 6);
-        const r = rng.range(3, 8);
-        ellipse(ctx, x, y, r, r * rng.range(0.5, 0.8), rng.range(0, 3));
-        ctx.fillStyle = c.light;
+        const y = rng.range(26, Math.min(h, 420) - 6);
+        const r = rng.range(3, 7);
+        ellipse(ctx, x, y, r, r * rng.range(0.55, 0.8), rng.range(0, 3));
+        ctx.fillStyle = rng.chance(0.25) ? mix(c.light, rng.pick([PASTEL.pink, PASTEL.lilac, PASTEL.mint]), 0.45) : c.light;
         ctx.fill();
-        ctx.strokeStyle = c.detail;
-        ctx.lineWidth = 1.6;
-        ctx.stroke();
+        inkLine(ctx, 1.1, 0.85);
       }
       // Fossilised root threads.
-      const roots = Math.floor(area / 26000) + 1;
-      ctx.strokeStyle = c.detail;
+      const roots = Math.floor(area / 30000) + 1;
       for (let i = 0; i < roots; i++) {
         let x = rng.range(0, w);
-        let y = rng.range(26, Math.min(h, 420));
-        ctx.lineWidth = rng.range(2, 4);
+        let y = rng.range(30, Math.min(h, 420));
         ctx.beginPath();
         ctx.moveTo(x, y);
         for (let k = 0; k < 4; k++) {
@@ -205,7 +209,7 @@ function details(ctx: CanvasRenderingContext2D, style: SolidStyle, w: number, h:
           x = nx;
           y = ny;
         }
-        ctx.stroke();
+        inkLine(ctx, 1.2, 0.8, c.detail);
       }
       // Embedded crystals (sometimes holding trapped creatures).
       const cr = Math.floor(area / 60000);
@@ -213,18 +217,16 @@ function details(ctx: CanvasRenderingContext2D, style: SolidStyle, w: number, h:
         const x = rng.range(24, w - 24);
         const y = rng.range(60, Math.min(h, 400));
         if (y > h - 10) continue;
-        const col = rng.pick([CRYSTAL_COLORS.blue, CRYSTAL_COLORS.teal, CRYSTAL_COLORS.teal, CRYSTAL_COLORS.orange]);
+        const col = rng.pick([CRYSTAL_COLORS.blue, CRYSTAL_COLORS.teal, CRYSTAL_COLORS.pink, CRYSTAL_COLORS.orange]);
         crystalShard(ctx, x, y, rng.range(18, 34), rng.range(-0.3, 0.3), col, rng.chance(0.45), rng);
       }
       break;
     }
     case 'root': {
-      ctx.strokeStyle = c.detail;
-      ctx.lineWidth = 1.6;
       const lines = Math.max(2, Math.floor(h / 9));
+      ctx.beginPath();
       for (let i = 0; i < lines; i++) {
         const y = ((i + 0.6) / lines) * h + rng.range(-2, 2);
-        ctx.beginPath();
         let x = rng.range(4, 30);
         ctx.moveTo(x, y);
         while (x < w - 10) {
@@ -233,191 +235,189 @@ function details(ctx: CanvasRenderingContext2D, style: SolidStyle, w: number, h:
           x = nx + rng.range(6, 30);
           ctx.moveTo(x, y + rng.range(-1, 1));
         }
-        ctx.stroke();
       }
+      inkLine(ctx, 1.1, 0.8, c.detail);
       const knots = Math.floor(w / 140);
       for (let i = 0; i < knots; i++) {
         const x = rng.range(14, w - 14);
         const y = rng.range(h * 0.3, h * 0.75);
         ellipse(ctx, x, y, rng.range(4, 7), rng.range(2.5, 4), 0);
-        ctx.strokeStyle = c.detail;
-        ctx.lineWidth = 1.6;
-        ctx.stroke();
-      }
-      if (!thin && h > 40) {
-        ctx.strokeStyle = c.accent;
-        ctx.globalAlpha = 0.5;
-        ctx.lineWidth = 1.4;
-        ctx.beginPath();
-        ctx.moveTo(rng.range(10, w / 3), h * 0.5);
-        ctx.quadraticCurveTo(w / 2, h * 0.3 + rng.range(-8, 8), w - rng.range(10, w / 3), h * 0.55);
-        ctx.stroke();
-        ctx.globalAlpha = 1;
+        inkLine(ctx, 1.1, 0.85);
       }
       break;
     }
     case 'crystal': {
-      ctx.strokeStyle = c.light;
-      ctx.lineWidth = 1.5;
+      ctx.beginPath();
       const facets = Math.max(2, Math.floor(w / 40));
       for (let i = 0; i < facets; i++) {
         const x = (i + 0.5) * (w / facets) + rng.range(-6, 6);
-        ctx.beginPath();
         ctx.moveTo(x, 2);
         ctx.lineTo(x + rng.range(-14, 14), h - 2);
-        ctx.stroke();
       }
-      ctx.fillStyle = 'rgba(255,255,255,0.18)';
-      ctx.fillRect(0, 2, w, Math.min(5, h / 3));
+      inkLine(ctx, 1.1, 0.55);
       break;
     }
     case 'wood':
     case 'floor':
     case 'bed': {
-      ctx.strokeStyle = c.detail;
-      ctx.lineWidth = 1.8;
       const plank = style === 'floor' ? 30 : 22;
+      ctx.beginPath();
       if (style === 'floor') {
         for (let y = plank; y < Math.min(h, 200); y += plank) {
-          ctx.beginPath();
           ctx.moveTo(0, y + rng.range(-1, 1));
           ctx.lineTo(w, y + rng.range(-1, 1));
-          ctx.stroke();
           for (let x = rng.range(20, 160); x < w; x += rng.range(120, 220)) {
-            ctx.beginPath();
             ctx.moveTo(x, y - plank + 2);
             ctx.lineTo(x, y - 2);
-            ctx.stroke();
           }
         }
       } else {
         for (let x = plank; x < w - 6; x += plank + rng.range(-3, 3)) {
-          ctx.beginPath();
           ctx.moveTo(x, 4);
           ctx.lineTo(x + rng.range(-1, 1), h - 4);
-          ctx.stroke();
         }
+      }
+      inkLine(ctx, 1.2, 0.8);
+      // Nail heads.
+      ctx.fillStyle = INK;
+      for (let x = rng.range(8, 30); x < w - 6; x += rng.range(60, 110)) {
+        ellipse(ctx, x, style === 'floor' ? 8 : Math.min(h * 0.5, 10), 1.3, 1.3);
+        ctx.fill();
       }
       break;
     }
     case 'stone': {
-      ctx.strokeStyle = c.detail;
-      ctx.lineWidth = 1.8;
+      ctx.beginPath();
       const cracks = Math.max(1, Math.floor(w / 70));
       for (let i = 0; i < cracks; i++) {
         let x = rng.range(10, w - 10);
         let y = rng.range(6, h * 0.4);
-        ctx.beginPath();
         ctx.moveTo(x, y);
         for (let k = 0; k < 3; k++) {
           x += rng.range(-10, 10);
           y += rng.range(6, 16);
           ctx.lineTo(x, y);
         }
-        ctx.stroke();
       }
+      inkLine(ctx, 1.3, 0.9);
       break;
     }
     case 'metal': {
-      ctx.strokeStyle = c.detail;
-      ctx.lineWidth = 2;
+      ctx.beginPath();
       const panel = 80;
       for (let x = panel; x < w; x += panel) {
-        ctx.beginPath();
         ctx.moveTo(x, 6);
         ctx.lineTo(x, Math.min(h, 300));
-        ctx.stroke();
       }
-      ctx.fillStyle = c.accent;
-      for (let x = 12; x < w; x += panel / 2) {
-        ellipse(ctx, x, 12, 2, 2);
-        ctx.fill();
-      }
-      ctx.strokeStyle = c.light;
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
       ctx.moveTo(4, 20);
       ctx.lineTo(w - 4, 20);
-      ctx.stroke();
+      inkLine(ctx, 1.3, 0.85);
+      for (let x = 12; x < w; x += panel / 2) {
+        ellipse(ctx, x, 12, 2.4, 2.4);
+        ctx.fillStyle = c.accent;
+        ctx.fill();
+        inkLine(ctx, 1, 0.9);
+      }
       break;
     }
     case 'office': {
-      ctx.strokeStyle = c.detail;
-      ctx.lineWidth = 1.4;
+      ctx.beginPath();
       for (let x = 60; x < w; x += 60) {
-        ctx.beginPath();
         ctx.moveTo(x, 4);
         ctx.lineTo(x - 18, Math.min(h, 120));
-        ctx.stroke();
       }
-      ctx.beginPath();
       ctx.moveTo(0, 26);
       ctx.lineTo(w, 26);
-      ctx.stroke();
+      inkLine(ctx, 1.1, 0.7);
       break;
     }
     default:
       break;
   }
+  void thin;
+}
+
+/** A leaf with a vein, rooted at (x, y) (the paintings' sprouts). */
+function sproutLeaf(ctx: CanvasRenderingContext2D, x: number, y: number, len: number, ang: number, fill: string): void {
+  const c = Math.cos(ang);
+  const s = Math.sin(ang);
+  const at = (u: number, v: number): Pt => [x + u * c - v * s, y + u * s + v * c];
+  const wd = len * 0.34;
+  const b = at(len, 0);
+  const l1 = at(len * 0.35, -wd);
+  const l2 = at(len * 0.8, -wd * 0.6);
+  const r1 = at(len * 0.35, wd);
+  const r2 = at(len * 0.8, wd * 0.6);
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.bezierCurveTo(l1[0], l1[1], l2[0], l2[1], b[0], b[1]);
+  ctx.bezierCurveTo(r2[0], r2[1], r1[0], r1[1], x, y);
+  ctx.closePath();
+  ctx.fillStyle = fill;
+  ctx.fill();
+  inkLine(ctx, 1.2);
+  const m = at(len * 0.8, 0);
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(m[0], m[1]);
+  inkLine(ctx, 0.9, 0.8);
 }
 
 function topDecor(ctx: CanvasRenderingContext2D, style: SolidStyle, w: number, c: StyleColors, rng: Rng): void {
   if (style === 'moss') {
-    const n = Math.floor(w / 26);
+    // Grass blades: small outlined spikes in the band's colour.
+    const n = Math.floor(w / 30);
     for (let i = 0; i < n; i++) {
       const x = rng.range(6, w - 6);
-      const hgt = rng.range(4, 11);
-      ctx.fillStyle = rng.chance(0.5) ? c.top : c.topShade;
+      const hgt = rng.range(5, 11);
+      ctx.fillStyle = rng.chance(0.5) ? c.top : mix(c.top, PASTEL.lime, 0.4);
       ctx.beginPath();
-      ctx.moveTo(x - 4, 1);
-      ctx.quadraticCurveTo(x - 3, -hgt * 0.6, x - 1 + rng.range(-3, 3), -hgt);
-      ctx.quadraticCurveTo(x + 1, -hgt * 0.4, x + 4, 1);
+      ctx.moveTo(x - 3.5, 1);
+      ctx.quadraticCurveTo(x - 2.5, -hgt * 0.6, x - 1 + rng.range(-3, 3), -hgt);
+      ctx.quadraticCurveTo(x + 1, -hgt * 0.4, x + 3.5, 1);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = P.ink;
-      ctx.lineWidth = 1.6;
-      ctx.stroke();
+      inkLine(ctx, 1.1);
+    }
+    // Little sprouts with veined leaves, and a few flowers.
+    const sp = Math.floor(w / 260);
+    for (let i = 0; i < sp; i++) {
+      const x = rng.range(20, w - 20);
+      const k = rng.int(2, 3);
+      for (let j = 0; j < k; j++) sproutLeaf(ctx, x + (j - (k - 1) / 2) * 5, 0, rng.range(11, 17), -Math.PI / 2 + (j - (k - 1) / 2) * 0.7 + rng.range(-0.15, 0.15), mix(c.top, PASTEL.leaf, 0.5));
     }
     const fl = Math.floor(w / 220);
     for (let i = 0; i < fl; i++) {
       const x = rng.range(10, w - 10);
-      ctx.fillStyle = rng.pick([P.ivory, P.crystalTealLight, P.vein]);
-      ellipse(ctx, x, -3, 3, 2.4);
+      const col = rng.pick([PASTEL.pink, PASTEL.butter, PASTEL.lilac, P.ivory]);
+      for (let k = 0; k < 5; k++) {
+        const a = (k / 5) * Math.PI * 2;
+        ellipse(ctx, x + Math.cos(a) * 3, -5 + Math.sin(a) * 3, 2.4, 2.4);
+        ctx.fillStyle = col;
+        ctx.fill();
+        inkLine(ctx, 0.9);
+      }
+      ellipse(ctx, x, -5, 1.6, 1.6);
+      ctx.fillStyle = PASTEL.apricot;
       ctx.fill();
-      ctx.strokeStyle = P.ink;
-      ctx.lineWidth = 1.3;
-      ctx.stroke();
     }
   } else if (style === 'soil') {
     const n = Math.floor(w / 160);
     for (let i = 0; i < n; i++) {
       if (!rng.chance(0.5)) continue;
       const x = rng.range(20, w - 20);
-      const col = rng.pick([CRYSTAL_COLORS.teal, CRYSTAL_COLORS.blue, CRYSTAL_COLORS.orange]);
+      const col = rng.pick([CRYSTAL_COLORS.teal, CRYSTAL_COLORS.blue, CRYSTAL_COLORS.pink, CRYSTAL_COLORS.orange]);
       crystalShard(ctx, x, 3, rng.range(10, 18), rng.range(-0.25, 0.25), col, false, rng);
     }
   }
 }
 
 /**
- * Paints the part of a solid that falls inside a chunk canvas. `seed`
- * keeps decoration identical across chunks and reloads.
- */
-/** Lightens (k > 0) or darkens (k < 0) a #rrggbb colour. */
-function tone(hex: string, k: number): string {
-  const n = parseInt(hex.slice(1), 16);
-  const ch = (v: number): number => Math.round(k >= 0 ? v + (255 - v) * k : v * (1 + k));
-  const r = ch((n >> 16) & 255);
-  const g = ch((n >> 8) & 255);
-  const b = ch(n & 255);
-  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
-}
-
-/**
  * 2.5D surface: the walkable top is a receding band that straddles the
  * collider line, so feet stand in the middle of the surface rather than on
- * a flat edge. The far edge is shorter (perspective toward a vanishing point
- * above the view) and a little hazier; the front lip carries the light.
+ * a flat edge. Drawn like the naive perspective of the pink box in the
+ * first painting: one flat colour, a thin contour at the far edge and the
+ * front lip, a few pencil marks converging on the vanishing point.
  */
 function topFace(ctx: CanvasRenderingContext2D, w: number, style: SolidStyle, c: StyleColors, thin: boolean, rng: Rng): void {
   const depth = thin ? 9 : 20;
@@ -438,64 +438,40 @@ function topFace(ctx: CanvasRenderingContext2D, w: number, style: SolidStyle, c:
     ctx.lineTo(-0.5, front);
     ctx.closePath();
   };
-  const top = style === 'crystal' ? c.light : c.top;
+  const top = style === 'crystal' ? c.light : mix(c.top, '#ffffff', 0.18);
   face();
-  const g = ctx.createLinearGradient(0, back, 0, front);
-  g.addColorStop(0, tone(top, -0.22));
-  g.addColorStop(0.6, top);
-  g.addColorStop(1, tone(top, 0.12));
-  ctx.fillStyle = g;
+  ctx.fillStyle = top;
   ctx.fill();
-  // Surface texture: short strokes converging toward the vanishing point
-  // and a few speckles, clipped to the surface.
   ctx.save();
   face();
   ctx.clip();
-  ctx.strokeStyle = tone(top, -0.3);
-  ctx.globalAlpha = 0.5;
-  ctx.lineWidth = 1.2;
-  const n = Math.max(2, Math.round(w / 34));
+  ctx.beginPath();
+  const n = Math.max(2, Math.round(w / 40));
   for (let i = 0; i < n; i++) {
     const fx = rng.range(6, w - 6);
-    const lean = (fx - w / 2) / Math.max(1, w) * 6;
-    ctx.beginPath();
+    const lean = ((fx - w / 2) / Math.max(1, w)) * 6;
     ctx.moveTo(fx, front - 1);
     ctx.lineTo(fx - lean - rng.range(-2, 2), back + rng.range(1, depth * 0.4));
-    ctx.stroke();
   }
-  ctx.globalAlpha = 0.35;
-  ctx.fillStyle = tone(top, 0.35);
-  for (let i = 0; i < n * 2; i++) {
-    ctx.beginPath();
-    ctx.ellipse(rng.range(4, w - 4), rng.range(back + 2, front - 2), rng.range(1, 2.4), rng.range(0.5, 1.1), 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  inkLine(ctx, 1, 0.35, c.detail);
   ctx.restore();
-  ctx.globalAlpha = 1;
-  // Lit front lip, then ink: thin on the far edge, full on the lip.
-  ctx.strokeStyle = tone(top, 0.4);
-  ctx.lineWidth = 1.6;
-  ctx.globalAlpha = 0.85;
-  ctx.beginPath();
-  ctx.moveTo(2, front - 1.5);
-  ctx.lineTo(w - 2, front - 1.5);
-  ctx.stroke();
-  ctx.globalAlpha = 1;
-  ctx.strokeStyle = P.ink;
-  ctx.lineWidth = thin ? 1.6 : 2;
+  ctx.lineJoin = 'round';
   ctx.beginPath();
   ctx.moveTo(0, front);
   ctx.lineTo(inset, back);
   ctx.lineTo(w - inset, back);
   ctx.lineTo(w, front);
-  ctx.stroke();
-  ctx.lineWidth = thin ? 2.6 : 3.4;
+  inkLine(ctx, thin ? 1.2 : 1.5);
   ctx.beginPath();
   ctx.moveTo(-0.5, front);
   ctx.lineTo(w + 0.5, front);
-  ctx.stroke();
+  inkLine(ctx, thin ? 1.7 : OUTLINE);
 }
 
+/**
+ * Paints the part of a solid that falls inside a chunk canvas. `seed`
+ * keeps decoration identical across chunks and reloads.
+ */
 export function paintSolid(
   canvas: HTMLCanvasElement,
   solid: SolidDef,
@@ -512,20 +488,16 @@ export function paintSolid(
   ctx.translate(solid.x - chunk.x, solid.y - chunk.y);
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
-  // Base
+  // One flat fill.
   tracePath(ctx, pts);
-  ctx.fillStyle = c.shade;
+  ctx.fillStyle = c.base;
   ctx.fill();
   ctx.save();
   tracePath(ctx, pts);
   ctx.clip();
-  // Lit region = shape shifted up-left; leaves a hard shadow crescent.
-  tracePath(ctx, pts, -7, -9);
-  ctx.fillStyle = c.base;
-  ctx.fill();
   const drng = new Rng(seed ^ 0x5bd1e995);
   details(ctx, solid.style, solid.w, solid.h, c, drng, thin);
-  // Top band
+  // Top band (grass, the planks' upper face…) with a wavy lower edge.
   if (solid.style !== 'crystal' && solid.style !== 'metal') {
     const band = thin ? Math.min(7, solid.h * 0.35) : solid.style === 'moss' ? 16 : 11;
     ctx.beginPath();
@@ -534,35 +506,31 @@ export function paintSolid(
     let x = solid.w + 10;
     ctx.lineTo(x, band);
     const brng = new Rng(seed ^ 0x2f6b);
+    const edge: Pt[] = [[x, band]];
     while (x > -10) {
       const nx = x - brng.range(18, 40);
-      ctx.quadraticCurveTo((x + nx) / 2, band + brng.range(-4, 5), nx, band + brng.range(-2, 3));
+      const cy = band + brng.range(-4, 5);
+      const ny = band + brng.range(-2, 3);
+      ctx.quadraticCurveTo((x + nx) / 2, cy, nx, ny);
+      edge.push([(x + nx) / 2, cy], [nx, ny]);
       x = nx;
     }
     ctx.closePath();
-    ctx.fillStyle = c.topShade;
-    ctx.fill();
-    ctx.translate(0, -3);
     ctx.fillStyle = c.top;
     ctx.fill();
-    ctx.translate(0, 3);
+    ctx.beginPath();
+    ctx.moveTo(edge[0]![0], edge[0]![1]);
+    for (let i = 1; i + 1 < edge.length; i += 2) ctx.quadraticCurveTo(edge[i]![0], edge[i]![1], edge[i + 1]![0], edge[i + 1]![1]);
+    inkLine(ctx, thin ? 1 : 1.3, 0.85);
   }
-  // Rim light along the walkable surface.
-  ctx.strokeStyle = c.light;
-  ctx.lineWidth = 2;
-  ctx.globalAlpha = 0.8;
-  ctx.beginPath();
-  ctx.moveTo(8, 3);
-  ctx.lineTo(solid.w - 8, 3);
-  ctx.stroke();
-  ctx.globalAlpha = 1;
   ctx.restore();
-  // Ink contour
+  // Thin, even ink contour.
   tracePath(ctx, pts);
-  ctx.strokeStyle = P.ink;
-  ctx.lineWidth = thin ? 3 : 4;
-  ctx.stroke();
+  inkLine(ctx, thin ? 1.8 : OUTLINE);
   topFace(ctx, solid.w, solid.style, c, thin, new Rng(seed ^ 0x3c1));
   topDecor(ctx, solid.style, solid.w, c, new Rng(seed ^ 0x77));
+  // Coloured-pencil grain, anchored to the world so chunks line up.
+  ctx.translate(-solid.x, -solid.y);
+  applyGrain(ctx, solid.x - TERRAIN_MARGIN - 20, solid.y - TERRAIN_MARGIN - 20, solid.w + TERRAIN_MARGIN * 2 + 40, solid.h + TERRAIN_MARGIN * 2 + 40);
   ctx.restore();
 }

@@ -23,7 +23,7 @@ interface Slot {
   lit: number;
 }
 
-const INK = 0x191728;
+const INK = 0x1d1b1e;
 
 /**
  * Face-animated dialogue: black bars close in, the room dims, and the
@@ -37,7 +37,7 @@ export class CinemaScene extends Phaser.Scene {
   private dim!: Phaser.GameObjects.Rectangle;
   private closing = false;
   private fade = 0;
-  private dimLevel = 0.42;
+  private dimLevel = 0.3;
 
   constructor() {
     super('cinema');
@@ -49,9 +49,9 @@ export class CinemaScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdownSlots());
     this.closing = false;
     this.fade = 0;
-    this.dimLevel = data.dim === false ? 0 : 0.42;
+    this.dimLevel = data.dim === false ? 0 : 0.3;
     const reduced = app.settings.reducedMotion;
-    this.dim = this.add.rectangle(VIEW_W / 2, VIEW_H / 2, VIEW_W, VIEW_H, 0x0b0a12, 1).setAlpha(0);
+    this.dim = this.add.rectangle(VIEW_W / 2, VIEW_H / 2, VIEW_W, VIEW_H, 0x1d1b1e, 1).setAlpha(0);
     const barH = 62;
     this.bars = [
       this.add.rectangle(VIEW_W / 2, -barH / 2, VIEW_W, barH, 0x000000, 1),
@@ -71,19 +71,19 @@ export class CinemaScene extends Phaser.Scene {
 
   private makeSlot(id: CastId, win: PortraitWindow): Slot {
     const half = win.size / 2;
-    // Frame: ink border, dark violet ground with a lighter heart.
+    // Frame: thin ink border, paper ground with a pale periwinkle disc.
     const frame = this.add.graphics();
     frame.fillStyle(INK, 1).fillRoundedRect(win.cx - half - 6, win.cy - half - 6, win.size + 12, win.size + 12, 18);
-    frame.fillStyle(0x2d2640, 1).fillRoundedRect(win.cx - half, win.cy - half, win.size, win.size, 14);
-    frame.fillStyle(0x3f3558, 1).fillCircle(win.cx, win.cy - win.size * 0.05, win.size * 0.36);
+    frame.fillStyle(0xf3ead8, 1).fillRoundedRect(win.cx - half, win.cy - half, win.size, win.size, 14);
+    frame.fillStyle(0xc9cfee, 1).fillCircle(win.cx, win.cy - win.size * 0.05, win.size * 0.36);
     const portrait = CAST[id](this, win);
     const shape = this.make.graphics({}, false);
     shape.fillStyle(0xffffff, 1).fillRoundedRect(win.cx - half, win.cy - half, win.size, win.size, 14);
     portrait.root.setMask(shape.createGeometryMask());
-    const veil = this.add.rectangle(win.cx, win.cy, win.size, win.size, 0x0b0a12, 1).setAlpha(0.45);
-    // A thin crystal rim on top of everything.
+    const veil = this.add.rectangle(win.cx, win.cy, win.size, win.size, 0xf3ead8, 1).setAlpha(0.45);
+    // A thin ink rim on top of everything.
     const rim = this.add.graphics();
-    rim.lineStyle(3, 0x9f7fd8, 0.9).strokeRoundedRect(win.cx - half - 2, win.cy - half - 2, win.size + 4, win.size + 4, 16);
+    rim.lineStyle(2, INK, 0.9).strokeRoundedRect(win.cx - half - 2, win.cy - half - 2, win.size + 4, win.size + 4, 16);
     for (const o of [frame, portrait.root, rim]) o.setData('fadeable', true);
     return { id, win, portrait, mask: shape, veil, lit: 0 };
   }

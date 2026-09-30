@@ -1,6 +1,7 @@
-import { P, mix } from '../palette';
+import { P, mix, pastelMarkup } from '../palette';
 import { Rng, cel, ellipsePath, fillPath, glow, line, mixed, poly, smooth, taper, type Pt } from '../svg';
 import type { PartArt } from '../rigTypes';
+import { PASTEL } from '../style';
 
 // Creatures, celestial faces and crowd figures. Every part is authored
 // directly in its own canvas (0..w × 0..h, logical px) around the pivot the
@@ -24,7 +25,6 @@ const ell = (cx: number, cy: number, rx: number, ry: number, fill: string, o = 1
   fillPath(ellipsePath(cx, cy, rx, ry), fill, o);
 /** Filled smooth closed shape without contour. */
 const blobFill = (pts: readonly Pt[], fill: string, o = 1): string => fillPath(smooth(pts), fill, o);
-const mirrorX = (pts: readonly Pt[], cx: number): Pt[] => pts.map(([x, y]) => [2 * cx - x, y]);
 const shift = (pts: readonly Pt[], dx: number, dy: number): Pt[] => pts.map(([x, y]) => [x + dx, y + dy]);
 
 /** Piecewise-linear lookup in a table of [x, y] sorted by x (either order). */
@@ -40,7 +40,10 @@ function lerpTab(tab: readonly Pt[], x: number): number {
 }
 
 function part(key: string, w: number, h: number, px: number, py: number, body: string): PartArt {
-  return { key, w, h, px, py, body, scale: Math.max(w, h) > 320 ? 1.5 : 2 };
+  // Older hand-picked colours are lifted into the paintings' pastel range;
+  // the whales keep theirs (they are restyled on their own).
+  const b = key.startsWith('whale') ? body : pastelMarkup(body);
+  return { key, w, h, px, py, body: b, scale: Math.max(w, h) > 320 ? 1.5 : 2 };
 }
 
 /** Closed contour with a radius function around a centre (faces, disks). */
@@ -52,14 +55,6 @@ function radial(cx: number, cy: number, n: number, r: (a: number, i: number) => 
     pts.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr]);
   }
   return pts;
-}
-
-/** Bump of height `amp` centred on angle `at` (radians) with width `wd`. */
-function bump(a: number, at: number, wd: number, amp: number): number {
-  let d = a - at;
-  while (d > Math.PI) d -= Math.PI * 2;
-  while (d < -Math.PI) d += Math.PI * 2;
-  return amp * Math.exp(-(d * d) / (wd * wd));
 }
 
 // ================================================================== whale
@@ -703,437 +698,221 @@ function raccoonShadow(): PartArt {
   return part('raccoon.shadow', 70, 60, 35, 60, s);
 }
 
-// ================================================================== moon
+// ================================================================== moon & sun
+//
+// Drawn as in the paintings: the Moon is a crescent with a single eye (the
+// ancient one cries a cascade of tears), the Sun a round apricot face with
+// a ring of spiky rays and a sad, tired face. Flat fills, thin ink.
 
-interface CraterCol { dark: string; base: string; ink: string; rim: string }
-
-/** A bowl crater lit from the upper left: dark upper-left wall, lit lower-right wall, bright outer rim. */
-function crater(x: number, y: number, r: number, c: CraterCol, inkW = 1.4): string {
-  const ry = r * 0.86;
-  return (
-    cel(ellipsePath(x, y, r, ry), { fill: c.dark, light: c.base, hx: -r * 0.36, hy: -r * 0.32, stroke: inkW, ink: c.ink }) +
-    line(`M${n2(x - r * 1.08)} ${n2(y + r * 0.12)}A${n2(r * 1.1)} ${n2(ry * 1.12)} 0 0 1 ${n2(x + r * 0.25)} ${n2(y - ry * 1.1)}`, c.rim, Math.max(1, r * 0.14), 0.85)
-  );
-}
-
-/** Closed-lid shape spanning (x0..x1) with its lash line through (cx, yb). */
-function lidPath(x0: number, x1: number, yTop: number, yMid: number, ctrlY: number): string {
-  const cx = (x0 + x1) / 2;
-  const w = x1 - x0;
-  return `M${n2(x0)} ${n2(yMid)}C${n2(x0 + w * 0.05)} ${n2(yTop + 3)} ${n2(cx - w * 0.2)} ${n2(yTop)} ${n2(cx)} ${n2(yTop)}C${n2(cx + w * 0.2)} ${n2(yTop)} ${n2(x1 - w * 0.05)} ${n2(yTop + 3)} ${n2(x1)} ${n2(yMid)}Q${n2(cx)} ${n2(ctrlY)} ${n2(x0)} ${n2(yMid)}Z`;
-}
-
-/** Lash line along the lid's lower edge, with short lashes at fractions `ts`. */
-function lashLine(x0: number, x1: number, yMid: number, ctrlY: number, w: number, ts: readonly number[], len: number, lashW: number): string {
-  const cx = (x0 + x1) / 2;
-  let s = line(`M${n2(x0 + 0.6)} ${n2(yMid + 0.4)}Q${n2(cx)} ${n2(ctrlY - 0.6)} ${n2(x1 - 0.6)} ${n2(yMid + 0.4)}`, INK, w);
-  let d = '';
-  for (const t of ts) {
-    const x = (1 - t) * (1 - t) * x0 + 2 * t * (1 - t) * cx + t * t * x1;
-    const y = (1 - t) * (1 - t) * yMid + 2 * t * (1 - t) * ctrlY + t * t * yMid;
-    // Tangent → outward normal (pointing down/out of the closed eye).
-    const tx = 2 * (1 - t) * (cx - x0) + 2 * t * (x1 - cx);
-    const ty = 2 * (1 - t) * (ctrlY - yMid) + 2 * t * (yMid - ctrlY);
-    const l = Math.hypot(tx, ty) || 1;
-    const nx = -ty / l;
-    const ny = tx / l;
-    const lean = (t - 0.5) * 0.9;
-    d += `M${n2(x)} ${n2(y)}l${n2((nx + lean) * len)} ${n2(ny * len)}`;
+/** Crescent: disc (cx,cy,r) minus a disc shifted by (dx,dy)·r of radius k·r. */
+function crescentPath(cx: number, cy: number, r: number, dx: number, dy: number, k: number): string {
+  const ox = cx + r * dx;
+  const oy = cy + r * dy;
+  const r2 = r * k;
+  const d = Math.hypot(ox - cx, oy - cy);
+  const tc = Math.atan2(oy - cy, ox - cx);
+  const al = Math.acos((r * r + d * d - r2 * r2) / (2 * r * d));
+  const be = Math.acos((r2 * r2 + d * d - r * r) / (2 * r2 * d));
+  const pts: Pt[] = [];
+  const N = 40;
+  for (let i = 0; i <= N; i++) {
+    const a = tc + al + (i / N) * (2 * Math.PI - 2 * al);
+    pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
   }
-  s += line(d, INK, lashW);
-  return s;
+  for (let i = 1; i < N; i++) {
+    const a = tc + Math.PI + be - (i / N) * 2 * be;
+    pts.push([ox + Math.cos(a) * r2, oy + Math.sin(a) * r2]);
+  }
+  return poly(pts);
 }
 
-const MOON = { fill: P.moon, shade: P.moonDark, light: P.moonLight };
+/** A tear drop pointing up, tip at (x, y). */
+function tear(x: number, y: number, s: number, fill: string): string {
+  const d = `M${n2(x)} ${n2(y)}C${n2(x + s * 0.2)} ${n2(y + s * 0.5)} ${n2(x + s * 0.55)} ${n2(y + s * 0.8)} ${n2(x + s * 0.5)} ${n2(y + s * 1.15)}C${n2(x + s * 0.45)} ${n2(y + s * 1.5)} ${n2(x - s * 0.45)} ${n2(y + s * 1.5)} ${n2(x - s * 0.5)} ${n2(y + s * 1.15)}C${n2(x - s * 0.55)} ${n2(y + s * 0.8)} ${n2(x - s * 0.2)} ${n2(y + s * 0.5)} ${n2(x)} ${n2(y)}Z`;
+  return cel(d, { fill, stroke: 1.5 });
+}
+
+/** Small five-point star with a thin contour. */
+function starShape(cx: number, cy: number, r: number, fill: string, rot = 0): string {
+  const pts: Pt[] = [];
+  for (let i = 0; i < 10; i++) {
+    const a = rot - Math.PI / 2 + (i * Math.PI) / 5;
+    const rr = i % 2 ? r * 0.45 : r;
+    pts.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr]);
+  }
+  return cel(poly(pts), { fill, stroke: 1.4 });
+}
+
+const MOON_BABY = { fill: '#c6dbe6', mark: '#9fb9c8', eye: '#f39ac0', eyeDeep: '#e27aa8', blush: '#f4c1d6' };
 
 function moonBaby(): PartArt {
-  const outline = radial(130, 130, 56, (a) =>
-    116 + bump(a, 0.62, 0.42, 5) + bump(a, Math.PI - 0.62, 0.42, 5) - bump(a, Math.PI / 2, 0.32, 2.5) + bump(a, -Math.PI / 2, 0.8, 2.5),
-  );
-  const cc: CraterCol = { dark: '#b3b8cc', base: '#c2c7d9', ink: '#a3a8bd', rim: MOON.light };
+  // Fat crescent opening to the upper right, like the Moon of the first painting.
+  const d = crescentPath(130, 130, 112, 0.55, -0.1, 0.86);
   let over = '';
-  over += crater(64, 76, 11, cc, 1.3) + crater(191, 58, 7, cc, 1.2) + crater(211, 86, 4, cc, 1) + crater(160, 38, 4.5, cc, 1);
-  over += crater(46, 132, 5, cc, 1) + crater(92, 222, 4.5, cc, 1) + crater(214, 206, 5, cc, 1) + crater(116, 56, 3, cc, 1);
-  // Soft eye sockets with a faint crease and baby brows above.
-  for (const ex of [95, 165]) {
-    over += ell(ex, 118, 22, 15, '#b3b8cc', 0.5);
-    over += stroke([[ex - 19, 108], [ex, 101.5], [ex + 19, 108]], '#a3a8bd', 1.6, 0.8);
-    over += stroke([[ex - 16, 94], [ex, 89], [ex + 16, 93]], '#aeb3c8', 2.2, 0.55);
-  }
-  // Chubby cheeks: a hard shade crescent under a lit bulge, with a faint blush.
-  for (const [cx, dir] of [[80, -1], [180, 1]] as Pt[]) {
-    over += ell(cx + 2.5, 166, 26, 19.5, '#b4b9cc', 0.7);
-    over += ell(cx, 160, 26, 20, '#d0d4e3');
-    over += ell(cx + dir * 1.5, 163.5, 14, 8, '#c9bfd8', 0.45);
-    over += stroke([[cx - 13, 148], [cx - 2, 144.2], [cx + 9, 146]], MOON.light, 2, 0.8);
-  }
-  // Button nose.
-  over += ell(131.6, 152.6, 9, 6.4, '#aeb3c8') + ell(130, 150, 8.4, 6.2, '#d6d9e7');
-  over += stroke([[122.4, 151.6], [126, 155.8], [130, 156.6], [134, 155.8], [137.6, 151.6]], '#8d92a8', 1.7);
-  over += dot(126.8, 153.4, 1.2, '#8d92a8') + dot(133.4, 153.4, 1.2, '#8d92a8') + dot(128, 147.8, 1.8, '#f2f4fa', 0.9);
-  // Philtrum, chin fold and a single soft curl of hair.
-  over += stroke([[130, 160], [130, 167]], '#aeb3c8', 1.4, 0.55);
-  over += stroke([[114, 210], [130, 214.5], [146, 210]], '#aeb3c8', 1.8, 0.85);
-  over += line('M129 34c-9-6-3-18 6-15c7 2.5 5.5 12-1.5 12', '#9ea3b8', 3);
-  over += line('M143 30c2-5 8-6 10-2', '#9ea3b8', 2.2, 0.8);
-  const body = cel(smooth(outline), { ...MOON, sx: 11, sy: 9, hx: 5, hy: 5, stroke: 4, over });
-  return part('moon.baby', 260, 260, 130, 130, body);
+  // Soft cheek, a few pencil marks, and little stars caught in the curve.
+  over += ell(58, 160, 14, 8, MOON_BABY.blush, 0.9);
+  over += stroke([[40, 196], [52, 204], [66, 206]], MOON_BABY.mark, 1.4);
+  over += stroke([[34, 110], [36, 126]], MOON_BABY.mark, 1.3) + stroke([[98, 222], [112, 226]], MOON_BABY.mark, 1.3);
+  let s = cel(d, { fill: MOON_BABY.fill, over });
+  s += starShape(196, 150, 11, PASTEL.butter, 0.2) + starShape(226, 196, 8, PASTEL.mint, -0.3) + starShape(176, 206, 7, PASTEL.pink, 0.4);
+  return part('moon.baby', 260, 260, 130, 130, s);
 }
 
 function moonBabyEye(): PartArt {
-  const sclera: Pt[] = [[3.6, 12.6], [8.6, 6.4], [17, 4.2], [25.4, 6.4], [30.6, 11.8], [25.6, 17.4], [17, 19.6], [8.6, 17.6]];
-  const iris =
-    ell(18, 12.4, 6.8, 7, '#3a3f68') +
-    line('M12.6 15.4a6.8 7 0 0 0 11 0', '#5a6190', 1.6) +
-    ell(18, 12.6, 3.6, 3.8, '#1c1d30') +
-    dot(15.4, 9.6, 1.9, '#ffffff') +
-    dot(20.8, 15.2, 0.8, '#ffffff', 0.9);
-  let s = cel(smooth(sclera), { fill: '#f4f5fa', shade: '#d5d8e6', sx: 0, sy: 2.4, stroke: 1.2, ink: '#5d6178', inner: iris });
-  s += stroke([[3, 12.8], [8.4, 5.6], [17, 3.8], [25.6, 5.8], [31.2, 11.4]], INK, 2.4);
-  s += stroke([[29.4, 8.8], [32.2, 6.8]], INK, 1.4) + stroke([[27.2, 6.8], [29.2, 4.2]], INK, 1.3);
-  s += stroke([[8, 17.8], [17, 20], [26, 17.6]], '#8d92a8', 1.1);
-  return part('moon.baby.eye', 34, 24, 17, 12, s);
+  // A big pink eye with a heavy black upper lid (sleepy, like the first painting).
+  const oval = ellipsePath(28, 22, 23, 16);
+  const inner = fillPath(`M3 22Q6 4 28 5Q50 4 53 22Q40 13 28 13Q15 13 3 22Z`, INK) + ell(20, 25, 3, 2.2, '#ffffff', 0.9);
+  let s = cel(oval, { fill: MOON_BABY.eye, inner, stroke: 1.8 });
+  s += stroke([[10, 33], [28, 38], [46, 33]], MOON_BABY.eyeDeep, 1.2, 0.8);
+  return part('moon.baby.eye', 56, 44, 28, 22, s);
 }
 
 function moonBabyLid(): PartArt {
-  const d = lidPath(2, 36, 1.6, 14, 34);
-  let s = cel(d, { fill: '#c3c8da', shade: '#a9aec3', light: '#dde0ed', sx: 0, sy: 3.2, hx: 0, hy: 2, stroke: 0 });
-  s += stroke([[6, 9.6], [19, 6], [32, 9.6]], '#9ea3b8', 1.3, 0.9);
-  s += lashLine(2, 36, 14, 34, 2.4, [0.3, 0.44, 0.58, 0.72], 2.4, 1.2);
-  return part('moon.baby.lid', 38, 28, 19, 14, s);
+  const d = `M3 22Q6 4 28 4Q50 4 53 22Q40 30 28 30Q16 30 3 22Z`;
+  let s = cel(d, { fill: MOON_BABY.fill, stroke: 1.8 });
+  s += stroke([[6, 24], [28, 31], [50, 24]], INK, 1.8);
+  for (const x of [14, 22, 30, 38, 44]) s += stroke([[x, 29], [x - 1, 34]], INK, 1.2);
+  return part('moon.baby.lid', 56, 44, 28, 22, s);
 }
 
 function moonBabyMouth(): PartArt {
-  let s = '';
-  s += blobFill([[13, 10.2], [17, 7.6], [20, 7.4], [22, 8.4], [24, 7.4], [27, 7.6], [31, 10.2], [22, 10.8]], '#bdb6cf', 0.9);
-  s += cel(smooth([[13, 11.4], [17, 14.8], [22, 15.8], [27, 14.8], [31, 11.4], [26, 12.6], [22, 12.9], [18, 12.6]]), {
-    fill: '#b7aec9', shade: '#9d94b2', light: '#d2cbdf', sx: 0.6, sy: 1.4, hx: 0, hy: 1, stroke: 0,
-  });
-  s += stroke([[14, 12.6], [18, 15.4], [22, 16.2], [26, 15.4], [30, 12.6]], '#8d88a4', 1.2);
-  s += stroke([[10.5, 10.4], [15, 10.7], [19, 9.7], [22, 10.7], [25, 9.7], [29, 10.7], [33.5, 10.4]], INK, 2);
-  s += stroke([[8.4, 9.4], [9.2, 11.2]], '#a3a8bd', 1.1, 0.7) + stroke([[35.6, 9.4], [34.8, 11.2]], '#a3a8bd', 1.1, 0.7);
-  return part('moon.baby.mouth', 44, 22, 22, 11, s);
+  let s = stroke([[6, 10], [16, 13], [26, 11]], INK, 1.8);
+  s += stroke([[3, 8], [6, 10]], INK, 1.2);
+  return part('moon.baby.mouth', 32, 20, 16, 10, s);
 }
 
-const OLD = { fill: '#b9bdcc', shade: '#8a8ea2', light: '#d9dce6', deep: '#72768b', socket: '#7b7f94', socketDeep: '#676b80', ink: '#4a4d60' };
+const MOON_OLD = { fill: '#b3b3e0', mark: '#8f8fc6', iris: '#9fd6a3', tear: '#9ed7ea', tearDeep: '#7cc0dc' };
 
 function moonOld(): PartArt {
-  const rng = new Rng(7071);
-  const outline = radial(150, 150, 64, (a) => 139 + rng.range(-1.4, 1.4) - bump(a, -2.2, 0.07, 4) - bump(a, 0.3, 0.06, 3) - bump(a, 2.5, 0.05, 2.5));
-  const cc: CraterCol = { dark: '#8d91a5', base: '#a9adbd', ink: OLD.ink, rim: OLD.light };
+  // A thinner crescent with sharp horns, as in the second painting.
+  const d = crescentPath(150, 150, 132, 0.5, -0.12, 0.84);
   let over = '';
-  // Craters (weathered pocks) away from the features.
-  for (const [x, y, r] of [
-    [96, 56, 13], [206, 48, 9], [150, 30, 6], [244, 98, 9], [56, 106, 7], [252, 194, 11], [66, 238, 9], [188, 262, 8],
-    [120, 264, 5.5], [230, 238, 5], [40, 166, 4], [264, 148, 4.5], [118, 34, 3.5], [36, 204, 3.5],
-  ] as [number, number, number][]) over += crater(x, y, r, cc, r > 6 ? 1.8 : 1.4);
-  // Deep forehead lines, each with a pale lip below.
-  const fore: Pt[][] = [
-    [[70, 76], [98, 69], [128, 73], [158, 66], [190, 71], [230, 77]],
-    [[80, 90], [108, 84], [140, 88], [170, 83], [200, 87], [222, 92]],
-    [[112, 60], [140, 55], [170, 58], [194, 56]],
+  for (const [x, y, x2, y2] of [[34, 150, 36, 170], [50, 220, 62, 232], [48, 92, 58, 80], [96, 262, 112, 266]] as const) {
+    over += stroke([[x, y], [x2, y2]], MOON_OLD.mark, 1.4);
+  }
+  let s = cel(d, { fill: MOON_OLD.fill, over });
+  // The tears: a cascade of drops from the eye down the cheek.
+  const drops: [number, number, number][] = [
+    [64, 146, 10], [52, 162, 11], [76, 166, 10], [62, 184, 12], [46, 196, 9], [80, 198, 11],
+    [58, 218, 12], [78, 232, 10], [64, 250, 10], [82, 266, 8],
   ];
-  for (const f of fore) {
-    over += stroke(f, OLD.ink, 2.6);
-    over += stroke(shift(f, 0, 3), OLD.light, 1.4, 0.8);
-  }
-  // Deep sockets, brow shadow, heavy brows.
-  const browL: Pt[] = [[64, 122], [70, 108], [86, 99], [106, 97], [124, 101], [137, 110], [134, 117], [121, 113.5], [105, 111.5], [87, 113.5], [74, 121]];
-  for (const [ex, br] of [[105, browL], [195, mirrorX(browL, 150)]] as [number, Pt[]][]) {
-    over += ell(ex, 134, 31, 21, OLD.socket) + ell(ex, 135, 23, 14.5, OLD.socketDeep);
-    over += blobFill(shift([[-35, -12], [-17, -19], [1, -21], [17, -18.5], [29, -14], [25, -8], [1, -12], [-23, -8]], ex, 134), '#5f6378');
-    over += stroke([[ex - 25, 148], [ex - 1, 157], [ex + 25, 148]], OLD.ink, 2.2, 0.85);
-    over += stroke([[ex - 21, 158], [ex - 1, 166], [ex + 19, 158]], OLD.deep, 1.8);
-    const sgn = ex < 150 ? -1 : 1;
-    const ox = ex + sgn * 33;
-    over += stroke([[ox, 128], [ox + sgn * 7, 123]], OLD.ink, 1.6) + stroke([[ox + sgn * 1, 136], [ox + sgn * 9, 136]], OLD.ink, 1.6) + stroke([[ox, 143], [ox + sgn * 7, 148]], OLD.ink, 1.6);
-    over += cel(smooth(br), {
-      fill: '#c4c8d5', shade: OLD.deep, light: '#e2e5ec', sx: 1, sy: 3.4, hx: 1, hy: 1.6, stroke: 3, ink: OLD.ink,
-      over: line(br.slice(1, 6).map(([x, y], i) => `M${n2(x + 2)} ${n2(y + 3)}l${sgn * -3 + (i - 2)} ${-3.2}`).join(''), OLD.deep, 1.3),
-    });
-  }
-  // Sunken cheeks: hard hollows under the cheekbones, lit bone above.
-  const hollow: Pt[] = [[56, 170], [74, 177], [92, 193], [100, 214], [96, 238], [86, 226], [72, 206], [60, 188]];
-  over += blobFill(hollow, OLD.shade, 0.9) + blobFill(mirrorX(hollow, 150), OLD.shade, 0.9);
-  over += stroke([[54, 165], [74, 167], [94, 177]], OLD.light, 1.8, 0.9) + stroke([[246, 165], [226, 167], [206, 177]], OLD.light, 1.8, 0.9);
-  // Long weathered nose.
-  over += blobFill([[152, 120], [158, 146], [164, 168], [168, 182], [162, 190], [154, 188], [156, 170], [152, 148]], OLD.shade);
-  over += ell(146, 178, 7, 5, OLD.light, 0.9);
-  over += stroke([[141, 121], [139, 146], [134, 168], [129, 181], [134, 190]], OLD.ink, 2.4);
-  over += stroke([[134, 190], [142, 194], [148, 192]], OLD.ink, 2.4) + stroke([[154, 192], [160, 194], [167, 189], [168, 181]], OLD.ink, 2.4);
-  over += ell(140.5, 189, 3.2, 1.8, '#3a3c4c') + ell(160, 189, 3, 1.7, '#3a3c4c');
-  // Nasolabial folds, mouth wrinkles and chin.
-  const fold: Pt[] = [[128, 185], [118, 197], [110, 213], [108, 230]];
-  over += stroke(fold, OLD.ink, 2.8) + stroke(mirrorX(fold, 150), OLD.ink, 2.8);
-  over += stroke(shift(fold, -4, 1), OLD.light, 1.4, 0.8) + stroke(shift(mirrorX(fold, 150), -4, 1), OLD.light, 1.2, 0.6);
-  for (const x of [134, 142, 158, 166]) over += stroke([[x, 196.5], [x + 0.6, 201.5]], OLD.deep, 1.2);
-  over += stroke([[124, 246], [150, 252.5], [176, 246]], OLD.ink, 2.2) + stroke([[140, 236], [150, 238.5], [160, 236]], OLD.deep, 1.5);
-  const body = cel(smooth(outline), { fill: OLD.fill, shade: OLD.shade, light: OLD.light, sx: 13, sy: 11, hx: 5, hy: 5, stroke: 4, over });
-  return part('moon.old', 300, 300, 150, 150, body);
+  drops.forEach(([x, y, r], i) => {
+    s += tear(x, y, r, i % 3 === 0 ? MOON_OLD.tearDeep : MOON_OLD.tear);
+  });
+  return part('moon.old', 300, 300, 150, 150, s);
 }
 
 function moonOldEye(): PartArt {
-  const sclera: Pt[] = [[3.6, 13.6], [9.6, 8], [19, 6], [28.6, 7.8], [34.4, 12.8], [28.6, 18.2], [19, 20], [9.6, 18.2]];
-  const iris =
-    ell(19.6, 13.2, 6.2, 6.4, '#5d6680') +
-    line('M14.4 16a6.2 6.4 0 0 0 10.4 0', '#78819b', 1.4) +
-    ell(19.6, 13.4, 3, 3.1, INK) +
-    dot(17.6, 11, 1.3, '#f2f2ec');
-  let s = cel(smooth(sclera), { fill: '#dcdbd2', shade: '#b9b8ae', sx: 0, sy: 2.4, stroke: 1.4, ink: OLD.ink, inner: iris });
-  s += stroke([[5, 8.6], [12, 4], [19, 2.8], [27, 3.8], [33, 7.4]], '#6f7388', 1.6);
-  s += stroke([[3, 13.8], [9.4, 7.2], [19, 5], [28.8, 7], [35, 12.6]], INK, 2.8);
-  s += stroke([[33.4, 12.4], [36, 15.4]], INK, 1.6);
-  s += stroke([[9, 18.8], [19, 20.8], [29, 18.6]], '#6f7388', 1.2);
-  return part('moon.old.eye', 38, 26, 19, 13, s);
+  // A tired eye: pale almond, green iris, a heavy black lid over its top.
+  const almond = `M4 22Q18 6 32 6Q48 6 60 22Q46 36 32 36Q16 36 4 22Z`;
+  const inner = ell(34, 24, 8.5, 9, MOON_OLD.iris) + ell(35, 25, 4, 4.4, INK) + fillPath(`M2 22Q16 2 32 3Q50 3 62 22Q48 14 32 14Q16 14 2 22Z`, INK) + dot(31, 21, 1.6, '#ffffff', 0.9);
+  let s = cel(almond, { fill: '#eef3f0', inner, stroke: 1.8 });
+  s += stroke([[10, 34], [32, 40], [54, 34]], MOON_OLD.mark, 1.2);
+  return part('moon.old.eye', 64, 44, 32, 22, s);
 }
 
 function moonOldLid(): PartArt {
-  const d = lidPath(2, 42, 1.2, 15, 36);
-  let s = cel(d, { fill: '#a3a7b8', shade: '#7f8397', light: '#c3c6d2', sx: 0, sy: 3.2, hx: 0, hy: 2.2, stroke: 0 });
-  s += stroke([[7, 9], [22, 5.6], [37, 9]], '#7f8397', 1.4) + stroke([[9, 13.4], [22, 10.6], [35, 13.4]], '#7f8397', 1.2);
-  s += stroke([[12, 17.4], [22, 15.8], [32, 17.4]], '#7f8397', 1);
-  s += lashLine(2, 42, 15, 36, 2.8, [0.36, 0.52, 0.68], 2, 1.1);
-  return part('moon.old.lid', 44, 30, 22, 15, s);
+  const d = `M3 22Q16 4 32 4Q48 4 61 22Q46 30 32 30Q18 30 3 22Z`;
+  let s = cel(d, { fill: MOON_OLD.fill, stroke: 1.8 });
+  s += stroke([[6, 24], [32, 32], [58, 24]], INK, 2);
+  for (const x of [16, 26, 36, 46]) s += stroke([[x, 30], [x - 1.5, 36]], INK, 1.2);
+  return part('moon.old.lid', 64, 44, 32, 22, s);
 }
 
 function moonOldMouth(): PartArt {
-  let s = '';
-  s += blobFill([[9, 15.6], [18, 12.6], [28, 11.8], [35, 12.8], [42, 11.8], [52, 12.6], [61, 15.6], [35, 16]], '#a7abbb');
-  s += cel(smooth([[13, 16.6], [24, 16.2], [35, 16.8], [46, 16.2], [57, 16.6], [50, 20], [35, 22.4], [20, 20]]), {
-    fill: '#aeb2c2', shade: OLD.shade, sx: 0, sy: 1.6, stroke: 0,
-  });
-  s += stroke([[18, 20.4], [35, 23.4], [52, 20.4]], '#6f7388', 1.4);
-  s += stroke([[6, 17.6], [11, 15.6], [22, 15], [35, 15.8], [48, 15], [59, 15.6], [64, 17.6]], INK, 3);
-  for (const x of [20, 26, 32, 38, 44, 50]) s += stroke([[x, 9.4], [x + 0.6, 13.2]], '#7f8397', 1.1);
-  for (const x of [25, 31, 39, 45]) s += stroke([[x, 21.6], [x - 0.4, 25.4]], '#7f8397', 1);
-  s += stroke([[4, 13.6], [6.4, 18], [4.6, 22.4]], INK, 1.6) + stroke([[66, 13.6], [63.6, 18], [65.4, 22.4]], INK, 1.6);
-  s += stroke([[27, 27], [35, 28.4], [43, 27]], '#7f8397', 1.3);
-  return part('moon.old.mouth', 70, 30, 35, 15, s);
+  let s = stroke([[6, 16], [18, 11], [32, 12], [42, 16]], INK, 1.8);
+  s += stroke([[14, 20], [26, 19]], MOON_OLD.mark, 1.2);
+  return part('moon.old.mouth', 48, 28, 24, 14, s);
 }
 
 function moonOldLaugh(): PartArt {
-  const innerPts: Pt[] = [[9, 14.2], [20, 14.6], [35, 15.6], [50, 14.6], [61, 14.2], [56.4, 22.4], [47, 29], [35, 31.4], [23, 29], [13.6, 22.4]];
+  const outer = smooth([[4, 10], [22, 7], [42, 10], [38, 24], [24, 32], [10, 26]]);
   let teeth = '';
-  for (const [x0, x1] of [[15.6, 21], [22, 28], [37, 43.2], [44.2, 50]] as Pt[]) {
-    teeth += cel(`M${x0} 12L${x1} 12L${x1} ${n2(17.4)}Q${n2((x0 + x1) / 2)} 20.2 ${x0} ${n2(17.4)}Z`, { fill: '#d8d4c6', shade: '#b3ae9e', sx: 0.8, sy: 0.8, stroke: 1, ink: INK });
-  }
-  const tongue = cel(smooth([[22, 29.4], [28, 24.6], [42, 24.6], [48, 29.4], [35, 31.8]]), { fill: '#7a5266', shade: '#5e3d4f', light: '#946a7d', sx: 0.6, sy: 1.2, hx: 0.6, hy: 0.8, stroke: 1.2 });
-  let s = cel(smooth([[4, 12.6], [16, 10.4], [35, 11.6], [54, 10.4], [66, 12.6], [62.4, 21], [52, 30.6], [35, 35.2], [18, 30.6], [7.6, 21]]), {
-    fill: '#a7abbb', shade: OLD.shade, light: '#c3c6d2', sx: 1, sy: 2, hx: 0.8, hy: 1, stroke: 2.6,
-  });
-  s += cel(smooth(innerPts), { fill: '#2a2438', shade: '#1c1826', sx: 0, sy: -2, stroke: 2, over: teeth + tongue });
-  s += stroke([[1.8, 8.6], [3.2, 12.6], [2.2, 17.4]], INK, 1.6) + stroke([[68.2, 8.6], [66.8, 12.6], [67.8, 17.4]], INK, 1.6);
-  s += stroke([[26, 37.4], [35, 38.6], [44, 37.4]], '#7f8397', 1.2);
-  return part('moon.old.mouth.laugh', 70, 40, 35, 18, s);
+  for (const x of [12, 20, 28]) teeth += cel(`M${x} 8L${x + 7} 8L${x + 6} 14L${x + 1} 14Z`, { fill: '#fbf5e6', stroke: 1.1 });
+  const inner = teeth + ell(24, 27, 8, 5, PASTEL.pinkDeep);
+  const s = cel(outer, { fill: '#3a3446', inner, stroke: 1.8 });
+  return part('moon.old.mouth.laugh', 48, 36, 24, 16, s);
 }
 
-// ================================================================== sun
-
-const SUN = {
-  fill: P.sun, shade: P.sunDark, light: P.sunLight, deep: '#8f6a2a', deeper: '#5e4318', wet: '#fbe7b0',
-  bruise: P.bruise, bruiseDark: '#553770', bruiseEdge: mix(P.bruise, P.sun, 0.38), cream: '#f3dc9e', creamLight: '#fcf1cf',
+const SUN_ART = {
+  face: '#f3be86', mark: '#d9955f', ring: '#ef8f86', ringDeep: '#e0716c', ray: '#f4e08c', rayLime: '#dbe68a', cheek: '#f4a3a0',
 };
 
 function sunDisk(): PartArt {
   const rng = new Rng(9160);
-  const outline = radial(160, 160, 72, (a) => 151 + 1.1 * Math.sin(a * 9) + rng.range(-0.5, 0.5));
-  // Granulation: small cells on the outer band and the forehead.
-  let inner = '';
-  for (let i = 0; i < 70; i++) {
+  const outline = radial(160, 160, 60, (a) => 138 + 2.2 * Math.sin(a * 5 + 0.6) + rng.range(-0.8, 0.8));
+  let over = '';
+  // Little '^' pencil marks all over the face, like the Sun of the fourth painting.
+  for (let i = 0; i < 46; i++) {
     const a = rng.range(0, Math.PI * 2);
-    const r = rng.range(100, 146);
+    const r = rng.range(20, 124);
     const x = 160 + Math.cos(a) * r;
     const y = 160 + Math.sin(a) * r;
-    if (y > 150 && Math.abs(x - 160) < 70) continue;
-    inner += fillPath(ellipsePath(x, y, rng.range(3, 7), rng.range(2, 4.5)), rng.chance(0.5) ? '#cda14c' : '#e2bb66', 0.55);
+    // Keep the eyes, nose and mouth clear.
+    if (Math.abs(y - 140) < 26 && Math.abs(Math.abs(x - 160) - 46) < 34) continue;
+    if (Math.abs(x - 160) < 22 && y > 136 && y < 230) continue;
+    const w = rng.range(3.5, 5.5);
+    over += stroke([[x - w, y + w * 0.8], [x, y - w * 0.3], [x + w, y + w * 0.8]], SUN_ART.mark, 1.5);
   }
-  let over = '';
-  for (const [x, y, r] of [[58, 96, 6], [252, 80, 4.2], [238, 252, 5], [84, 262, 3.6], [272, 192, 3]] as [number, number, number][]) {
-    over += ell(x, y, r * 1.5, r * 1.3, '#c4923f', 0.9) + ell(x + 0.4, y + 0.3, r * 0.8, r * 0.7, '#7e5620');
+  // Pink rings round the eyes (the sockets), sad brows, a small nose.
+  for (const [ex, sgn] of [[114, -1], [206, 1]] as const) {
+    over += cel(ellipsePath(ex, 142, 30, 23), { fill: SUN_ART.ring, stroke: 1.8 });
+    over += stroke([[ex + sgn * 30, 104], [ex + sgn * 10, 108], [ex - sgn * 18, 100]], INK, 2.2);
   }
-  // Heat cracks at the rim: the disk is under strain.
-  over += line(poly([[16, 150], [30, 146], [38, 153], [52, 149]], false), SUN.deep, 1.8);
-  over += line(poly([[228, 283], [240, 272], [250, 278], [258, 266]], false), SUN.deep, 1.8);
-  over += line(poly([[210, 22], [216, 34], [226, 36]], false), SUN.deep, 1.6);
-  // Worry lines and the strained furrow between the brows.
-  over += stroke([[110, 70], [135, 64], [160, 66.5], [185, 64], [210, 70]], SUN.deep, 2.2, 0.85);
-  over += stroke([[122, 54], [160, 49.5], [198, 54]], SUN.deep, 1.8, 0.7);
-  over += stroke([[151, 84], [149, 98], [151.5, 112]], SUN.deep, 2.6) + stroke([[169, 84], [171, 98], [168.5, 112]], SUN.deep, 2.6);
-  // Bruised violet sockets (hard-edged, three values) and tear channels.
-  for (const [ex, ey, sgn] of [[110, 140, -1], [210, 140, 1]] as [number, number, number][]) {
-    const bl = (rx: number, ry: number, jit: number, seed: number): Pt[] => {
-      const r2 = new Rng(seed);
-      return radial(ex + sgn * 1.5, ey + 3, 14, (a) => {
-        const k = 1 + r2.range(-jit, jit);
-        const c = Math.cos(a);
-        const s = Math.sin(a);
-        return (rx * ry * k) / Math.sqrt((ry * c) ** 2 + (rx * s) ** 2) + (s > 0.4 ? 3 : 0);
-      });
-    };
-    over += blobFill(bl(34, 26, 0.08, 11 + ex), SUN.bruiseEdge);
-    over += blobFill(bl(27, 20, 0.06, 23 + ex), SUN.bruise);
-    over += blobFill(bl(21, 14.5, 0.05, 37 + ex), SUN.bruiseDark);
-    const main: Pt[] = [[ex + sgn * 12, 160], [ex + sgn * 14, 184], [ex + sgn * 10, 208], [ex + sgn * 15, 234], [ex + sgn * 12, 260], [ex + sgn * 16, 286]];
-    const minor: Pt[] = [[ex - sgn * 11, 159], [ex - sgn * 14, 178], [ex - sgn * 10, 192], [ex - sgn * 13, 204]];
-    for (const [ch, w0, w1] of [[main, 8, 3.2], [minor, 5.5, 2.2]] as [Pt[], number, number][]) {
-      over += fillPath(taper(ch, w0, w1), SUN.deep);
-      over += stroke(ch.slice(0, 2), SUN.bruise, w0 * 0.7, 0.75);
-      over += stroke(ch, SUN.deeper, 1.2, 0.9);
-      over += stroke(shift(ch, -1.8, 0.5), SUN.wet, 1.3, 0.95);
-    }
-    // Pained brow (inner end raised), bags and sagging cheek.
-    const brow: Pt[] = [[ex + sgn * 36, 110], [ex + sgn * 18, 102], [ex - sgn * 2, 98], [ex - sgn * 24, 92]];
-    over += cel(taper(brow, 10, 6), { fill: SUN.deep, shade: SUN.deeper, sx: 0, sy: 1.6, stroke: 2.2 });
-    over += stroke([[ex - 26, 166], [ex, 176], [ex + 26, 166]], SUN.deep, 2.2);
-    const cheek: Pt[] = [[ex + sgn * 52, 196], [ex + sgn * 34, 210], [ex + sgn * 12, 218], [ex - sgn * 4, 224], [ex + sgn * 6, 232], [ex + sgn * 30, 228], [ex + sgn * 48, 214]];
-    over += blobFill(cheek, SUN.shade, 0.85);
-    over += stroke([[ex + sgn * 50, 190], [ex + sgn * 30, 200], [ex + sgn * 8, 204]], SUN.deep, 1.8, 0.8);
-  }
-  // Broad nose.
-  over += blobFill([[164, 150], [170, 172], [176, 190], [168, 196], [160, 194], [166, 184], [162, 166]], SUN.shade);
-  over += stroke([[152, 152], [150, 172], [144, 186], [148, 194], [156, 196]], INK, 2.4) + stroke([[164, 196], [172, 194], [176, 187]], INK, 2.2);
-  over += ell(152.4, 190, 3, 1.8, SUN.deeper) + ell(169.6, 190, 3, 1.8, SUN.deeper) + ell(156, 178, 4.5, 6, SUN.light, 0.8);
-  over += stroke([[136, 268], [160, 274], [184, 268]], SUN.deep, 2);
-  const body = cel(smooth(outline), { ...SUN, sx: 12, sy: 10, hx: 6, hy: 6, stroke: 4, inner, over });
-  return part('sun.disk', 320, 320, 160, 160, body);
+  over += stroke([[156, 162], [150, 186], [162, 188]], INK, 1.8);
+  over += ell(92, 196, 16, 9, SUN_ART.cheek, 0.8) + ell(228, 196, 16, 9, SUN_ART.cheek, 0.8);
+  const s = cel(smooth(outline), { fill: SUN_ART.face, over, stroke: 2.2 });
+  return part('sun.disk', 320, 320, 160, 160, s);
 }
 
 function sunEye(): PartArt {
-  const sclera: Pt[] = [[3.6, 15], [9.6, 9.2], [20, 7.2], [30.4, 9.2], [36.4, 14.4], [30.4, 19.6], [20, 21.4], [9.6, 19.6]];
-  const veins = line(
-    'M4.6 15l3.4-.8 2.6 1.4M5.6 16.4l3.4 1.2M7 12l3.4.6 1.6-1.4M35.4 14.6l-3.4-1 -2.6 1.4M34 16.6l-3.4 1.2M33 11.6l-3 .6',
-    '#b5483e', 0.8, 0.9,
-  );
-  const iris =
-    veins +
-    ell(20.6, 15.2, 6.2, 6.2, '#7a4a1f') +
-    line('M15.2 18a6.2 6.2 0 0 0 10.8 0', '#9a6a33', 1.3) +
-    ell(20.6, 15.4, 3, 3, INK) +
-    dot(18.6, 13.4, 1.2, '#fff1cc', 0.85);
-  let s = cel(smooth(sclera), { fill: '#f1e2bd', shade: '#d6c291', sx: 0, sy: 2.4, stroke: 1.4, ink: SUN.deeper, inner: iris });
-  // Heavy drooping lid over the top of the iris.
-  s += cel(smooth([[2.6, 15], [8, 8.4], [20, 6], [32, 8.4], [37.4, 14], [31, 12.6], [20, 11.6], [9, 12.6]]), {
-    fill: mix(P.bruise, P.sun, 0.3), shade: SUN.bruiseDark, sx: 0, sy: -1.4, stroke: 0,
-  });
-  s += stroke([[5, 9.4], [12, 5.4], [20, 4.2], [28, 5.4], [35, 9.4]], SUN.bruiseDark, 1.4);
-  s += stroke([[3.4, 14.6], [9, 12.6], [20, 11.4], [31, 12.4], [36.8, 13.8]], INK, 2.6);
-  s += stroke([[9, 20], [20, 22], [31, 20]], '#c9705a', 1.3);
-  return part('sun.eye', 40, 28, 20, 14, s);
+  // Sad eye: pale almond under a heavy lid, pupil looking down.
+  const almond = `M4 18Q16 4 28 4Q42 4 52 18Q40 30 28 30Q14 30 4 18Z`;
+  const inner = ell(28, 20, 8, 8.4, '#8a6a9c') + ell(28, 21, 3.8, 4, INK) + fillPath(`M2 18Q14 0 28 1Q44 1 54 18Q42 11 28 11Q14 11 2 18Z`, SUN_ART.ringDeep) + dot(25.5, 18, 1.4, '#ffffff', 0.9);
+  let s = cel(almond, { fill: '#fbf1e4', inner, stroke: 1.8 });
+  s += stroke([[3, 17], [16, 9], [28, 9], [42, 9], [53, 17]], INK, 2);
+  return part('sun.eye', 56, 36, 28, 18, s);
 }
 
 function sunLid(): PartArt {
-  const d = lidPath(2, 44, 1.6, 16, 38);
-  let s = cel(d, { fill: mix(P.bruise, P.sun, 0.42), shade: SUN.bruise, light: mix(P.bruise, P.sunLight, 0.55), sx: 0, sy: 3.6, hx: 0, hy: 2.2, stroke: 0 });
-  s += stroke([[6, 10], [23, 5.2], [40, 10]], SUN.bruiseDark, 1.4) + stroke([[8, 14], [23, 10.4], [38, 14]], SUN.bruiseDark, 1.2, 0.8);
-  s += lashLine(2, 44, 16, 38, 3, [0.38, 0.54, 0.7], 2, 1.2);
-  return part('sun.lid', 46, 32, 23, 16, s);
+  const d = `M3 18Q14 2 28 2Q42 2 53 18Q40 26 28 26Q16 26 3 18Z`;
+  let s = cel(d, { fill: SUN_ART.ring, stroke: 1.8 });
+  s += stroke([[6, 20], [28, 27], [50, 20]], INK, 2);
+  for (const x of [14, 22, 30, 38, 44]) s += stroke([[x, 25.5], [x - 1, 31]], INK, 1.2);
+  return part('sun.lid', 56, 36, 28, 18, s);
 }
 
 function sunMouth(): PartArt {
-  let s = '';
-  s += blobFill([[18, 17.4], [28, 15.4], [40, 16.2], [52, 15.4], [62, 17.4], [40, 17.8]], SUN.shade, 0.8);
-  s += cel(smooth([[16, 18.6], [28, 18], [40, 19], [52, 18], [64, 18.6], [56, 23], [40, 25.4], [24, 23]]), {
-    fill: '#c9953f', shade: '#a37530', sx: 0, sy: 1.6, stroke: 0,
-  });
-  s += stroke([[20, 23.4], [40, 26.4], [60, 23.4]], SUN.deep, 1.5);
-  s += stroke([[8, 20.6], [14, 18.2], [24, 17.4], [32, 18.2], [40, 17.2], [48, 18.2], [56, 17.4], [66, 18.2], [72, 20.6]], INK, 3.2);
-  s += stroke([[8, 20.6], [5.4, 24.6]], INK, 2.2) + stroke([[72, 20.6], [74.6, 24.6]], INK, 2.2);
-  s += stroke([[30, 19.6], [30.4, 22.6]], SUN.deep, 1.1) + stroke([[50, 19.6], [49.6, 22.6]], SUN.deep, 1.1);
-  s += stroke([[36.4, 9.6], [37.2, 14]], SUN.deep, 1.1, 0.8) + stroke([[43.6, 9.6], [42.8, 14]], SUN.deep, 1.1, 0.8);
-  s += stroke([[3, 15.6], [5.4, 20], [3.6, 26.4]], SUN.deep, 1.4) + stroke([[77, 15.6], [74.6, 20], [76.4, 26.4]], SUN.deep, 1.4);
-  s += stroke([[34, 29.4], [40, 30.8], [46, 29.4]], SUN.deep, 1.3);
-  return part('sun.mouth', 80, 34, 40, 17, s);
+  // A small sad mouth, turned down (the first painting's Sun).
+  let s = stroke([[8, 20], [16, 11], [28, 8], [40, 11], [48, 20]], INK, 2);
+  s += stroke([[22, 23], [34, 23]], SUN_ART.mark, 1.3);
+  return part('sun.mouth', 56, 30, 28, 15, s);
 }
 
 function sunMouthOpen(): PartArt {
-  const innerPts: Pt[] = [[14.4, 22.4], [22, 15], [31, 12.2], [40, 13.4], [49, 12.2], [58, 15], [65.6, 22.4], [63, 32], [55, 41], [40, 45.4], [25, 41], [17, 32]];
+  // The grim, toothy mouth of the fourth painting (coughs and shouts).
+  const outer = smooth([[4, 20], [14, 8], [28, 5], [42, 8], [52, 20], [44, 34], [28, 40], [12, 34]]);
   let teeth = '';
-  for (const [x0, x1] of [[24, 30], [31, 37], [43, 49], [50, 56]] as Pt[]) {
-    teeth += cel(`M${x0} 10L${x1} 10L${x1} 15.4Q${(x0 + x1) / 2} 17.6 ${x0} 15.4Z`, { fill: '#efe2c4', shade: '#cbb994', sx: 0.6, sy: 0.8, stroke: 1 });
-  }
-  const insideOver =
-    ell(40, 30, 10, 8.4, '#24141e') +
-    teeth +
-    cel(smooth([[37.6, 12.4], [42.4, 12.4], [41.6, 19], [40, 20.8], [38.4, 19]]), { fill: '#9a4a4a', shade: '#763636', sx: 0.6, sy: 1, stroke: 1 }) +
-    cel(smooth([[24, 42.2], [30, 35], [40, 33.8], [50, 35], [56, 42.2], [40, 46]]), {
-      fill: '#a0524a', shade: '#7c3c36', light: '#c07a66', sx: 0.6, sy: 1.4, hx: 0.6, hy: 1, stroke: 1.4,
-      over: stroke([[40, 36], [40, 42]], '#7c3c36', 1),
-    });
-  let s = cel(smooth([[9, 22], [18, 12.6], [30, 8.4], [40, 9.6], [50, 8.4], [62, 12.6], [71, 22], [68, 34], [58, 45], [40, 50.4], [22, 45], [12, 34]]), {
-    fill: '#c49040', shade: SUN.deep, light: '#e0b562', sx: 1, sy: 2.2, hx: 0.8, hy: 1, stroke: 2.8,
-  });
-  s += cel(smooth(innerPts), { fill: '#3b2230', shade: '#2a1822', sx: 0, sy: -2.4, stroke: 2, over: insideOver });
-  s += stroke([[4, 17.6], [7, 22], [4.8, 27.6]], INK, 1.6) + stroke([[76, 17.6], [73, 22], [75.2, 27.6]], INK, 1.6);
-  s += stroke([[14, 7.6], [20, 5]], SUN.deep, 1.3) + stroke([[66, 7.6], [60, 5]], SUN.deep, 1.3);
-  s += stroke([[33, 52.2], [40, 53.2], [47, 52.2]], SUN.deep, 1.2);
-  return part('sun.mouth.open', 80, 54, 40, 24, s);
+  for (const x of [13, 22, 31]) teeth += cel(`M${x} 6L${x + 8} 6L${x + 6.5} 14L${x + 1.5} 14Z`, { fill: '#fbf5e6', stroke: 1.1 });
+  teeth += cel(`M18 38L22 30L26 38Z`, { fill: '#fbf5e6', stroke: 1 }) + cel(`M30 38L34 30L38 38Z`, { fill: '#fbf5e6', stroke: 1 });
+  const inner = teeth + ell(28, 30, 9, 5, '#9ed0b8');
+  const s = cel(outer, { fill: '#4a3438', inner, stroke: 2 });
+  return part('sun.mouth.open', 56, 44, 28, 20, s);
 }
 
-/** Half-width and centre-line wobble of a sun ray at height y. */
-const rayHalf = (y: number): number => 1 + ((y - 3) / 205) * 16;
-const rayX = (y: number): number => 22 + 1.3 * Math.sin(y / 28);
-
-/** Ray polygon between y0 (top) and y1 (bottom); jagged break edges where asked. */
-function rayPoly(y0: number, y1: number, jagTop: boolean, jagBottom: boolean, seed: number): Pt[] {
-  const rng = new Rng(seed);
-  const left: Pt[] = [];
-  const right: Pt[] = [];
-  const steps = Math.max(2, Math.round((y1 - y0) / 12));
-  for (let i = 0; i <= steps; i++) {
-    const y = y0 + ((y1 - y0) * i) / steps;
-    left.push([rayX(y) - rayHalf(y), y]);
-    right.push([rayX(y) + rayHalf(y), y]);
-  }
-  const jag = (y: number, fromLeft: boolean): Pt[] => {
-    const xl = rayX(y) - rayHalf(y);
-    const xr = rayX(y) + rayHalf(y);
-    const pts: Pt[] = [];
-    const n = 4;
-    for (let i = 1; i < n; i++) {
-      const t = i / n;
-      pts.push([xl + (xr - xl) * t, y + (i % 2 ? -1 : 1) * rng.range(2, 4)]);
-    }
-    return fromLeft ? pts : pts.reverse();
-  };
-  const pts: Pt[] = [];
-  if (jagTop || y0 > 4) pts.push(...left.slice(0, 1));
-  else pts.push([rayX(y0), y0 - 1]);
-  pts.push(...left.slice(1));
-  if (jagBottom) pts.push(...jag(y1, true));
-  pts.push(...right.slice(1).reverse());
-  if (jagTop) {
-    pts.push(right[0]!);
-    pts.push(...jag(y0, false));
-  }
-  return pts;
-}
-
-function rayCel(pts: Pt[]): string {
-  const shadeD = `${poly(pts.map(([x, y]): Pt => [Math.max(x, rayX(y) + rayHalf(y) * 0.28), y]))}`;
-  const cy0 = Math.min(...pts.map((p) => p[1]));
-  const cy1 = Math.max(...pts.map((p) => p[1]));
-  const mid: Pt[] = [];
-  for (let y = cy0 + 3; y <= cy1 - 2; y += 10) mid.push([rayX(y) - rayHalf(y) * 0.28, y]);
-  return cel(poly(pts), {
-    fill: SUN.cream, shade: P.sun, light: SUN.creamLight, sx: 0, sy: 0, hx: 1.6, hy: 0, stroke: 3, shadeD,
-    over: mid.length > 1 ? stroke(mid, SUN.creamLight, 2.2, 0.9) : '',
-  });
-}
-
+/** A spiky ray: a flat butter triangle with a thin contour, base at the bottom. */
 function sunRay(): PartArt {
-  return part('sun.ray', 44, 210, 22, 208, rayCel(rayPoly(3, 208.5, false, false, 1)));
+  const d = mixed([[4, 74, 1], [18, 30], [22, 3, 1], [26, 30], [40, 74, 1]]);
+  const s = cel(d, { fill: SUN_ART.ray, stroke: 2, over: stroke([[22, 16], [22, 50]], SUN_ART.mark, 1.1, 0.6) });
+  return part('sun.ray', 44, 76, 22, 74, s);
 }
 
 function sunRayBroken(): PartArt {
-  let s = '';
-  s += rayCel(rayPoly(154, 208.5, true, false, 2));
-  s += `<g transform="rotate(4 22 110) translate(1.5 -2)">${rayCel(rayPoly(86, 138, true, true, 3))}</g>`;
-  s += `<g transform="rotate(-5 22 36) translate(-1.5 -6)">${rayCel(rayPoly(3, 70, false, true, 4))}</g>`;
-  // Loose splinters in the gaps.
-  s += cel(poly([[26, 146], [31, 143], [29, 149]]), { fill: SUN.cream, shade: P.sun, sx: 0.6, sy: 0.6, stroke: 1.6 });
-  s += cel(poly([[14, 77], [18.5, 79.5], [13.5, 81.5]]), { fill: SUN.cream, shade: P.sun, sx: 0.6, sy: 0.6, stroke: 1.6 });
-  s += cel(poly([[24.5, 76], [27, 74.5], [27.2, 78]]), { fill: SUN.cream, shade: P.sun, sx: 0.4, sy: 0.4, stroke: 1.4 });
-  return part('sun.ray.broken', 44, 210, 22, 208, s);
+  // A bent, cracked spike in the greener yellow: the Sun is unwell.
+  const d = mixed([[4, 74, 1], [16, 44], [14, 30, 1], [26, 22], [30, 6, 1], [30, 34], [40, 74, 1]]);
+  let s = cel(d, { fill: SUN_ART.rayLime, stroke: 2 });
+  s += stroke([[18, 52], [24, 46], [20, 40]], INK, 1.3);
+  return part('sun.ray.broken', 44, 76, 22, 74, s);
 }
 
 // ================================================================== committee attendees

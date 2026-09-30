@@ -120,11 +120,12 @@ function assembly(title: string, w: number, h: number, z: number, rootX: number,
   document.getElementById('assembled')!.appendChild(fig);
 }
 
-function sunRays(broken: readonly number[] = [], spin = 0): Piece[] {
+function sunRays(): Piece[] {
+  // As in Celestial: 24 spikes at radius 128, every fourth one bent.
   const out: Piece[] = [];
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2 + spin;
-    out.push({ key: broken.includes(i) ? 'sun.ray.broken' : 'sun.ray', x: Math.cos(a) * 150, y: Math.sin(a) * 150, rot: a + Math.PI / 2 });
+  for (let i = 0; i < 24; i++) {
+    const a = (i / 24) * Math.PI * 2;
+    out.push({ key: i % 4 === 1 ? 'sun.ray.broken' : 'sun.ray', x: Math.cos(a) * 128, y: Math.sin(a) * 128, rot: a + Math.PI / 2 });
   }
   return out;
 }
@@ -154,49 +155,43 @@ function assemblies(): void {
     assembly(`${k} (tail 0.4)`, 64, 34, 4, 36, 17, [{ key: `${k}.tail`, x, y: 0, rot: 0.4 }, { key: k, x: 0, y: 0 }]);
   }
 
-  assembly('moon.baby (eyes + mouth)', 280, 280, 1.2, 140, 140, [
+  assembly('moon.baby (eye + mouth)', 280, 280, 1.2, 140, 140, [
     { key: 'moon.baby', x: 0, y: 0 },
-    { key: 'moon.baby.eye', x: -35, y: -12 },
-    { key: 'moon.baby.eye', x: 35, y: -12 },
-    { key: 'moon.baby.mouth', x: 0, y: 48 },
+    { key: 'moon.baby.eye', x: -68, y: -12 },
+    { key: 'moon.baby.mouth', x: -34, y: 46 },
   ]);
-  assembly('moon.baby (lids)', 280, 280, 1.2, 140, 140, [
+  assembly('moon.baby (lid)', 280, 280, 1.2, 140, 140, [
     { key: 'moon.baby', x: 0, y: 0 },
-    { key: 'moon.baby.eye', x: -35, y: -12 },
-    { key: 'moon.baby.eye', x: 35, y: -12 },
-    { key: 'moon.baby.lid', x: -35, y: -12 },
-    { key: 'moon.baby.lid', x: 35, y: -12 },
-    { key: 'moon.baby.mouth', x: 0, y: 48 },
+    { key: 'moon.baby.eye', x: -68, y: -12 },
+    { key: 'moon.baby.lid', x: -68, y: -12 },
+    { key: 'moon.baby.mouth', x: -34, y: 46 },
   ]);
-  assembly('moon.old (eyes + laugh)', 320, 320, 1.1, 160, 160, [
+  assembly('moon.old (eye + laugh)', 320, 320, 1.1, 160, 160, [
     { key: 'moon.old', x: 0, y: 0 },
-    { key: 'moon.old.eye', x: -45, y: -18 },
-    { key: 'moon.old.eye', x: 45, y: -18 },
-    { key: 'moon.old.mouth.laugh', x: 0, y: 60 },
+    { key: 'moon.old.eye', x: -88, y: -26 },
+    { key: 'moon.old.mouth.laugh', x: -46, y: 46 },
   ]);
-  assembly('moon.old (lids + closed mouth)', 320, 320, 1.1, 160, 160, [
+  assembly('moon.old (lid + closed mouth)', 320, 320, 1.1, 160, 160, [
     { key: 'moon.old', x: 0, y: 0 },
-    { key: 'moon.old.eye', x: -45, y: -18 },
-    { key: 'moon.old.eye', x: 45, y: -18 },
-    { key: 'moon.old.lid', x: -45, y: -18 },
-    { key: 'moon.old.lid', x: 45, y: -18 },
-    { key: 'moon.old.mouth', x: 0, y: 60 },
+    { key: 'moon.old.eye', x: -88, y: -26 },
+    { key: 'moon.old.lid', x: -88, y: -26 },
+    { key: 'moon.old.mouth', x: -46, y: 46 },
   ]);
-  assembly('sun (eyes + open mouth + 8 rays)', 740, 740, 0.62, 370, 370, [
+  assembly('sun (eyes + open mouth)', 480, 480, 0.9, 240, 240, [
     ...sunRays(),
     { key: 'sun.disk', x: 0, y: 0 },
-    { key: 'sun.eye', x: -50, y: -20 },
-    { key: 'sun.eye', x: 50, y: -20 },
-    { key: 'sun.mouth.open', x: 0, y: 68 },
+    { key: 'sun.eye', x: -46, y: -18 },
+    { key: 'sun.eye', x: 46, y: -18 },
+    { key: 'sun.mouth.open', x: 0, y: 54 },
   ]);
-  assembly('sun (lids + closed mouth, broken rays)', 740, 740, 0.62, 370, 370, [
-    ...sunRays([1, 4, 6], Math.PI / 8),
+  assembly('sun (lids + closed mouth)', 480, 480, 0.9, 240, 240, [
+    ...sunRays(),
     { key: 'sun.disk', x: 0, y: 0 },
-    { key: 'sun.eye', x: -50, y: -20 },
-    { key: 'sun.eye', x: 50, y: -20 },
-    { key: 'sun.lid', x: -50, y: -20 },
-    { key: 'sun.lid', x: 50, y: -20 },
-    { key: 'sun.mouth', x: 0, y: 68 },
+    { key: 'sun.eye', x: -46, y: -18 },
+    { key: 'sun.eye', x: 46, y: -18 },
+    { key: 'sun.lid', x: -46, y: -18 },
+    { key: 'sun.lid', x: 46, y: -18 },
+    { key: 'sun.mouth', x: 0, y: 54 },
   ]);
   assembly('committee', 250, 210, 1.6, 60, 200, [
     { key: 'attendee.sit', x: 0, y: 0 },

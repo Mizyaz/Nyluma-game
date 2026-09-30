@@ -13,15 +13,31 @@ function gortiRig(): ReturnType<typeof rigFor> {
   return p ? rigFor(p.kind, p.form) : rigFor('gorti', 'root');
 }
 
+/**
+ * Close-up framing of each body's head: the scale, and where the middle of
+ * the head is seen from the eye (logical px, the head facing right), so
+ * that every head fills the portrait window alike.
+ */
+const CLOSE_UP: Record<string, { scale: number; dx: number; dy: number }> = {
+  'gorti.root.child': { scale: 3.3, dx: 5, dy: 1 },
+  'gorti.root.youth': { scale: 3.4, dx: 1.5, dy: -1 },
+  'gorti.root.warrior': { scale: 4.3, dx: 2, dy: 5 },
+  'gorti.human': { scale: 3.6, dx: 1, dy: 2 },
+  'gorti.human.sun': { scale: 4, dx: 3, dy: 0 },
+  'gorti.suit': { scale: 3.6, dx: 1, dy: 2 },
+  coward: { scale: 3.5, dx: 5, dy: 1 },
+  mech: { scale: 4.2, dx: 5, dy: -1 },
+};
+
+function closeUp(s: Parameters<PortraitFactory>[0], rig: ReturnType<typeof rigFor>, w: Parameters<PortraitFactory>[1]): RigPortrait {
+  const k = CLOSE_UP[rig.id] ?? { scale: 3.4, dx: 3, dy: 3 };
+  return new RigPortrait(s, rig, w, { scale: k.scale, focus: 'eye', dx: k.dx * k.scale, dy: k.dy * k.scale });
+}
+
 /** How to draw each cast member up close. */
 export const CAST: Record<CastId, PortraitFactory> = {
-  gorti: (s, w) => {
-    const rig = gortiRig();
-    // Close-ups of equal size whatever the body: the root head is the largest.
-    const scale = rig.id.startsWith('gorti.root') ? 3.2 : rig.id === 'mech' ? 3.6 : rig.id === 'coward' ? 3.0 : 4.2;
-    return new RigPortrait(s, rig, w, { scale, focus: 'eye', dx: 10 * scale, dy: 3 * scale });
-  },
-  coward: (s, w) => new RigPortrait(s, RIG_COWARD, w, { scale: 3.0, focus: 'eye', dx: 30, dy: 9 }),
+  gorti: (s, w) => closeUp(s, gortiRig(), w),
+  coward: (s, w) => closeUp(s, RIG_COWARD, w),
   horse: (s, w) => new RigPortrait(s, RIG_HORSE, w, { scale: 1.5, focus: 'muzzle', dx: -70, dy: -10, horse: true }),
   babyMoon: (s, w) => new FacePortrait(s, 'baby', w),
   oldMoon: (s, w) => new FacePortrait(s, 'old', w),

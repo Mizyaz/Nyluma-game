@@ -1,4 +1,4 @@
-import { P } from './palette';
+import { P, pastelMarkup } from './palette';
 import {
   cel,
   ellipsePath,
@@ -36,7 +36,8 @@ const n2 = (v: number): number => Math.round(v * 100) / 100;
 
 function mk(key: string, w: number, h: number, pivot: Pivot, draw: (rng: Rng) => string): PartArt {
   const py = pivot === 'bc' ? h : pivot === 'c' ? h / 2 : 0;
-  return { key, w, h, px: w / 2, py, body: draw(new Rng(hashSeed(key))), scale: 1 };
+  // Hand-picked colours of older props are lifted into the pastel range.
+  return { key, w, h, px: w / 2, py, body: pastelMarkup(draw(new Rng(hashSeed(key)))), scale: 1 };
 }
 
 /** Cel-shaded shape in a material (light upper-left, 3.5 px ink by default). */
@@ -397,40 +398,57 @@ function blocks(): PartArt {
   });
 }
 
-function wheel(cx: number, cy: number, r: number): string {
-  return (
-    sh(circle(cx, cy, r), WOOD_DARK, { sx: 2, sy: 2, hx: 1.5, hy: 1.5, stroke: 2.4 }) +
-    sh(circle(cx, cy, r * 0.36), WOOD_PALE, { sx: 0.8, sy: 0.8, hx: 0.6, hy: 0.6, stroke: 1.6 })
-  );
+/** Running stitch along a path: short ink dashes (seams of stuffed toys). */
+function stitches(d: string, w = 1.1, dash = '2.2 2.2'): string {
+  return `<path d="${d}" fill="none" stroke="${INK}" stroke-width="${w}" stroke-dasharray="${dash}" stroke-linecap="round"/>`;
 }
 
+/**
+ * The toy whale: a stuffed sperm whale, drawn like the paintings' objects.
+ * A boxy head with a narrow felt jaw, a button eye, seams in running
+ * stitch, a sewn-on patch, a little fabric label and a felt spout.
+ */
 function toyWhale(): PartArt {
   return mk('prop.toywhale', 90, 56, 'bc', () => {
-    let s = shadowEl(46, 55, 38, 2.5, 0.35);
-    s += line(open([[84, 32], [88.5, 40], [86, 47]]), '#5b4a3e', 1.4);
-    s += sh(circle(86, 49, 2.8), WOOD_RED, { stroke: 1.6, sx: 1, sy: 1, hx: 0.8, hy: 0.8 });
-    for (const x of [29, 63]) s += sh(rrect(x - 4, 33, 8, 13, 2), WOOD_DARK, { stroke: 2, sx: 1.5, sy: 0, hx: 1, hy: 0 });
-    s += sh(smooth([[22, 27], [13, 20], [5, 13], [3, 6], [9, 7], [13, 12], [13, 4], [18, 2], [21, 10], [25, 22]]), PAINT_BLUE, {
-      stroke: 2.6, sx: 2, sy: 2,
-    });
-    const paint =
-      fillPath(smooth([[0, -5], [95, -5], [95, 21], [80, 25], [64, 22], [48, 26], [32, 23], [16, 29], [0, 28]]), PAINT_BLUE.fill) +
-      dot(58, 22.5, 1.6, WOOD_PALE.fill) +
-      dot(38, 24.5, 1.3, WOOD_PALE.fill);
-    s += sh(smooth([[87, 29], [82, 16], [66, 9], [46, 9], [30, 14], [20, 22], [16, 28], [22, 34], [38, 39], [58, 41], [76, 38], [85, 34]]), WOOD_PALE, {
-      sx: 3, sy: 4, stroke: 2.8, light: PAINT_BLUE.light, inner: paint,
-      over:
-        dot(73, 21, 2.5, INK) +
-        dot(73.8, 20.2, 0.8, '#fff') +
-        line(open([[86.5, 31], [80, 32.6], [73, 31.2]]), INK, 1.4) +
-        line(open([[34, 31], [46, 35], [60, 35.5]]), WOOD_PALE.shade, 1.2) +
-        line(open([[62, 12.5], [60, 15]]), INK, 1.2),
-    });
-    s += sh(smooth([[57, 33], [52, 41], [45, 45], [43, 41], [49, 35]]), WOOD_PALE, { stroke: 2.2, sx: 1.5, sy: 1.5, hx: 1, hy: 1 });
-    s += wheel(29, 46.5, 9) + wheel(63, 46.5, 9);
+    const PLUSH = '#b9c2df';
+    const JAW = '#f4ecdc';
+    let s = shadowEl(46, 54.5, 36, 2.2, 0.18);
+    // Fluke: two soft lobes rising behind the tail stalk.
+    s += cel(smooth([[16, 36], [10, 30], [4, 24], [2, 17], [7, 18], [11, 24], [11, 15], [15, 12], [16, 20], [19, 31]]), { fill: PLUSH, stroke: 1.8 });
+    // Body: a big square-fronted head tapering to the tail.
+    const body = mixed([
+      [15, 37], [22, 30], [36, 22], [52, 15], [66, 12], [80, 12], [86, 16, 1], [88, 26], [87, 38, 1], [80, 44], [60, 47], [40, 46], [26, 43],
+    ]);
+    const inner =
+      // Belly: a paler panel, joined by a seam.
+      fillPath(smooth([[26, 43], [40, 40], [58, 41], [80, 40], [90, 38], [90, 56], [20, 56]]), '#d4dbee') +
+      // The sewn-on patch.
+      cel(poly([[31, 25.5], [41.5, 23.5], [43.5, 33], [33, 35]]), { fill: '#f2b6cf', stroke: 0, over: stitches('M32 26.4L41 24.6L42.6 32.4L33.6 34.2Z', 0.9, '1.6 1.6') }) +
+      // Skin wrinkles, a sperm whale's.
+      line(open([[50, 22], [54, 20], [58, 21.5]]), INK, 1) +
+      line(open([[47, 27], [51, 25.2], [55, 26.6]]), INK, 1) +
+      line(open([[21, 35.5], [24, 33.2], [27, 34]]), INK, 0.9);
+    s += cel(body, { fill: PLUSH, stroke: 2, inner });
+    // Seams: head to body, and along the belly.
+    s += stitches(open([[60, 13], [57, 24], [58, 35], [61, 45.5]]));
+    s += stitches(open([[27, 42], [40, 39.6], [58, 40.4], [80, 39.4], [87, 37.6]]));
+    // The narrow jaw under the head, with little felt teeth.
+    let teeth = '';
+    for (const x of [64, 69, 74, 79]) teeth += cel(`M${x} 44.6L${x + 3.4} 44.6L${x + 1.7} 41.8Z`, { fill: '#ffffff', stroke: 0.8 });
+    s += cel(smooth([[60, 45.5], [72, 44], [84, 43.5], [86.5, 45.5], [82, 48.5], [66, 49]]), { fill: JAW, stroke: 1.5 }) + teeth;
+    // Button eye with its thread, set far back on the head.
+    s += cel(circle(66, 28, 3.4), { fill: INK, stroke: 0 });
+    s += line('M64.6 26.6L67.4 29.4M67.4 26.6L64.6 29.4', '#dfe4f2', 0.8);
+    // Fabric label in the tail seam.
+    s += cel(poly([[19, 38.5], [25.5, 40.5], [23.5, 48], [17, 46]]), { fill: PASTEL_TAG, stroke: 1.2, over: line('M19.2 42.6q1.2-1 2.4 0t2.4 0M18.6 45q1.2-1 2.4 0', '#d9737e', 0.8) });
+    // A felt water spout at the front of the head.
+    s += line(open([[82, 12], [81, 8], [83, 5]]), INK, 1.4);
+    for (const [x, y, r] of [[79, 4.5, 2.6], [84.5, 3, 2.4], [87.4, 6.5, 2.1]] as const) s += cel(circle(x, y, r), { fill: '#bfe4ea', stroke: 1.1 });
     return s;
   });
 }
+
+const PASTEL_TAG = '#f7efdc';
 
 function scratch(d: string, w = 2): string {
   return grp('transform="translate(1.1 1.3)"', line(d, '#141120', w + 0.6, 0.9)) + line(d, '#a99dbf', w);
@@ -1320,9 +1338,9 @@ function foliage(cx: number, cy: number, r: number, m: Mat, rng: Rng, lobes = 11
 
 function forestTree(): PartArt {
   return mk('prop.tree', 360, 520, 'bc', (rng) => {
-    const TB: Mat = { fill: '#3d3445', shade: '#2a2332', light: '#524759' };
-    const BACK: Mat = { fill: '#27403f', shade: '#1c2f2f', light: '#355654' };
-    const FRONT: Mat = { fill: '#2f4f4c', shade: '#223a38', light: '#44716b' };
+    const TB: Mat = { fill: '#b39aa8', shade: '#937c8b', light: '#cdb9c3' };
+    const BACK: Mat = { fill: '#97b894', shade: '#7fa27f', light: '#b6cfae' };
+    const FRONT: Mat = { fill: '#b4d19b', shade: '#8fb582', light: '#cfe3b8' };
     let s = shadowEl(180, 518, 90, 4, 0.35);
     // One merged back mass, so only its outer silhouette is inked.
     const back = [
@@ -1342,7 +1360,7 @@ function forestTree(): PartArt {
       line(open([[172, 510], [168, 440], [174, 370], [170, 300]]), TB.shade, 1.8) +
       line(open([[190, 500], [192, 430], [188, 360]]), TB.shade, 1.6) +
       line(ellipsePath(184, 420, 5, 8), TB.shade, 1.6) +
-      fillPath(ellipsePath(184, 420, 2.5, 4.5), '#1b1622');
+      fillPath(ellipsePath(184, 420, 2.5, 4.5), INK);
     s += merged([...roots, ...limbs, ribbon(trunkPts, [72, 52, 44, 40, 34, 28])], TB, { sx: 7, sy: 2, hx: 3, hy: 1, inner: bark }, 3.6);
     for (const [x, y, r] of [[128, 214, 52], [240, 208, 54], [116, 118, 50], [248, 108, 50], [184, 50, 44], [64, 180, 36], [300, 176, 36]] as const) {
       s += foliage(x, y, r, FRONT, rng);
@@ -1369,8 +1387,8 @@ function leafyClump(cx: number, baseY: number, rx: number, ry: number, rng: Rng,
 
 function bush(): PartArt {
   return mk('prop.bush', 200, 90, 'bc', (rng) => {
-    const DARK: Mat = { fill: '#1c2b2d', shade: '#131d1f', light: '#467a72' };
-    const DEEP: Mat = { fill: '#162224', shade: '#0f1718', light: '#2f5550' };
+    const DARK: Mat = { fill: '#a9c89c', shade: '#8db083', light: '#c6ddb7' };
+    const DEEP: Mat = { fill: '#8fb48c', shade: '#78a079', light: '#afcca6' };
     let s = '';
     // Sprigs poking out of the silhouette.
     for (const [x, y, ex, ey] of [[62, 58, 52, 24], [134, 58, 148, 22], [104, 50, 100, 16]] as const) {

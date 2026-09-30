@@ -54,7 +54,9 @@ export class ColorBursts {
       scale: { start: 0.9, end: 0.15 },
       alpha: { start: 1, end: 0 },
       rotate: { min: -180, max: 180 },
-      blendMode: Phaser.BlendModes.ADD,
+      // Opaque pastel confetti with ink contours: added light would wash
+      // out to white on the pastel scenery.
+      blendMode: Phaser.BlendModes.NORMAL,
       emitting: false,
     });
     this.sparks.setDepth(DEPTH.fx + 2);
@@ -67,7 +69,9 @@ export class ColorBursts {
       scale: { min: 0.6, max: 1.5 },
       alpha: { start: 1, end: 0 },
       rotate: { min: -180, max: 180 },
-      blendMode: Phaser.BlendModes.ADD,
+      // Opaque pastel confetti with ink contours: added light would wash
+      // out to white on the pastel scenery.
+      blendMode: Phaser.BlendModes.NORMAL,
       emitting: false,
     });
     this.rain.setDepth(DEPTH.front + 1);
