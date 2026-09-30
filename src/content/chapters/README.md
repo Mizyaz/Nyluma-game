@@ -38,7 +38,28 @@ npm run dev                  # sonra tarayıcıda ?room=b01
 }
 ```
 
-Yer düzdür; zıplama yok. Bulmacalar **form değiştirme**, konuşma ve bayraklarla kurulur.
+Yer düzdür; zıplama yok. Bulmacalar **form değiştirme**, konuşma, **kahkaha** (Güneş ⇄ Ay), **yıkma** ve bayraklarla kurulur.
+
+## Gorti'nin fiilleri
+
+| Tuş | Ne olur | Bulmacada |
+|---|---|---|
+| **R** | kök ⇄ insan (Sivaslı amca) formu | `form:human`, `form:root` |
+| **E** (insan formu) | göbeğini tutup güler | — |
+| **E basılı** (insan formu) | kahkaha: Güneş ile Ay yer değiştirir, amcanın kafası da | `sky:sun`, `sky:moon` |
+| **E** (yıkılabilirin yanında) | yıkar | bayrak `<oda>.<id>.broken` |
+| **E** (NPC'nin yanında) | konuşur | bayrak `<oda>.<npc>.talked` |
+
+## Yıkılabilirler
+
+```json
+"breakables": [
+  { "id": "bloklar", "x": 800, "key": "prop.blocks", "scale": 1.3, "w": 150, "h": 160 },
+  { "id": "kristal", "x": 1250, "key": "prop.crystals.blue", "needs": "form:human" }
+]
+```
+
+Yıkılana dek yolu keser. `needs` kimin kırabileceğini söyler. Kırılınca parçaları uçuşur ve bayrak konur; çıkış ya da kapı bu bayrağa bağlanabilir (`"when": "b03.kristal.broken"`).
 
 ## Koşullar
 
@@ -49,6 +70,7 @@ Yer düzdür; zıplama yok. Bulmacalar **form değiştirme**, konuşma ve bayrak
 | `b01.told` | bu bayrak konmuş |
 | `form:human` | Gorti insan formunda (`form:root` kök formu) |
 | `room:b01` | şu an bu odada |
+| `sky:moon`, `sky:sun`, `sky:none` | hangisi parlıyor (kahkaha değiştirir) |
 | `!a`, `a & b`, `a \| b`, `( … )` | değil, ve, veya, gruplama |
 
 Kapılar koşul değişince kendiliğinden açılıp kapanır (form değişince de).
@@ -74,7 +96,8 @@ Bir oda kendiliğinden şu bayrakları koyar: `<oda>.entered`, `<oda>.<npc>.talk
 ## Ay ve Güneş
 
 Her bölümün `sky`'ı sol üstteki Ay'ı (`baby`, `old`, `none`) ve sağ üstteki
-Güneş'i (`calm`, `laugh`, `none`) seçer. Bir oda kendi `sky`'ı ile, bir olay da
+Güneş'i (`calm`, `laugh`, `none`) seçer. `out` hangisinin parladığını söyler (`sun`, `moon`, `none`):
+parlayan büyür, oda onun ışığını alır, Sivaslı amcanın kafası ona döner. Bir oda kendi `sky`'ı ile, bir olay da
 `{ "sky": … }` ile değiştirebilir.
 
 ## Araçlar
