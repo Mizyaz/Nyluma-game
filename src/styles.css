@@ -1153,6 +1153,9 @@ a {
    turn the balloon into a narration box. */
 .dialogue {
   --who: var(--pastel-lavender);
+  /* A comic balloon: a bold ink contour and a hard shadow so it reads at a glance. */
+  --b-ink: #231a2b;
+  --b-lw: max(2.5px, calc(var(--s) * 3.5px));
   --tail-x: 16%;
   --tail-h: max(20px, calc(var(--s) * 32px));
   position: absolute;
@@ -1166,22 +1169,24 @@ a {
   align-items: flex-start;
   background: var(--grain), var(--paper);
   color: var(--ink);
-  border: var(--lw) solid var(--line);
-  box-shadow: 3px 5px 0 var(--shade);
+  border: var(--b-lw) solid var(--b-ink);
+  box-shadow: 5px 7px 0 rgba(35, 26, 43, 0.82);
   border-radius: 30px 38px 32px 28px / 28px 32px 38px 30px;
   padding: max(12px, calc(var(--s) * 20px)) max(16px, calc(var(--s) * 30px)) max(16px, calc(var(--s) * 26px));
   cursor: pointer;
-  animation: balloon-in 0.18s ease-out;
+  animation: balloon-in 0.26s cubic-bezier(0.2, 1.5, 0.45, 1);
 }
 
 @keyframes balloon-in {
   from {
     opacity: 0;
-    translate: -50% 6px;
+    translate: -50% 10px;
+    scale: 0.9;
   }
   to {
     opacity: 1;
     translate: -50% 0;
+    scale: 1;
   }
 }
 
@@ -1240,8 +1245,8 @@ a {
 
 .dialogue .tail path {
   fill: var(--paper-tone);
-  stroke: var(--line);
-  stroke-width: var(--lw);
+  stroke: var(--b-ink);
+  stroke-width: var(--b-lw);
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
 }
@@ -1307,14 +1312,14 @@ a {
   font-family: var(--display);
   font-weight: 900;
   font-synthesis: none;
-  font-size: max(11px, calc(var(--s) * 14px));
+  font-size: max(12px, calc(var(--s) * 16px));
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink);
   background: var(--pencil), var(--who);
-  border: var(--lw) solid var(--line);
+  border: var(--b-lw) solid var(--b-ink);
   border-radius: 2px;
-  box-shadow: 2px 2px 0 var(--shade);
+  box-shadow: 3px 3px 0 rgba(35, 26, 43, 0.82);
 }
 
 .dialogue[data-tail='r'] .name {
@@ -1326,9 +1331,9 @@ a {
 /* Speech: lettering in a clear sans. */
 .dialogue .text {
   font-family: var(--sans);
-  font-weight: 500;
-  font-size: max(14px, calc(var(--s) * 20px));
-  line-height: 1.42;
+  font-weight: 600;
+  font-size: max(15px, calc(var(--s) * 23px));
+  line-height: 1.4;
   color: var(--ink);
   min-height: 2.8em;
 }

@@ -18,14 +18,14 @@ interface KindStyle {
 }
 
 const STYLE: Record<ComicKind, KindStyle> = {
-  land: { fill: PASTEL.apricot, burst: 0xf7eddc, size: 40, cooldown: 1.4 },
-  jump: { fill: PASTEL.aqua, burst: 0xf7eddc, size: 30, cooldown: 4 },
-  bloom: { fill: PASTEL.pink, burst: 0xfff6c9, size: 36, cooldown: 0.8 },
-  stomp: { fill: PASTEL.butter, burst: 0xf4b27c, size: 56, cooldown: 1 },
-  whale: { fill: PASTEL.periwinkle, burst: 0xeaf4f6, size: 40, cooldown: 1.2 },
-  storm: { fill: PASTEL.lilac, burst: 0xfdf3fb, size: 48, cooldown: 3 },
-  wake: { fill: PASTEL.butter, burst: 0xf7eddc, size: 44, cooldown: 1 },
-  call: { fill: PASTEL.mint, burst: 0xf7eddc, size: 34, cooldown: 1.5 },
+  land: { fill: PASTEL.apricot, burst: 0xf7eddc, size: 24, cooldown: 1.4 },
+  jump: { fill: PASTEL.aqua, burst: 0xf7eddc, size: 19, cooldown: 4 },
+  bloom: { fill: PASTEL.pink, burst: 0xfff6c9, size: 22, cooldown: 0.8 },
+  stomp: { fill: PASTEL.butter, burst: 0xf4b27c, size: 32, cooldown: 1 },
+  whale: { fill: PASTEL.periwinkle, burst: 0xeaf4f6, size: 24, cooldown: 1.2 },
+  storm: { fill: PASTEL.lilac, burst: 0xfdf3fb, size: 28, cooldown: 3 },
+  wake: { fill: PASTEL.butter, burst: 0xf7eddc, size: 26, cooldown: 1 },
+  call: { fill: PASTEL.mint, burst: 0xf7eddc, size: 20, cooldown: 1.5 },
 };
 
 const LINE = '#4f4557';
