@@ -8,6 +8,8 @@ import { voiceOf } from '../cinematics/voice';
 
 export interface CinemaData {
   cast: readonly CastId[];
+  /** Darken the room behind (default); off for the bars alone (a close-up). */
+  dim?: boolean;
 }
 
 interface Slot {
@@ -35,6 +37,7 @@ export class CinemaScene extends Phaser.Scene {
   private dim!: Phaser.GameObjects.Rectangle;
   private closing = false;
   private fade = 0;
+  private dimLevel = 0.42;
 
   constructor() {
     super('cinema');
@@ -46,6 +49,7 @@ export class CinemaScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdownSlots());
     this.closing = false;
     this.fade = 0;
+    this.dimLevel = data.dim === false ? 0 : 0.42;
     const reduced = app.settings.reducedMotion;
     this.dim = this.add.rectangle(VIEW_W / 2, VIEW_H / 2, VIEW_W, VIEW_H, 0x0b0a12, 1).setAlpha(0);
     const barH = 62;
@@ -100,7 +104,7 @@ export class CinemaScene extends Phaser.Scene {
     const voice = voiceOf(dlg.current);
     const k = 1 - Math.exp(-(delta / 1000) * 8);
     this.fade = Math.max(0, Math.min(1, this.fade + (this.closing ? -1 : 1) * (delta / 1000) * 3.5));
-    this.dim.setAlpha(0.42 * this.fade);
+    this.dim.setAlpha(this.dimLevel * this.fade);
     for (const s of this.slots) {
       const speaking = who !== '' && who === CAST_NAMES[s.id];
       s.lit += ((speaking ? 1 : 0) - s.lit) * k;

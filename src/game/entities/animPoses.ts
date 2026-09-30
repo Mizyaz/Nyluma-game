@@ -171,6 +171,12 @@ function browsFor(anim: string, t: number, prm: PoseParams, st: HumanoidStyle): 
     case 'look':
       b = { raise: -3.5, knit: -0.12, asym: -3 };
       break;
+    case 'sleep': {
+      // Peaceful; a yawn lifts the brows.
+      const y = prm.k ?? 0;
+      b = { raise: 0.8 - 5 * y, knit: -0.18 - 0.2 * y, asym: 0 };
+      break;
+    }
     default:
       break;
   }
@@ -224,6 +230,15 @@ export function idleAction(idleT: number, st: HumanoidStyle): { kind: IdleKind; 
   const u = local / dur;
   return { kind, u, env: smooth01(0, 0.2, u) * (1 - smooth01(0.8, 1, u)) };
 }
+
+/** The standing-still time at which an idle action begins (to start one now). */
+export function idleStartFor(kind: IdleKind, st: HumanoidStyle): number {
+  const kinds: IdleKind[] = st === 'coward' ? ['look'] : st === 'mech' ? ['look', 'stretch'] : ['look', 'stretch', 'hum', 'scratch'];
+  const i = Math.max(0, kinds.indexOf(kind));
+  return IDLE_START + i * IDLE_CYCLE;
+}
+
+export type { IdleKind };
 
 function blendTo(p: PoseOut, target: Record<string, number>, k: number): void {
   for (const [id, v] of Object.entries(target)) {
@@ -391,6 +406,15 @@ function faceFor(anim: string, t: number, prm: PoseParams, st: HumanoidStyle, id
       f.mouth = 'open';
       f.ms = 0.6;
       break;
+    case 'sleep': {
+      // Lids shut (a script can open them through `blink`); a slow breath
+      // through the mouth, or a big yawn (`k`).
+      const y = prm.k ?? 0;
+      f.eye = (prm.blink ?? 1) > 0.97 ? 'shut' : '';
+      f.mouth = 'open';
+      f.ms = y > 0.04 ? 0.55 + 1.15 * y : 0.32 + 0.07 * S(t * 1.35);
+      break;
+    }
     default:
       break;
   }
@@ -498,8 +522,8 @@ interface StyleK {
 }
 
 const STYLE: Record<HumanoidStyle, StyleK> = {
-  root: { stride: 0.62, knee: 1.05, arm: 0.55, bob: 3, lean: 0.12, kneeBase: 0.05, torsoBase: 0.02, headBase: 0 },
-  human: { stride: 0.42, knee: 0.8, arm: 0.35, bob: 1.6, lean: 0.06, kneeBase: 0.08, torsoBase: -0.03, headBase: 0.05 },
+  root: { stride: 0.66, knee: 1.1, arm: 0.7, bob: 4.4, lean: 0.13, kneeBase: 0.06, torsoBase: 0.02, headBase: 0 },
+  human: { stride: 0.46, knee: 0.85, arm: 0.45, bob: 2.6, lean: 0.07, kneeBase: 0.09, torsoBase: -0.03, headBase: 0.05 },
   coward: { stride: 0.38, knee: 0.8, arm: 0.1, bob: 1.5, lean: 0.1, kneeBase: 0.55, torsoBase: 0.16, headBase: 0.18 },
   mech: { stride: 0.5, knee: 0.9, arm: 0.3, bob: 1.2, lean: 0.04, kneeBase: 0.12, torsoBase: 0, headBase: 0 },
   suit: { stride: 0.3, knee: 0.6, arm: 0.12, bob: 1.2, lean: 0.05, kneeBase: 0.1, torsoBase: 0.2, headBase: 0.28 },
@@ -903,6 +927,27 @@ export function humanoidPose(rigId: string, anim: string, t: number, prm: PosePa
       a.armR = -0.3 * c;
       a.armL = -0.5 * c;
       p.offsets.hips = { x: 0, y: 26 * c };
+      break;
+    }
+    case 'sleep': {
+      // Lying on his back (the rig is turned by the player): legs long and
+      // loose, a hand on the chest rising with slow breaths, head sunk
+      // into the pillow.
+      const br = 0.5 + 0.5 * S(t * 1.35);
+      a.legR = 0.04;
+      a.shinR = 0.1;
+      a.footR = -0.35;
+      a.legL = -0.05;
+      a.shinL = 0.14;
+      a.footL = -0.28;
+      p.offsets.hips = { x: 0, y: 0 };
+      a.torso = -0.04;
+      p.offsets.torso = { x: 1.1 * br, y: 0 };
+      a.head = -0.2 + 0.03 * br + 0.18 * (prm.k ?? 0);
+      a.armR = -0.12 - 0.04 * br;
+      a.foreR = -2.25;
+      a.armL = 0.16;
+      a.foreL = -0.3;
       break;
     }
     case 'kneel':

@@ -1,6 +1,7 @@
 import { app, persistSettings } from '../game/App';
 import { CHAPTER_TITLES } from '../game/state/GameState';
 import { MEMORIES } from '../game/data/memories';
+import { OPEN_ALL, SCENES, chapterTitle, type SceneEntry } from '../game/data/scenes';
 import type { Settings, TextSpeed, TouchMode } from '../game/state/types';
 import { memoryArtUrl } from '../game/art/memoryArt';
 import { focusables, h } from './dom';
@@ -10,6 +11,7 @@ export interface MenuActions {
   newGame: () => void;
   continueGame: () => void;
   startChapter: (ch: number) => void;
+  startScene: (scene: SceneEntry) => void;
   resume: () => void;
   quitToMenu: () => void;
 }
@@ -185,7 +187,7 @@ export class Menus {
     const reached = new Set(app.profile.chaptersReached);
     const list = h('div', { class: 'chapters' });
     for (let c = 1; c <= 5; c++) {
-      const open = reached.has(c) || app.profile.endingSeen;
+      const open = OPEN_ALL || reached.has(c) || app.profile.endingSeen;
       const b = this.btn(
         `${ROMAN[c]}. ${CHAPTER_TITLES[c]}<small>${open ? 'Bu bölümün başından oyna' : 'Henüz ulaşılmadı'}</small>`,
         () => this.onChapter(c),
@@ -193,8 +195,34 @@ export class Menus {
       );
       list.append(b);
     }
-    const panel = h('div', { class: 'panel' }, h('h2', { text: 'Bölümler' }), list, h('div', { class: 'row', style: 'margin-top:1em' }, this.btn('Geri', back, { cls: 'small' })));
+    const row = h('div', { class: 'row', style: 'margin-top:1em' }, this.btn('Geri', back, { cls: 'small' }));
+    if (OPEN_ALL) row.append(this.btn('Tüm sahneler', () => this.showScenes(() => this.pop()), { cls: 'small' }));
+    const panel = h('div', { class: 'panel' }, h('h2', { text: 'Bölümler' }), list, row);
     this.push(h('section', { class: 'screen dim' }, panel), back);
+  }
+
+  /** Every checkpoint of every room, to start the story from there. */
+  showScenes(back: () => void): void {
+    const list = h('div', { class: 'scenes' });
+    let chapter = 0;
+    for (const sc of SCENES) {
+      if (sc.chapter !== chapter) {
+        chapter = sc.chapter;
+        list.append(h('h3', { text: `${ROMAN[chapter]}. ${chapterTitle(chapter)}` }));
+      }
+      list.append(this.btn(sc.label, () => this.onScene(sc), { cls: 'small scene' }));
+    }
+    const panel = h('div', { class: 'panel' }, h('h2', { text: 'Tüm sahneler' }), list, h('div', { class: 'row', style: 'margin-top:1em' }, this.btn('Geri', back, { cls: 'small' })));
+    this.push(h('section', { class: 'screen dim' }, panel), back);
+  }
+
+  private onScene(sc: SceneEntry): void {
+    const hasSave = app.saveStatus === 'ok' && !!app.progress;
+    if (!hasSave) {
+      this.actions?.startScene(sc);
+      return;
+    }
+    this.confirm(`${sc.label}: mevcut kaydın yerine geçecek. Anılar korunur. Devam edilsin mi?`, () => this.actions?.startScene(sc));
   }
 
   private onChapter(c: number): void {
@@ -214,7 +242,7 @@ export class Menus {
     const got = new Set(app.quest?.profile.memories ?? app.profile.memories);
     const grid = h('div', { class: 'journal' });
     for (const m of MEMORIES) {
-      const have = got.has(m.id);
+      const have = OPEN_ALL || got.has(m.id);
       const card = h(
         'button',
         { class: `mem-card ${have ? '' : 'locked'}`, type: 'button', 'aria-label': have ? m.title : 'Bulunmamış anı', disabled: !have },
@@ -232,7 +260,7 @@ export class Menus {
     const panel = h(
       'div',
       { class: 'panel' },
-      h('h2', { text: `Anılar — ${got.size} / ${MEMORIES.length}` }),
+      h('h2', { text: OPEN_ALL ? `Anılar — hepsi açık (bulunan ${got.size} / ${MEMORIES.length})` : `Anılar — ${got.size} / ${MEMORIES.length}` }),
       grid,
       h('div', { class: 'row', style: 'margin-top:1em' }, this.btn('Geri', back, { cls: 'small' })),
     );

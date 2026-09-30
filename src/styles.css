@@ -330,6 +330,30 @@ button {
   font-family: var(--sans);
 }
 
+/* every scene (while everything is open) */
+.scenes {
+  display: grid;
+  gap: 0.35em;
+  width: min(calc(var(--sw, 100vw) - 72px), max(280px, calc(var(--s) * 640px)));
+  max-height: min(62vh, calc(var(--sh, 100vh) - 190px));
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.scenes h3 {
+  margin: 0.7em 0 0.1em;
+  font-family: var(--serif);
+  font-weight: normal;
+  color: var(--vein);
+  font-size: max(14px, calc(var(--s) * 18px));
+}
+
+.scenes .btn.scene {
+  text-align: left;
+  justify-content: flex-start;
+  padding-left: 1.7em;
+}
+
 /* journal */
 .journal {
   display: grid;

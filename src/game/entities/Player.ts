@@ -19,7 +19,7 @@ import { RIG_GORTI_HUMAN, RIG_GORTI_ROOT, RIG_GORTI_SUIT } from '../art/characte
 import { RIG_COWARD, RIG_MECH } from '../art/characters/forms';
 import { FocusMeter, bezier } from '../systems/AbilitySystem';
 import type { FormId, PlayerKind } from '../state/types';
-import { humanoidPose, type Emote, type PoseParams } from './animPoses';
+import { humanoidPose, idleStartFor, styleOf, type Emote, type IdleKind, type PoseParams } from './animPoses';
 import { RigView } from './RigView';
 
 export type PState = 'normal' | 'reach' | 'song' | 'locked' | 'transform' | 'reform' | 'hidden';
@@ -79,7 +79,10 @@ export class Player {
   private sq = 1;
   private sqV = 0;
   private walkPhase = 0;
-  private stepAcc = 0;
+  /** Which half of the walk cycle the last footfall was in. */
+  private stepN = 0;
+  private lastVx = 0;
+  private skidding = false;
   readonly focus = new FocusMeter();
   interactT = 0;
   /** Scripted pose override while locked (e.g. 'kneel', 'shout'). */
@@ -243,21 +246,31 @@ export class Player {
     }
     if (b.velocity.y >= 0) this.jumping = false;
 
-    // Footsteps
-    if (this.onGround && Math.abs(b.velocity.x) > 30) {
-      this.stepAcc += Math.abs(b.velocity.x) * dt;
-      const stride = this.kind === 'gorti' && this.form === 'root' ? 62 : 48;
-      if (this.stepAcc > stride) {
-        this.stepAcc = 0;
-        this.footstep();
+    // Braking hard from a run: the feet skid and the body rocks forward.
+    const vx = Math.abs(b.velocity.x);
+    if (this.onGround && axis === 0 && this.lastVx > this.tuning.speed * 0.6 && vx < this.lastVx - 1) {
+      if (!this.skidding) {
+        this.skidding = true;
+        this.sqV -= 1.1;
+        app.audio.sfx('step', { vol: 0.55, pitch: 0.7 });
+        this.scene.events.emit('player-skid', this.x + this.facing * 10, this.feetY);
       }
-    }
+    } else if (vx < 5 || axis !== 0) this.skidding = false;
+    this.lastVx = vx;
   }
 
+  /**
+   * A foot comes down: the sound of the floor plus a low thud of weight, the
+   * body gives a little and the world answers (dust, a nudge of the camera;
+   * see WorldScene).
+   */
   private footstep(): void {
     const theme = (this.scene as unknown as { stepSound?: () => 'step' | 'stepWood' | 'stepMetal' }).stepSound?.() ?? 'step';
-    app.audio.sfx(theme, { vol: this.form === 'human' || this.kind === 'suit' ? 1 : 0.7, pitch: 0.9 + Math.random() * 0.2 });
-    this.scene.events.emit('player-step', this.x, this.feetY);
+    const heavy = this.form === 'human' || this.kind === 'suit' || this.kind === 'mech';
+    app.audio.sfx(theme, { vol: heavy ? 1 : 0.8, pitch: 0.88 + Math.random() * 0.2 });
+    app.audio.sfx('land', { vol: heavy ? 0.26 : 0.18, pitch: 0.72 + Math.random() * 0.1 });
+    this.sqV -= heavy ? 0.75 : 0.55;
+    this.scene.events.emit('player-step', this.x + this.facing * 6, this.feetY);
   }
 
   private landed(): void {
@@ -389,6 +402,42 @@ export class Player {
   }
 
   /** Turns the head for a while (negative looks up). */
+  private visVx = 0;
+  private accLean = 0;
+
+  /** 0 standing … 1 lying on his back (asleep in bed); scripts tween it. */
+  lie = 0;
+  /** Where the feet rest while lying (the body stays on the floor). */
+  lieAt: { x: number; y: number } | null = null;
+  /** Extra lift above the path from bed to floor (a hop out of bed). */
+  lieLift = 0;
+  /** Scripted eyelids: 0 open … 1 shut; below 0 he blinks by himself. */
+  eyelids = -1;
+  /** A yawn, 0 … 1 (with the 'sleep' pose). */
+  yawn = 0;
+
+  /** Where the eyes are in the world (to frame a close-up). */
+  eyePos(): { x: number; y: number } {
+    return this.rig.attachPoint('eye');
+  }
+
+  /** A landing without a fall (a hop out of bed): knees give, dust, a thud. */
+  thump(impact: number): void {
+    const i = Math.min(1, Math.max(0, impact));
+    this.landImpact = i;
+    this.landDur = 0.14 + 0.2 * i;
+    this.landT = this.landDur;
+    this.sq = 1 - (0.06 + 0.14 * i);
+    this.sqV = -1.2 * i;
+    app.audio.sfx('land', { vol: 0.35 + 0.5 * i });
+    this.scene.events.emit('player-land', this.x, this.feetY, 260 + 500 * i);
+  }
+
+  /** Starts an idle action now (a stretch after waking up). */
+  startIdle(kind: IdleKind): void {
+    this.idleT = idleStartFor(kind, styleOf(this.rig.rig.id));
+  }
+
   lookFor(angle: number, ms: number): void {
     this.gazeTo = angle;
     this.gazeT = ms / 1000;
@@ -400,7 +449,9 @@ export class Player {
     const b = this.body;
     const feet = this.feetY;
     const dt = Math.min(dtMs, 50) / 1000;
-    this.rig.setPosition(this.x, feet);
+    const at = this.lieAt;
+    if (at && this.lie > 0) this.rig.setPosition(this.x + (at.x - this.x) * this.lie, feet + (at.y - feet) * this.lie - this.lieLift);
+    else this.rig.setPosition(this.x, feet - this.lieLift);
     const airborne = !this.onGround && this.state === 'normal';
     // Squash and stretch: a springy body that stretches with fall speed and
     // wobbles back after take-off and landing. Scaled at the feet.
@@ -427,7 +478,8 @@ export class Player {
         this.blinkAgain = !this.blinkAgain && Math.random() < 0.22;
       }
     } else if ((this.blinkIn -= dt) <= 0) this.blinkT = 0;
-    if (this.blinkT >= 0) prm.blink = 1 - Math.abs(this.blinkT / 0.075 - 1);
+    if (this.eyelids >= 0) prm.blink = this.eyelids;
+    else if (this.blinkT >= 0) prm.blink = 1 - Math.abs(this.blinkT / 0.075 - 1);
     // Head turns asked for by the world (looking up at a colour storm).
     if (this.gazeT > 0) this.gazeT -= dt;
     this.gaze += ((this.gazeT > 0 ? this.gazeTo : 0) - this.gaze) * (1 - Math.exp(-5 * dt));
@@ -460,9 +512,16 @@ export class Player {
       this.walkPhase += (Math.abs(b.velocity.x) * dtMs) / 1000 / strideLen * Math.PI * 2;
       prm.phase = this.walkPhase;
       prm.speed = speed;
+      // A footfall each time a foot reaches the front of its swing.
+      const n = Math.floor((this.walkPhase - Math.PI / 2) / Math.PI);
+      if (n !== this.stepN) {
+        this.stepN = n;
+        if (this.state === 'normal') this.footstep();
+      }
     } else if (this.focus.active) anim = 'breath';
     else if (this.interactT > 0) anim = 'interact';
     else if (this.danceT > 0 && this.state === 'normal') anim = 'dance';
+    if (anim === 'sleep') prm.k = this.yawn;
     // Standing still for a while brings idle actions (see animPoses).
     this.idleT = anim === 'idle' && this.state === 'normal' ? this.idleT + dt : 0;
     prm.idleT = this.idleT;
@@ -470,8 +529,17 @@ export class Player {
     this.rig.stiffness = anim === 'takeoff' ? 2.6 : anim === 'land' ? 2 : anim === 'apex' ? 0.85 : 1;
     // Lean into the flight: back while climbing, forward while dropping.
     const run = Math.min(1, Math.abs(b.velocity.x) / Math.max(1, this.tuning.speed));
-    const lean = airborne ? (b.velocity.y < -140 ? -0.05 : b.velocity.y > 150 ? 0.08 : 0.02) * run : 0;
+    let lean = airborne ? (b.velocity.y < -140 ? -0.05 : b.velocity.y > 150 ? 0.08 : 0.02) * run : 0;
+    if (!airborne && this.onGround) {
+      // Setting off, the body pitches into the step; braking, it rocks back.
+      const acc = (Math.abs(b.velocity.x) - this.visVx) / Math.max(0.001, dt);
+      this.accLean += (Math.max(-0.1, Math.min(0.1, acc / 5200)) - this.accLean) * (1 - Math.exp(-12 * dt));
+      lean += this.skidding ? -0.07 : this.accLean;
+    }
+    this.visVx = Math.abs(b.velocity.x);
     this.rig.extraRot += (lean - this.rig.extraRot) * (1 - Math.exp(-10 * dt));
+    // Lying down: the whole body turns about the feet, head toward the back.
+    if (this.lie > 0) this.rig.extraRot = lean - this.lie * Math.PI * 0.5;
     this.rig.update(dtMs);
     if (this.state === 'reach') this.drawRoot();
     else this.rootLine.clear();

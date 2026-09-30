@@ -227,6 +227,7 @@ export class WorldScene extends Phaser.Scene {
       newGame: () => undefined,
       continueGame: () => undefined,
       startChapter: () => undefined,
+      startScene: () => undefined,
       resume: () => this.resume(),
       quitToMenu: () => this.quitToMenu(),
     };
@@ -247,9 +248,16 @@ export class WorldScene extends Phaser.Scene {
       this.steps?.step(x, y);
     });
     this.events.on('player-step', (x: number, y: number) => {
-      if (Math.random() < 0.35) this.dust(x, y, 2);
+      // Every footfall lands: a puff of dust and a small jolt of the view.
+      this.dust(x, y, 3);
+      const heavy = this.player.form === 'human' || this.player.kind !== 'gorti';
+      this.shake(heavy ? 0.0016 : 0.0011, 70);
       this.steps?.step(x, y);
       if (Math.random() < 0.4) app.audio.sfx('sprout', { vol: 0.6 });
+    });
+    this.events.on('player-skid', (x: number, y: number) => {
+      this.dust(x, y, 7);
+      this.shake(0.0014, 90);
     });
 
     this.script = createScript(this.def.id, this);
@@ -617,12 +625,30 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
+  /** Scripted camera zoom (a close-up); `null` returns to the room's zoom. */
+  zoomTo(zoom: number | null, ms: number): Promise<void> {
+    const cam = this.cameras.main;
+    const to = zoom ?? this.baseZoom;
+    return new Promise((res) => {
+      if (ms <= 0 || app.settings.reducedMotion) {
+        cam.setZoom(to);
+        res();
+        return;
+      }
+      this.tweens.add({ targets: cam, zoom: to, duration: ms, ease: 'Sine.easeInOut', onComplete: () => res() });
+    });
+  }
+
   /** Scripted camera focus (cutscenes); `null` returns control to the player. */
   camTo(x: number | null, y = 0): void {
+    const cam = this.cameras.main;
     if (x === null) {
       this.camMode = 'player';
+      cam.setDeadzone(110, 80);
       return;
     }
+    // A scripted shot is framed exactly (no slack around the target).
+    cam.setDeadzone(0, 0);
     this.camMode = 'free';
     this.camTarget.x = x;
     this.camTarget.y = y;

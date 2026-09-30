@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { sceneProgress } from '../data/scenes';
 import { app, persist } from '../App';
 import { enterFullscreen } from '../../ui/fullscreen';
 import { warpLook } from '../fx/crystalFx';
@@ -88,6 +89,7 @@ export class MenuScene extends Phaser.Scene {
         if (app.progress) this.start(app.progress);
       },
       startChapter: (ch) => this.start(chapterStartProgress(ch)),
+      startScene: (sc) => this.start(sceneProgress(sc)),
       resume: () => undefined,
       quitToMenu: () => undefined,
     };
