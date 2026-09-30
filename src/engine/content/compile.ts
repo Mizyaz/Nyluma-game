@@ -11,6 +11,7 @@ export const GATE_H = 260;
 const EXIT_W = 70;
 const TRIGGER_W = 80;
 const TALK_R = 150;
+const PROP_Z_MIN = -28;
 
 /** What a content room does, beside what it is made of. */
 export interface RoomSpec {
@@ -93,8 +94,9 @@ export function compileRoom(r: RoomJson, ch: ChapterJson): CompiledRoom {
       x: p.x,
       y: p.y ?? floor + 2,
       ...(p.scale !== undefined ? { scale: p.scale } : {}),
-      // Room files give the diorama depth; far things also draw first.
-      ...(p.depth !== undefined ? { z: p.depth, ...(p.depth < 0 ? { depth: -50 } : {}) } : {}),
+      // Room files give the diorama depth; far things also draw first. Deeper
+      // than PROP_Z_MIN would become the box's back wall (Stage.boxBack).
+      ...(p.depth !== undefined ? { z: Math.max(PROP_Z_MIN, p.depth), ...(p.depth < 0 ? { depth: -50 } : {}) } : {}),
       ...(p.flip ? { flipX: true } : {}),
       ...(p.when ? { when: p.when } : {}),
       ...(p.unless ? { unless: p.unless } : {}),

@@ -44,6 +44,15 @@
                   "laugh",
                   "none"
                 ]
+              },
+              "out": {
+                "description": "Hangisi parlıyor (Gorti'nin kahkahası değiştirir); koşullarda sky:sun, sky:moon",
+                "type": "string",
+                "enum": [
+                  "sun",
+                  "moon",
+                  "none"
+                ]
               }
             },
             "required": [

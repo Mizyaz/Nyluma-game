@@ -71,7 +71,7 @@ export const PropSchema = z
     x: px,
     y: px.optional().describe('Taban çizgisi (varsayılan: yerde)'),
     scale: z.number().positive().optional(),
-    depth: z.number().optional().describe('Derinlik: eksi = daha arkada (px)'),
+    depth: z.number().min(-28).max(200).optional().describe('Derinlik (px): eksi daha arkada (en fazla -28), artı öne'),
     flip: z.boolean().optional().describe('Yatay çevir'),
     when: cond.optional(),
     unless: cond.optional(),

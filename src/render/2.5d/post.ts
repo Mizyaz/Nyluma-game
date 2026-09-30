@@ -68,7 +68,12 @@ void main() {
 
 /** The comic print (linear in, sRGB out to the canvas). */
 const PRINT_FRAG = /* glsl */ `
+#include <packing>
 uniform sampler2D tDiffuse;
+uniform sampler2D tDepth;
+uniform float uNear;
+uniform float uFar;
+uniform float uInk;
 uniform vec2 uResolution;
 uniform float uStrength;
 uniform float uVignette;
@@ -89,6 +94,27 @@ float noise(vec2 p) {
   vec2 f = fract(p);
   f = f * f * (3.0 - 2.0 * f);
   return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + 1.0), f.x), f.y);
+}
+
+float viewDepth(vec2 uv) {
+  return -perspectiveDepthToViewZ(texture2D(tDepth, uv).x, uNear, uFar);
+}
+
+// Ink: where a cut-out stands in front of something further away, its edge
+// gets a contour, as an inker would draw it (thicker where the gap is deep).
+float ink(vec2 uv, vec2 px, float k) {
+  float z = viewDepth(uv);
+  float e = 0.0;
+  for (int i = 0; i < 8; i++) {
+    float a = float(i) * 0.785398;
+    vec2 o = vec2(cos(a), sin(a)) * px * 1.6 * k;
+    float zn = viewDepth(uv + o);
+    e = max(e, (zn - z) / z);
+    // A second ring makes deep gaps a bolder line.
+    float zf = viewDepth(uv + o * 1.9);
+    e = max(e, (zf - z) / z * 0.55);
+  }
+  return smoothstep(0.012, 0.05, e);
 }
 
 void main() {
@@ -115,6 +141,8 @@ void main() {
   float g = hash(floor(gp));
   float fibre = noise(uv * uResolution / (38.0 * k)) * 0.6 + noise(uv * uResolution / (11.0 * k)) * 0.4;
   col *= mix(vec3(1.0), vec3(1.0, 0.985, 0.95) * (0.965 + 0.05 * g) * (0.985 + 0.03 * fibre), uStrength);
+  // The inked contours, over the print.
+  col = mix(col, vec3(0.137, 0.102, 0.169), ink(uv, px, k) * uInk);
   // A gentle vignette.
   vec2 d = (uv - 0.5) * vec2(uResolution.x / uResolution.y, 1.0);
   float v = smoothstep(1.05, 0.38, length(d));
@@ -162,6 +190,10 @@ export class Post {
       uResolution: { value: new THREE.Vector2(1280, 720) },
       uStrength: { value: 1 },
       uVignette: { value: 0.07 },
+      tDepth: { value: null },
+      uNear: { value: 1 },
+      uFar: { value: 100 },
+      uInk: { value: 0.85 },
     };
     this.printQuad = new FullScreenQuad(new THREE.ShaderMaterial({ uniforms: this.printU, vertexShader: QUAD_VERT, fragmentShader: PRINT_FRAG, depthTest: false, depthWrite: false }));
   }
@@ -240,6 +272,9 @@ export class Post {
       src = this.blurred.texture;
     }
     this.printU.tDiffuse!.value = src;
+    this.printU.tDepth!.value = this.scene.depthTexture;
+    this.printU.uNear!.value = camera.near;
+    this.printU.uFar!.value = camera.far;
     renderer.setRenderTarget(null);
     this.printQuad.render(renderer);
   }

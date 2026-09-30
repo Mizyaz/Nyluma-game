@@ -7,7 +7,7 @@ import { themeDef } from '../../render/2d/painters/backgrounds';
 import { chapterOfRoom, roomDef, skyOf } from '../../content/data/rooms';
 import { NAMES } from '../../content/data/dialogue.tr';
 import { burstMode, ColorBursts } from '../../render/2d/fx/colorBurst';
-import { CrystalWarp, StepCrystals, warpLook } from '../../render/2d/fx/crystalFx';
+import { StepCrystals, warpLook } from '../../render/2d/fx/crystalFx';
 import type { WarpData } from './WarpScene';
 import { memoryDef } from '../../content/data/memories';
 import type { RoomDef } from '../../content/data/roomTypes';
@@ -72,7 +72,6 @@ export class WorldScene extends Phaser.Scene {
   transitioning = false;
   private hintGlyph!: Phaser.GameObjects.Image;
   private particles!: Phaser.GameObjects.Particles.ParticleEmitter;
-  private warpBg: CrystalWarp | null = null;
   /** Colour bursts: the Rezonans moves and the bombardment that comes now and then. */
   bursts!: ColorBursts;
   private steps: StepCrystals | null = null;
@@ -205,11 +204,10 @@ export class WorldScene extends Phaser.Scene {
     );
     this.cleanups.push(() => this.bursts.destroy());
     this.buildAmbient();
-    // 2.5D depth: crystal tube behind the room, crystals under each step,
-    // a contact shadow that stays on the surface while Gorti is airborne.
+    // Crystals under each step, and a contact shadow that stays on the
+    // surface while Gorti is airborne. (The crystal tube that once floated
+    // behind every room cluttered the panel; the warp between rooms keeps it.)
     const look = warpLook(this.def.theme);
-    // Above the parallax layers, behind everything Gorti touches.
-    this.warpBg = new CrystalWarp(this, app.settings.reducedMotion ? { ...look, speed: look.speed * 0.3, alpha: look.alpha * 0.6 } : look, DEPTH.sky + 60);
     this.steps = new StepCrystals(this, look.colors);
     if (hasFrame('fx.shadow')) {
       const sh = frameRef('fx.shadow');
@@ -218,9 +216,7 @@ export class WorldScene extends Phaser.Scene {
       stage.lift(this.contact, { as: 'decal' });
     }
     this.cleanups.push(() => {
-      this.warpBg?.destroy();
       this.steps?.destroy();
-      this.warpBg = null;
       this.steps = null;
       this.contact = null;
     });
@@ -704,7 +700,6 @@ export class WorldScene extends Phaser.Scene {
     this.updateCamera(dt);
     this.pushIn(dt);
     this.room.stream(this.cameras.main.scrollX);
-    this.warpBg?.update(dt);
     this.bursts.update(dt);
     this.gallery?.update(dt);
     this.moves.update(dt);

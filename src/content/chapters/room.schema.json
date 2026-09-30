@@ -152,6 +152,15 @@
             "laugh",
             "none"
           ]
+        },
+        "out": {
+          "description": "Hangisi parlıyor (Gorti'nin kahkahası değiştirir); koşullarda sky:sun, sky:moon",
+          "type": "string",
+          "enum": [
+            "sun",
+            "moon",
+            "none"
+          ]
         }
       },
       "additionalProperties": false
@@ -186,8 +195,10 @@
             "exclusiveMinimum": 0
           },
           "depth": {
-            "description": "Derinlik: eksi = daha arkada (px)",
-            "type": "number"
+            "description": "Derinlik (px): eksi daha arkada (en fazla -28), artı öne",
+            "type": "number",
+            "minimum": -28,
+            "maximum": 200
           },
           "flip": {
             "description": "Yatay çevir",
@@ -412,6 +423,54 @@
         "additionalProperties": false
       }
     },
+    "breakables": {
+      "description": "Yıkılabilenler: E ile kırılır, kırılınca yol açılır (bayrak <oda>.<id>.broken)",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-zA-Z0-9_]*$"
+          },
+          "x": {
+            "type": "number",
+            "description": "Dünya pikseli"
+          },
+          "key": {
+            "description": "Çizimi (varsayılan \"prop.blocks\"; ör. prop.crystals.blue, prop.rootdoor, prop.log)",
+            "type": "string"
+          },
+          "scale": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "w": {
+            "description": "Yolu kesen gövdenin genişliği (varsayılan 110)",
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "h": {
+            "description": "Yüksekliği (varsayılan 150)",
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "needs": {
+            "description": "Kim kırabilir, ör. \"form:human\" (varsayılan herkes)",
+            "type": "string"
+          },
+          "color": {
+            "description": "Kırılınca uçuşan parçaların rengi, ör. \"#e8c89a\"",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "x"
+        ],
+        "additionalProperties": false
+      }
+    },
     "exits": {
       "description": "Çıkışlar",
       "type": "array",
@@ -599,6 +658,15 @@
                   "enum": [
                     "calm",
                     "laugh",
+                    "none"
+                  ]
+                },
+                "out": {
+                  "description": "Hangisi parlıyor (Gorti'nin kahkahası değiştirir); koşullarda sky:sun, sky:moon",
+                  "type": "string",
+                  "enum": [
+                    "sun",
+                    "moon",
                     "none"
                   ]
                 }

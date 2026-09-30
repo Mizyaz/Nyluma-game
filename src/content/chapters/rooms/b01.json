@@ -23,7 +23,7 @@
     {
       "key": "prop.tree",
       "x": 620,
-      "depth": -60
+      "depth": -25
     },
     {
       "key": "prop.bush",
@@ -32,7 +32,7 @@
     {
       "key": "prop.tree",
       "x": 2050,
-      "depth": -80,
+      "depth": -25,
       "flip": true
     }
   ],
