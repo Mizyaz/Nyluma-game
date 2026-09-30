@@ -3,7 +3,7 @@
 The shipped game (`dist/`) bundles the following third-party software. All
 artwork, animation, sound effects and the generated piano music are original
 to this project and generated from code (SVG illustrations authored in
-`src/game/art/`, Web Audio synthesis in `src/game/systems/AudioSystem.ts` and
+`src/render/2d/`, Web Audio synthesis in `src/engine/systems/AudioSystem.ts` and
 `src/music/`); no third-party images, fonts or audio files are included. Text
 uses the player's system fonts.
 
