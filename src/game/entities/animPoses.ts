@@ -44,6 +44,8 @@ export interface PoseParams {
   look?: number;
   /** Seconds spent standing still (idle actions). */
   idleT?: number;
+  /** 0 upright … 1 lying on the back (the rig is turned by the player). */
+  lie?: number;
 }
 
 export type Emote = 'surprise' | 'pain' | 'joy' | 'anger' | 'talk' | 'listen' | 'relief' | 'worry' | 'effort' | 'shout';
@@ -171,6 +173,11 @@ function browsFor(anim: string, t: number, prm: PoseParams, st: HumanoidStyle): 
     case 'look':
       b = { raise: -3.5, knit: -0.12, asym: -3 };
       break;
+    case 'getup': {
+      const u = prm.k ?? 0;
+      b = u > 0.7 ? EMOTES.effort(t) : { raise: -2, knit: -0.15, asym: -1 };
+      break;
+    }
     case 'sleep': {
       // Peaceful; a yawn lifts the brows.
       const y = prm.k ?? 0;
@@ -948,6 +955,36 @@ export function humanoidPose(rigId: string, anim: string, t: number, prm: PosePa
       a.foreR = -2.25;
       a.armL = 0.16;
       a.foreL = -0.3;
+      break;
+    }
+    case 'getup': {
+      // Getting out of bed, in three beats of `k` (the player turns the rig
+      // about the hips with `lie`): sit up with the legs kept flat on the
+      // mattress, swing the lower legs over the edge, then stand.
+      const u = prm.k ?? 0;
+      const lie = prm.lie ?? 0;
+      const sit = smooth01(0, 0.45, u);
+      const drop = smooth01(0.45, 0.7, u);
+      const stand = smooth01(0.7, 1, u);
+      const flat = -(1 - lie) * Math.PI * 0.5;
+      const thigh = (flat + (-1.45 - flat) * drop) * (1 - stand);
+      const shin = (0.05 + 1.5 * drop) * (1 - stand) + 0.06 * stand;
+      a.legR = thigh;
+      a.legL = thigh + 0.08 * (1 - stand);
+      a.shinR = shin;
+      a.shinL = shin + 0.05 * drop * (1 - stand);
+      a.footR = -0.3 * (1 - stand) - (a.legR + a.shinR) * stand;
+      a.footL = -0.25 * (1 - stand) - (a.legL + a.shinL) * stand;
+      // Leaning forward to rise, then upright.
+      const push = Math.sin(Math.PI * stand);
+      a.torso = -0.05 + 0.2 * sit + 0.35 * push - 0.15 * stand;
+      a.head = -0.1 + 0.08 * sit - 0.12 * push;
+      // Hands behind on the mattress while sitting up, on the knees at the
+      // edge, swinging forward to stand.
+      a.armR = 0.45 * (1 - drop) * (1 - stand) - 0.5 * drop * (1 - stand) - 0.55 * push;
+      a.foreR = -0.2 - 0.9 * drop * (1 - stand) - 0.3 * push;
+      a.armL = 0.35 * (1 - drop) * (1 - stand) - 0.4 * drop * (1 - stand) - 0.45 * push;
+      a.foreL = -0.2 - 0.8 * drop * (1 - stand) - 0.3 * push;
       break;
     }
     case 'kneel':

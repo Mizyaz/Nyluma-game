@@ -4,12 +4,13 @@ import { DEPTH } from '../../constants';
 import { CAPTIONS, DIALOGUE } from '../../data/dialogue.tr';
 import type { CinemaScene } from '../../scenes/CinemaScene';
 import type { WorldScene } from '../../scenes/WorldScene';
+import { GemPortal } from '../../fx/gemPortal';
 import type { RoomScript } from './types';
 
 /** The bed's mattress (see the room data) and where Gorti steps down. */
 const BED = { left: 322, right: 538, top: 590 };
 const FLOOR_Y = 660;
-const STEP_DOWN_X = 580;
+const STEP_DOWN_X = 564;
 /** He wakes by himself after this long if nobody wakes him. */
 const WAKE_AFTER_MS = 14000;
 
@@ -23,6 +24,7 @@ export function r01(w: WorldScene): RoomScript {
   let waking = false;
   let sleptMs = 0;
   let zzz: Phaser.Time.TimerEvent | null = null;
+  let portal: GemPortal | null = null;
 
   const inspect = (id: string): void => {
     w.player.lock(true, 'interact');
@@ -65,10 +67,10 @@ export function r01(w: WorldScene): RoomScript {
     const p = w.player;
     sleeping = true;
     // His body waits on the floor beside the bed; what we see lies on it,
-    // head on the pillow at the far end.
+    // head on the pillow at the far end, turned about the hips.
     p.teleport(STEP_DOWN_X, FLOOR_Y, 1);
-    const tall = Math.max(60, FLOOR_Y - p.eyePos().y + 16);
-    p.lieAt = { x: Math.min(BED.right - 6, BED.left + 20 + tall), y: BED.top - 13 };
+    const headToHip = Math.max(40, FLOOR_Y - p.eyePos().y - p.hipHeight + 16);
+    p.lieHip = { x: Math.min(BED.right - p.hipHeight - 6, BED.left + 16 + headToHip), y: BED.top - 12 };
     p.lie = 1;
     p.eyelids = 1;
     p.lock(true, 'sleep');
@@ -120,45 +122,68 @@ export function r01(w: WorldScene): RoomScript {
         await cs.wait(900);
         p.lookFor(0.25, 600);
         await cs.wait(700);
-        // A big yawn.
+        // A long breath out (the head sinks back into the pillow).
         await cs.tween({ targets: p, yawn: 1, duration: 650, ease: 'Sine.easeOut' });
-        await cs.wait(450);
+        await cs.wait(350);
         await cs.tween({ targets: p, yawn: 0, duration: 380, ease: 'Sine.easeIn' });
-        p.emote('joy', 900);
-        await cs.wait(300);
-        // The camera pulls back as he springs out of bed.
+        await cs.wait(200);
+        // The camera pulls back; he gets up the way anyone does.
         void w.zoomTo(null, 900);
-        w.camTo(null);
+        w.camTo(430, 560);
         p.eyelids = -1;
-        // A spring up, arms flung, then the drop to the floor.
-        p.lock(true, 'rise');
-        const hop = { u: 0 };
+        p.getupK = 0;
+        p.lock(true, 'getup');
+        const hip = p.lieHip!;
+        // Sits up: the body turns about the hips, the legs stay on the bed.
+        const k = { lie: 1, g: 0 };
         await cs.tween({
-          targets: hop,
-          u: 1,
-          duration: 560,
+          targets: k,
+          lie: 0,
+          g: 0.45,
+          duration: 900,
           ease: 'Sine.easeInOut',
           onUpdate: () => {
-            p.lie = 1 - hop.u;
-            p.lieLift = 58 * Math.sin(Math.PI * hop.u);
-            if (hop.u > 0.55) p.forceAnim = 'fall';
+            p.lie = k.lie;
+            p.getupK = k.g;
           },
+        });
+        p.lookFor(0.2, 500);
+        await cs.wait(350);
+        // Shuffles to the edge and lets the legs down.
+        await cs.tween({
+          targets: [hip, k],
+          x: BED.right - 8,
+          g: 0.7,
+          duration: 620,
+          ease: 'Sine.easeInOut',
+          onUpdate: () => (p.getupK = k.g),
+        });
+        await cs.wait(200);
+        // Stands up: the hips come off the bed and down to standing height.
+        await cs.tween({
+          targets: [hip, k],
+          x: BED.right + 26,
+          y: FLOOR_Y - p.hipHeight,
+          g: 1,
+          duration: 560,
+          ease: 'Sine.easeInOut',
+          onUpdate: () => (p.getupK = k.g),
         });
       },
       () => {
         // Also when skipped: he is up, and the room is his.
         endSleep();
+        p.teleport(BED.right + 26, FLOOR_Y, 1);
         p.lie = 0;
-        p.lieAt = null;
-        p.lieLift = 0;
+        p.lieHip = null;
+        p.getupK = 0;
         p.eyelids = -1;
         p.yawn = 0;
         p.lock(false);
         w.camTo(null);
         void w.zoomTo(null, 0);
         cinema()?.close();
-        p.thump(0.45);
-        w.comic.pop(p.x + 20, p.feetY - 120, 'HOP!', 'wake', true);
+        p.thump(0.2);
         p.startIdle('stretch');
         w.quest.set('r01.awake');
         w.time.delayedCall(900, () => app.ui.hud.caption(CAPTIONS.intro3, 4200));
@@ -169,7 +194,12 @@ export function r01(w: WorldScene): RoomScript {
 
   return {
     setup() {
+      // At the end of the root tunnel, the way on: a living mouth of the gem tunnel.
+      portal = new GemPortal(w, 2162, 660, 104, 214, -35);
       if (w.quest.set('r01.intro')) goToSleep();
+    },
+    onUpdate(dtMs) {
+      portal?.update(dtMs);
     },
     onFixed(dt) {
       if (sleeping && !waking) {
@@ -191,6 +221,8 @@ export function r01(w: WorldScene): RoomScript {
     },
     destroy() {
       endSleep();
+      portal?.destroy();
+      portal = null;
     },
   };
 }

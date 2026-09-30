@@ -691,7 +691,61 @@ interface RootSpec {
   w1: number;
 }
 
+/**
+ * The roots of the 14th Room's door, parted like curtains and tied back
+ * with crystal clasps: a braided lintel with rootlets hanging from it, two
+ * gathered bundles to the sides and nothing in the middle (the way on).
+ */
+function rootCurtain(): PartArt {
+  return mk('prop.rootdoor.open', 220, 280, 'bc', (rng) => {
+    const LEAF: Mat = { fill: '#9cc47a', shade: '#86b06a', light: '#b4d894' };
+    const CLASP: Mat = { fill: '#a6e0c6', shade: '#8fcfb4', light: '#d6f4e6' };
+    const rootAlong = (pts: Pt[], w0: number, w1: number, vein = false): string =>
+      sh(taper(pts, w0, w1), BARK, { stroke: 2.4, over: vein ? line(open(pts), P.vein, 1.1, 0.55) : '' });
+    let s = '';
+    // The curtains: bundles hanging from the lintel, gathered by the clasps
+    // at mid-height and fanning out to the floor.
+    for (const side of [-1, 1] as const) {
+      const cx = 110 + side * 82;
+      for (let k = 0; k < 4; k++) {
+        const top: Pt = [110 + side * (30 + k * 13), 44];
+        const mid: Pt = [cx + side * (k - 1.5) * 3, 150];
+        const low: Pt = [cx + side * (-14 + k * 11), 206];
+        const foot: Pt = [cx + side * (-26 + k * 17) + rng.range(-3, 3), 280];
+        const bulge: Pt = [lerp(top[0], mid[0], 0.5) - side * (10 - k * 2), 96];
+        s += rootAlong([top, bulge, mid, low, foot], 13 - k, 10 - k * 0.5, k === 1);
+      }
+      // A clasp of crystal holds each bundle.
+      const [clx, cly] = [cx + side * 1, 150];
+      s += glow(clx, cly, 20, '#d6f4e6', 0.45);
+      s += sh(ellipsePath(clx, cly, 15, 9), CLASP, { stroke: 2, inner: line(ellipsePath(clx, cly, 10, 5), '#72b99b', 1, 0.8) });
+      s += sh(`M${clx - 5} ${cly - 9}L${clx} ${cly - 20}L${clx + 5} ${cly - 9}Z`, CLASP, { stroke: 1.6 });
+      // Little leaves sprouting from the bundle.
+      for (const [lx, ly, a] of [[cx - side * 14, 104, -0.6], [cx + side * 12, 226, 0.5]] as const) {
+        const tip = polar(lx, ly, 13, side > 0 ? -Math.PI + a : a);
+        s += sh(`M${lx} ${ly}Q${(lx + tip[0]) / 2} ${ly - 7} ${tip[0]} ${tip[1]}Q${(lx + tip[0]) / 2} ${ly + 5} ${lx} ${ly}Z`, LEAF, { stroke: 1.4 });
+      }
+    }
+    // The lintel: three roots braided across the top.
+    for (let k = 0; k < 3; k++) {
+      const pts: Pt[] = Array.from({ length: 7 }, (_, i) => [-6 + i * 38.6, 22 + k * 9 + Math.sin(i * 1.25 + k * 2.1) * 7] as Pt);
+      s += rootAlong(pts, 14 - k * 2, 12 - k * 2, k === 1);
+    }
+    // Rootlets hanging into the opening, a few with a leaf at the tip.
+    for (const [x, len, leaf] of [[64, 26, false], [80, 40, true], [96, 22, false], [112, 34, false], [128, 46, true], [144, 24, false], [158, 30, false]] as const) {
+      const pts: Pt[] = [[x, 42], [x + rng.range(-4, 4), 42 + len * 0.55], [x + rng.range(-6, 6), 42 + len]];
+      s += sh(taper(pts, 5, 1.4), BARK, { stroke: 1.6 });
+      if (leaf) {
+        const [tx, ty] = pts[2]!;
+        s += sh(`M${tx} ${ty}Q${tx - 6} ${ty + 6} ${tx} ${ty + 12}Q${tx + 6} ${ty + 6} ${tx} ${ty}Z`, LEAF, { stroke: 1.2 });
+      }
+    }
+    return s;
+  });
+}
+
 function rootDoor(opened: boolean): PartArt {
+  if (opened) return rootCurtain();
   return mk(opened ? 'prop.rootdoor.open' : 'prop.rootdoor', 120, 250, 'bc', (rng) => {
     const DARK: Mat = { fill: P.barkDark, shade: '#3a2e40', light: P.bark };
     let s = fillPath('M3 252V26Q60 -10 117 26V252Z', '#17131f');

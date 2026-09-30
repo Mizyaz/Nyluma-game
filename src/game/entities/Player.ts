@@ -430,14 +430,23 @@ export class Player {
 
   /** 0 standing … 1 lying on his back (asleep in bed); scripts tween it. */
   lie = 0;
-  /** Where the feet rest while lying (the body stays on the floor). */
-  lieAt: { x: number; y: number } | null = null;
-  /** Extra lift above the path from bed to floor (a hop out of bed). */
-  lieLift = 0;
+  /**
+   * Where the hips are while he lies in bed or gets out of it (the body
+   * itself waits on the floor). The figure turns about this point.
+   */
+  lieHip: { x: number; y: number } | null = null;
+
+  /** Height of the hips above the feet, for this body. */
+  get hipHeight(): number {
+    const hips = this.rig.rig.joints.find((j) => j.id === 'hips');
+    return hips ? Math.abs(hips.y) : 40;
+  }
   /** Scripted eyelids: 0 open … 1 shut; below 0 he blinks by himself. */
   eyelids = -1;
   /** A yawn, 0 … 1 (with the 'sleep' pose). */
   yawn = 0;
+  /** Progress of getting out of bed, 0 … 1 (with the 'getup' pose). */
+  getupK = 0;
 
   /** Where the eyes are in the world (to frame a close-up). */
   eyePos(): { x: number; y: number } {
@@ -472,9 +481,13 @@ export class Player {
     const b = this.body;
     const feet = this.feetY;
     const dt = Math.min(dtMs, 50) / 1000;
-    const at = this.lieAt;
-    if (at && this.lie > 0) this.rig.setPosition(this.x + (at.x - this.x) * this.lie, feet + (at.y - feet) * this.lie - this.lieLift);
-    else this.rig.setPosition(this.x, feet - this.lieLift);
+    const hip = this.lieHip;
+    if (hip) {
+      // Turned about the hips: the figure's origin (its feet line) swings round them.
+      const th = -this.lie * Math.PI * 0.5 * this.facing;
+      const h = this.hipHeight;
+      this.rig.setPosition(hip.x - h * Math.sin(th), hip.y + h * Math.cos(th));
+    } else this.rig.setPosition(this.x, feet);
     const airborne = !this.onGround && this.state === 'normal';
     // Squash and stretch: a springy body that stretches with fall speed and
     // wobbles back after take-off and landing. Scaled at the feet.
@@ -545,6 +558,10 @@ export class Player {
     else if (this.interactT > 0) anim = 'interact';
     else if (this.danceT > 0 && this.state === 'normal') anim = 'dance';
     if (anim === 'sleep') prm.k = this.yawn;
+    if (anim === 'getup') {
+      prm.k = this.getupK;
+      prm.lie = this.lie;
+    }
     // Standing still for a while brings idle actions (see animPoses).
     this.idleT = anim === 'idle' && this.state === 'normal' ? this.idleT + dt : 0;
     prm.idleT = this.idleT;
@@ -562,7 +579,7 @@ export class Player {
     this.visVx = Math.abs(b.velocity.x);
     this.rig.extraRot += (lean - this.rig.extraRot) * (1 - Math.exp(-10 * dt));
     // Lying down: the whole body turns about the feet, head toward the back.
-    if (this.lie > 0) this.rig.extraRot = lean - this.lie * Math.PI * 0.5;
+    if (this.lie > 0 || this.lieHip) this.rig.extraRot = lean - this.lie * Math.PI * 0.5;
     this.rig.update(dtMs);
     if (this.state === 'reach') this.drawRoot();
     else this.rootLine.clear();
