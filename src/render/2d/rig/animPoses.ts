@@ -1,6 +1,7 @@
 import type { Angles } from './fk';
 import { HA, haPulse, kahkahaPose, laughEnv, laughPose, smashPhase, smashPose, SMASH } from './actionPoses';
-import { clamp01, profileOf, rigProfile, type RigProfile } from './poseKit';
+import { GAITS, gaitPose, standPose } from './gaitPoses';
+import { clamp01, cycleOf, profileOf, rigProfile, type RigProfile } from './poseKit';
 
 export { registerRig, rigProfile, type RigProfile } from './poseKit';
 
@@ -238,7 +239,6 @@ function applyBrows(p: PoseOut, b: BrowSet, st: HumanoidStyle): void {
 }
 
 const S = Math.sin;
-const C = Math.cos;
 const easeOut = (x: number): number => 1 - (1 - x) * (1 - x);
 const smooth01 = (e0: number, e1: number, x: number): number => {
   const u = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
@@ -654,6 +654,11 @@ export function humanoidPose(rigId: string, anim: string, t: number, prm: PosePa
       a.armL = (a.armL ?? 0) + 0.04 * b;
       if (st === 'root') a.head = (a.head ?? 0) + 0.02 * S(t * 0.7);
       if (st === 'suit') p.offsets.torso = { x: 0, y: -0.3 * b };
+      // Feet planted, the weight shifting slowly from leg to leg; the
+      // upper body leans a little against it.
+      const shift = standPose(p, profileOf(rigId), t, p.offsets.hips?.y ?? 0, st === 'mech' ? 0.25 : st === 'suit' ? 1.3 : 1);
+      a.torso = (a.torso ?? 0) - 0.014 * shift;
+      a.head = (a.head ?? 0) + 0.01 * shift;
       const act = idleAction(prm.idleT ?? 0, st);
       if (act) applyIdle(p, act, t, st);
       break;
@@ -682,44 +687,35 @@ export function humanoidPose(rigId: string, anim: string, t: number, prm: PosePa
     case 'run':
     case 'push': {
       const ph = prm.phase ?? t * 8;
-      const sp = Math.min(1, Math.max(0.25, prm.speed ?? 1));
-      const stride = k.stride * (0.55 + 0.45 * sp);
-      const legR = -stride * S(ph);
-      const legL = stride * S(ph);
-      const kneeR = k.kneeBase + k.knee * Math.pow(Math.max(0, C(ph)), 1.4) * sp;
-      const kneeL = k.kneeBase + k.knee * Math.pow(Math.max(0, -C(ph)), 1.4) * sp;
-      a.legR = legR - k.kneeBase * 0.5;
-      a.legL = legL - k.kneeBase * 0.5;
-      a.shinR = kneeR;
-      a.shinL = kneeL;
-      a.footR = -(a.legR + a.shinR) * 0.85 + (S(ph) < 0 ? -0.25 * -S(ph) : 0);
-      a.footL = -(a.legL + a.shinL) * 0.85 + (S(ph) > 0 ? -0.25 * S(ph) : 0);
-      const bob = k.bob * (0.5 + 0.5 * sp);
-      p.offsets.hips = { x: 0, y: k.kneeBase * 10 + bob * (0.5 - 0.5 * C(2 * ph)) };
-      a.torso = k.torsoBase + k.lean * sp;
-      a.head = k.headBase - a.torso * 0.5 + 0.03 * S(2 * ph);
-      if (st !== 'coward') {
-        const lag = 0.35;
-        a.armR = k.arm * sp * S(ph - lag) + 0.05;
-        a.armL = -k.arm * sp * S(ph - lag) + 0.1;
-        a.foreR = -0.25 - 0.2 * sp * Math.max(0, -S(ph - lag));
-        a.foreL = -0.25 - 0.2 * sp * Math.max(0, S(ph - lag));
-      }
-      if (st === 'human') {
-        // Settling shoulders/belly after each step.
-        p.offsets.torso = { x: 0, y: 1.1 * Math.max(0, S(2 * ph + 0.6)) };
-      }
-      if (st === 'mech') {
-        a.armR = 0.18 * S(Math.round(ph * 2) / 2);
-        a.armL = -0.18 * S(Math.round(ph * 2) / 2);
-      }
-      if (st === 'suit') {
-        a.foreR = -0.08 + 0.035 * S(t * 31);
-        a.foreL = -0.06 + 0.035 * S(t * 27 + 1);
-      }
+      const sp = anim === 'run' ? 1 : clamp01(prm.speed ?? 1);
+      const prof = profileOf(rigId);
+      const drop = p.offsets.hips?.y ?? 0;
       if (anim === 'push') {
+        // Leaning into the load, arms braced against it, digging in.
         a.torso = 0.5;
         a.head = -0.25;
+      }
+      const g = gaitPose(p, prof, GAITS[st], cycleOf(rigId, prof), ph, anim === 'push' ? Math.min(sp, 0.3) : sp, drop, st !== 'coward' && anim !== 'push');
+      if (st === 'human') {
+        // The belly and shoulders settle a beat after each step.
+        p.offsets.torso = { x: 0, y: 1.3 * g.settle * (0.4 + 0.6 * sp) };
+      }
+      if (st === 'mech') {
+        // Servo arms: they tick between positions.
+        const q = Math.round(Math.cos(ph) * 3) / 3;
+        a.armR = 0.2 * q;
+        a.armL = -0.2 * q;
+      }
+      if (st === 'suit') {
+        a.foreR = (a.foreR ?? 0) + 0.02 * S(t * 31);
+        a.foreL = (a.foreL ?? 0) + 0.02 * S(t * 27 + 1);
+      }
+      if (st === 'coward') {
+        // The torch bobs with the steps.
+        a.armR = (a.armR ?? 0) + 0.05 * g.low;
+        a.armL = (a.armL ?? 0) + 0.05 * g.low;
+      }
+      if (anim === 'push') {
         a.armR = -1.35;
         a.foreR = -0.25;
         a.armL = -1.25;

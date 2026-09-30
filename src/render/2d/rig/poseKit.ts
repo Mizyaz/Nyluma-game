@@ -49,6 +49,8 @@ export interface RigProfile {
   ball?: number;
   /** How the eyes blink: lids close ('shut') or the eye squashes to a line. */
   blink?: 'shut' | 'squash';
+  /** Distance travelled per walk cycle (two steps), if not the usual (see cycleOf). */
+  cycle?: number;
 }
 
 const PROFILES = new Map<string, RigProfile>();
@@ -70,6 +72,19 @@ export function rigProfile(id: string): RigProfile | undefined {
 /** The profile a pose works with: the rig's own, or a stand-in build. */
 export function profileOf(id: string): RigProfile {
   return PROFILES.get(id) ?? FALLBACK;
+}
+
+/**
+ * Distance a body travels per walk cycle (two steps). It must be the
+ * length Player advances the walk phase by (2π per strideLen px): a root
+ * body 124 px scaled by its legs (46 px legs are 1), the suited Gorti 70,
+ * the others 92. Then a planted foot moves back exactly with the ground.
+ */
+export function cycleOf(id: string, prof: RigProfile): number {
+  if (prof.cycle) return prof.cycle;
+  if (id.startsWith('gorti.root')) return 124 * Math.max(0.75, Math.min(1.4, (prof.thigh + prof.shin) / 46));
+  if (id.includes('suit')) return 70;
+  return 92;
 }
 
 /** Where the belly's front is (torso frame). */

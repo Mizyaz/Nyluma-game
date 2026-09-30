@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { humanoidPose, idleAction } from '../../src/render/2d/rig/animPoses';
 import { SMASH } from '../../src/render/2d/rig/actionPoses';
 import { orderJoints, solve } from '../../src/render/2d/rig/fk';
-import { profileOf } from '../../src/render/2d/rig/poseKit';
+import { cycleOf, profileOf } from '../../src/render/2d/rig/poseKit';
 import type { RigDef } from '../../src/render/2d/rig/rigTypes';
 import { allParts, allRigs } from '../../src/content/art/manifest';
-import { RIG_COWARD } from '../../src/content/characters/forms';
+import { RIG_COWARD, RIG_MECH } from '../../src/content/characters/forms';
 import {
   humanRigFor,
   RIG_GORTI_CHILD,
@@ -50,6 +50,68 @@ describe('jump animation', () => {
     const done = humanoidPose('gorti.human', 'land', 0, { k: 1, impact: 1 });
     expect(hipsY(hard)).toBeGreaterThan(hipsY(soft));
     expect(hipsY(done)).toBeLessThan(hipsY(soft));
+  });
+});
+
+describe('walking and running', () => {
+  const rigs: RigDef[] = [RIG_GORTI_CHILD, RIG_GORTI_YOUTH, RIG_GORTI_WARRIOR, RIG_GORTI_HUMAN, RIG_GORTI_HUMAN_BALD, RIG_GORTI_SUIT, RIG_COWARD, RIG_MECH];
+  /** The heel and ball of a foot's sole (root frame). */
+  const sole = (rig: RigDef, s: ReturnType<typeof solve>, side: 'R' | 'L') => {
+    const prof = profileOf(rig.id);
+    const f = s.get(`foot${side}`)!;
+    const at = (u: number): [number, number] => [f.x + u * Math.cos(f.rot) - prof.sole! * Math.sin(f.rot), f.y + u * Math.sin(f.rot) + prof.sole! * Math.cos(f.rot)];
+    return { heel: at(prof.heel!), ball: at(prof.ball!) };
+  };
+
+  it('keeps a planted foot still on the ground: no sliding, no sinking', () => {
+    for (const rig of rigs) {
+      const cycle = cycleOf(rig.id, profileOf(rig.id));
+      for (const speed of [0.4, 0.75, 1]) {
+        // Where each touching point of each foot first touched the ground.
+        const pinned = new Map<string, number>();
+        let worst = 0;
+        let deepest = 0;
+        const N = 360;
+        for (let i = 0; i <= N; i++) {
+          const phase = (i / N) * Math.PI * 4;
+          const travel = (phase / (Math.PI * 2)) * cycle;
+          const p = humanoidPose(rig.id, 'walk', 0, { phase, speed });
+          const s = solve(orderJoints(rig), p.angles, p.offsets);
+          for (const side of ['R', 'L'] as const) {
+            const pts = sole(rig, s, side);
+            for (const k of ['heel', 'ball'] as const) {
+              const [x, y] = pts[k];
+              deepest = Math.max(deepest, y);
+              const key = side + k;
+              if (y > -0.35) {
+                const wx = x + travel;
+                if (!pinned.has(key)) pinned.set(key, wx);
+                worst = Math.max(worst, Math.abs(wx - pinned.get(key)!));
+              } else pinned.delete(key);
+            }
+          }
+        }
+        expect(worst, `${rig.id} at ${speed}: slide`).toBeLessThan(0.3);
+        expect(deepest, `${rig.id} at ${speed}: below the ground`).toBeLessThan(0.35);
+      }
+    }
+  });
+
+  it('strikes with the heel as the footfall sounds, pushes off the ball, bends the knees', () => {
+    for (const rig of rigs) {
+      // Player sounds a footfall as the phase passes π/2 (right) and 3π/2 (left).
+      const strike = humanoidPose(rig.id, 'walk', 0, { phase: Math.PI / 2 + 0.02, speed: 1 });
+      const s = solve(orderJoints(rig), strike.angles, strike.offsets);
+      const r = sole(rig, s, 'R');
+      expect(r.heel[1], `${rig.id} heel down`).toBeGreaterThan(-0.4);
+      expect(r.heel[0], `${rig.id} ahead`).toBeGreaterThan(s.get('legR')!.x);
+      // Down: the knee of the planted leg bends to take the weight.
+      const down = humanoidPose(rig.id, 'walk', 0, { phase: Math.PI / 2 + 0.6, speed: 1 });
+      expect(down.angles.shinR!, rig.id).toBeGreaterThan(0.12);
+      // Passing: the swinging knee is well bent.
+      const pass = humanoidPose(rig.id, 'walk', 0, { phase: Math.PI * 1.1, speed: 1 });
+      expect(pass.angles.shinL!, rig.id).toBeGreaterThan(0.6);
+    }
   });
 });
 
