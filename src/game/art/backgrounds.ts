@@ -1,6 +1,7 @@
 import { P, mix } from './palette';
+import { P1, paintBoxForeground, painting1Layers } from './painting1';
 import { Rng } from './svg';
-import { INK, PASTEL } from './style';
+import { INK, PASTEL, lineFor } from './style';
 import { applyGrain } from './TextureFactory';
 import type { TerrainPalette } from './terrain';
 import type { ThemeId } from '../data/roomTypes';
@@ -23,6 +24,10 @@ export interface LayerSpec {
   /** Raster resolution (0.5 for far, soft layers). */
   res: number;
   draw: (ctx: CanvasRenderingContext2D, info: LayerInfo, rng: Rng) => void;
+  /** Where the canvas lies in the layer's own coordinates (default: the room's parallax extent). */
+  area?: { x: number; y: number; w: number; h: number };
+  /** Draw depth (default: the sky band, behind the background tunnel). */
+  depth?: number;
 }
 
 export type Ambient = 'dust' | 'sparkle' | 'wind' | 'petals' | 'embers' | 'drips' | 'none';
@@ -447,8 +452,6 @@ function grain(ctx: Ctx, w: number, h: number, strength = 1): void {
 
 // ------------------------------------------------------------------ themes
 
-const STONES = ['#c9c7c4', '#c4c2c0', '#cfcdca', '#bfbdbb'];
-
 const underground = (wall: string, stones: readonly string[], root: string, glowFill: string): LayerSpec[] => [
   {
     scroll: 0.15,
@@ -534,31 +537,14 @@ function daySky(ctx: Ctx, w: number, h: number, horizon: number, rng: Rng, sky: 
 
 const THEMES: Record<ThemeId, ThemeDef> = {
   nursery: {
-    sky: ['#efedf0', '#ebe8ec'],
-    layers: [
-      {
-        scroll: 0.2,
-        res: 0.5,
-        draw: (ctx, { w, h }, rng) => {
-          // The house of the stranger: a pale room inside a stone wall.
-          field(ctx, w, h, '#ebe8ec');
-          stoneWall(ctx, w, h * 0.22, rng, STONES, FAR, 1.2);
-          ctx.beginPath();
-          ctx.rect(-10, h * 0.34, w + 20, h * 0.32);
-          fillInk(ctx, '#f3d9ee', FAR);
-          ctx.beginPath();
-          ctx.moveTo(-10, h * 0.66);
-          ctx.lineTo(w + 10, h * 0.66);
-          ink(ctx, FAR);
-          starField(ctx, w, h * 0.62, rng, 60000, FAR, 1.2);
-          crystals(ctx, w, h, Math.floor(w / 160), rng, FAR, h * 0.7);
-          grain(ctx, w, h);
-        },
-      },
-    ],
+    // The house of the stranger, as the first painting shows it: a pink box
+    // in a pale world of cracked stone (see painting1.ts).
+    sky: [P1.stone, P1.stone],
+    layers: painting1Layers(),
     terrain: {
+      // The box's floor: the torn paper on top, the lilac front below it.
+      paper: { base: P1.wall, top: P1.paperFloor, detail: lineFor(P1.wall), accent: P1.lid },
       soil: { base: '#d8c3a6', top: '#e8d8bd', detail: '#9c8670', accent: P.crystalTeal },
-      wood: { base: '#dcb793', top: '#ead0b3', detail: '#9e7d62' },
       stone: { base: '#c9c7c4', top: '#dedcd9', detail: '#8f8b8b' },
     },
     ambient: 'dust',
@@ -873,6 +859,10 @@ const THEMES: Record<ThemeId, ThemeDef> = {
  * the lens.
  */
 export function paintForeground(ctx: CanvasRenderingContext2D, w: number, h: number, theme: ThemeId, rng: Rng): void {
+  if (theme === 'nursery') {
+    paintBoxForeground(ctx, w, h, rng);
+    return;
+  }
   const outdoor = theme === 'surface' || theme === 'hill' || theme === 'forest' || theme === 'clearing' || theme === 'ride' || theme === 'sun';
   const night = theme === 'surface' || theme === 'hill' || theme === 'forest';
   const green = night ? '#6f8c78' : '#9dbd90';

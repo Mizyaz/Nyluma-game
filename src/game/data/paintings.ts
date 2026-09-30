@@ -46,8 +46,8 @@ export interface PaintingPlacement {
 }
 
 export const PAINTING_PLACEMENTS: Partial<Record<RoomId, readonly PaintingPlacement[]>> = {
-  // Chapter I: on the nursery wall.
-  r01: [{ art: 'stranger', x: 745, y: 430, width: 150, mount: 'wall' }],
+  // Chapter I: on the box's back wall, by the bed (the room it shows).
+  r01: [{ art: 'stranger', x: 270, y: 470, width: 130, mount: 'wall' }],
   // Chapter II: on the surface, on an easel in the grass.
   r04: [{ art: 'moon', x: 300, y: 900, width: 130, mount: 'easel' }],
   // Chapter III: the ride has no stop, so by the Sun's field.

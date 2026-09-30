@@ -28,6 +28,8 @@ export type SolidStyle =
   | 'metal'
   | 'bed'
   | 'office'
+  /** A paper box's floor (the 14th Room): no boards, a few pencil creases. */
+  | 'paper'
   | 'none';
 
 /**

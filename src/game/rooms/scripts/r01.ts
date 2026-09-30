@@ -1,7 +1,11 @@
 import type * as Phaser from 'phaser';
 import { app } from '../../App';
-import { DEPTH } from '../../constants';
+import { DEPTH, VIEW_H, VIEW_W } from '../../constants';
+import { hex } from '../../art/palette';
+import { P1 } from '../../art/painting1';
 import { CAPTIONS, DIALOGUE } from '../../data/dialogue.tr';
+import { PAINTINGS } from '../../data/paintings';
+import { BOX, ROOM_W, WIDE, WIDE_TOP } from '../../data/rooms/r01Stage';
 import type { CinemaScene } from '../../scenes/CinemaScene';
 import type { WorldScene } from '../../scenes/WorldScene';
 import { GemPortal } from '../../fx/gemPortal';
@@ -11,20 +15,47 @@ import type { RoomScript } from './types';
 const BED = { left: 322, right: 538, top: 590 };
 const FLOOR_Y = 660;
 const STEP_DOWN_X = 564;
-/** He wakes by himself after this long if nobody wakes him. */
-const WAKE_AFTER_MS = 14000;
+/** He wakes by himself after this long if nobody wakes him (the opening shot included). */
+const WAKE_AFTER_MS = 18000;
+/** Things in the room with something to say (data/dialogue.tr.ts). */
+const INSPECTABLE = new Set(['toywhale', 'marks', 'window', 'bed', 'tree', 'gift', 'starfolk', 'picture']);
 
-// Chapter I — the children's room. The game opens with Gorti asleep in his
-// bed; a key (or a little while) wakes him, and the camera comes close to
-// his face as he opens his eyes, yawns and hops out of bed. Then nothing
-// has to be done: the toys, the marks and the window tell their story to
-// whoever stops to look, and the roots at the far end have already parted.
+/**
+ * The opening, in ms from the first frame: the painting itself, then the
+ * room dissolving out of it in a wide shot framed like it, a hold, and a
+ * glide in to Gorti asleep in his bed.
+ */
+const OPENING = { dissolveAt: 2300, dissolve: 1500, glideAt: 6300, glide: 3300 } as const;
+const OPENING_END = OPENING.glideAt + OPENING.glide + 200;
+/** Where the camera rests on the sleeper. */
+const BEDSIDE = { x: 430, y: 560 };
+/** The startled creature hides when Gorti comes this near, and peeks out again when he is this far. */
+const SHADE_NEAR = 175;
+const SHADE_FAR = 330;
+
+// Chapter I — the 14th Room, as the first painting shows it. The game opens
+// on the painting; the room dissolves out of it in a wide shot of the whole
+// box, and the camera glides in to Gorti asleep in his bed. A key (or a
+// little while) wakes him, the camera comes close to his face as he opens
+// his eyes, yawns and hops out of bed. Then nothing has to be done: the
+// toys, the marks and the window tell their story to whoever stops to look,
+// and the roots at the far end have already parted.
 export function r01(w: WorldScene): RoomScript {
   let sleeping = false;
   let waking = false;
   let sleptMs = 0;
   let zzz: Phaser.Time.TimerEvent | null = null;
   let portal: GemPortal | null = null;
+  /** The opening's pending steps and the painting over the screen. */
+  let opening: Phaser.Time.TimerEvent[] = [];
+  let overlay: Phaser.GameObjects.GameObject[] = [];
+  let wideBounds = false;
+  // The startled creature and its "!!!".
+  let shade: Phaser.GameObjects.Image | null = null;
+  let bang: Phaser.GameObjects.Image | null = null;
+  let shadeHome = 0;
+  let shadeHidden = false;
+  let shadeAwayMs = 0;
 
   const inspect = (id: string): void => {
     w.player.lock(true, 'interact');
@@ -33,6 +64,161 @@ export function r01(w: WorldScene): RoomScript {
       w.flag(`r01.${id}`, false);
     });
   };
+
+  const propImages = (key: string): Phaser.GameObjects.Image[] =>
+    w.room.props.filter((p) => p.def.key === key && p.img).map((p) => p.img!);
+
+  /** The out-of-focus strip at the bottom of the view (it only fits the room's own zoom). */
+  const foreground = (): Phaser.GameObjects.Image[] =>
+    w.children.list.filter((o): o is Phaser.GameObjects.Image => o.type === 'Image' && (o as Phaser.GameObjects.Image).texture.key.startsWith(`fg:${w.def.id}:`));
+
+  // ------------------------------------------------------------ idle life
+
+  const idleLife = (): void => {
+    // The star creature bobs where it stands, reaching out.
+    for (const img of propImages('p1.starfolk')) {
+      w.tweens.add({ targets: img, y: img.y - 5, angle: -2, duration: 1700, ease: 'Sine.easeInOut', yoyo: true, repeat: -1 });
+    }
+    // The charms under the box turn a little on their strings.
+    w.room.props
+      .filter((p) => p.def.key.startsWith('p1.charm.') && p.img)
+      .forEach((p, i) => {
+        p.img!.setAngle(-2);
+        w.tweens.add({ targets: p.img, angle: 2.5, duration: 2300 + i * 310, ease: 'Sine.easeInOut', yoyo: true, repeat: -1, delay: i * 170 });
+      });
+    // The arms breathe on the lid.
+    for (const img of propImages('p1.arm')) {
+      w.tweens.add({ targets: img, angle: img.flipX ? 0.9 : -0.9, duration: 3400, ease: 'Sine.easeInOut', yoyo: true, repeat: -1 });
+    }
+    shade = propImages('p1.shade')[0] ?? null;
+    bang = propImages('p1.bang')[0] ?? null;
+    shadeHome = shade?.y ?? 0;
+    // As painted, the "!!!" is there while the room is only a picture.
+    bang?.setAlpha(sleeping ? 1 : 0);
+  };
+
+  /** The dark creature sees Gorti coming: "!!!", and down it goes behind the floor. */
+  const startle = (): void => {
+    if (!shade || shadeHidden) return;
+    shadeHidden = true;
+    shadeAwayMs = 0;
+    if (bang) {
+      w.tweens.killTweensOf(bang);
+      const s = bang.scale;
+      bang.setAlpha(1).setScale(s * 0.6);
+      w.tweens.add({ targets: bang, scale: s, duration: 260, ease: 'Back.easeOut' });
+      w.tweens.add({ targets: bang, alpha: 0, delay: 900, duration: 500 });
+    }
+    w.tweens.killTweensOf(shade);
+    w.tweens.add({ targets: shade, y: shadeHome + 96, duration: 380, delay: 160, ease: 'Back.easeIn' });
+  };
+
+  /** Once Gorti has gone, it peeks out again. */
+  const peek = (): void => {
+    if (!shade || !shadeHidden) return;
+    shadeHidden = false;
+    w.tweens.killTweensOf(shade);
+    w.tweens.add({ targets: shade, y: shadeHome, duration: 1100, ease: 'Sine.easeOut' });
+  };
+
+  const updateShade = (dtMs: number): void => {
+    if (!shade || sleeping || !w.player.controllable) return;
+    const d = Math.abs(w.player.x - shade.x);
+    if (!shadeHidden && d < SHADE_NEAR) startle();
+    else if (shadeHidden) {
+      shadeAwayMs = d > SHADE_FAR ? shadeAwayMs + dtMs : 0;
+      if (shadeAwayMs > 2600) peek();
+    }
+  };
+
+  // ------------------------------------------------------------ the opening
+
+  /** The camera may look above the room while the whole box is in view. */
+  const openBounds = (open: boolean): void => {
+    if (open === wideBounds) return;
+    wideBounds = open;
+    const cam = w.cameras.main;
+    if (open) cam.setBounds(0, WIDE_TOP, ROOM_W, w.def.height - WIDE_TOP);
+    else cam.setBounds(0, 0, w.def.width, w.def.height);
+  };
+
+  /**
+   * The painting over the screen, framed like the wide shot so the room
+   * seems to come out of it: its box over the room's box.
+   */
+  const showPainting = (): void => {
+    const art = PAINTINGS.stranger;
+    if (!w.textures.exists(art.key)) return;
+    const z = WIDE.zoom;
+    // Screen → object space of a scroll-less object under this zoom.
+    const at = (sx: number, sy: number): [number, number] => [VIEW_W / 2 + (sx - VIEW_W / 2) / z, VIEW_H / 2 + (sy - VIEW_H / 2) / z];
+    const boxTop = (BOX.lidBack - WIDE_TOP) * z;
+    const boxBottom = (BOX.bottom - WIDE_TOP) * z;
+    // The painting's box runs from y 245 to 745 of its 897 px.
+    const src = w.textures.get(art.key).getSourceImage() as { width: number; height: number };
+    const k = (boxBottom - boxTop) / ((500 / 897) * src.height);
+    const top = boxTop - (245 / 897) * src.height * k;
+    const [cx, cy] = at(VIEW_W / 2, top + (src.height * k) / 2);
+    const [gx, gy] = at(VIEW_W / 2, VIEW_H / 2);
+    const ground = w.add.rectangle(gx, gy, VIEW_W / z + 8, VIEW_H / z + 8, hex(P1.stone)).setScrollFactor(0).setDepth(DEPTH.overlay + 5);
+    const pic = w.add.image(cx, cy, art.key).setScrollFactor(0).setDepth(DEPTH.overlay + 6).setScale(k / z);
+    overlay = [ground, pic];
+  };
+
+  const dissolvePainting = (ms: number): void => {
+    const items = overlay;
+    overlay = [];
+    if (!items.length) return;
+    const pic = items[1] as Phaser.GameObjects.Image | undefined;
+    if (pic && !app.settings.reducedMotion) w.tweens.add({ targets: pic, scale: pic.scale * 1.05, duration: ms, ease: 'Sine.easeIn' });
+    w.tweens.add({ targets: items, alpha: 0, duration: ms, ease: 'Sine.easeInOut', onComplete: () => items.forEach((o) => o.destroy()) });
+  };
+
+  const later = (ms: number, fn: () => void): void => {
+    opening.push(w.time.delayedCall(ms, fn));
+  };
+
+  /** Ends the opening at once: a key woke him (`fade`), or the room is left. */
+  const endOpening = (fade: boolean): void => {
+    for (const t of opening) t.remove(false);
+    opening = [];
+    if (!fade) {
+      for (const o of overlay) o.destroy();
+      overlay = [];
+      return;
+    }
+    dissolvePainting(300);
+    for (const img of foreground()) {
+      w.tweens.killTweensOf(img);
+      img.setAlpha(0.92);
+    }
+  };
+
+  const playOpening = (): void => {
+    // The whole box, the way the painting frames it.
+    openBounds(true);
+    void w.zoomTo(WIDE.zoom, 0);
+    w.camTo(WIDE.x, WIDE.y);
+    w.cameras.main.centerOn(WIDE.x, WIDE.y);
+    for (const img of foreground()) img.setAlpha(0);
+    showPainting();
+    later(OPENING.dissolveAt, () => dissolvePainting(OPENING.dissolve));
+    later(OPENING.dissolveAt + OPENING.dissolve, () => app.ui.hud.caption(CAPTIONS.intro1, 5600));
+    // Then in to the sleeper.
+    later(OPENING.glideAt, () => {
+      void w.zoomTo(null, OPENING.glide);
+      w.camTo(BEDSIDE.x, BEDSIDE.y);
+      if (bang) w.tweens.add({ targets: bang, alpha: 0, duration: 900 });
+      for (const img of foreground()) w.tweens.add({ targets: img, alpha: 0.92, delay: OPENING.glide * 0.5, duration: OPENING.glide * 0.5 });
+    });
+    later(OPENING_END, () => {
+      openBounds(false);
+      app.ui.hud.caption(CAPTIONS.intro2, 5200);
+      app.ui.hud.toast(app.ui.touch.enabled ? 'Uyandırmak için dokun' : 'Uyandırmak için bir tuşa bas', 4200);
+    });
+  };
+
+  // ------------------------------------------------------------ sleep and waking
 
   /** A "z" drifting up from the sleeper's face. */
   const puffZ = (): void => {
@@ -74,16 +260,8 @@ export function r01(w: WorldScene): RoomScript {
     p.lie = 1;
     p.eyelids = 1;
     p.lock(true, 'sleep');
-    w.camTo(430, 560);
     zzz = w.time.addEvent({ delay: 1350, loop: true, callback: puffZ });
-    // Non-blocking opening subtitles while he sleeps.
-    app.ui.hud.caption(CAPTIONS.intro1, 5600);
-    w.time.delayedCall(5900, () => {
-      if (sleeping) app.ui.hud.caption(CAPTIONS.intro2, 5200);
-    });
-    w.time.delayedCall(1800, () => {
-      if (sleeping) app.ui.hud.toast(app.ui.touch.enabled ? 'Uyandırmak için dokun' : 'Uyandırmak için bir tuşa bas', 4200);
-    });
+    playOpening();
   };
 
   const endSleep = (): void => {
@@ -96,6 +274,8 @@ export function r01(w: WorldScene): RoomScript {
     if (waking) return;
     waking = true;
     endSleep();
+    endOpening(true);
+    bang?.setAlpha(0);
     const p = w.player;
     const cinema = (): CinemaScene | null => (w.scene.isActive('cinema') ? (w.scene.get('cinema') as CinemaScene) : null);
     void w.narrative.play(
@@ -129,7 +309,7 @@ export function r01(w: WorldScene): RoomScript {
         await cs.wait(200);
         // The camera pulls back; he gets up the way anyone does.
         void w.zoomTo(null, 900);
-        w.camTo(430, 560);
+        w.camTo(BEDSIDE.x, BEDSIDE.y);
         p.eyelids = -1;
         p.getupK = 0;
         p.lock(true, 'getup');
@@ -182,6 +362,7 @@ export function r01(w: WorldScene): RoomScript {
         p.lock(false);
         w.camTo(null);
         void w.zoomTo(null, 0);
+        openBounds(false);
         cinema()?.close();
         p.thump(0.2);
         p.startIdle('stretch');
@@ -197,9 +378,11 @@ export function r01(w: WorldScene): RoomScript {
       // At the end of the root tunnel, the way on: a living mouth of the gem tunnel.
       portal = new GemPortal(w, 2162, 660, 104, 214, -35);
       if (w.quest.set('r01.intro')) goToSleep();
+      idleLife();
     },
     onUpdate(dtMs) {
       portal?.update(dtMs);
+      updateShade(dtMs);
     },
     onFixed(dt) {
       if (sleeping && !waking) {
@@ -213,7 +396,7 @@ export function r01(w: WorldScene): RoomScript {
       if (w.player.x > 1450 && w.quest.set('r01.name')) app.ui.hud.caption(CAPTIONS.room14, 6500);
     },
     onInteract(id) {
-      if (id === 'toywhale' || id === 'marks' || id === 'window' || id === 'bed') {
+      if (INSPECTABLE.has(id)) {
         inspect(id);
         return true;
       }
@@ -221,6 +404,8 @@ export function r01(w: WorldScene): RoomScript {
     },
     destroy() {
       endSleep();
+      endOpening(false);
+      openBounds(false);
       portal?.destroy();
       portal = null;
     },

@@ -44,6 +44,7 @@ const DEFAULTS: Record<SolidStyle, StyleColors> = {
   metal: mk('#aeb5c1', '#c8cdd6', '#7f8897', PASTEL.butter),
   bed: mk('#dcb99a', '#ead3bc', '#9e7f66', P.ivory),
   office: mk('#cfc9b4', '#e2ddca', '#9d977f', '#e9e2c9'),
+  paper: mk('#f6e2f4', '#f5eedf', '#c9a9c4', '#f5caf3'),
   none: mk('#000000', '#000000', '#000000', '#000000', '#000000'),
 };
 
@@ -331,6 +332,16 @@ function details(ctx: CanvasRenderingContext2D, style: SolidStyle, w: number, h:
       inkLine(ctx, 1.1, 0.7);
       break;
     }
+    case 'paper': {
+      // A paper box's front: plain, a few soft creases in its own colour.
+      ctx.beginPath();
+      for (let x = rng.range(60, 200); x < w - 20; x += rng.range(160, 320)) {
+        ctx.moveTo(x, rng.range(22, 34));
+        ctx.quadraticCurveTo(x + rng.range(-10, 10), Math.min(h, 400) * 0.5, x + rng.range(-16, 16), Math.min(h, 400) - rng.range(8, 20));
+      }
+      inkLine(ctx, 1.2, 0.35, c.detail);
+      break;
+    }
     default:
       break;
   }
@@ -499,7 +510,8 @@ export function paintSolid(
   details(ctx, solid.style, solid.w, solid.h, c, drng, thin);
   // Top band (grass, the planks' upper face…) with a wavy lower edge.
   if (solid.style !== 'crystal' && solid.style !== 'metal') {
-    const band = thin ? Math.min(7, solid.h * 0.35) : solid.style === 'moss' ? 16 : 11;
+    // A paper floor's torn sheet spills well over its front edge.
+    const band = thin ? Math.min(7, solid.h * 0.35) : solid.style === 'moss' ? 16 : solid.style === 'paper' ? 52 : 11;
     ctx.beginPath();
     ctx.moveTo(-10, -10);
     ctx.lineTo(solid.w + 10, -10);
@@ -507,10 +519,11 @@ export function paintSolid(
     ctx.lineTo(x, band);
     const brng = new Rng(seed ^ 0x2f6b);
     const edge: Pt[] = [[x, band]];
+    const tear = solid.style === 'paper' ? 2.4 : 1;
     while (x > -10) {
-      const nx = x - brng.range(18, 40);
-      const cy = band + brng.range(-4, 5);
-      const ny = band + brng.range(-2, 3);
+      const nx = x - brng.range(18, 40) * tear;
+      const cy = band + brng.range(-4, 5) * tear;
+      const ny = band + brng.range(-2, 3) * tear;
       ctx.quadraticCurveTo((x + nx) / 2, cy, nx, ny);
       edge.push([(x + nx) / 2, cy], [nx, ny]);
       x = nx;

@@ -13,6 +13,7 @@ import { formParts, RIG_COWARD, RIG_MECH } from './characters/forms';
 import { horseParts, RIG_HORSE } from './characters/horse';
 import { creatureParts } from './characters/creatures';
 import { propParts } from './props';
+import { painting1Parts } from './painting1';
 import { whaleParts } from './characters/whales';
 
 let partsCache: PartArt[] | null = null;
@@ -25,6 +26,8 @@ export function allParts(): PartArt[] {
   partsCache = [...soft(gortiParts()), ...soft(formParts()), ...soft(horseParts()), ...creatureParts(), ...propParts()];
   // Whales (sperm, blue, bowhead): the jump platforms and the whale memory.
   partsCache.push(...whaleParts());
+  // The 14th Room as the first painting shows it (chapter I).
+  partsCache.push(...painting1Parts());
   const seen = new Set<string>();
   for (const p of partsCache) {
     if (seen.has(p.key)) throw new Error(`Duplicate art key ${p.key}`);

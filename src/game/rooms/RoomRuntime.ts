@@ -3,7 +3,7 @@ import { CAMERA_ZOOM, DEPTH, LATENT_GRACE_S, VIEW_H, VIEW_W } from '../constants
 import { hex, P } from '../art/palette';
 import { hashSeed } from '../art/svg';
 import { paintSolid, TERRAIN_MARGIN } from '../art/terrain';
-import { paintForeground, themeDef } from '../art/backgrounds';
+import { paintForeground, themeDef, type LayerSpec } from '../art/backgrounds';
 import { artCanvas, frameRef, hasFrame, registerCanvas, unregister } from '../art/TextureFactory';
 import { Rng } from '../art/svg';
 import type {
@@ -53,6 +53,18 @@ export interface Marker<T> {
   img: Phaser.GameObjects.Image | null;
   glow: Phaser.GameObjects.Image | null;
   active: boolean;
+}
+
+/** Where a parallax layer's canvas lies: its own area, or the room's parallax extent. */
+function layerRect(layer: LayerSpec, def: RoomDef): { x: number; y: number; w: number; h: number } {
+  if (layer.area) return layer.area;
+  const s = layer.scroll;
+  return {
+    x: -40 * s,
+    y: -20 * s,
+    w: Math.ceil(VIEW_W + Math.max(0, def.width - VIEW_W) * s + 80),
+    h: Math.ceil(VIEW_H + Math.max(0, def.height - VIEW_H) * s + 40),
+  };
 }
 
 const CHUNK = 1024;
@@ -140,8 +152,7 @@ export class RoomRuntime {
     const rng = new Rng(hashSeed(this.def.id + ':bg'));
     theme.layers.forEach((layer, li) => {
       const s = layer.scroll;
-      const lw = Math.ceil(VIEW_W + Math.max(0, this.def.width - VIEW_W) * s + 80);
-      const lh = Math.ceil(VIEW_H + Math.max(0, this.def.height - VIEW_H) * s + 40);
+      const { x: lx, y: ly, w: lw, h: lh } = layerRect(layer, this.def);
       // Horizon sits in the lower part of the layer for surface themes.
       const horizon = Math.round(lh - VIEW_H * (1 - theme.horizon) - (this.def.height - VIEW_H) * s * 0.0);
       const res = layer.res;
@@ -149,7 +160,8 @@ export class RoomRuntime {
       const pieces = Math.ceil((lw * res) / maxW);
       const pieceW = Math.ceil(lw / pieces);
       for (let pi = 0; pi < pieces; pi++) {
-        const cw = Math.min(pieceW, lw - pi * pieceW);
+        // Each piece reaches 2 px into the next, so no hairline shows between them.
+        const cw = Math.min(pieceW + 2, lw - pi * pieceW);
         const [c, ctx] = artCanvas(Math.max(2, Math.ceil(cw * res)), Math.max(2, Math.ceil(Math.min(lh, 2040 / res) * res)));
         ctx.scale(res, res);
         ctx.translate(-pi * pieceW, 0);
@@ -158,9 +170,9 @@ export class RoomRuntime {
         const key = `bg:${this.def.id}:${li}:${pi}`;
         registerCanvas(this.scene.textures, key, c, { w: cw, h: lh, px: 0, py: 0 }, res);
         this.texKeys.add(key);
-        const img = this.scene.add.image(pi * pieceW - 40 * s, -20 * s, key).setOrigin(0, 0).setScale(1 / res);
+        const img = this.scene.add.image(lx + pi * pieceW, ly, key).setOrigin(0, 0).setScale(1 / res);
         img.setScrollFactor(s, s);
-        img.setDepth(DEPTH.sky + li * 10);
+        img.setDepth(layer.depth ?? DEPTH.sky + li * 10);
         this.layerImages.push(img);
       }
     });
@@ -209,15 +221,16 @@ export class RoomRuntime {
     for (const img of this.fgImages) img.setScrollFactor(reduced ? 1 : 1.35, 0);
     // Reduced motion: flatten parallax differences (layers move with the world
     // at a single gentle factor instead of several speeds).
+    // A room's own back wall (scroll 0.9 and up) keeps moving with the room.
     const theme = themeDef(this.def.theme);
     let idx = 0;
     theme.layers.forEach((layer) => {
-      const lw = Math.ceil(VIEW_W + Math.max(0, this.def.width - VIEW_W) * layer.scroll + 80);
+      const lw = layerRect(layer, this.def).w;
       const pieces = Math.ceil((lw * layer.res) / 2040);
       for (let p = 0; p < pieces; p++) {
         const img = this.layerImages[idx++];
         if (!img) continue;
-        const s = reduced ? Math.min(layer.scroll, 0.15) : layer.scroll;
+        const s = reduced && layer.scroll < 0.9 ? Math.min(layer.scroll, 0.15) : layer.scroll;
         img.setScrollFactor(s, s);
       }
     });

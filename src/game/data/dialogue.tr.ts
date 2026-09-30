@@ -96,6 +96,22 @@ export const DIALOGUE: Record<string, Line[]> = {
     { text: 'Kristallerin içinde, bir zamanlar yüzmüş balıkların gölgeleri donup kalmış.' },
   ],
   bed: [{ text: 'Hiç uyunmamış bir yatak. Yastıkta toprak kokusu.' }],
+  tree: [
+    { text: 'Kabuğu mor, uçları kristal bir ağaç.' },
+    { text: 'Toprağın bu kadar altında bile yaprakları yeşil; dallarında yapraktan kuşlar uyuyor.' },
+  ],
+  gift: [
+    { text: 'Pembe, mavi, sarı kâğıtlara sarılmış bir hediye. Kimden geldiği yazmıyor.' },
+    { text: 'Gorti onu açmaya kıyamadı.' },
+  ],
+  starfolk: [
+    { text: 'Kristalden küçük bir yıldız, kollarını Gorti’ye doğru uzatmış.' },
+    { text: 'Dokunmaya bir türlü cesaret edemiyor.' },
+  ],
+  picture: [
+    { text: 'Duvarda yeşil bir yaratığın portresi.' },
+    { text: 'Gorti onu bir yerden tanır gibi oldu.' },
+  ],
   whale: [
     { text: 'Hatıraların arasında yalnızca insanlar yoktu; başka hayvanlarınkiler de vardı.' },
     { text: 'En tuhafı, mavi balinalarla kurduğu duygusal bağdı.' },
