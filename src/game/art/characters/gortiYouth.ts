@@ -1,7 +1,7 @@
 import { ellipsePath, limb, taper, type Pt } from '../svg';
 import { DETAIL, flat, INK, PASTEL } from '../style';
 import type { PartArt } from '../rigTypes';
-import { eyeSet, mouthSet, paintedMouth, browPart } from './face';
+import { eyeSet, mouthSet, browPart, withoutSmile } from './face';
 import { fillOnly, ink, leaf, part, path, roundPoly, stitches, tr } from './kit';
 import { humanoidRig, type HumanoidDims } from './skeleton';
 
@@ -94,7 +94,7 @@ function head(): PartArt {
 
 /** Both lenses in their frames: lilac with a dark pupil. */
 function eyes(): PartArt[] {
-  return eyeSet('gorti.youth', { x0: -18, y0: -9, x1: 18, y1: 9 }, (v, ox, oy) =>
+  return withoutSmile(eyeSet('gorti.youth', { x0: -18, y0: -9, x1: 18, y1: 9 }, (v, ox, oy) =>
     FRAMES.map((f) => {
       const cx = ox + f.cx - EYE_AT[0];
       const cy = oy + f.cy - EYE_AT[1];
@@ -103,23 +103,19 @@ function eyes(): PartArt[] {
       if (v === 'happy') return ink(`M${cx - hw} ${cy + hh * 0.45}Q${cx} ${cy - hh * 1.3} ${cx + hw} ${cy + hh * 0.45}`, 2.4, YOUTH.lens) + ink(`M${cx - hw} ${cy + hh * 0.45}Q${cx} ${cy - hh * 1.3} ${cx + hw} ${cy + hh * 0.45}`, 0.9);
       if (v === 'shut') return ink(`M${cx - hw} ${cy}Q${cx} ${cy + hh * 0.8} ${cx + hw} ${cy}`, 2.2, YOUTH.lens) + ink(`M${cx - hw} ${cy}Q${cx} ${cy + hh * 0.8} ${cx + hw} ${cy}`, 0.9);
       const lens = roundPoly(hexFrame(cx, cy, f.w - 2.4, f.h - 2.4), 1);
-      let inner = `<path d="${ellipsePath(cx + hw * 0.22, cy + 0.3, hh * 0.62, hh * 0.72)}" fill="${INK}"/>` + `<circle cx="${cx + hw * 0.05}" cy="${cy - hh * 0.3}" r="${hh * 0.22}" fill="#fff" opacity="0.85"/>`;
+      let inner = '';
       if (v === 'sad') {
         const [yl, yr] = f.outer === -1 ? [cy + hh * 0.1, cy - hh * 0.8] : [cy - hh * 0.8, cy + hh * 0.1];
         inner += `<path d="M${cx - hw - 2} ${cy - hh - 3}L${cx + hw + 2} ${cy - hh - 3}L${cx + hw + 2} ${yr}L${cx - hw - 2} ${yl}Z" fill="${YOUTH.socket}"/>` + ink(`M${cx - hw - 2} ${yl}L${cx + hw + 2} ${yr}`, 1);
       }
       return flat(lens, YOUTH.lens, { stroke: 0.9, inner });
     }).join(''),
-  );
+  ));
 }
 
 function mouth(): PartArt[] {
-  const m = 7;
-  // A pink-lipped smile at rest, as in the painting.
-  return mouthSet('gorti.youth', { x0: -m - 3, y0: -m - 3, x1: m + 3, y1: m + 3 }, (v, ox, oy) => {
-    if (v === '') return flat(`M${ox - m} ${oy - 1}Q${ox} ${oy + 5} ${ox + m} ${oy - 2.5}Q${ox + 1} ${oy + 1.2} ${ox - m} ${oy - 1}Z`, YOUTH.lip, { stroke: DETAIL });
-    return paintedMouth(v, ox, oy, m, { lip: YOUTH.lip, inside: '#6a2a48' });
-  });
+  // No mouth (as the author draws him).
+  return mouthSet('gorti.youth', { x0: -4, y0: -4, x1: 4, y1: 4 }, () => '');
 }
 
 function tendril(t: (typeof TENDRILS)[number]): PartArt {

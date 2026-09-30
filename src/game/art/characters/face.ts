@@ -25,6 +25,16 @@ export function eyeSet(prefix: string, box: Box, draw: (v: EyeShape, ox: number,
   return EYE_SHAPES.map((v) => part(key(`${prefix}.eye`, v), box, (ox, oy) => draw(v, ox, oy)));
 }
 
+/**
+ * Gorti never smiles (the author draws him without a smiling face): his
+ * 'happy' eye is his ordinary eye; the joy stays in his brows and body.
+ */
+export function withoutSmile(eyes: PartArt[]): PartArt[] {
+  const plain = eyes.find((p) => p.key.endsWith('.eye'));
+  if (!plain) return eyes;
+  return eyes.map((p) => (p.key.endsWith('.eye.happy') ? { ...p, body: plain.body } : p));
+}
+
 /** All mouth shapes of a face. */
 export function mouthSet(prefix: string, box: Box, draw: (v: MouthShape, ox: number, oy: number) => string): PartArt[] {
   return MOUTH_SHAPES.map((v) => part(key(`${prefix}.mouth`, v), box, (ox, oy) => draw(v, ox, oy)));
@@ -43,7 +53,7 @@ export function almondEye(
   cy: number,
   rx: number,
   ry: number,
-  o: { outer: -1 | 1; iris: string; white?: string; lid?: number; lidFill?: string; lash?: boolean; pupil?: number; look?: number },
+  o: { outer: -1 | 1; iris: string; white?: string; lid?: number; lidFill?: string; lash?: boolean; pupil?: number; look?: number; blank?: boolean },
 ): string {
   const white = o.white ?? '#fbf6ee';
   const w = Math.max(1.3, ry * 0.42);
@@ -52,8 +62,9 @@ export function almondEye(
   const almond = `M${f2(cx - rx)} ${f2(cy)}Q${f2(cx)} ${f2(cy - ry * 1.9)} ${f2(cx + rx)} ${f2(cy)}Q${f2(cx)} ${f2(cy + ry * 1.7)} ${f2(cx - rx)} ${f2(cy)}Z`;
   const look = o.look ?? 0.25;
   const ir = ry * 0.9;
-  let inner = `<path d="${ellipsePath(cx + rx * look, cy + ry * 0.05, ir * 0.92, ir)}" fill="${o.iris}"/>`;
-  inner += `<path d="${ellipsePath(cx + rx * look, cy + ry * 0.05, ir * (o.pupil ?? 0.45), ir * (o.pupil ?? 0.45) * 1.08)}" fill="${INK}"/>`;
+  // The author draws Gorti's eyes without pupils: `blank` leaves the white.
+  let inner = o.blank ? '' : `<path d="${ellipsePath(cx + rx * look, cy + ry * 0.05, ir * 0.92, ir)}" fill="${o.iris}"/>`;
+  if (!o.blank) inner += `<path d="${ellipsePath(cx + rx * look, cy + ry * 0.05, ir * (o.pupil ?? 0.45), ir * (o.pupil ?? 0.45) * 1.08)}" fill="${INK}"/>`;
   // Upper lid: at rest `lid` covers the top of the eye; a sad lid droops
   // toward the outer corner.
   const lidAt = o.lid ?? 0;

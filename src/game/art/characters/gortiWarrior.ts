@@ -1,7 +1,7 @@
 import { ellipsePath, limb, taper, type Pt } from '../svg';
 import { DETAIL, flat, INK, PASTEL } from '../style';
 import type { PartArt } from '../rigTypes';
-import { almondEye, browPart, eyeSet, mouthSet, paintedMouth } from './face';
+import { almondEye, browPart, eyeSet, mouthSet, withoutSmile } from './face';
 import { barkLines, claws, ink, leaf, maze, part, path, rootSeg, roundPoly, tr } from './kit';
 import { humanoidRig, type HumanoidDims } from './skeleton';
 
@@ -72,15 +72,15 @@ function head(): PartArt {
 
 function eyes(): PartArt[] {
   // Heavy upper lids: the painting's sad, tired look.
-  return eyeSet('gorti.warrior', { x0: -12, y0: -8, x1: 13, y1: 7 }, (v, ox, oy) =>
-    almondEye(v, ox - 5.5, oy, 4.2, 2.6, { outer: -1, iris: WARRIOR.iris, lid: 0.34, lidFill: WARRIOR.skin, look: 0.3 }) +
-    almondEye(v, ox + 6.5, oy, 3.2, 2.4, { outer: 1, iris: WARRIOR.iris, lid: 0.34, lidFill: WARRIOR.skin, look: 0.45 }),
-  );
+  return withoutSmile(eyeSet('gorti.warrior', { x0: -12, y0: -8, x1: 13, y1: 7 }, (v, ox, oy) =>
+    almondEye(v, ox - 5.5, oy, 4.2, 2.6, { outer: -1, iris: WARRIOR.iris, lid: 0.34, lidFill: WARRIOR.skin, look: 0.3, blank: true }) +
+    almondEye(v, ox + 6.5, oy, 3.2, 2.4, { outer: 1, iris: WARRIOR.iris, lid: 0.34, lidFill: WARRIOR.skin, look: 0.45, blank: true }),
+  ));
 }
 
 function mouth(): PartArt[] {
-  const m = 4.2;
-  return mouthSet('gorti.warrior', { x0: -m - 3, y0: -m - 3, x1: m + 3, y1: m + 3 }, (v, ox, oy) => paintedMouth(v, ox, oy, m, { lip: '#e89ab2', inside: '#6b2c43', sad: 1.4 }));
+  // No mouth (as the author draws him).
+  return mouthSet('gorti.warrior', { x0: -4, y0: -4, x1: 4, y1: 4 }, () => '');
 }
 
 // ------------------------------------------------------------------ body

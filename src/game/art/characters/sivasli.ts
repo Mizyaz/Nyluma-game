@@ -74,7 +74,7 @@ function moonHead(): PartArt {
 }
 
 function moonEye(): PartArt[] {
-  return eyeSet('gorti.human', { x0: -8, y0: -8, x1: 8, y1: 7 }, (v, ox, oy) => almondEye(v, ox, oy, 5.2, 3.6, { outer: -1, iris: '#3f6f63', lid: 0.1, lidFill: SIVAS.moon, look: 0.3, pupil: 0.5 }));
+  return eyeSet('gorti.human', { x0: -8, y0: -8, x1: 8, y1: 7 }, (v, ox, oy) => almondEye(v, ox, oy, 5.2, 3.6, { outer: -1, iris: '#3f6f63', lid: 0.1, lidFill: SIVAS.moon, look: 0.3, pupil: 0.5, blank: true }));
 }
 
 function moonMouth(): PartArt[] {
@@ -122,8 +122,8 @@ function sunHead(): PartArt {
 
 function sunEyes(): PartArt[] {
   return eyeSet('gorti.sun', { x0: -12, y0: -8, x1: 13, y1: 7 }, (v, ox, oy) =>
-    almondEye(v, ox - 5, oy, 3.9, 2.7, { outer: -1, iris: '#e0667f', lid: 0.18, lidFill: SIVAS.sun, look: 0.3 }) +
-    almondEye(v, ox + 6.5, oy, 3.2, 2.5, { outer: 1, iris: '#e0667f', lid: 0.18, lidFill: SIVAS.sun, look: 0.45 }),
+    almondEye(v, ox - 5, oy, 3.9, 2.7, { outer: -1, iris: '#e0667f', lid: 0.18, lidFill: SIVAS.sun, look: 0.3, blank: true }) +
+    almondEye(v, ox + 6.5, oy, 3.2, 2.5, { outer: 1, iris: '#e0667f', lid: 0.18, lidFill: SIVAS.sun, look: 0.45, blank: true }),
   );
 }
 

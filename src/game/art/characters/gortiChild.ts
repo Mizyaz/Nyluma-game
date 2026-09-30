@@ -1,7 +1,7 @@
 import { ellipsePath, limb, taper, type Pt } from '../svg';
 import { DETAIL, flat, INK } from '../style';
 import type { PartArt } from '../rigTypes';
-import { eyeSet, mouthSet } from './face';
+import { eyeSet, mouthSet, withoutSmile } from './face';
 import { barkLines, claws, fillOnly, ink, neon, part, path, rootSeg, roundPoly, tr } from './kit';
 import { humanoidRig, type HumanoidDims } from './skeleton';
 
@@ -75,7 +75,7 @@ function eyes(): PartArt[] {
     { x: -7.5, w: 6.4, h: 8, outer: -1 },
     { x: 7.5, w: 5.4, h: 7.4, outer: 1 },
   ];
-  return eyeSet('gorti.child', { x0: -14, y0: -9, x1: 14, y1: 9 }, (v, ox, oy) =>
+  return withoutSmile(eyeSet('gorti.child', { x0: -14, y0: -9, x1: 14, y1: 9 }, (v, ox, oy) =>
     E.map((e) => {
       const cx = ox + e.x;
       const cy = oy;
@@ -93,30 +93,15 @@ function eyes(): PartArt[] {
         const [yl, yr] = e.outer === -1 ? [yo, yi] : [yi, yo];
         return neon(`M${cx - hw} ${yl}L${cx + hw} ${yr}L${cx + hw} ${cy + hh}L${cx - hw} ${cy + hh}Z`, 1.1, NEON, true);
       }
-      return neon(roundPoly([[cx - hw, cy - hh], [cx + hw, cy - hh], [cx + hw, cy + hh], [cx - hw, cy + hh]], 1.6), 1.1, NEON, true) + `<rect x="${cx - hw * 0.35}" y="${cy - hh * 0.55}" width="${hw * 0.7}" height="${hh * 0.7}" rx="0.8" fill="${CHILD.core}"/>`;
+      return neon(roundPoly([[cx - hw, cy - hh], [cx + hw, cy - hh], [cx + hw, cy + hh], [cx - hw, cy + hh]], 1.6), 1.1, NEON, true);
     }).join(''),
-  );
+  ));
 }
 
 function mouth(): PartArt[] {
-  const m = 5.5;
-  return mouthSet('gorti.child', { x0: -m - 3, y0: -m - 3, x1: m + 3, y1: m + 3 }, (v, ox, oy) => {
-    const P = (x: number, y: number): string => `${ox + x * m} ${oy + y * m}`;
-    switch (v) {
-      case '':
-        return neon(`M${P(-0.9, 0)}Q${P(-0.45, -0.25)} ${P(0, 0)}T${P(0.9, 0)}`, 1.4, NEON);
-      case 'smile':
-        return neon(`M${P(-1, -0.25)}Q${P(0, 0.9)} ${P(1, -0.25)}`, 1.6, NEON);
-      case 'open':
-        return neon(roundPoly([[ox - m * 0.55, oy - m * 0.55], [ox + m * 0.55, oy - m * 0.55], [ox + m * 0.55, oy + m * 0.7], [ox - m * 0.55, oy + m * 0.7]], 2), 1.5, NEON);
-      case 'grin':
-        return neon(`M${P(-1, -0.3)}H${ox + m}Q${P(0.9, 1)} ${P(0, 1)}Q${P(-0.9, 1)} ${P(-1, -0.3)}Z`, 1.2, NEON, true) + ink(`M${P(-0.8, 0.15)}H${ox + m * 0.8}`, 0.9, CHILD.screen);
-      case 'grit':
-        return neon(`M${P(-1, -0.35)}H${ox + m}V${oy + m * 0.35}H${ox - m}Z`, 1.1, NEON) + neon(`M${P(-0.8, 0.1)}L${P(-0.45, -0.2)}L${P(-0.1, 0.1)}L${P(0.25, -0.2)}L${P(0.6, 0.1)}L${P(0.85, -0.1)}`, 0.9, NEON);
-      case 'frown':
-        return neon(`M${P(-1, 0.45)}Q${P(0, -0.6)} ${P(1, 0.45)}`, 1.6, NEON);
-    }
-  });
+  // Gorti has no mouth (as the author draws him): every shape is empty, so
+  // talking and emotions live in the eyes, the brows and the body.
+  return mouthSet('gorti.child', { x0: -4, y0: -4, x1: 4, y1: 4 }, () => '');
 }
 
 function brow(): PartArt {
