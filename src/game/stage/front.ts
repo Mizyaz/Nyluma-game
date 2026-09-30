@@ -13,6 +13,9 @@ import { structural, type BoxFrame } from './themes';
 // him, all but a strip at the top and at the bottom of the view, so that
 // the torn wall frames the picture; the room's things, the places to
 // interact with, and its close-ups. Pure data (unit-tested).
+//
+// Wiring a builder in, once, before a room is staged (e.g. in Stage.ts):
+//   setFrontBuilder(buildTornFront);
 
 /** What the front's builder gets: game px, y down, z toward the viewer. */
 export interface FrontSpec {

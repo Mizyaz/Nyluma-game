@@ -244,14 +244,15 @@ export class PaperBox {
     const f = this.frame;
     const t = this.theme;
     const T = WALL_T;
-    // As tall as the box's front, when it has one.
+    // The side walls stand as tall as the box's front, when it has one (the
+    // back wall keeps its height: the room's far art shows above it).
     const rim = this.front ? Math.min(f.rim, this.front.top) : f.rim;
     const faces = new Faces();
     const walls = new Faces();
     // Side walls: their inner faces show the box's inside, their tops the rim.
     walls.box(f.x0 - T, rim, f.x0, f.bottom, f.back - T, f.front, { rimBand: 0, top: 'rim', noBottom: true });
     walls.box(f.x1, rim, f.x1 + T, f.bottom, f.back - T, f.front, { rimBand: 0, top: 'rim', noBottom: true });
-    if (t.backWall) faces.box(f.x0 - T, rim, f.x1 + T, f.bottom, f.back - T, f.back, { top: 'rim', noBottom: true, sides: false });
+    if (t.backWall) faces.box(f.x0 - T, f.rim, f.x1 + T, f.bottom, f.back - T, f.back, { top: 'rim', noBottom: true, sides: false });
     const cols: Record<Face, number> = { top: t.rim, front: t.box, side: t.inner, bottom: t.inner, rim: t.rim };
     const wallMats = ORDER.map((k) => this.material(k, k === 'front' ? t.box : k === 'side' ? t.inner : cols[k]));
     const wm = new THREE.Mesh(walls.geometry(ORDER), wallMats);
