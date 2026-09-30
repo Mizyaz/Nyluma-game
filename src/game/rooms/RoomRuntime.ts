@@ -365,8 +365,10 @@ export class RoomRuntime {
       if (p.alpha !== undefined) img.setAlpha(p.alpha);
       if (p.angle) img.setAngle(p.angle);
       if (p.scroll !== undefined) img.setScrollFactor(p.scroll);
-      // In the diorama: at its own depth if it has one; hung things sway.
-      stage.lift(img, { z: p.z, sway: (p.oy ?? 1) === 0 && p.scroll === undefined });
+      // In the diorama: at its own depth if it has one; hung things sway,
+      // things standing on the floor lean a little.
+      const hung = (p.oy ?? 1) === 0 && p.scroll === undefined;
+      stage.lift(img, { z: p.z, sway: hung, lean: !hung && (p.oy ?? 1) === 1 && p.scroll === undefined && !p.angle });
     }
     this.props.push({ def: p, img, glow: null, active: this.isOn(p) });
   }

@@ -51,6 +51,13 @@ export function swayAngle(t: number, x: number, calm: boolean): number {
   return 0.022 * Math.sin(t * 0.8 + ph) + 0.007 * Math.sin(t * 2.1 + 1 + ph);
 }
 
+/** A standing card's lean: a few degrees either way, the same for the same spot. */
+export function leanAngle(x: number, y: number): number {
+  const h = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+  const u = h - Math.floor(h);
+  return (u < 0.5 ? -1 : 1) * (0.03 + 0.05 * Math.abs(u - 0.5) * 2);
+}
+
 /** Is `go` (still) part of the lifted object `root`? */
 function belongs(go: GO, root: GO): boolean {
   let g: GO | null = go;
@@ -88,7 +95,7 @@ interface Lifted {
 }
 
 const M4 = new THREE.Matrix4();
-const tmp = { m: affine(), n: affine(), q: affine(), p: affine(), w: affine() };
+const tmp = { q: affine(), p: affine(), w: affine() };
 
 function isImage(go: GO): go is Img {
   return go instanceof Phaser.GameObjects.Image || go instanceof Phaser.GameObjects.Sprite;
@@ -421,13 +428,9 @@ export class Mirror {
     const cast = o.cast ?? (lit && !decal && !terrain && thick > 0);
     // Sway: things hung from their top swing gently about it.
     const sway = o.sway ? swayAngle(f.t, go.x ?? 0, f.calm) : 0;
-    const ctx: WalkCtx = { l, f, z, dz, lit, cast, thick, rig, decal, terrain, idx: 0, sway, cropTop: terrain && o.solid ? o.solid.y : null };
-    tmp.m.a = 1;
-    tmp.m.b = 0;
-    tmp.m.c = 0;
-    tmp.m.d = 1;
-    tmp.m.e = 0;
-    tmp.m.f = 0;
+    // A lean about the upright through its anchor (world x of the object).
+    const yaw = o.lean ? leanAngle(go.x ?? 0, go.y ?? 0) : 0;
+    const ctx: WalkCtx = { l, f, z, dz, lit, cast, thick, rig, decal, terrain, idx: 0, sway, yaw, ax: P.a * (go.x ?? 0) + P.e, cropTop: terrain && o.solid ? o.solid.y : null };
     this.walk(go, ctx, P, 1, true);
   }
 
@@ -632,6 +635,11 @@ export class Mirror {
       const gy = t.y;
       const s = 2.6;
       M4.set(Q.a, Q.c, 0, Q.e, 0, 0, 1, -gy + 0.8, s * Q.b, s * Q.d, 0, s * (Q.f - gy), 0, 0, 0, 1);
+    } else if (c.yaw !== 0) {
+      // Turned about the vertical through the anchor: x' = ax + (x - ax) cos, z' = z - (x - ax) sin.
+      const cs = Math.cos(c.yaw);
+      const sn = Math.sin(c.yaw);
+      M4.set(Q.a * cs, Q.c * cs, 0, c.ax + (Q.e - c.ax) * cs, -Q.b, -Q.d, 0, -Q.f, -Q.a * sn, -Q.c * sn, 1, z - (Q.e - c.ax) * sn, 0, 0, 0, 1);
     } else {
       M4.set(Q.a, Q.c, 0, Q.e, -Q.b, -Q.d, 0, -Q.f, 0, 0, 1, z, 0, 0, 0, 1);
     }
@@ -697,5 +705,8 @@ interface WalkCtx {
   /** Running index of the cards drawn so far (draw order within a container). */
   idx: number;
   sway: number;
+  /** Lean about the vertical (radians) and the world x it turns about. */
+  yaw: number;
+  ax: number;
   cropTop: number | null;
 }

@@ -121,7 +121,9 @@ export class Stage implements StageDriver {
     });
     const parent = game.canvas.parentElement;
     if (!parent) throw new Error('no game parent');
-    parent.insertBefore(canvas, parent.firstChild);
+    // After Phaser's canvas in the DOM (`#game canvas` still finds Phaser's);
+    // beneath it on screen (styles.css).
+    parent.append(canvas);
     canvas.style.visibility = 'hidden';
     game.events.on(Phaser.Core.Events.POST_RENDER, this.frame, this);
     additiveOverDiorama(game, true);

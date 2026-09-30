@@ -32,6 +32,8 @@ export interface LiftOpts {
   lit?: boolean;
   /** Hangs from its top and sways a little (lamps, charms). */
   sway?: boolean;
+  /** Stands a few degrees off square, as cut-outs do in a real box (furniture). */
+  lean?: boolean;
   /** Depth between the children of a container, in their draw order (px). */
   dz?: number;
   /** Terrain art: the solid whose front face it paints (see `as`). */
