@@ -116,6 +116,7 @@ export const WORDS = {
   bloom: ['PAT!', 'FIŞŞ!', 'PIT!'],
   birds: ['CIK CIK!', 'CİV CİV!'],
   stomp: ['GÜMM!', 'KÜT!', 'BUMM!'],
+  smash: ['KRAŞ!', 'ÇATIR!', 'KÜTÜRT!'],
   moon: ['VUUU…'],
   horse: ['İHİHİ!'],
   whale: ['ŞLAP!', 'PLOF!', 'VOOM!'],

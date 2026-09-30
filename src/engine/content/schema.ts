@@ -113,6 +113,19 @@ export const TriggerSchema = z
   })
   .strict();
 
+export const BreakableSchema = z
+  .object({
+    id,
+    x: px,
+    key: z.string().optional().describe('Çizimi (varsayılan "prop.blocks"; ör. prop.crystals.blue, prop.rootdoor, prop.log)'),
+    scale: z.number().positive().optional(),
+    w: z.number().positive().optional().describe('Yolu kesen gövdenin genişliği (varsayılan 110)'),
+    h: z.number().positive().optional().describe('Yüksekliği (varsayılan 150)'),
+    needs: cond.optional().describe('Kim kırabilir, ör. "form:human" (varsayılan herkes)'),
+    color: z.string().optional().describe('Kırılınca uçuşan parçaların rengi, ör. "#e8c89a"'),
+  })
+  .strict();
+
 export const ExitSchema = z
   .object({
     to: z.string().describe('Gidilen oda'),
@@ -143,6 +156,7 @@ export const RoomSchema = z
     npcs: z.array(NpcSchema).optional().describe('Konuşulabilen karakterler'),
     gates: z.array(GateSchema).optional().describe('Koşul tutana dek kapalı duran kapılar'),
     triggers: z.array(TriggerSchema).optional().describe('Gorti girince çalışan şeritler'),
+    breakables: z.array(BreakableSchema).optional().describe('Yıkılabilenler: E ile kırılır, kırılınca yol açılır (bayrak <oda>.<id>.broken)'),
     exits: z.array(ExitSchema).optional().describe('Çıkışlar'),
     memories: z.array(z.object({ id: z.string(), x: px }).strict()).optional().describe('Toplanan anılar'),
   })
@@ -172,6 +186,7 @@ export type NpcJson = z.infer<typeof NpcSchema>;
 export type GateJson = z.infer<typeof GateSchema>;
 export type TriggerJson = z.infer<typeof TriggerSchema>;
 export type ExitJson = z.infer<typeof ExitSchema>;
+export type BreakableJson = z.infer<typeof BreakableSchema>;
 export type RoomJson = z.infer<typeof RoomSchema>;
 export type ChapterJson = z.infer<typeof ChapterSchema>;
 export type StoryJson = z.infer<typeof StorySchema>;

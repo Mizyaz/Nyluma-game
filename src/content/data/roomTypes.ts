@@ -104,6 +104,27 @@ export interface InteractDef extends Gate {
   prompt: string;
 }
 
+/**
+ * Something Gorti can break (the break move: E beside it). It stands, and
+ * blocks the way, until broken; the flag `<room>.<id>.broken` remembers it.
+ */
+export interface BreakableDef {
+  id: string;
+  x: number;
+  /** Base line (on the ground). */
+  y: number;
+  /** Its drawing (a prop key). */
+  key: string;
+  scale?: number;
+  /** The body that blocks the way (px). */
+  w: number;
+  h: number;
+  /** Who can break it (a condition, e.g. "form:human"); anyone by default. */
+  needs?: string;
+  /** Colour of the flying pieces' paper. */
+  color?: string;
+}
+
 export interface MemoryPickupDef {
   id: string;
   x: number;
@@ -169,6 +190,8 @@ export interface RoomDef {
   songNodes?: SongNodeDef[];
   sites?: SiteDef[];
   interacts?: InteractDef[];
+  /** Things to break (see BreakableDef); `withBreakables` adds their parts. */
+  breakables?: BreakableDef[];
   memories?: MemoryPickupDef[];
   exits: ExitDef[];
   triggers?: TriggerDef[];

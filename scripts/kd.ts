@@ -81,6 +81,7 @@ function check(): number {
   for (const r of rooms) {
     const at = `room ${r.id}`;
     for (const p of r.props ?? []) if (!props.has(p.key)) problems.push(`${at}: no drawing "${p.key}" (npm run kd -- list props)`);
+    for (const b of r.breakables ?? []) if (b.key && !props.has(b.key)) problems.push(`${at} breakable ${b.id}: no drawing "${b.key}"`);
     for (const n of r.npcs ?? []) if (!CAST[n.who]) problems.push(`${at} npc ${n.id}: "${n.who}" is not in the cast (npm run kd -- list cast)`);
     const lines = (list: readonly ActionJson[]): void =>
       walkActions(list, (a) => {
@@ -208,6 +209,7 @@ function show(id: string | undefined): number {
   }
   for (const g of r.gates ?? []) o.push(`Kapı ${g.id} x ${g.x}: açılır ⇐ ${g.open}${g.hint ? `  (ipucu: ${g.hint})` : ''}`);
   for (const t of r.triggers ?? []) o.push(`Tetik ${t.id} x ${t.x}${t.when ? ` [${t.when}]` : ''}${t.repeat ? ' (her seferinde)' : ''}:`, ...t.do.flatMap((a) => say(a, '  ')));
+  for (const b of r.breakables ?? []) o.push(`Yıkılır ${b.id} (${b.key ?? 'prop.blocks'}) x ${b.x}${b.needs ? ` ⇐ ${b.needs}` : ''}  → bayrak ${r.id}.${b.id}.broken`);
   for (const e of r.exits ?? []) o.push(`Çıkış → ${e.to}${e.when ? ` ⇐ ${e.when}` : ''}`);
   console.log(o.join('\n'));
   return 0;

@@ -1,6 +1,6 @@
 import type { RoomDef } from './roomTypes';
 import { ROOM_IDS, type RoomId } from '../../engine/state/types';
-import { compileRoom, type RoomSpec } from '../../engine/content/compile';
+import { compileRoom, withBreakables, type RoomSpec } from '../../engine/content/compile';
 import type { ChapterJson, RoomJson, SkyJson, StoryJson } from '../../engine/content/types';
 import storyJson from '../chapters/chapters.json';
 import { R01 } from '../rooms/r01';
@@ -44,7 +44,7 @@ export const ROOM_FILES: readonly RoomJson[] = Object.values(
 );
 
 const specs = new Map<string, RoomSpec>();
-export const ROOMS: Record<string, RoomDef> = { ...BUILT_IN_ROOMS };
+export const ROOMS: Record<string, RoomDef> = Object.fromEntries(Object.entries(BUILT_IN_ROOMS).map(([id, d]) => [id, withBreakables(d)]));
 for (const file of ROOM_FILES) {
   const ch = STORY.chapters.find((c) => c.id === file.chapter);
   if (!ch) continue; // `npm run kd -- check` reports it

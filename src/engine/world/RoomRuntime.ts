@@ -404,6 +404,11 @@ export class RoomRuntime {
     return { def, img, glow, active: this.isOn(def as Gate) };
   }
 
+  /** The drawing of a prop (by key and x), e.g. to break it. */
+  propImage(key: string, x: number): Phaser.GameObjects.Image | null {
+    return this.props.find((p) => p.def.key === key && p.def.x === x)?.img ?? null;
+  }
+
   /** Re-evaluates every gate after flags change. */
   refresh(animate = true): void {
     for (const s of this.solids) {

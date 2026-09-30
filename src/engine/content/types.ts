@@ -10,6 +10,7 @@ import type { SkyJson } from './schema';
 
 export type {
   ActionJson,
+  BreakableJson,
   ChapterJson,
   ExitJson,
   GateJson,

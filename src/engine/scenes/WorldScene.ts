@@ -29,6 +29,8 @@ import type { AmbienceId } from '../systems/AudioSystem';
 import { stage } from '../../render/2.5d/hooks';
 import type { SkyScene } from './SkyScene';
 import type { SkyJson, SkyOut } from '../content/types';
+import { breakFlag } from '../content/compile';
+import { shatter } from '../../render/2d/fx/shatter';
 
 /** Holding the laugh this long (s) makes it a kahkaha. */
 const KAHKAHA_S = 0.75;
@@ -463,7 +465,30 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private defaultInteract(id: string): void {
-    void id;
+    if (id.startsWith('brk:')) this.smash(id.slice(4));
+  }
+
+  /** The break move: a stomp, and the thing beside Gorti flies to pieces. */
+  smash(id: string): void {
+    const b = this.def.breakables?.find((x) => x.id === id);
+    const flag = breakFlag(this.def.id, id);
+    if (!b || this.quest.has(flag)) return;
+    const p = this.player;
+    p.setFacing(b.x >= p.x ? 1 : -1);
+    p.emote('effort', 700);
+    p.pose('smash', 0.62, true);
+    this.time.delayedCall(260, () => {
+      app.audio.sfx('stamp');
+      app.audio.sfx('rumble', { vol: 0.6 });
+      this.shake(0.011, 420);
+      const img = this.room.propImage(b.key, b.x);
+      const top = img ? img.getBounds().top : b.y - b.h;
+      this.comic.pop(b.x, top - 20, pick(WORDS.smash), 'stomp', true);
+      this.comic.focusLines(b.x, b.y - b.h / 2, 1);
+      this.dust(b.x, b.y, 18);
+      if (img) shatter(this, img, hex(b.color ?? '#e9d6b8'), b.y);
+      this.flag(flag, false);
+    });
   }
 
   /** Voluntary or scripted form change with a short transformation state. */

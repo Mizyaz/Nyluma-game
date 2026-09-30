@@ -2,7 +2,7 @@
 // world builds (ground, gates, exits, props, talk spots) and a RoomSpec the
 // room's ContentScript plays (NPCs, triggers, the Sun and the Moon).
 
-import type { RoomDef, SolidDef } from '../../content/data/roomTypes';
+import type { BreakableDef, RoomDef, SolidDef } from '../../content/data/roomTypes';
 import { parseCond } from './cond';
 import type { ActionJson, ChapterJson, GateJson, NpcJson, RoomJson, SkyJson, StoryJson, TriggerJson } from './types';
 
@@ -32,6 +32,30 @@ export const floorOf = (r: RoomJson): number => r.floor ?? (r.height ?? ROOM_H) 
 export const npcSpot = (id: string): string => `npc:${id}`;
 export const gateSolid = (id: string): string => `gate:${id}`;
 export const triggerRect = (id: string): string => `trg:${id}`;
+export const breakSpot = (id: string): string => `brk:${id}`;
+/** The flag a broken thing leaves. */
+export const breakFlag = (room: string, id: string): string => `${room}.${id}.broken`;
+const BREAK_W = 110;
+const BREAK_H = 150;
+
+/**
+ * A room with the parts of its breakables: a body that blocks the way and
+ * its drawing, both gone once broken, and the spot where E breaks it.
+ */
+export function withBreakables(def: RoomDef): RoomDef {
+  const list = def.breakables ?? [];
+  if (!list.length) return def;
+  const broken = (b: BreakableDef): string => breakFlag(def.id, b.id);
+  return {
+    ...def,
+    solids: [...def.solids, ...list.map((b): SolidDef => ({ id: breakSpot(b.id), x: b.x - b.w / 2, y: b.y - b.h, w: b.w, h: b.h, style: 'none', unless: broken(b) }))],
+    props: [...(def.props ?? []), ...list.map((b) => ({ key: b.key, x: b.x, y: b.y + 2, ...(b.scale ? { scale: b.scale } : {}), unless: broken(b) }))],
+    interacts: [
+      ...(def.interacts ?? []),
+      ...list.map((b) => ({ id: breakSpot(b.id), x: b.x, y: b.y - 10, r: b.w / 2 + 90, prompt: 'Yık', when: b.needs ? `(${b.needs}) & !${broken(b)}` : `!${broken(b)}` })),
+    ],
+  };
+}
 
 export function compileRoom(r: RoomJson, ch: ChapterJson): CompiledRoom {
   const h = r.height ?? ROOM_H;
@@ -69,17 +93,29 @@ export function compileRoom(r: RoomJson, ch: ChapterJson): CompiledRoom {
       x: p.x,
       y: p.y ?? floor + 2,
       ...(p.scale !== undefined ? { scale: p.scale } : {}),
-      ...(p.depth !== undefined ? { depth: p.depth } : {}),
+      // Room files give the diorama depth; far things also draw first.
+      ...(p.depth !== undefined ? { z: p.depth, ...(p.depth < 0 ? { depth: -50 } : {}) } : {}),
       ...(p.flip ? { flipX: true } : {}),
       ...(p.when ? { when: p.when } : {}),
       ...(p.unless ? { unless: p.unless } : {}),
     })),
     interacts: (r.npcs ?? []).map((n) => ({ id: npcSpot(n.id), x: n.x, y: floor - 10, r: TALK_R, prompt: 'Konuş', ...(n.when ? { when: n.when } : {}) })),
     memories: (r.memories ?? []).map((m) => ({ id: m.id, x: m.x, y: floor - 40 })),
+    breakables: (r.breakables ?? []).map((b) => ({
+      id: b.id,
+      x: b.x,
+      y: floor,
+      key: b.key ?? 'prop.blocks',
+      w: b.w ?? BREAK_W,
+      h: b.h ?? BREAK_H,
+      ...(b.scale ? { scale: b.scale } : {}),
+      ...(b.needs ? { needs: b.needs } : {}),
+      ...(b.color ? { color: b.color } : {}),
+    })),
     killY: h + 200,
   };
   return {
-    def,
+    def: withBreakables(def),
     spec: {
       id: r.id,
       floor,
@@ -162,6 +198,10 @@ export function checkStory(story: StoryJson, rooms: readonly RoomJson[], builtIn
       unique('trigger', t.id);
       cond(`${at} trigger ${t.id}`, t.when);
       actions(`${at} trigger ${t.id}`, t.do);
+    }
+    for (const b of r.breakables ?? []) {
+      unique('breakable', b.id);
+      cond(`${at} breakable ${b.id}`, b.needs);
     }
     for (const p of r.props ?? []) {
       cond(`${at} prop ${p.key}`, p.when);

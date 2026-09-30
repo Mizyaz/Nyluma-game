@@ -2,16 +2,81 @@
   "$schema": "../room.schema.json",
   "id": "b03",
   "chapter": "c6",
-  "title": "Boş Oda",
+  "title": "Kırık Oda",
   "theme": "clearing",
-  "width": 1800,
+  "width": 1900,
   "spawn": {
     "x": 220,
     "facing": 1
   },
-  "props": [],
+  "props": [
+    {
+      "key": "prop.tree",
+      "x": 420,
+      "depth": -80
+    },
+    {
+      "key": "prop.bush",
+      "x": 1650
+    }
+  ],
   "npcs": [],
   "gates": [],
-  "triggers": [],
-  "exits": []
+  "triggers": [
+    {
+      "id": "ipucu",
+      "x": 1080,
+      "when": "!form:human",
+      "do": [
+        {
+          "say": [
+            {
+              "who": "gorti",
+              "text": "Kök hâlimle bu kristale gücüm yetmez. İnsan olayım. (R)"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "exits": [
+    {
+      "to": "b04",
+      "when": "b03.kristal.broken"
+    }
+  ],
+  "form": "root",
+  "enter": [
+    {
+      "unlock": "form"
+    },
+    {
+      "say": [
+        {
+          "text": "Yol kapalı. Oyuncak bloklar, bir de kristal."
+        }
+      ]
+    }
+  ],
+  "breakables": [
+    {
+      "id": "bloklar",
+      "x": 800,
+      "key": "prop.blocks",
+      "scale": 1.3,
+      "w": 150,
+      "h": 160,
+      "color": "#f2d7a0"
+    },
+    {
+      "id": "kristal",
+      "x": 1250,
+      "key": "prop.crystals.blue",
+      "scale": 1.5,
+      "w": 160,
+      "h": 140,
+      "needs": "form:human",
+      "color": "#a9c4f5"
+    }
+  ]
 }
