@@ -60,9 +60,22 @@ export class Governor {
     private readonly enabled: boolean,
   ) {}
 
+  /** Ignores the next `ms` of frames (a room's first frames upload its art). */
+  hold(ms: number): void {
+    this.held = ms;
+    this.t = 0;
+    this.frames = 0;
+  }
+
+  private held = 0;
+
   /** Feeds one frame's real duration (ms). Returns 'scale' | 'tier' when something should change. */
   sample(ms: number, visible: boolean): 'scale' | 'tier' | null {
     if (!visible || ms > 250) return null;
+    if (this.held > 0) {
+      this.held -= ms;
+      return null;
+    }
     this.t += ms;
     this.frames++;
     if (this.t < 1500) return null;

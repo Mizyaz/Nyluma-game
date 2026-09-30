@@ -110,6 +110,12 @@ class Faces {
 const ORDER: readonly Face[] = ['top', 'front', 'side', 'bottom', 'rim'];
 
 /**
+ * The front lip on a floor: how high it stands (px) and how thick it is.
+ * Low enough that from the lifted eye it stays under the actors' feet.
+ */
+const LIP = { h: 5, t: 7 } as const;
+
+/**
  * Tops face the sky, not the key light: a little brighter paper keeps them
  * the colour the flat game paints them (as the prototype's floor did).
  */
@@ -191,6 +197,8 @@ export class PaperBox {
       const z0 = deep ? this.frame.back : -this.thin;
       const z1 = deep ? this.frame.front : this.thin;
       faces.box(s.x, s.y, s.x + s.w, s.y + s.h, z0, z1, { rimBand: deep ? 12 : 0 });
+      // The box's front lip: a low raised paper edge along a floor's front.
+      if (deep) faces.box(s.x, s.y - LIP.h, s.x + s.w, s.y, z1 - LIP.t, z1, { top: 'rim', noBottom: true });
       const dynamic = !!(s.when || s.unless || s.latent || s.grow);
       if (dynamic) {
         const mats = ORDER.map((f) => new THREE.MeshLambertMaterial({ color: faceColor(f, colors[f]), map: this.paper, transparent: false }));
@@ -203,7 +211,10 @@ export class PaperBox {
       const key = ORDER.map((f) => colors[f]).join(',');
       const g = groups.get(key);
       if (!g) groups.set(key, { faces, colors });
-      else g.faces.box(s.x, s.y, s.x + s.w, s.y + s.h, z0, z1, { rimBand: deep ? 12 : 0 });
+      else {
+        g.faces.box(s.x, s.y, s.x + s.w, s.y + s.h, z0, z1, { rimBand: deep ? 12 : 0 });
+        if (deep) g.faces.box(s.x, s.y - LIP.h, s.x + s.w, s.y, z1 - LIP.t, z1, { top: 'rim', noBottom: true });
+      }
     }
     for (const { faces, colors } of groups.values()) {
       const mats = ORDER.map((f) => this.material(f, colors[f]));
@@ -230,13 +241,18 @@ export class PaperBox {
     const wm = new THREE.Mesh(walls.geometry(ORDER), wallMats);
     wm.receiveShadow = true;
     this.group.add(wm);
+    this.geometries.push(wm.geometry);
     if (!faces.empty) {
       const backMats = ORDER.map((k) => this.material(k, k === 'front' ? t.back : cols[k]));
       const bm = new THREE.Mesh(faces.geometry(ORDER), backMats);
       bm.receiveShadow = true;
       this.group.add(bm);
+      this.geometries.push(bm.geometry);
     }
   }
+
+  /** Geometry of the box's own walls (disposed with the box). */
+  private readonly geometries: THREE.BufferGeometry[] = [];
 
   /** Slabs follow their solids: shown with their gate, faded with focus, grown in. */
   update(): void {
@@ -271,6 +287,7 @@ export class PaperBox {
       for (const m of s.mats) m.dispose();
     }
     for (const m of this.shared) m.dispose();
+    for (const g of this.geometries) g.dispose();
     this.group.clear();
   }
 }

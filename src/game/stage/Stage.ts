@@ -163,6 +163,8 @@ export class Stage implements StageDriver {
     // Compile every program now (under the tunnel's veil), not mid-walk.
     this.draw(true);
     this.renderer.compile(this.scene, this.camera);
+    // The first frames upload the room's art: not a measure of the device.
+    this.governor.hold(2500);
   }
 
   private build(world: WorldScene): RoomLink {
