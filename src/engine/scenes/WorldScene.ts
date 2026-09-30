@@ -323,6 +323,8 @@ export class WorldScene extends Phaser.Scene {
     if (gameplay && p.controllable) {
       this.target = this.resolveTarget();
       if (i.consume('action')) this.doAction();
+      // R: Gorti changes form (root ⇄ human) once it has learned how.
+      if (i.consume('form') && p.kind === 'gorti' && p.state !== 'transform' && this.quest.hasAbility('form')) this.transform(p.form === 'root' ? 'human' : 'root');
       this.glance();
     } else if (!gameplay) this.target = null;
     if (this.pulseWind > 0) {

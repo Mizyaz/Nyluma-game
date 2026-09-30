@@ -10,7 +10,7 @@ export const ROOM_H = 900;
 export const GATE_H = 260;
 const EXIT_W = 70;
 const TRIGGER_W = 80;
-const TALK_R = 120;
+const TALK_R = 150;
 
 /** What a content room does, beside what it is made of. */
 export interface RoomSpec {
@@ -74,7 +74,7 @@ export function compileRoom(r: RoomJson, ch: ChapterJson): CompiledRoom {
       ...(p.when ? { when: p.when } : {}),
       ...(p.unless ? { unless: p.unless } : {}),
     })),
-    interacts: (r.npcs ?? []).map((n) => ({ id: npcSpot(n.id), x: n.x, y: floor - 70, r: TALK_R, prompt: 'Konuş', ...(n.when ? { when: n.when } : {}) })),
+    interacts: (r.npcs ?? []).map((n) => ({ id: npcSpot(n.id), x: n.x, y: floor - 10, r: TALK_R, prompt: 'Konuş', ...(n.when ? { when: n.when } : {}) })),
     memories: (r.memories ?? []).map((m) => ({ id: m.id, x: m.x, y: floor - 40 })),
     killY: h + 200,
   };

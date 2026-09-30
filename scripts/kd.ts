@@ -232,7 +232,7 @@ async function shot(id: string | undefined, xs: string[]): Promise<number> {
   }
   const { createServer } = await import('vite');
   const { chromium } = await import('@playwright/test');
-  const server = await createServer({ root: ROOT, logLevel: 'error', server: { port: 5310, host: '127.0.0.1' } });
+  const server = await createServer({ root: ROOT, logLevel: 'error', server: { port: Number(process.env.KD_PORT ?? 5310), host: '127.0.0.1' } });
   await server.listen();
   const url = server.resolvedUrls?.local[0] ?? 'http://127.0.0.1:5310/';
   const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
