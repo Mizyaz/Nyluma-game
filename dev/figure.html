@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Figure</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#d9d4cc}
+canvas{display:block}
+#hud{position:fixed;left:8px;top:8px;font:12px/1.4 sans-serif;color:#2c2733;background:rgba(255,255,255,.72);padding:6px 8px;border-radius:6px;max-width:calc(100vw - 32px)}
+#hud button{font:12px sans-serif;margin:2px 2px 0 0;padding:2px 7px;border:1px solid #b9aec4;border-radius:4px;background:#fff;color:#2c2733}
+#hud button.on{background:#ead7f2}
+body.clean #hud{display:none}
+</style>
+</head>
+<body>
+<div id="hud"></div>
+<script type="module" src="/src/dev/figurePreview.ts"></script>
+</body>
+</html>

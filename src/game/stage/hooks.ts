@@ -48,6 +48,36 @@ export interface LiftOpts {
    * draws them all.
    */
   clipTop?: number;
+  /** A 3D figure stands in for the rig's cut-outs where the stage has a model for it. */
+  figure?: FigureSource;
+}
+
+/** A rig's pose as a 3D figure reads it (the 2D rig's frame: y down, facing right). */
+export interface FigurePose {
+  angles: Record<string, number>;
+  offsets: Record<string, { x: number; y: number }>;
+  x: number;
+  y: number;
+  facing: 1 | -1;
+  /** 0..1 of the run speed. */
+  speed: number;
+  anim: string;
+  t: number;
+  emote?: string;
+  emoteK?: number;
+  blink?: number;
+  look?: number;
+  frames?: Record<string, string>;
+  scales?: Record<string, { x: number; y: number }>;
+}
+
+/** A rig that a 3D figure can stand in for (RigView). */
+export interface FigureSource {
+  readonly id: string;
+  pose(): FigurePose;
+  /** World positions of the figure's anchors, written by the stage while `live`. */
+  anchors: Record<string, { x: number; y: number }>;
+  live?: boolean;
 }
 
 /** What the stage implements (Stage.ts). */
