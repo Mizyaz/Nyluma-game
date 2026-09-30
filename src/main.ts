@@ -6,6 +6,7 @@ import { InputSystem } from './game/systems/InputSystem';
 import { detectStorage, SaveSystem } from './game/systems/SaveSystem';
 import { AudioSystem } from './game/systems/AudioSystem';
 import { UI } from './ui/UI';
+import { installVoices } from './game/audio/voices';
 
 function boot(): void {
   const params = new URLSearchParams(location.search);
@@ -29,6 +30,7 @@ function boot(): void {
   app.game = new Phaser.Game(gameConfig(parent, params.has('canvas')));
   app.ui = new UI(app.game);
   app.ui.applySettings(app.settings);
+  installVoices(app.ui.dialogue);
 
   if (__E2E__ || import.meta.env.DEV) {
     void import('./game/testProbe').then((m) => m.installProbe());

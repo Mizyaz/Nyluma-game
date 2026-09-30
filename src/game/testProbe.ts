@@ -1,4 +1,5 @@
 import { app } from './App';
+import { GORTI_VOICES, SIVASLI_VOICE, playWord, voiceFor } from './audio/voices';
 import type { WorldScene } from './scenes/WorldScene';
 import { Ensemble, composeCue, type MusicCue } from '../music';
 
@@ -81,31 +82,37 @@ export function installProbe(): void {
     /** The same render as a 16-bit WAV file (base64), normalized for listening. */
     async musicWav(cue: MusicCue, seconds: number, seed = 1): Promise<string> {
       const { buf } = await renderOffline(cue, seconds, seed);
-      const chans = [buf.getChannelData(0), buf.getChannelData(1)];
-      let peak = 1e-6;
-      for (const d of chans) for (const v of d) peak = Math.max(peak, Math.abs(v));
-      const gain = 0.89 / peak;
-      const n = buf.length;
-      const view = new DataView(new ArrayBuffer(44 + n * 4));
-      const text = (o: number, t: string): void => [...t].forEach((c, i) => view.setUint8(o + i, c.charCodeAt(0)));
-      text(0, 'RIFF');
-      view.setUint32(4, 36 + n * 4, true);
-      text(8, 'WAVEfmt ');
-      view.setUint32(16, 16, true);
-      view.setUint16(20, 1, true);
-      view.setUint16(22, 2, true);
-      view.setUint32(24, buf.sampleRate, true);
-      view.setUint32(28, buf.sampleRate * 4, true);
-      view.setUint16(32, 4, true);
-      view.setUint16(34, 16, true);
-      text(36, 'data');
-      view.setUint32(40, n * 4, true);
-      for (let i = 0; i < n; i++)
-        for (let c = 0; c < 2; c++) view.setInt16(44 + i * 4 + c * 2, Math.round(Math.max(-1, Math.min(1, chans[c]![i]! * gain)) * 32767), true);
-      const bytes = new Uint8Array(view.buffer);
-      let bin = '';
-      for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-      return btoa(bin);
+      return wavBase64(buf);
+    },
+    /**
+     * Dialogue lines in the characters' voices, typed at the normal speed, as
+     * a WAV file (base64). `voice` picks one of Gorti's voices by name.
+     */
+    async voiceWav(lines: { who?: string; text: string; whisper?: boolean; voice?: 'child' | 'youth' | 'warrior' | 'sivasli' }[]): Promise<string> {
+      const rate = 44100;
+      const cps = 45;
+      const total = lines.reduce((s, l) => s + l.text.length / cps + 0.7, 0.4);
+      const ctx = new OfflineAudioContext(2, Math.ceil(rate * total), rate);
+      const noise = ctx.createBuffer(1, rate, rate);
+      const nd = noise.getChannelData(0);
+      for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+      const bus = ctx.createGain();
+      bus.gain.value = 0.6 * 0.8;
+      bus.connect(ctx.destination);
+      let t = 0.2;
+      for (const l of lines) {
+        const v = l.voice === 'sivasli' ? SIVASLI_VOICE : l.voice ? GORTI_VOICES[l.voice] : voiceFor(l.who ?? '');
+        const words = [...l.text.matchAll(/\S+/g)];
+        let lastAt = -1;
+        words.forEach((m, i) => {
+          const at = t + (m.index ?? 0) / cps;
+          if (at - lastAt < 0.055) return;
+          lastAt = at;
+          playWord({ ctx, bus, noise }, v, m[0], l, i === words.length - 1, at);
+        });
+        t += l.text.length / cps + 0.7;
+      }
+      return wavBase64(await ctx.startRendering());
     },
   };
 }
@@ -127,4 +134,33 @@ async function renderOffline(cue: MusicCue, seconds: number, seed: number): Prom
     t += bar.len;
   }
   return { buf: await ctx.startRendering(), notes: band.struck };
+}
+
+/** A 16-bit stereo WAV file (base64) of a render, normalized for listening. */
+function wavBase64(buf: AudioBuffer): string {
+  const chans = [buf.getChannelData(0), buf.getChannelData(buf.numberOfChannels > 1 ? 1 : 0)];
+  let peak = 1e-6;
+  for (const d of chans) for (const v of d) peak = Math.max(peak, Math.abs(v));
+  const gain = 0.89 / peak;
+  const n = buf.length;
+  const view = new DataView(new ArrayBuffer(44 + n * 4));
+  const text = (o: number, t: string): void => [...t].forEach((c, i) => view.setUint8(o + i, c.charCodeAt(0)));
+  text(0, 'RIFF');
+  view.setUint32(4, 36 + n * 4, true);
+  text(8, 'WAVEfmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 2, true);
+  view.setUint32(24, buf.sampleRate, true);
+  view.setUint32(28, buf.sampleRate * 4, true);
+  view.setUint16(32, 4, true);
+  view.setUint16(34, 16, true);
+  text(36, 'data');
+  view.setUint32(40, n * 4, true);
+  for (let i = 0; i < n; i++)
+    for (let c = 0; c < 2; c++) view.setInt16(44 + i * 4 + c * 2, Math.round(Math.max(-1, Math.min(1, chans[c]![i]! * gain)) * 32767), true);
+  const bytes = new Uint8Array(view.buffer);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
 }

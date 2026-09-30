@@ -264,6 +264,15 @@ export class AudioSystem {
 
   // ------------------------------------------------------------ sfx
 
+  /**
+   * Where a synthesized sound of another module plays (the voices): the
+   * context, the sound-effects bus and a noise buffer. Null while silent.
+   */
+  sfxOut(): { ctx: AudioContext; bus: GainNode; noise: AudioBuffer } | null {
+    const c = this.ok();
+    return c ? { ctx: c, bus: this.sfxBus, noise: this.noise } : null;
+  }
+
   sfx(name: Sfx, opt: { vol?: number; pitch?: number } = {}): void {
     const c = this.ok();
     if (!c) return;
