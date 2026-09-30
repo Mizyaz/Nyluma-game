@@ -75,7 +75,7 @@ export default defineConfig(({ mode }) => ({
     sourcemap: false,
     rollupOptions: {
       output: {
-        // three.js comes with the paper diorama (src/game/stage), loaded
+        // three.js comes with the paper diorama (src/render/2.5d), loaded
         // beside the game's boot.
         manualChunks: {
           phaser: ['phaser'],

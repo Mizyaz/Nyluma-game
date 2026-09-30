@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { NEXT_ROOM, ROOMS } from '../../src/game/data/rooms';
-import { MEMORIES } from '../../src/game/data/memories';
-import { allParts } from '../../src/game/art/manifest';
-import { HULL_H, HULL_W, REACH_RANGE } from '../../src/game/constants';
-import type { RoomDef, SolidDef } from '../../src/game/data/roomTypes';
-import { ROOM_IDS } from '../../src/game/state/types';
+import { NEXT_ROOM, ROOMS } from '../../src/content/data/rooms';
+import { MEMORIES } from '../../src/content/data/memories';
+import { allParts } from '../../src/content/art/manifest';
+import { HULL_H, HULL_W, REACH_RANGE } from '../../src/engine/constants';
+import type { RoomDef, SolidDef } from '../../src/content/data/roomTypes';
+import { ROOM_IDS } from '../../src/engine/state/types';
 
 const rooms = Object.values(ROOMS) as RoomDef[];
 

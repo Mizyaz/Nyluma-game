@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { actionsForKey, InputSystem } from '../../src/game/systems/InputSystem';
+import { actionsForKey, InputSystem } from '../../src/engine/systems/InputSystem';
 
 describe('input contexts', () => {
   const mk = (): { i: InputSystem; t: { now: number } } => {

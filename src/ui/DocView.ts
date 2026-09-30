@@ -1,5 +1,5 @@
-import { app } from '../game/App';
-import type { Action } from '../game/systems/InputSystem';
+import { app } from '../engine/App';
+import type { Action } from '../engine/systems/InputSystem';
 import { h, noClickFocus } from './dom';
 
 /** How a page is presented: a paper document, or a painting in a gallery. */

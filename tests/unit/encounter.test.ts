@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SUN_TUNING, sunNext, sunStart, type SunState } from '../../src/game/data/encounters';
+import { SUN_TUNING, sunNext, sunStart, type SunState } from '../../src/content/data/encounters';
 
 describe('Sun encounter phases', () => {
   it('starts according to saved phase flags', () => {

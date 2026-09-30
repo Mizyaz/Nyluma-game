@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { FocusMeter, pickReachTarget, segmentHitsRect } from '../../src/game/systems/AbilitySystem';
-import { FOCUS_MAX_S } from '../../src/game/constants';
+import { FocusMeter, pickReachTarget, segmentHitsRect } from '../../src/gameplay/AbilitySystem';
+import { FOCUS_MAX_S } from '../../src/engine/constants';
 
 describe('focus meter', () => {
   it('drains only while active and recharges after a short delay', () => {

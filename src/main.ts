@@ -1,12 +1,12 @@
 import './styles.css';
 import * as Phaser from 'phaser';
-import { app } from './game/App';
-import { gameConfig } from './game/config';
-import { InputSystem } from './game/systems/InputSystem';
-import { detectStorage, SaveSystem } from './game/systems/SaveSystem';
-import { AudioSystem } from './game/systems/AudioSystem';
+import { app } from './engine/App';
+import { gameConfig } from './engine/config';
+import { InputSystem } from './engine/systems/InputSystem';
+import { detectStorage, SaveSystem } from './engine/systems/SaveSystem';
+import { AudioSystem } from './engine/systems/AudioSystem';
 import { UI } from './ui/UI';
-import { installVoices } from './game/audio/voices';
+import { installVoices } from './engine/audio/voices';
 
 /** Does this browser offer WebGL2 (the diorama's three.js needs it)? */
 function hasWebGL2(): boolean {
@@ -48,7 +48,7 @@ function boot(): void {
     // would show the page under the menus).
     app.game.config.backgroundColor.setTo(15, 13, 24, 255);
     app.game.events.once(Phaser.Core.Events.READY, () => {
-      void import('./game/stage/Stage')
+      void import('./render/2.5d/Stage')
         .then((m) => m.createStage(app.game, params))
         .catch((e: unknown) => {
           console.warn('[stage] could not load the diorama; flat rendering', e);
@@ -61,7 +61,7 @@ function boot(): void {
   installVoices(app.ui.dialogue);
 
   if (__E2E__ || import.meta.env.DEV) {
-    void import('./game/testProbe').then((m) => m.installProbe());
+    void import('./engine/testProbe').then((m) => m.installProbe());
   }
 }
 

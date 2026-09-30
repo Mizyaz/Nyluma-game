@@ -1,6 +1,6 @@
-import { app } from '../game/App';
-import type { Action } from '../game/systems/InputSystem';
-import type { TouchMode } from '../game/state/types';
+import { app } from '../engine/App';
+import type { Action } from '../engine/systems/InputSystem';
+import type { TouchMode } from '../engine/state/types';
 import { h, ICONS } from './dom';
 
 export interface TouchAvail {

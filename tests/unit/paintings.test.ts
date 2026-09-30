@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { PAINTING_LINE, PAINTING_ORDER, PAINTING_PLACEMENTS, PAINTINGS, paintingsIn } from '../../src/game/data/paintings';
-import { ROOMS } from '../../src/game/data/rooms';
-import type { RoomDef } from '../../src/game/data/roomTypes';
-import { ROOM_IDS, type RoomId } from '../../src/game/state/types';
-import { floorBelow } from '../../src/game/world/geometry';
+import { PAINTING_LINE, PAINTING_ORDER, PAINTING_PLACEMENTS, PAINTINGS, paintingsIn } from '../../src/content/data/paintings';
+import { ROOMS } from '../../src/content/data/rooms';
+import type { RoomDef } from '../../src/content/data/roomTypes';
+import { ROOM_IDS, type RoomId } from '../../src/engine/state/types';
+import { floorBelow } from '../../src/engine/world/geometry';
 
 const rooms = ROOM_IDS.map((id) => ROOMS[id] as RoomDef);
 /** Frame and wire around the canvas, world px (generous). */

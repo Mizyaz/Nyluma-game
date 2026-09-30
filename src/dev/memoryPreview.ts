@@ -8,7 +8,7 @@ import {
   fragmentArtUrl,
   memoryArtUrl,
   portraitUrl,
-} from '../game/art/memoryArt';
+} from '../content/art/memoryArt';
 
 interface Section {
   kind: string;

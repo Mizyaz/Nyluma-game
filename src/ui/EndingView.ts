@@ -1,6 +1,6 @@
-import { app } from '../game/App';
+import { app } from '../engine/App';
 import { creditsBlock } from './Menus';
-import { portraitUrl } from '../game/art/memoryArt';
+import { portraitUrl } from '../content/art/memoryArt';
 import { focusables, h } from './dom';
 
 export interface EndingActions {

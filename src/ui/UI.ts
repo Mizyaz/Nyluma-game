@@ -1,9 +1,9 @@
 import type * as Phaser from 'phaser';
-import { app } from '../game/App';
-import { VIEW_W } from '../game/constants';
-import { CAST_NAMES, type CastId } from '../game/cinematics/castNames';
-import { NAMES } from '../game/data/dialogue.tr';
-import type { Settings } from '../game/state/types';
+import { app } from '../engine/App';
+import { VIEW_W } from '../engine/constants';
+import { CAST_NAMES, type CastId } from '../engine/cinematics/castNames';
+import { NAMES } from '../content/data/dialogue.tr';
+import type { Settings } from '../engine/state/types';
 import { ColorStorm } from './ColorStorm';
 import { Dialogue } from './Dialogue';
 import { DocView } from './DocView';

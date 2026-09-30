@@ -1,5 +1,5 @@
-import { app } from '../game/App';
-import { NAMES } from '../game/data/dialogue.tr';
+import { app } from '../engine/App';
+import { NAMES } from '../content/data/dialogue.tr';
 import { h } from './dom';
 
 export interface Line {

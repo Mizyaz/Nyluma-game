@@ -9,7 +9,7 @@
 // &clean=1 (no panel) &bench=1 (window.bench: build times);
 // ?cam=debug&tx=&ty=&tz=&w=&yaw=&pitch= looks anywhere.
 import * as THREE from 'three';
-import { buildTornFront, TORN_THEMES, type TornFront, type TornFrontSpec } from '../game/stage/tornFront';
+import { buildTornFront, TORN_THEMES, type TornFront, type TornFrontSpec } from '../render/2.5d/tornFront';
 
 const params = new URLSearchParams(location.search);
 const ROOM = { w: 2600, h: 900, floor: 760 };

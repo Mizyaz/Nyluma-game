@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { humanoidPose, idleAction } from '../../src/game/entities/animPoses';
-import { allParts, allRigs } from '../../src/game/art/manifest';
-import { RIG_COWARD } from '../../src/game/art/characters/forms';
+import { humanoidPose, idleAction } from '../../src/render/2d/rig/animPoses';
+import { allParts, allRigs } from '../../src/content/art/manifest';
+import { RIG_COWARD } from '../../src/content/characters/forms';
 import {
   humanRigFor,
   RIG_GORTI_CHILD,
@@ -11,7 +11,7 @@ import {
   RIG_GORTI_WARRIOR,
   RIG_GORTI_YOUTH,
   rootRigFor,
-} from '../../src/game/art/characters/gorti';
+} from '../../src/content/characters/gorti';
 
 const hipsY = (p: ReturnType<typeof humanoidPose>): number => p.offsets.hips?.y ?? 0;
 

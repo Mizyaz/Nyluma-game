@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { ROOMS } from '../../src/game/data/rooms';
-import type { RoomDef } from '../../src/game/data/roomTypes';
-import { allParts } from '../../src/game/art/manifest';
-import { WHALE_SIZES, WHALE_SPECIES, whaleLayout } from '../../src/game/art/characters/whales';
-import { assignSpecies, isWhalePlatform, planWhales } from '../../src/game/rooms/whalePlan';
+import { ROOMS } from '../../src/content/data/rooms';
+import type { RoomDef } from '../../src/content/data/roomTypes';
+import { allParts } from '../../src/content/art/manifest';
+import { WHALE_SIZES, WHALE_SPECIES, whaleLayout } from '../../src/content/characters/whales';
+import { assignSpecies, isWhalePlatform, planWhales } from '../../src/gameplay/whales/whalePlan';
 
 const rooms = Object.values(ROOMS) as RoomDef[];
 

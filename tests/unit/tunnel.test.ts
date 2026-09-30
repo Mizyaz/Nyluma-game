@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { Rng } from '../../src/game/art/svg';
-import type { ThemeId } from '../../src/game/data/roomTypes';
-import { GEM_HUES, GEM_SWATCHES, nearestGemHue } from '../../src/game/fx/gemArt';
-import { frameSlots, sideCounts, ZoomTunnel, type FrameSpec } from '../../src/game/fx/tunnelLayout';
-import { huesOf, warpLook } from '../../src/game/fx/warpLook';
+import { Rng } from '../../src/render/2d/svg';
+import type { ThemeId } from '../../src/content/data/roomTypes';
+import { GEM_HUES, GEM_SWATCHES, nearestGemHue } from '../../src/render/2d/fx/gemArt';
+import { frameSlots, sideCounts, ZoomTunnel, type FrameSpec } from '../../src/render/2d/fx/tunnelLayout';
+import { huesOf, warpLook } from '../../src/render/2d/fx/warpLook';
 
 const SPEC: FrameSpec = { gems: 12, sides: true, band: 0.83, edge: 0.97, gemLength: 0.52, jitter: 0.14, shapes: 3, sideKinds: 6 };
 

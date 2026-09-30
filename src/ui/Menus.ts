@@ -1,9 +1,9 @@
-import { app, persistSettings } from '../game/App';
-import { CHAPTER_TITLES } from '../game/state/GameState';
-import { MEMORIES } from '../game/data/memories';
-import { OPEN_ALL, SCENES, chapterTitle, type SceneEntry } from '../game/data/scenes';
-import type { Settings, TextSpeed, TouchMode } from '../game/state/types';
-import { memoryArtUrl } from '../game/art/memoryArt';
+import { app, persistSettings } from '../engine/App';
+import { CHAPTER_TITLES } from '../engine/state/GameState';
+import { MEMORIES } from '../content/data/memories';
+import { OPEN_ALL, SCENES, chapterTitle, type SceneEntry } from '../content/data/scenes';
+import type { Settings, TextSpeed, TouchMode } from '../engine/state/types';
+import { memoryArtUrl } from '../content/art/memoryArt';
 import { focusables, h } from './dom';
 import { ALLOWED_LICENSES } from '../music/library';
 

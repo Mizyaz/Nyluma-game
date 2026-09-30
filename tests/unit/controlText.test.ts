@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { forTouch } from '../../src/ui/controlText';
-import { CAPTIONS } from '../../src/game/data/dialogue.tr';
+import { CAPTIONS } from '../../src/content/data/dialogue.tr';
 
 describe('touch wording of instructions', () => {
   it('names the on-screen buttons instead of keys', () => {

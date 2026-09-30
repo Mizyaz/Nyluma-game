@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { ROOMS } from '../../src/game/data/rooms';
-import { STAGE_BOX } from '../../src/game/data/rooms/r01Stage';
-import { frontSpec } from '../../src/game/stage/front';
-import { boxFrame, boxTheme, roomStage } from '../../src/game/stage/themes';
-import { bandZ, offAxis, phaserScreen, pinAt, placeScrolled, projectToPlane, restCentre, scrollDepth, viewRect, type CamState } from '../../src/game/stage/depth';
+import { ROOMS } from '../../src/content/data/rooms';
+import { STAGE_BOX } from '../../src/content/rooms/r01Stage';
+import { frontSpec } from '../../src/render/2.5d/front';
+import { boxFrame, boxTheme, roomStage } from '../../src/render/2.5d/themes';
+import { bandZ, offAxis, phaserScreen, pinAt, placeScrolled, projectToPlane, restCentre, scrollDepth, viewRect, type CamState } from '../../src/render/2.5d/depth';
 
 // The diorama must look exactly like the flat game from the middle of the
 // view: layers at the depth their scroll factor implies, pinned things where

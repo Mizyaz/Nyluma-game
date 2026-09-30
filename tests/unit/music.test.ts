@@ -8,8 +8,8 @@ import { MOODS, STRING_MOODS } from '../../src/music/moods';
 import { StringComposer } from '../../src/music/stringComposer';
 import { chordPcs, pc } from '../../src/music/theory';
 import { MUSIC_CUES, PIANO_CUES, STRING_CUES, type Bar, type Mood, type NoteEvent, type SectionKind } from '../../src/music/types';
-import { ROOMS } from '../../src/game/data/rooms';
-import { AudioSystem } from '../../src/game/systems/AudioSystem';
+import { ROOMS } from '../../src/content/data/rooms';
+import { AudioSystem } from '../../src/engine/systems/AudioSystem';
 
 function write(mood: Mood, seed: number, bars: number): Bar[] {
   const c = new Composer(mood, seed);

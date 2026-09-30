@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { SAVE_KEY, SETTINGS_KEY, SaveSystem, type StorageLike } from '../../src/game/systems/SaveSystem';
-import { chapterStartProgress, emptyProfile, newProgress } from '../../src/game/state/GameState';
-import { DEFAULT_SETTINGS } from '../../src/game/state/types';
+import { SAVE_KEY, SETTINGS_KEY, SaveSystem, type StorageLike } from '../../src/engine/systems/SaveSystem';
+import { chapterStartProgress, emptyProfile, newProgress } from '../../src/engine/state/GameState';
+import { DEFAULT_SETTINGS } from '../../src/engine/state/types';
 
 class MemStorage implements StorageLike {
   map = new Map<string, string>();

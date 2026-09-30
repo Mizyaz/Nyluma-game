@@ -126,14 +126,14 @@ yerel sunucu için: `npx serve dist` ya da `node scripts/serve.mjs dist 4173 /`.
 ### Kâğıt diorama (3B sahne)
 
 Dünya sahnesi Phaser tuvalinin altındaki bir three.js tuvalinde çizilir
-(`src/game/stage/`): odalar önü açık kâğıt kutulardır (arazi derinliği olan
+(`src/render/2.5d/`): odalar önü açık kâğıt kutulardır (arazi derinliği olan
 kartonlar, kutunun yan duvarları ve kenarı), paralaks katmanları kaydırma
 oranlarının gerektirdiği derinlikte durur, proplar, karakterler ve balinalar
 kalın kartonlar olarak kalkar; yumuşak gölgeler, Gorti'ye odaklanan alan
 derinliği ve çizgi roman baskısı vardır. Phaser kendi çizdiklerini (efektler,
 ses sözcükleri, maskeler, geçişler, sinema bantları) şeffaf tuvalinde üstte
 çizmeye devam eder; iki resim z = 0 düzleminde birebir örtüşür. Birinci
-bölümün kutusu birinci tablodan gelir (`src/game/stage/themes.ts`).
+bölümün kutusu birinci tablodan gelir (`src/render/2.5d/themes.ts`).
 
 - `?flat`: düz (2B) çizim. WebGL2 yoksa, 3B sahne kurulamazsa ya da Canvas
   çizici (`?canvas=1`) seçilmişse de düz çizim kullanılır.
@@ -180,18 +180,18 @@ dosyası Jekyll işlemesini kapatır.
 ```
 index.html                  Giriş sayfası
 src/main.ts                 Hizmetlerin kurulumu ve Phaser oyunu
-src/game/config.ts          1280×720 tasarım alanı, FIT ölçekleme, Arcade Physics (60 Hz sabit adım)
-src/game/scenes/            BootScene (çizimleri bir kez rasterleştirir), MenuScene, WorldScene, EndingScene
-src/game/entities/          Oyuncu, iskelet (cutout) çalışma zamanı ve pozlar (zıplama, yüz, bekleme hareketleri), at, yaratıklar, Ay/Güneş yüzleri, anı taşı, tablo
-src/game/moves/             Rezonans hareketleri: hareket arayüzü, bölümlere göre büyüme tablosu, efektler (çiçek, çatlak, Ay, at) ve hareket sistemi
-src/game/cinematics/        Yüz animasyonlu diyalog sahneleri: portreler (iskelet, Ay/Güneş yüzü, resim), kadro ve sahne yöneticisi
-src/game/world/             Kendi etkileşimini yöneten nesneler için arayüz, tablo galerisi, zemin geometrisi
-src/game/fx/                Pastel mücevher tüneli (çizim, çerçeve düzeni, bölüm görünümleri) ve adım efektleri, renk patlamaları ve renk bombardımanı
-src/game/stage/             Kâğıt diorama: three.js sahnesi, kamera eşlemesi, kaldırılan nesneler, kutu, ışıklar, odak bulanıklığı ve baskı, kalite
-src/game/systems/           Girdi bağlamları, kayıt, ses (Web Audio), anlatı/ara sahne
-src/game/data/              12 odanın verisi, diyaloglar, anılar, Güneş karşılaşması durum makinesi
-src/game/rooms/             Oda kurucu (arazi, kapılar/bayraklar) ve oda betikleri
-src/game/art/               Palet, SVG çizim araçları, karakter/prop/anı çizimleri, arazi ve arka plan ressamları, atlas üretimi
+src/engine/config.ts          1280×720 tasarım alanı, FIT ölçekleme, Arcade Physics (60 Hz sabit adım)
+src/engine/scenes/            BootScene (çizimleri bir kez rasterleştirir), MenuScene, WorldScene, EndingScene
+src/gameplay/actors/          Oyuncu, iskelet (cutout) çalışma zamanı ve pozlar (zıplama, yüz, bekleme hareketleri), at, yaratıklar, Ay/Güneş yüzleri, anı taşı, tablo
+src/gameplay/moves/             Rezonans hareketleri: hareket arayüzü, bölümlere göre büyüme tablosu, efektler (çiçek, çatlak, Ay, at) ve hareket sistemi
+src/engine/cinematics/        Yüz animasyonlu diyalog sahneleri: portreler (iskelet, Ay/Güneş yüzü, resim), kadro ve sahne yöneticisi
+src/engine/world/             Kendi etkileşimini yöneten nesneler için arayüz, tablo galerisi, zemin geometrisi
+src/render/2d/fx/                Pastel mücevher tüneli (çizim, çerçeve düzeni, bölüm görünümleri) ve adım efektleri, renk patlamaları ve renk bombardımanı
+src/render/2.5d/             Kâğıt diorama: three.js sahnesi, kamera eşlemesi, kaldırılan nesneler, kutu, ışıklar, odak bulanıklığı ve baskı, kalite
+src/engine/systems/           Girdi bağlamları, kayıt, ses (Web Audio), anlatı/ara sahne
+src/content/data/              12 odanın verisi, diyaloglar, anılar, Güneş karşılaşması durum makinesi
+src/engine/rooms/             Oda kurucu (arazi, kapılar/bayraklar) ve oda betikleri
+src/render/2d/               Palet, SVG çizim araçları, karakter/prop/anı çizimleri, arazi ve arka plan ressamları, atlas üretimi
 src/ui/                     DOM arayüzü: menüler, HUD, diyalog, belge ve tablo görünümü, renk bombardımanı katmanı, dokunmatik kontroller
 src/assets/paintings/       Tablolardaki dört resim (JPEG)
 src/music/                  Bağımsız müzik modülü: piyano ve yaylılar bestecileri, sentez piyano ve yaylılar, lisanslı parça kütüphanesi, oynatıcı

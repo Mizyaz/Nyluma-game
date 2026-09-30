@@ -5,7 +5,7 @@
    and the paintings' pastels. The comic-book language: speech balloons,
    butter-yellow narration boxes, caption tags, paper tabs and tags. */
 :root {
-  /* Pastels sampled from the paintings (mirrors PASTEL in src/game/art/style.ts). */
+  /* Pastels sampled from the paintings (mirrors PASTEL in src/render/2d/style.ts). */
   --pastel-periwinkle: #97a3dc;
   --pastel-periwinkle-deep: #7d8bcc;
   --pastel-sand: #d8c09e;
@@ -1190,7 +1190,7 @@ a {
   }
 }
 
-/* Per speaker (keys of NAMES in src/game/data/dialogue.tr.ts). */
+/* Per speaker (keys of NAMES in src/content/data/dialogue.tr.ts). */
 .dialogue[data-who='gorti'] {
   --who: var(--pastel-lime);
 }

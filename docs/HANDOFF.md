@@ -12,7 +12,7 @@ not have to re-discover it by reading the codebase.
   non-main branches.
 - **Current focus:** a reusable **3D Gorti**. It is a modelled character that stands in
   for Gorti's 2D cut-out rig in the 2.5D diorama.
-  - The code is committed under `src/game/stage/figure/`. It type-checks and renders in the dev preview.
+  - The code is committed under `src/render/3d/figure/`. It type-checks and renders in the dev preview.
   - It is **not wired into the game yet**, so the live site still shows the 2D rig.
 - **Next steps, in order:**
   1. Render the figure, compare it with painting 1 and tune it. The face must be close to the painting, and the legs must read as leafy tree bark.
@@ -62,20 +62,20 @@ not have to re-discover it by reading the codebase.
 
 | File | What it holds |
 |---|---|
-| `src/game/stage/figure/mesh.ts` | `Mesher(seed)` merges parts into one BufferGeometry that carries colour, kind (`aKind`) and hull attributes.<br>• `loft(spine, section(t,θ)→[a,b], {paint, rings, segs, up, capStart, capEnd, tile, ease})` returns a `Spine`.<br>• Also: `band(spine, {paint, at(θ), width, radius(t,θ), lift, segs})`, `add(geo, matrix\|null, paint)`, `extrude(shape, opts, matrix\|null, paint)` and `build()`.<br>• `Paint = {color: hex \| (p,n,lp,ln)=>hex, kind: skin\|bark\|plank\|plain\|leaf, uv: keep\|box\|fit, tile, jitter, hull}`.<br>• Also exports `mulberry32`. |
+| `src/render/3d/figure/mesh.ts` | `Mesher(seed)` merges parts into one BufferGeometry that carries colour, kind (`aKind`) and hull attributes.<br>• `loft(spine, section(t,θ)→[a,b], {paint, rings, segs, up, capStart, capEnd, tile, ease})` returns a `Spine`.<br>• Also: `band(spine, {paint, at(θ), width, radius(t,θ), lift, segs})`, `add(geo, matrix\|null, paint)`, `extrude(shape, opts, matrix\|null, paint)` and `build()`.<br>• `Paint = {color: hex \| (p,n,lp,ln)=>hex, kind: skin\|bark\|plank\|plain\|leaf, uv: keep\|box\|fit, tile, jitter, hull}`.<br>• Also exports `mulberry32`. |
 | `…/figure/paint.ts` | `figureTextures()`: procedural skin, bark, plank and leaf textures (NoColorSpace). |
 | `…/figure/materials.ts` | • `bodyMaterial()`: Lambert with onBeforeCompile; texture by kind, wrap light 0.35, rim 0.18.<br>• `hullMaterial()`: the inverted-hull outline in INK `0x0e0a10`; `setHullScale` sets its width.<br>• `screenMaterial()`: the SDF face `src/assets/figure/gorti-screen.png` (r = pink cross, g = purple blocks, b = glow) with uniforms `uGlow uBlink uFlash uTalk`. `SCREEN_COLORS` sets its colours.<br>• `setOpacity()`. |
 | `…/figure/gorti.ts` | The model: `JOINTS`, one part per joint, the face data traced from the painting (`OUTER`/`HOLE` bezel, `FRONT_PLANKS` tops), anchors and `offsetScale`. |
 | `…/figure/figure.ts` | `Figure`. It builds the joint tree. `apply(FigurePose, dt)` maps the 2D rig's pose, turns the body toward the viewer and drives the face uniforms from emotes and blinks. Also: `anchor()`, `setOpacity()`, `setOutline()`, `dispose()`. |
 | `…/figure/index.ts` | `hasFigure(id)` and `makeFigure(id)`. Each model is built once per rig id; Gorti's id is `gorti.root.child`. |
-| `src/game/stage/hooks.ts` | New `FigurePose`, `FigureSource` and `LiftOpts.figure` (types only). |
+| `src/render/2.5d/hooks.ts` | New `FigurePose`, `FigureSource` and `LiftOpts.figure` (types only). |
 | `dev/figure.html` + `src/dev/figurePreview.ts` | The dev preview, which uses the stage's NEUTRAL light rig. |
 
 ### Model conventions
 
 - Model X points forward, Y up, and Z to the character's **right**. The ground is at y = 0.
 - The model is 141 units tall and scaled by 0.96 in `Figure`. Each joint's parts are built in that joint's own frame.
-- Every joint takes `rotation.z = −angle2D` from the 2D rig (`poseFor` in `src/game/entities/animPoses.ts`).
+- Every joint takes `rotation.z = −angle2D` from the 2D rig (`poseFor` in `src/render/2d/rig/animPoses.ts`).
 - The root offset and roll are applied in the picture plane.
 - Body yaw ψ:
   - facing right, ψ = −φ; facing left, ψ = φ − π;
@@ -146,7 +146,7 @@ The preview's URL parameters:
 
 ## Integration plan (not started)
 
-1. **`src/game/entities/RigView.ts`.** The line numbers are from before the change.
+1. **`src/render/2d/rig/RigView.ts`.** The line numbers are from before the change.
    - In `layout()` (l.224–255), keep `lastPose` and the solved angles `solveAngles`.
    - Add `readonly figure: FigureSource`, with `get id()` returning the current `rig.id` so that it follows `setRig`.
    - `pose()` returns a FigurePose:
@@ -158,7 +158,7 @@ The preview's URL parameters:
    - Lift with `stage.lift(this.container, { rig: true, figure: this.figure })` (constructor, l.67).
    - `attachPoint(name)` (l.262) returns `figure.anchors[name]` while `figure.live`.
      The anchors are `handR`, `handL`, `chest`, `eye` and `ankleL`.
-2. **`src/game/stage/mirror.ts`.** The line numbers are from before the change.
+2. **`src/render/2.5d/mirror.ts`.** The line numbers are from before the change.
    - In `place()` (l.396), add `if (o.figure && hasFigure(o.figure.id) && this.placeFigure(...)) return;`
    - `placeFigure` builds the figure lazily (`makeFigure`) and places it with `M_root = A3(P')·T·Rz·Ry(ψ)·S(0.96)`.
      - `A3` lifts the object's 2D affine to 3D. Its rows are `[a', −c', 0, e']`, `[−b', d', 0, −f']`, `[0, 0, |s|·RELIEF, z]` and `[0,0,0,1]`.

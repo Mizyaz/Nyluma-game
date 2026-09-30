@@ -1,4 +1,4 @@
-import type { PaintingArt } from '../game/data/paintings';
+import type { PaintingArt } from '../content/data/paintings';
 import { h } from './dom';
 
 /** A painting shown large: the artwork, its title and the line under it. */

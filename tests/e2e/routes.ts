@@ -2,7 +2,7 @@ import type { Bot } from './bot';
 import type { ProbeState } from './helpers';
 
 // Room-by-room routes for the normal-input campaign run. Coordinates come
-// from the room data (src/game/data/rooms); decisions use the read-only
+// from the room data (src/content/rooms); decisions use the read-only
 // probe. Gorti only walks and jumps: story scenes start by themselves where
 // Gorti arrives, and the bot waits for them (`settle` holds the skip button
 // like an impatient player). Routes are staged: after a fall the bot

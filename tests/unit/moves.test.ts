@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { MOVE_TIERS, tierOf } from '../../src/game/moves/tiers';
-import type { MoveFamily } from '../../src/game/moves/types';
-import { ROOM_IDS } from '../../src/game/state/types';
+import { MOVE_TIERS, tierOf } from '../../src/gameplay/moves/tiers';
+import type { MoveFamily } from '../../src/gameplay/moves/types';
+import { ROOM_IDS } from '../../src/engine/state/types';
 
 const FAMILIES = Object.keys(MOVE_TIERS) as MoveFamily[];
 

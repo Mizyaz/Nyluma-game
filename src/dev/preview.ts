@@ -1,8 +1,8 @@
 // Development-only art sheet (not part of the production build).
-import { allParts, allRigs } from '../game/art/manifest';
-import { drawOrder, isNear, orderJoints, solve } from '../game/art/fk';
-import { poseFor, type PoseParams } from '../game/entities/animPoses';
-import { horsePose } from '../game/entities/horsePoses';
+import { allParts, allRigs } from '../content/art/manifest';
+import { drawOrder, isNear, orderJoints, solve } from '../render/2d/rig/fk';
+import { poseFor, type PoseParams } from '../render/2d/rig/animPoses';
+import { horsePose } from '../render/2d/rig/horsePoses';
 
 const partsEl = document.getElementById('parts')!;
 const rigsEl = document.getElementById('rigs')!;

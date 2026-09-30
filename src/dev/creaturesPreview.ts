@@ -2,9 +2,9 @@
 // part of the production build). Rasterizes every part like the game does
 // and assembles the multi-part creatures at their attachment offsets.
 // Query params: ?zoom=2 (part grid zoom multiplier) &only=whale,sun (key prefixes)
-import { creatureParts } from '../game/art/characters/creatures';
-import { rasterizeSvg, svgMarkup } from '../game/art/TextureFactory';
-import type { PartArt } from '../game/art/rigTypes';
+import { creatureParts } from '../content/characters/creatures';
+import { rasterizeSvg, svgMarkup } from '../render/2d/TextureFactory';
+import type { PartArt } from '../render/2d/rig/rigTypes';
 
 const params = new URLSearchParams(location.search);
 const zoomMul = Number(params.get('zoom') ?? '1') || 1;

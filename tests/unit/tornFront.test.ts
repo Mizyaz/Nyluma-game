@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { buildTornFront, TORN_THEMES, type TornFrontSpec } from '../../src/game/stage/tornFront';
+import { buildTornFront, TORN_THEMES, type TornFrontSpec } from '../../src/render/2.5d/tornFront';
 
 // The torn front of a room's box (stage/tornFront.ts): the hole always
 // clears the rectangles it is asked to keep open, and a seed always tears

@@ -7,8 +7,8 @@ import {
   normalizeProfile,
   normalizeProgress,
   Quest,
-} from '../../src/game/state/GameState';
-import { ROOMS } from '../../src/game/data/rooms';
+} from '../../src/engine/state/GameState';
+import { ROOMS } from '../../src/content/data/rooms';
 
 describe('progress normalization', () => {
   it('rejects unusable structures', () => {

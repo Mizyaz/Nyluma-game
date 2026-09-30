@@ -2,8 +2,8 @@
 // Query params: only=<substr,substr> filter, zoom=<n> crisp enlargement,
 // maxh=<px> height cap (default 400), bg=<css color> cell background,
 // plat=0 hides the simulated branch platforms of the crystal tree.
-import { propParts } from '../game/art/props';
-import { svgMarkup } from '../game/art/TextureFactory';
+import { propParts } from '../content/art/props';
+import { svgMarkup } from '../render/2d/TextureFactory';
 
 const params = new URLSearchParams(location.search);
 const only = params.get('only')?.split(',').filter(Boolean) ?? [];

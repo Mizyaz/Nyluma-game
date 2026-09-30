@@ -3,8 +3,8 @@
 // &facing=1|-1 &yaw=50 (degrees turned toward the viewer; 90 = face on)
 // &emote=joy&k=1 &cy=70&zoom=1 (camera) &clean=1 (no panel).
 import * as THREE from 'three';
-import { poseFor, type Emote } from '../game/entities/animPoses';
-import { makeFigure } from '../game/stage/figure';
+import { poseFor, type Emote } from '../render/2d/rig/animPoses';
+import { makeFigure } from '../render/3d/figure';
 
 const q = new URLSearchParams(location.search);
 if (q.get('clean') === '1') document.body.classList.add('clean');

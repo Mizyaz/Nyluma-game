@@ -1,11 +1,11 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { CAST_IDS, CAST_NAMES, type CastId } from '../../src/game/cinematics/castNames';
-import { voiceOf } from '../../src/game/cinematics/voice';
-import { DIALOGUE } from '../../src/game/data/dialogue.tr';
+import { CAST_IDS, CAST_NAMES, type CastId } from '../../src/engine/cinematics/castNames';
+import { voiceOf } from '../../src/engine/cinematics/voice';
+import { DIALOGUE } from '../../src/content/data/dialogue.tr';
 
-const SCRIPTS = join(__dirname, '../../src/game/rooms/scripts');
+const SCRIPTS = join(__dirname, '../../src/content/scripts');
 
 const sources = readdirSync(SCRIPTS)
   .filter((f) => f.endsWith('.ts'))
