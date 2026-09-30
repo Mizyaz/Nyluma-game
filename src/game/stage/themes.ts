@@ -1,7 +1,8 @@
 import { mix } from '../art/palette';
 import { themeDef } from '../art/backgrounds';
 import { colorsFor } from '../art/terrain';
-import type { RoomDef, SolidDef, ThemeId } from '../data/roomTypes';
+import type { Rect, RoomDef, SolidDef, ThemeId } from '../data/roomTypes';
+import { PLANE as R01_PLANE, STAGE_BOX as R01_BOX } from '../data/rooms/r01Stage';
 import type { RoomId } from '../state/types';
 
 // How each room is staged as a paper box: the colours of its paper, how
@@ -71,6 +72,8 @@ export interface BoxTheme {
   floor: number;
   /** Front faces of the floors. */
   front: number;
+  /** The paper's pale core, where the box's front is torn. */
+  core: number;
   /** The back wall, when the box has one. */
   back: number;
   /** Behind everything (where no layer covers). */
@@ -122,6 +125,7 @@ const CHAPTER_I: Omit<BoxTheme, 'sky'> = {
   inner: 0xeadcf4,
   floor: 0xf6ead0,
   front: 0xf5d9ef,
+  core: 0xfff8f0,
   back: 0xf3e2f2,
   depth: 240,
   // A thin front: the painting's box shows little of its front, and the
@@ -175,16 +179,47 @@ const FAMILY: Record<ThemeId, { lights: Partial<LightRig>; backWall: boolean; wa
   office: { lights: INDOOR, backWall: false, wallHeight: 120 },
 };
 
+/** What a room changes about its box. */
+export interface RoomStage {
+  /** Stage lamps where the room draws its own (world px; see SpotDef). */
+  spots?: readonly SpotDef[];
+  /**
+   * The box's front: its top (world y) where the box stands taller than the
+   * view, and places its tear keeps open besides the game's own (close-ups,
+   * a cutscene's subject), on the actors' plane.
+   */
+  front?: { top?: number; keepOpen?: readonly Rect[] };
+  /**
+   * Painted box parts the real box front replaces: in 3D, once the box has
+   * its front, the rows of the room's layers on this parallax plane above
+   * this world y are left out (the flat game keeps them).
+   */
+  flatOnly?: { scroll: number; above: number };
+}
+
 /**
- * Per-room adjustments: where a room draws its own stage lamps, their light
- * comes from there (world px; see SpotDef). Other chapter I rooms get the
- * lamps at the box's two ends.
+ * Per-room adjustments. Other chapter I rooms get the stage lamps at the
+ * box's two ends.
  */
-const ROOMS: Partial<Record<RoomId, { spots?: readonly SpotDef[] }>> = {
+const ROOMS: Partial<Record<RoomId, RoomStage>> = {
   // The 14th Room draws its stage lamps at the box's ends (props p1.lamp at
-  // x 80 and 2120, y 330); the stage adds their light, shining in.
-  r01: { spots: [lamp([80, 330, 12], [760, 'floor', -20], false), lamp([2120, 330, 12], [1440, 'floor', -20], false)] },
+  // x 80 and 2120, y 330, standing before its front); the stage adds their
+  // light, shining in. Its box front reaches up to the lid, and stays open
+  // round the close-up on Gorti waking in his bed (data/rooms/r01Stage.ts).
+  r01: {
+    spots: [lamp([80, 330, R01_BOX.lampZ + 6], [760, 'floor', -20], false), lamp([2120, 330, R01_BOX.lampZ + 6], [1440, 'floor', -20], false)],
+    front: { top: R01_BOX.frontTop, keepOpen: [R01_BOX.closeUp] },
+    flatOnly: { scroll: R01_PLANE.wall, above: R01_BOX.lidEdge },
+  },
+  // Cutscene subjects high in the view: the Moon's faces, the Sun.
+  r05: { front: { keepOpen: [{ x: 3500, y: 380, w: 280, h: 280 }] } },
+  r08: { front: { keepOpen: [{ x: 480, y: 20, w: 320, h: 320 }] } },
 };
+
+/** A room's own staging (empty for most). */
+export function roomStage(id: RoomId): RoomStage {
+  return ROOMS[id] ?? {};
+}
 
 /** Styles that are things in the box (branches, crystals, furniture), not the box itself. */
 const THINGS = new Set<SolidDef['style']>(['root', 'crystal', 'wood', 'bed', 'metal']);
@@ -235,6 +270,7 @@ export function boxTheme(room: RoomDef): BoxTheme {
     inner: hexNum(mix(c.base, c.top, 0.5)),
     floor: hexNum(mix(c.top, '#ffffff', 0.18)),
     front: hexNum(c.base),
+    core: hexNum(mix(c.base, '#fffaf2', 0.72)),
     back: hexNum(mix(c.base, '#ffffff', 0.3)),
     sky,
     depth: 220,

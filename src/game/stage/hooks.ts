@@ -42,6 +42,12 @@ export interface LiftOpts {
   rig?: boolean;
   /** Stays drawn by Phaser. */
   keep?: boolean;
+  /**
+   * Rows of the object above this world y are left out of the diorama (a
+   * painted part of the box that the real box replaces). The flat game
+   * draws them all.
+   */
+  clipTop?: number;
 }
 
 /** What the stage implements (Stage.ts). */

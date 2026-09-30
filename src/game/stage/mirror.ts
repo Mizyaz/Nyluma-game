@@ -478,8 +478,10 @@ export class Mirror {
     // A lean about the upright through its anchor (world x of the object).
     const yaw = o.lean ? leanAngle(go.x ?? 0, go.y ?? 0) : 0;
     // Terrain art is cut just below the solid's top line: the slab's own top
-    // (and its rim) replaces the painted top face and its contour.
-    const ctx: WalkCtx = { l, f, z, dz, lit, cast, thick, rig, decal, terrain, idx: 0, sway, yaw, ax: P.a * (go.x ?? 0) + P.e, cropTop: terrain && o.solid ? o.solid.y + 2 : null };
+    // (and its rim) replaces the painted top face and its contour. Painted
+    // parts of the box the real box replaces are cut off the same way.
+    const cropTop = o.clipTop !== undefined ? P.d * o.clipTop + P.f : terrain && o.solid ? o.solid.y + 2 : null;
+    const ctx: WalkCtx = { l, f, z, dz, lit, cast, thick, rig, decal, terrain, idx: 0, sway, yaw, ax: P.a * (go.x ?? 0) + P.e, cropTop };
     this.walk(go, ctx, P, 1, true);
   }
 
@@ -774,5 +776,6 @@ interface WalkCtx {
   /** Lean about the vertical (radians) and the world x it turns about. */
   yaw: number;
   ax: number;
+  /** Rows above this y (in the diorama's placement) are not drawn. */
   cropTop: number | null;
 }

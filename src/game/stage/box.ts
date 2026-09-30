@@ -5,12 +5,14 @@ import { colorsFor } from '../art/terrain';
 import type { RoomDef, SolidDef } from '../data/roomTypes';
 import { structural, type BoxFrame, type BoxTheme } from './themes';
 
-// The room as an open-front paper box: its terrain stands as slabs of
-// paper board with real depth (floors seen from above, walls with their
-// inner faces, ledges as thin shelves), the box's side walls at the room's
-// ends with a rim along their tops, and a back wall behind everything that
-// belongs inside the room when the theme builds one. The painted terrain
-// art of the flat game stands on the slabs' fronts (see Mirror, 'terrain').
+// The room as a paper box: its terrain stands as slabs of paper board with
+// real depth (floors seen from above, walls with their inner faces, ledges
+// as thin shelves), the box's side walls at the room's ends with a rim
+// along their tops, and a back wall behind everything that belongs inside
+// the room when the theme builds one. The painted terrain art of the flat
+// game stands on the slabs' fronts (see Mirror, 'terrain'). The box's front,
+// torn open, is built apart (front.ts); without one, the floors get a low
+// lip along their front edge.
 
 /** What the box reads from a room's runtime solid (RoomRuntime.SolidRt). */
 export interface SolidView {
@@ -109,6 +111,9 @@ class Faces {
 
 const ORDER: readonly Face[] = ['top', 'front', 'side', 'bottom', 'rim'];
 
+/** Thickness of the box's side walls (px). */
+export const WALL_T = 26;
+
 /**
  * The front lip on a floor: how high it stands (px) and how thick it is.
  * Low enough that from the lifted eye it stays under the actors' feet.
@@ -144,11 +149,14 @@ export class PaperBox {
     private readonly skip: (s: SolidDef) => boolean,
     /** The room paints its own box (back and side walls): the stage builds none. */
     ownWalls = false,
+    /** The box has its front (built apart), whose top is here: the walls reach up to it. */
+    private readonly front: { top: number } | null = null,
   ) {
     this.group.name = 'box';
     this.thin = Math.min(44, theme.frontDepth);
     this.buildSlabs(solids);
     if (!ownWalls) this.buildWalls();
+    else if (front) this.buildBoard();
   }
 
   /** A paper floor painted for the box (the 14th Room's): its own colours and art. */
@@ -156,10 +164,15 @@ export class PaperBox {
     return s.style === 'paper';
   }
 
-  /** Depth of the front face of a solid's slab; NaN where its painted art is not shown (clean paper). */
+  /**
+   * Depth of the front face of a solid's slab; NaN where its painted art is
+   * not shown (clean paper). A floor painted as the box's own front leaves
+   * its art to the flat game once the box has its real front.
+   */
   frontZ(s: SolidDef): number {
     if (!structural(s)) return this.thin;
-    return this.theme.terrainArt || !this.theme.paperSlabs || PaperBox.painted(s) ? this.frame.front : NaN;
+    if (PaperBox.painted(s)) return this.front ? NaN : this.frame.front;
+    return this.theme.terrainArt || !this.theme.paperSlabs ? this.frame.front : NaN;
   }
 
   private material(face: Face, color: number): THREE.MeshLambertMaterial {
@@ -196,9 +209,10 @@ export class PaperBox {
       const deep = structural(s);
       const z0 = deep ? this.frame.back : -this.thin;
       const z1 = deep ? this.frame.front : this.thin;
+      const lip = deep && !this.front;
       faces.box(s.x, s.y, s.x + s.w, s.y + s.h, z0, z1, { rimBand: deep ? 12 : 0 });
-      // The box's front lip: a low raised paper edge along a floor's front.
-      if (deep) faces.box(s.x, s.y - LIP.h, s.x + s.w, s.y, z1 - LIP.t, z1, { top: 'rim', noBottom: true });
+      // Without the box's front: a low raised paper lip along a floor's front edge.
+      if (lip) faces.box(s.x, s.y - LIP.h, s.x + s.w, s.y, z1 - LIP.t, z1, { top: 'rim', noBottom: true });
       const dynamic = !!(s.when || s.unless || s.latent || s.grow);
       if (dynamic) {
         const mats = ORDER.map((f) => new THREE.MeshLambertMaterial({ color: faceColor(f, colors[f]), map: this.paper, transparent: false }));
@@ -213,7 +227,7 @@ export class PaperBox {
       if (!g) groups.set(key, { faces, colors });
       else {
         g.faces.box(s.x, s.y, s.x + s.w, s.y + s.h, z0, z1, { rimBand: deep ? 12 : 0 });
-        if (deep) g.faces.box(s.x, s.y - LIP.h, s.x + s.w, s.y, z1 - LIP.t, z1, { top: 'rim', noBottom: true });
+        if (lip) g.faces.box(s.x, s.y - LIP.h, s.x + s.w, s.y, z1 - LIP.t, z1, { top: 'rim', noBottom: true });
       }
     }
     for (const { faces, colors } of groups.values()) {
@@ -229,13 +243,15 @@ export class PaperBox {
   private buildWalls(): void {
     const f = this.frame;
     const t = this.theme;
-    const T = 26;
+    const T = WALL_T;
+    // As tall as the box's front, when it has one.
+    const rim = this.front ? Math.min(f.rim, this.front.top) : f.rim;
     const faces = new Faces();
     const walls = new Faces();
     // Side walls: their inner faces show the box's inside, their tops the rim.
-    walls.box(f.x0 - T, f.rim, f.x0, f.bottom, f.back - T, f.front, { rimBand: 0, top: 'rim', noBottom: true });
-    walls.box(f.x1, f.rim, f.x1 + T, f.bottom, f.back - T, f.front, { rimBand: 0, top: 'rim', noBottom: true });
-    if (t.backWall) faces.box(f.x0 - T, f.rim, f.x1 + T, f.bottom, f.back - T, f.back, { top: 'rim', noBottom: true, sides: false });
+    walls.box(f.x0 - T, rim, f.x0, f.bottom, f.back - T, f.front, { rimBand: 0, top: 'rim', noBottom: true });
+    walls.box(f.x1, rim, f.x1 + T, f.bottom, f.back - T, f.front, { rimBand: 0, top: 'rim', noBottom: true });
+    if (t.backWall) faces.box(f.x0 - T, rim, f.x1 + T, f.bottom, f.back - T, f.back, { top: 'rim', noBottom: true, sides: false });
     const cols: Record<Face, number> = { top: t.rim, front: t.box, side: t.inner, bottom: t.inner, rim: t.rim };
     const wallMats = ORDER.map((k) => this.material(k, k === 'front' ? t.box : k === 'side' ? t.inner : cols[k]));
     const wm = new THREE.Mesh(walls.geometry(ORDER), wallMats);
@@ -249,6 +265,23 @@ export class PaperBox {
       this.group.add(bm);
       this.geometries.push(bm.geometry);
     }
+  }
+
+  /**
+   * Behind a room's own painted box, once it has its real front: plain
+   * board up to the front's top, where the tear shows above the painting.
+   */
+  private buildBoard(): void {
+    const f = this.frame;
+    const top = this.front!.top;
+    const board = new Faces();
+    const z = f.back - 2;
+    board.quad('front', [f.x0 - WALL_T, -f.floor, z], [f.x1 + WALL_T, -f.floor, z], [f.x1 + WALL_T, -top, z], [f.x0 - WALL_T, -top, z], [0, 0, 1]);
+    const mats = ORDER.map((k) => this.material(k, this.theme.back));
+    const mesh = new THREE.Mesh(board.geometry(ORDER), mats);
+    mesh.receiveShadow = true;
+    this.group.add(mesh);
+    this.geometries.push(mesh.geometry);
   }
 
   /** Geometry of the box's own walls (disposed with the box). */

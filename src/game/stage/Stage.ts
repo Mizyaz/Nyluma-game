@@ -1,20 +1,22 @@
 import * as Phaser from 'phaser';
 import * as THREE from 'three';
 import { app } from '../App';
-import { VIEW_H } from '../constants';
-import type { SolidDef } from '../data/roomTypes';
+import { hashSeed } from '../art/svg';
+import { VIEW_H, VIEW_W } from '../constants';
+import type { Rect as GameRect, SolidDef } from '../data/roomTypes';
 import type { WorldScene } from '../scenes/WorldScene';
 import { isWhalePlatform } from '../rooms/whalePlan';
-import { PaperBox, type SolidView } from './box';
+import { PaperBox, WALL_T, type SolidView } from './box';
 import { paperCanvas } from './cards';
 import { boxedZ, eyeDistance, offAxis, restCentre, scrollDepth, viewRect, type CamState, type Rect } from './depth';
 import { stage as hooks, type LiftOpts, type StageDriver } from './hooks';
+import { FRAME_BOTTOM, frontBuilder, frontSpec, type FrontPart } from './front';
 import { Lights, type LampAnchor } from './lights';
 import { Mirror, swayAngle, type MirrorFrame } from './mirror';
 import { Post } from './post';
 import { Governor, pickTier, type Tier } from './quality';
 import { TextureCache } from './textures';
-import { boxFrame, boxTheme, type BoxFrame, type BoxTheme } from './themes';
+import { boxFrame, boxTheme, roomStage, type BoxFrame, type BoxTheme, type RoomStage } from './themes';
 
 // The paper diorama under the game: a three.js canvas beneath Phaser's,
 // with the same CSS box, drawn after Phaser each frame from Phaser's own
@@ -37,6 +39,8 @@ interface RoomLink {
   world: WorldScene;
   mirror: Mirror;
   box: PaperBox;
+  /** The box's torn front, when one is wired in (front.ts). */
+  front: FrontPart | null;
   lights: Lights;
   theme: BoxTheme;
   frame: BoxFrame;
@@ -176,10 +180,15 @@ export class Stage implements StageDriver {
     const { back, own } = this.boxBack(world, theme, D);
     const frame = boxFrame(def, theme, back);
     const solids = world.room.solids as unknown as SolidView[];
-    const box = new PaperBox(def, solids, theme, frame, this.paper, (s: SolidDef) => isWhalePlatform(s), own);
+    const tier = this.governor.tier;
+    const staging = roomStage(def.id);
+    const front = this.buildFront(world, theme, frame, D, staging, tier.name === 'low' ? 'low' : 'high');
+    const box = new PaperBox(def, solids, theme, frame, this.paper, (s: SolidDef) => isWhalePlatform(s), own, front);
+    if (front) box.group.add(front.part.group);
+    // What the real front replaces of the room's painted box is the flat game's.
+    if (staging.flatOnly) this.flatOnly(world, staging.flatOnly, !!front);
     const mirror = new Mirror(world, this.textures);
     const anchors = this.lampAnchors(world, theme, back);
-    const tier = this.governor.tier;
     const lights = new Lights(theme.lights, frame, anchors, tier.shadow, tier.spotShadows);
     this.scene.add(box.group, mirror.group, lights.group);
     // The far end: the deepest parallax layer, with room to spare.
@@ -194,7 +203,63 @@ export class Stage implements StageDriver {
     world.events.on(Phaser.Scenes.Events.PRE_RENDER, onPreRender);
     world.events.once(Phaser.Scenes.Events.SHUTDOWN, onShutdown);
     this.eyeX = NaN;
-    return { world, mirror, box, lights, theme, frame, D, far, onPreRender, onShutdown };
+    return { world, mirror, box, front: front?.part ?? null, lights, theme, frame, D, far, onPreRender, onShutdown };
+  }
+
+  /**
+   * The box's front, torn open where the game happens (front.ts), when a
+   * builder is wired in: it stands just before the floors' fronts, from the
+   * room's top (or its own) down past its bottom.
+   */
+  private buildFront(world: WorldScene, theme: BoxTheme, frame: BoxFrame, D: number, staging: RoomStage, quality: 'low' | 'high'): { part: FrontPart; top: number } | null {
+    const build = frontBuilder();
+    if (!build) return null;
+    const def = world.def;
+    const zoom = world.baseZoom || 1.5;
+    const spec = frontSpec({
+      room: def,
+      frame,
+      z: frame.front + 2,
+      D,
+      lift: (VIEW_H / zoom) * LIFT,
+      zoom,
+      top: staging.front?.top ?? Math.min(frame.rim, -24),
+      side: WALL_T,
+      extra: [...this.things(world), ...(staging.front?.keepOpen ?? [])],
+      // A box of plain paper (chapter I) shows no painted ground below its floors.
+      frameBottom: theme.terrainArt ? FRAME_BOTTOM : 0,
+      colors: { outside: theme.box, inside: theme.inner, core: theme.core },
+      seed: hashSeed(`${def.id}:front`),
+      quality,
+    });
+    try {
+      return { part: build(spec), top: spec.top };
+    } catch (e) {
+      console.warn('[stage] no box front', e);
+      return null;
+    }
+  }
+
+  /** The bounds of the room's things (props standing in it): the front's tear keeps them in sight. */
+  private things(world: WorldScene): GameRect[] {
+    const out: GameRect[] = [];
+    for (const p of world.room.props) {
+      const img = p.img;
+      if (!img || (p.def.scroll ?? 1) !== 1 || (p.def.depth ?? 10) < -60) continue;
+      const b = img.getBounds();
+      if (b.width <= 0 || b.height <= 0 || b.width > VIEW_W || b.height > VIEW_H) continue;
+      out.push({ x: b.x, y: b.y, w: b.width, h: b.height });
+    }
+    return out;
+  }
+
+  /** Leaves out (or back in) the rows of a plane's layers that the real box front replaces. */
+  private flatOnly(world: WorldScene, f: NonNullable<RoomStage['flatOnly']>, on: boolean): void {
+    for (const go of world.children.list) {
+      if (!(go instanceof Phaser.GameObjects.Image) || go.scrollFactorX !== f.scroll || !go.texture.key.startsWith('bg:')) continue;
+      const { clipTop: _was, ...mark } = hooks.mark(go) ?? {};
+      hooks.hint(go, on ? { ...mark, clipTop: f.above } : mark);
+    }
   }
 
   /**
@@ -254,6 +319,7 @@ export class Stage implements StageDriver {
     // A world that goes on flat gets its sky back.
     if (l.world.sys.isActive()) l.world.cameras.main.setBackgroundColor(`#${this.sky.getHexString(THREE.SRGBColorSpace)}`);
     l.mirror.destroy();
+    l.front?.dispose();
     l.box.dispose();
     l.lights.dispose();
     this.scene.remove(l.box.group, l.mirror.group, l.lights.group);

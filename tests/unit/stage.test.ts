@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { ROOMS } from '../../src/game/data/rooms';
-import { boxTheme } from '../../src/game/stage/themes';
+import { STAGE_BOX } from '../../src/game/data/rooms/r01Stage';
+import { frontSpec } from '../../src/game/stage/front';
+import { boxFrame, boxTheme, roomStage } from '../../src/game/stage/themes';
 import { bandZ, offAxis, phaserScreen, pinAt, placeScrolled, projectToPlane, restCentre, scrollDepth, viewRect, type CamState } from '../../src/game/stage/depth';
 
 // The diorama must look exactly like the flat game from the middle of the
@@ -113,5 +115,45 @@ describe('diorama geometry', () => {
     }
     // Other rooms take their own colours.
     expect(boxTheme(ROOMS.r05).floor).not.toBe(boxTheme(ROOMS.r01).floor);
+  });
+
+  it('tears the box front open wherever Gorti goes, framing the resting view at its top and bottom', () => {
+    const room = ROOMS.r01;
+    const theme = boxTheme(room);
+    const frame = boxFrame(room, theme);
+    const zoom = 1.5;
+    const D = 785;
+    const z = frame.front + 2;
+    const spec = frontSpec({
+      room,
+      frame,
+      z,
+      D,
+      lift: (720 / zoom) * 0.34,
+      zoom,
+      top: roomStage('r01').front!.top!,
+      side: 26,
+      extra: roomStage('r01').front!.keepOpen!,
+      // A plain paper box: the wall covers the floor's front.
+      frameBottom: 0,
+      colors: { outside: theme.box, inside: theme.inner, core: theme.core },
+      seed: 1,
+      quality: 'high',
+    });
+    const open = (x: number, y: number): boolean => spec.keepOpen.some((r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
+    // On the wall's plane, as the resting eye (above the view's middle) sees it.
+    const [ex, ey] = [640 + 213, 540 - 163];
+    const seen = (x: number, y: number): [number, number] => [x + (z / D) * (ex - x), y + (z / D) * (ey - y)];
+    // Gorti, from his feet to the top of his head at a jump's height, anywhere on the floor, the bed or the gift.
+    for (let x = 180; x <= 2180; x += 20) for (const y of x < 1690 ? [660, 560, 390] : [660, 560, 450]) expect(open(...seen(x, y))).toBe(true);
+    for (const x of [340, 430, 520, 860, 960]) expect(open(...seen(x, 320))).toBe(true);
+    // The close-up on him waking in bed.
+    const c = STAGE_BOX.closeUp;
+    for (const [x, y] of [[c.x, c.y], [c.x + c.w, c.y + c.h]]) expect(open(x, y)).toBe(true);
+    // The torn wall stays at the top of the resting view, over the floor's front below, and at the room's left end.
+    expect(open(1200, 312)).toBe(false);
+    expect(open(1200, 690)).toBe(false);
+    expect(open(30, 520)).toBe(false);
+    expect(spec.top).toBeLessThan(200);
   });
 });

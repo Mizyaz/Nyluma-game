@@ -1,5 +1,5 @@
 import type { RoomDef } from '../roomTypes';
-import { BOX, PLANE, inWide } from './r01Stage';
+import { BOX, PLANE, STAGE_BOX, inWide } from './r01Stage';
 
 // Chapter I — the 14th Room, as the first painting shows it: a pink box
 // papered inside with a torn cream sheet, in a pale world of cracked stone.
@@ -42,6 +42,8 @@ export const R01: RoomDef = {
   solids: [
     // The box's floor: the torn paper spilling over its front edge, the
     // lilac front of the box below, down to the edge the charms hang from.
+    // (In 3D the box's real front stands there instead: the painted front
+    // and the painted lid are the flat game's; see STAGE_BOX.)
     { x: 0, y: 660, w: 2200, h: 120, style: 'paper' },
     // The box keeps the room in; its walls and lid are painted on the back wall.
     { x: 0, y: 0, w: 160, h: 660, style: 'soil', hidden: true },
@@ -69,9 +71,10 @@ export const R01: RoomDef = {
     { key: 'p1.arm', ...wall(640, BOX.lidBack + 56), ox: 0.311, oy: 0.987, depth: -146 },
     { key: 'p1.arm', ...wall(1560, BOX.lidBack + 56), ox: 0.689, oy: 0.987, flipX: true, depth: -146 },
     { key: 'p1.cube', ...wall(1100, BOX.lidBack + 36), scale: 1.15, depth: -144 },
-    // The stage lamps at the box's two ends, pointing in.
-    { key: 'p1.lamp', x: 80, y: 330, ox: 0.5, oy: 0.5, depth: -100 },
-    { key: 'p1.lamp', x: 2120, y: 330, ox: 0.5, oy: 0.5, flipX: true, depth: -100 },
+    // The stage lamps at the box's two ends, pointing in (in 3D, standing
+    // before the box's front).
+    { key: 'p1.lamp', x: 80, y: 330, ox: 0.5, oy: 0.5, depth: -100, z: STAGE_BOX.lampZ },
+    { key: 'p1.lamp', x: 2120, y: 330, ox: 0.5, oy: 0.5, flipX: true, depth: -100, z: STAGE_BOX.lampZ },
     // On the back wall: the fourteen notches, the green creature's
     // portrait, and the window (the painting's blue crystal sign).
     { key: 'p1.marks', ...onWall(1085, 470), oy: 0.5, depth: -120 },

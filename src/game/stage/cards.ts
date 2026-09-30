@@ -5,8 +5,12 @@ import { grainCanvas } from '../art/TextureFactory';
 // alpha, with a cardboard edge a shade darker than the art), the plain
 // paper of the box, and soft glows.
 
-/** The cut edge of a card: the art itself, darker (coloured, never black). */
-export const EDGE_TINT = 0xb3a5b0;
+/**
+ * The cut edge of a card: the art itself in the shade of its own side, a
+ * little darker (coloured paper through and through): it reads as the
+ * paper's thickness, never as a drawn line.
+ */
+export const EDGE_TINT = 0xd2c8ce;
 
 const CARD_MAP = /* glsl */ `
 #ifdef USE_MAP

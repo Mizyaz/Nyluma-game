@@ -59,3 +59,22 @@ export const BOX = {
   /** The bottom edge of the box's front (the floor's own), where the charms hang. */
   bottom: 780,
 } as const;
+
+/**
+ * The box in the 3D diorama (src/game/stage): a real box front, torn open,
+ * stands before the painted box, so the painted parts it replaces are the
+ * flat game's only.
+ */
+export const STAGE_BOX = {
+  /**
+   * Top of the box front: just above where the cube house and the arms end
+   * in the wide shot, so they stand and reach in behind it.
+   */
+  frontTop: BOX.lidBack + 25,
+  /** The painted pink lid: rows of the back wall's plane above this world y (flat only). */
+  lidEdge: inWide(PLANE.wall, 0, BOX.lidFront).y,
+  /** Depth of the stage lamps, in front of the box front. */
+  lampZ: 64,
+  /** Gorti waking in his bed, close up (zoom 3.8): the box front keeps it open. */
+  closeUp: { x: 170, y: 470, w: 420, h: 200 },
+} as const;
