@@ -29,7 +29,7 @@ export const CHILD_DIMS: HumanoidDims = {
   hip: 42, thigh: 19, shin: 19, torso: 33, shoulderY: 27, shoulderX: 3, upper: 15, hipX: 5, headX: 1, hand: 20,
   eye: [8, -32],
   brow: { part: 'gorti.child.brow', up: 8.5, dx: -7.5 },
-  face: { eye: 'gorti.child', mouth: 'gorti.child', mouthAt: [10, -19] },
+  face: { eye: 'gorti.child', mouth: 'gorti.child', mouthAt: [10, -19], blink: 'squash', glow: true },
 };
 
 // ------------------------------------------------------------------ head

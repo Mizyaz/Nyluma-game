@@ -6,7 +6,7 @@ import { lifeStageOf, type LifeStage } from '../data/lifeStages';
 import { childParts, RIG_GORTI_CHILD } from './gortiChild';
 import { youthParts, RIG_GORTI_YOUTH } from './gortiYouth';
 import { warriorParts, RIG_GORTI_WARRIOR } from './gortiWarrior';
-import { RIG_GORTI_HUMAN, RIG_GORTI_HUMAN_SUN, RIG_GORTI_SUIT, sivasliParts } from './sivasli';
+import { RIG_GORTI_HUMAN, RIG_GORTI_HUMAN_BALD, RIG_GORTI_HUMAN_SUN, RIG_GORTI_SUIT, sivasliParts } from './sivasli';
 import { ink, part } from './kit';
 
 // Gorti Evaskinan, drawn after the author's paintings. His own (root) body
@@ -17,7 +17,7 @@ import { ink, part } from './kit';
 
 export { humanoidRig, type HumanoidDims } from './skeleton';
 export { brow, eyeParts, mouthParts } from './face';
-export { RIG_GORTI_CHILD, RIG_GORTI_YOUTH, RIG_GORTI_WARRIOR, RIG_GORTI_HUMAN, RIG_GORTI_HUMAN_SUN, RIG_GORTI_SUIT };
+export { RIG_GORTI_CHILD, RIG_GORTI_YOUTH, RIG_GORTI_WARRIOR, RIG_GORTI_HUMAN, RIG_GORTI_HUMAN_SUN, RIG_GORTI_HUMAN_BALD, RIG_GORTI_SUIT };
 
 /** Gorti's own body at each life stage. */
 export const ROOT_RIGS: Readonly<Record<LifeStage, RigDef>> = {

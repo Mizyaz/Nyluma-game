@@ -1,4 +1,4 @@
-import { ellipsePath, type Pt } from '../../render/2d/svg';
+import { ellipsePath, smooth, type Pt } from '../../render/2d/svg';
 import { DETAIL, flat, INK } from '../../render/2d/style';
 import type { PartArt } from '../../render/2d/rig/rigTypes';
 import { ink, part, path, tr, type Box } from './kit';
@@ -8,15 +8,15 @@ import { ink, part, path, tr, type Box } from './kit';
 // surprise widens it, talking opens the mouth), and tilts and lifts the
 // brow. Every face therefore provides the same named shapes:
 //   <prefix>.eye   + .happy .sad .shut
-//   <prefix>.mouth + .smile .open .grin .grit .frown
+//   <prefix>.mouth + .smile .open .grin .grit .frown .laugh
 // A head seen three-quarter keeps both eyes in the one eye part, so blinks
 // and emotions move them together.
 
 export type EyeShape = '' | 'happy' | 'sad' | 'shut';
-export type MouthShape = '' | 'smile' | 'open' | 'grin' | 'grit' | 'frown';
+export type MouthShape = '' | 'smile' | 'open' | 'grin' | 'grit' | 'frown' | 'laugh';
 
 export const EYE_SHAPES: readonly EyeShape[] = ['', 'happy', 'sad', 'shut'];
-export const MOUTH_SHAPES: readonly MouthShape[] = ['', 'smile', 'open', 'grin', 'grit', 'frown'];
+export const MOUTH_SHAPES: readonly MouthShape[] = ['', 'smile', 'open', 'grin', 'grit', 'frown', 'laugh'];
 
 const key = (base: string, v: string): string => (v ? `${base}.${v}` : base);
 
@@ -53,7 +53,7 @@ export function almondEye(
   cy: number,
   rx: number,
   ry: number,
-  o: { outer: -1 | 1; iris: string; white?: string; lid?: number; lidFill?: string; lash?: boolean; pupil?: number; look?: number; blank?: boolean },
+  o: { outer: -1 | 1; iris: string; white?: string; lid?: number; lidFill?: string; lash?: boolean; pupil?: number; look?: number; blank?: boolean; glint?: boolean; line?: number },
 ): string {
   const white = o.white ?? '#fbf6ee';
   const w = Math.max(1.3, ry * 0.42);
@@ -65,6 +65,8 @@ export function almondEye(
   // The author draws Gorti's eyes without pupils: `blank` leaves the white.
   let inner = o.blank ? '' : `<path d="${ellipsePath(cx + rx * look, cy + ry * 0.05, ir * 0.92, ir)}" fill="${o.iris}"/>`;
   if (!o.blank) inner += `<path d="${ellipsePath(cx + rx * look, cy + ry * 0.05, ir * (o.pupil ?? 0.45), ir * (o.pupil ?? 0.45) * 1.08)}" fill="${INK}"/>`;
+  // A catch-light: the eye is alive.
+  if (!o.blank && o.glint) inner += `<circle cx="${f2(cx + rx * look - ir * 0.32)}" cy="${f2(cy - ir * 0.3)}" r="${f2(Math.max(0.55, ir * 0.3))}" fill="#fffdf8"/>`;
   // Upper lid: at rest `lid` covers the top of the eye; a sad lid droops
   // toward the outer corner.
   const lidAt = o.lid ?? 0;
@@ -78,7 +80,7 @@ export function almondEye(
     inner += `<path d="M${f2(xl)} ${f2(cy - ry * 2.5)}L${f2(xr)} ${f2(cy - ry * 2.5)}L${f2(xr)} ${f2(yr)}L${f2(xl)} ${f2(yl)}Z" fill="${o.lidFill ?? '#e9c7cf'}"/>`;
     inner += ink(`M${f2(xl)} ${f2(yl)}L${f2(xr)} ${f2(yr)}`, DETAIL);
   }
-  let s = flat(almond, white, { stroke: DETAIL * 1.25, inner });
+  let s = flat(almond, white, { stroke: o.line ?? DETAIL * 1.25, inner });
   if (o.lash) {
     const ox = o.outer * rx;
     s += ink(`M${f2(cx + ox)} ${f2(cy)}l${f2(o.outer * 2.2)} ${f2(-1.6)}`, DETAIL);
@@ -112,6 +114,13 @@ export function paintedMouth(v: MouthShape, cx: number, cy: number, m: number, o
       });
     case 'frown':
       return ink(`M${P(-1, 0.4)}Q${P(0, -0.45)} ${P(1, 0.35)}`, lw);
+    case 'laugh': {
+      // A big open laugh: a wide D, the upper teeth under the lip, a tongue.
+      const d = `M${P(-1.3, -0.42)}Q${P(0, -0.62)} ${P(1.3, -0.46)}Q${P(1.26, 1.3)} ${P(0, 1.62)}Q${P(-1.26, 1.3)} ${P(-1.3, -0.42)}Z`;
+      const upper = `<path d="M${P(-1.4, -0.9)}L${P(1.4, -0.9)}L${P(1.4, -0.08)}Q${P(0, 0.12)} ${P(-1.4, -0.06)}Z" fill="${teeth}"/>` + ink(`M${P(-1.2, -0.07)}Q${P(0, 0.1)} ${P(1.2, -0.1)}`, DETAIL * 0.75);
+      const tongue = `<path d="${ellipsePath(cx + m * 0.12, cy + m * 1.36, m * 0.82, m * 0.5)}" fill="${o.lip ?? '#e98aa8'}"/>`;
+      return flat(d, inside, { stroke: lw, inner: tongue + upper });
+    }
   }
 }
 
@@ -135,6 +144,46 @@ export function browPart(k: string, fill: string, len: number, thick: number, o:
     const bot = t.map(([x, y], i): Pt => [x, y + (thick * (0.35 + 0.65 * (i / 3))) / 2]).reverse();
     const d = `${path(top)}L${bot.map(([x, y]) => `${f2(x)} ${f2(y)}`).join('L')}Z`;
     return flat(d, fill, { stroke: o.stroke ?? DETAIL * 1.1 });
+  });
+}
+
+/**
+ * A bushy brow (pivot at its middle), authored for a right-facing head: a
+ * tapered tuft whose top edge bristles into hairs, thick at the inner end
+ * (`inner` +1: the inner end is on the right, as over a near eye; -1 for a
+ * far eye across the nose).
+ */
+export function bushyBrow(k: string, fill: string, len: number, thick: number, o: { inner?: 1 | -1; line?: number; hair?: string; seed?: number } = {}): PartArt {
+  const hl = len / 2;
+  const side = o.inner ?? 1;
+  return part(k, { x0: -hl - 3, y0: -thick - 4, x1: hl + 3, y1: thick + 3 }, (ox, oy) => {
+    const X = (u: number): number => ox + side * u;
+    // Thickness along the brow: thin at the outer end, full at the inner.
+    const th = (u: number): number => thick * (0.42 + 0.58 * ((u + hl) / len));
+    const arch = (i: number, n: number): number => -1.1 * Math.sin(Math.PI * (i / n) * 0.85);
+    const n = 6;
+    const pts: Pt[] = [];
+    for (let i = 0; i <= n; i++) {
+      const u = -hl + (len * i) / n;
+      // Tufts: the top edge swells and dips like combed hair.
+      const bump = (i % 2 === 0 ? -0.34 : 0.12) * th(u);
+      pts.push([X(u), oy + arch(i, n) - th(u) / 2 + bump]);
+    }
+    pts.push([X(hl + 0.8), oy + arch(n, n) + 0.2]);
+    for (let i = n; i >= 0; i--) {
+      const u = -hl + (len * i) / n;
+      pts.push([X(u), oy + arch(i, n) + th(u) / 2]);
+    }
+    const d = smooth(pts, 0.8);
+    let hairs = '';
+    for (let i = 1; i < n; i++) {
+      const u = -hl + (len * (i + 0.2)) / n;
+      const t = th(u);
+      const y = oy + arch(i, n) + t * 0.3;
+      // Hairs grow from the inner end outward and up.
+      hairs += `M${f2(X(u))} ${f2(y)}q${f2(-side * 0.9)} ${f2(-t * 0.45)} ${f2(-side * 2.2)} ${f2(-t * 0.85)}`;
+    }
+    return flat(d, fill, { stroke: o.line ?? DETAIL * 1.15, over: ink(hairs, DETAIL * 0.62, o.hair ?? '#5d5566') });
   });
 }
 

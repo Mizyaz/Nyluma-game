@@ -48,7 +48,7 @@ export interface PoseParams {
   lie?: number;
 }
 
-export type Emote = 'surprise' | 'pain' | 'joy' | 'anger' | 'talk' | 'listen' | 'relief' | 'worry' | 'effort' | 'shout';
+export type Emote = 'surprise' | 'pain' | 'joy' | 'anger' | 'talk' | 'listen' | 'relief' | 'worry' | 'effort' | 'shout' | 'laugh';
 
 /** Brow state: raise (px, negative = up), knit (rad, + = angry, - = sad), asym (px on the near brow). */
 interface BrowSet {
@@ -68,7 +68,12 @@ const EMOTES: Record<Emote, (t: number) => BrowSet> = {
   worry: (t) => ({ raise: -1.5, knit: -0.55 + 0.05 * S(t * 6), asym: 0.8 }),
   effort: (t) => ({ raise: 2, knit: 0.55 + 0.05 * S(t * 20), asym: 0 }),
   shout: (t) => ({ raise: 2.4, knit: 0.8 + 0.06 * S(t * 26), asym: 0 }),
+  // Brows up and apart, hopping with every "ha".
+  laugh: (t) => ({ raise: -4.2 - 1.6 * Math.abs(S(t * HA)), knit: -0.34, asym: -0.8 }),
 };
+
+/** Angular rate of the "ha"s of a laugh (rad/s: about 4.3 per second). */
+const HA = 13.5;
 
 /** What the brows do during each animation: big, readable reactions. */
 function browsFor(anim: string, t: number, prm: PoseParams, st: HumanoidStyle): BrowSet {
@@ -208,6 +213,10 @@ function applyBrows(p: PoseOut, b: BrowSet, st: HumanoidStyle): void {
   const lean = st === 'root' ? 1.35 : st === 'mech' ? 0.95 : 1.15;
   p.angles.browN = b.knit * lean;
   p.offsets.browN = { x: b.knit * 1.4, y: (b.raise + b.asym * 0.6) * lift };
+  // The far brow of a three-quarter face mirrors the knit (its inner end is
+  // on the other side of the nose) and rises a little less.
+  p.angles.browF = -b.knit * lean * 0.85;
+  p.offsets.browF = { x: -b.knit * 0.8, y: (b.raise - b.asym * 0.3) * lift * 0.85 };
 }
 
 const S = Math.sin;
@@ -489,20 +498,71 @@ function faceFor(anim: string, t: number, prm: PoseParams, st: HumanoidStyle, id
         f.mouth = 'open';
         f.ms = 1.55 + 0.12 * S(t * 28);
         break;
+      case 'laugh':
+        // Eyes squeezed into happy arcs, the mouth wide open with each "ha".
+        f.eye = 'happy';
+        f.mouth = 'laugh';
+        f.ms = 0.82 + 0.26 * Math.abs(S(t * HA));
+        break;
     }
   }
   return f;
 }
 
-function applyFace(p: PoseOut, f: Face, prm: PoseParams): void {
+function applyFace(p: PoseOut, f: Face, prm: PoseParams, prof: RigProfile | undefined): void {
   const open = f.eye === '' || f.eye === 'sad';
   const blink = open ? Math.min(1, Math.max(0, prm.blink ?? 0)) : 0;
-  p.frames = { ...(p.frames ?? {}), eyeN: f.eye, mouth: f.mouth };
+  // Eyes with lids close on their 'shut' shape once a blink is half way;
+  // screen and lens eyes squash to a line.
+  const lids = prof?.blink === 'shut' && blink > 0.55;
+  p.frames = { ...(p.frames ?? {}), eyeN: lids ? 'shut' : f.eye, mouth: f.mouth };
   p.scales = {
     ...(p.scales ?? {}),
-    eyeN: { x: f.ex, y: Math.max(0.08, f.ey * (1 - 0.9 * blink)) },
+    eyeN: lids ? { x: f.ex, y: 1 } : { x: f.ex, y: Math.max(0.08, f.ey * (1 - 0.9 * blink)) },
     mouth: { x: f.ms, y: f.ms },
   };
+}
+
+// ------------------------------------------------------------ rig profiles
+
+/**
+ * What the poses need to know of a rig beyond its id: its bone lengths
+ * (feet planted with inverse kinematics, hands put on the belly), its
+ * foot, where its belly is, and how its eyes blink. Registered by the
+ * skeleton builder (content/characters/skeleton.ts: humanoidRig).
+ */
+export interface RigProfile {
+  /** Hips above the feet line, thigh and shin lengths, hip joints' x. */
+  hip: number;
+  thigh: number;
+  shin: number;
+  hipX: number;
+  /** Shoulder joints (torso frame), upper arm and forearm-to-hand lengths. */
+  shoulderX: number;
+  shoulderY: number;
+  farShoulder: number;
+  upper: number;
+  hand: number;
+  /** Hips to the neck. */
+  torso: number;
+  /** The front of the belly in the torso frame (where hands hold it). */
+  belly?: [number, number];
+  /** Foot: sole depth below the ankle, heel and ball x (the foot's frame). */
+  sole?: number;
+  heel?: number;
+  ball?: number;
+  /** How the eyes blink: lids close ('shut') or the eye squashes to a line. */
+  blink?: 'shut' | 'squash';
+}
+
+const PROFILES = new Map<string, RigProfile>();
+
+export function registerRig(id: string, prof: RigProfile): void {
+  PROFILES.set(id, prof);
+}
+
+export function rigProfile(id: string): RigProfile | undefined {
+  return PROFILES.get(id);
 }
 
 function base(): PoseOut {
@@ -1069,7 +1129,7 @@ export function humanoidPose(rigId: string, anim: string, t: number, prm: PosePa
     p.offsets.eyeN = { x: e.x, y: e.y + prm.look * 2.4 };
   }
   const idle = anim === 'idle' ? idleAction(prm.idleT ?? 0, st) : null;
-  applyFace(p, faceFor(anim, t, prm, st, idle), prm);
+  applyFace(p, faceFor(anim, t, prm, st, idle), prm, PROFILES.get(rigId));
   applyBrows(p, browsFor(anim, t, prm, st), st);
   return p;
 }

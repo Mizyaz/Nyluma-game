@@ -1,5 +1,5 @@
-import { limb, Rng, smooth, taper, type Pt } from '../../render/2d/svg';
-import { DETAIL, flat, INK, OUTLINE } from '../../render/2d/style';
+import { limb, nextId, Rng, smooth, taper, type Pt } from '../../render/2d/svg';
+import { DETAIL, flat, INK, LINE, lightOf, lineFor, OUTLINE, SHADE } from '../../render/2d/style';
 import type { PartArt } from '../../render/2d/rig/rigTypes';
 
 // Drawing kit for the characters in the author's manner (the four
@@ -234,4 +234,127 @@ export function neon(d: string, w: number, c: { glow: string; mid: string; core:
   const mid = `<path d="${d}" fill="${filled ? c.mid : 'none'}" stroke="${c.mid}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
   const core = filled ? '' : `<path d="${d}" fill="none" stroke="${c.core}" stroke-width="${w * 0.38}" stroke-linecap="round" stroke-linejoin="round"/>`;
   return halo + mid + core;
+}
+
+// ------------------------------------------------------------ comic shapes
+
+const r2 = (n: number): string => (Math.round(n * 100) / 100).toString();
+
+/** Rough bounds of an absolute path (its points and control points). */
+function bounds(d: string): { x0: number; y0: number; x1: number; y1: number } | null {
+  if (/[a-z]/.test(d.replace(/e-?\d/g, ''))) return null;
+  const n = d.match(/-?\d*\.?\d+(?:e-?\d+)?/g);
+  if (!n || n.length < 2) return null;
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (let i = 0; i + 1 < n.length; i += 2) {
+    const x = Number(n[i]);
+    const y = Number(n[i + 1]);
+    x0 = Math.min(x0, x);
+    x1 = Math.max(x1, x);
+    y0 = Math.min(y0, y);
+    y1 = Math.max(y1, y);
+  }
+  return { x0, y0, x1, y1 };
+}
+
+/** Parallel hatch lines over a box (the comic shadow texture). */
+export function hatchLines(b: { x0: number; y0: number; x1: number; y1: number }, gap: number, color: string, w: number = LINE.fine * 0.8, ang = -0.95): string {
+  const c = Math.cos(ang);
+  const s = Math.sin(ang);
+  const cx = (b.x0 + b.x1) / 2;
+  const cy = (b.y0 + b.y1) / 2;
+  const R = Math.hypot(b.x1 - b.x0, b.y1 - b.y0) / 2 + 2;
+  let d = '';
+  for (let k = -R; k <= R; k += gap) {
+    // Lines along (c, s), offset k along the normal (-s, c).
+    const ox = cx - s * k;
+    const oy = cy + c * k;
+    d += `M${r2(ox - c * R)} ${r2(oy - s * R)}L${r2(ox + c * R)} ${r2(oy + s * R)}`;
+  }
+  return `<path d="${d}" fill="none" style="stroke:${color}" stroke-width="${w}" stroke-linecap="round"/>`;
+}
+
+export interface ComicOpts {
+  /** Contour width (default LINE.limb); 0 for none. */
+  line?: number;
+  /** Contour colour (default: the fill's own dark tone). */
+  ink?: string;
+  /** Markup clipped inside, under the shading (patches, patterns). */
+  inner?: string;
+  /**
+   * Cel shadow: the shape less a copy of itself moved toward the light by
+   * [dx, dy], a crescent on the side away from it (the characters are lit
+   * from the front and above).
+   */
+  rim?: [number, number];
+  /** Hand-drawn shadow shapes (path data), clipped to the shape. */
+  shade?: string;
+  /** Multiply tone of the shadows (default SHADE.cool). */
+  tone?: string;
+  /** Hatching in the rim shadow: line spacing (px). */
+  hatch?: number;
+  /** Colour of the hatching (multiplied; default SHADE.hatch). */
+  hatchColor?: string;
+  /** A highlight crescent on the lit side: the shape less a copy moved away from the light by [dx, dy]. */
+  glint?: [number, number];
+  /** Hand-drawn highlight shapes (path data). */
+  light?: string;
+  /** Highlight colour (default a pale tone of the fill). */
+  lightFill?: string;
+  /** Markup clipped inside, over the shading (folds, seams, labels). */
+  over?: string;
+  /** Markup drawn over the contour (not clipped). */
+  top?: string;
+}
+
+/**
+ * A shape in the comic manner: a flat fill, cel shadows (multiplied, so
+ * patches and patterns keep their colours in the shade) with a little
+ * hatching, highlights on the lit side, then an opaque contour of adaptive
+ * weight in the fill's own dark tone.
+ */
+export function comic(d: string, fill: string, o: ComicOpts = {}): string {
+  const id = nextId('m');
+  const line = o.line ?? LINE.limb;
+  const tone = o.tone ?? SHADE.cool;
+  let s = `<g><path d="${d}" fill="${fill}"/><clipPath id="c${id}"><path d="${d}"/></clipPath><g clip-path="url(#c${id})">`;
+  s += o.inner ?? '';
+  let shade = '';
+  if (o.rim) {
+    const [dx, dy] = o.rim;
+    const b = bounds(d) ?? { x0: -150, y0: -150, x1: 150, y1: 150 };
+    s += `<mask id="r${id}" maskUnits="userSpaceOnUse" x="-2000" y="-2000" width="4000" height="4000"><rect x="-2000" y="-2000" width="4000" height="4000" fill="#fff"/><path d="${d}" fill="#000" transform="translate(${r2(dx)} ${r2(dy)})"/></mask>`;
+    shade += `<g mask="url(#r${id})"><path d="${d}" style="fill:${tone}"/>${o.hatch ? hatchLines(b, o.hatch, o.hatchColor ?? SHADE.hatch) : ''}</g>`;
+  }
+  if (o.shade) shade += `<path d="${o.shade}" style="fill:${tone}"/>`;
+  if (shade) s += `<g style="mix-blend-mode:multiply">${shade}</g>`;
+  const lf = o.lightFill ?? lightOf(fill);
+  if (o.glint) {
+    const [dx, dy] = o.glint;
+    s += `<mask id="g${id}" maskUnits="userSpaceOnUse" x="-2000" y="-2000" width="4000" height="4000"><rect x="-2000" y="-2000" width="4000" height="4000" fill="#fff"/><path d="${d}" fill="#000" transform="translate(${r2(dx)} ${r2(dy)})"/></mask>`;
+    s += `<path d="${d}" fill="${lf}" mask="url(#g${id})"/>`;
+  }
+  if (o.light) s += `<path d="${o.light}" fill="${lf}"/>`;
+  s += (o.over ?? '') + '</g>';
+  if (line > 0) s += `<path d="${d}" fill="none" stroke="${o.ink ?? lineFor(fill)}" stroke-width="${line}" stroke-linejoin="round" stroke-linecap="round"/>`;
+  return s + (o.top ?? '') + '</g>';
+}
+
+/**
+ * A limb segment from a to b in the comic manner: shaded along its back
+ * (the far side from the light, which comes from the front and above) with
+ * a glint down its front.
+ */
+export function comicLimb(a: Pt, b: Pt, wa: number, wb: number, fill: string, o: ComicOpts & { bulge?: number } = {}): string {
+  const w = (wa + wb) / 2;
+  const { bulge, ...rest } = o;
+  return comic(limb(a, b, wa, wb, bulge ?? 0.4), fill, { rim: [w * 0.34, -w * 0.12], glint: [-w * 0.1, w * 0.1], hatch: w > 9 ? 2.3 : 0, ...rest });
+}
+
+/** Ink in a shape's own darker colour (folds, creases, seams). */
+export function fold(d: string, color: string, w: number = LINE.detail): string {
+  return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
 }

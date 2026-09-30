@@ -1,5 +1,6 @@
 import type { Pt } from '../../render/2d/svg';
 import type { RigDef, RigJoint } from '../../render/2d/rig/rigTypes';
+import { registerRig } from '../../render/2d/rig/animPoses';
 
 // The humanoid skeleton every Gorti body and inner form shares, so the
 // procedural poses (animPoses: humanoidPose) drive them all: joint ids,
@@ -28,8 +29,18 @@ export interface HumanoidDims {
   eye?: Pt;
   /** Separate expressive eyebrow (part key, offset above the eye). */
   brow?: { part: string; up: number; dx: number };
-  /** Animated face: eye and mouth parts (prefix of their shape set). */
-  face?: { eye: string; mouth: string; mouthAt: Pt };
+  /** The far brow of a three-quarter face (it knits the other way). */
+  browFar?: { part: string; up: number; dx: number };
+  /**
+   * Animated face: eye and mouth parts (prefix of their shape set). `blink`:
+   * lidded eyes close on their 'shut' shape (default); screen and lens eyes
+   * squash to a line.
+   */
+  face?: { eye: string; mouth: string; mouthAt: Pt; blink?: 'shut' | 'squash'; glow?: boolean };
+  /** The front of the belly in the torso frame (where the hands hold it when he laughs). */
+  belly?: Pt;
+  /** Foot shape: sole depth below the ankle, heel and ball x (defaults 6, -5, 8). */
+  foot?: { sole: number; heel: number; ball: number };
   /** Springy hair clusters on the head. */
   hair?: { part: string; id: string; at: Pt; tip: Pt; z: number; k?: number; c?: number }[];
   /** Part keys where a joint differs from `<prefix>.<limb>`. */
@@ -69,6 +80,9 @@ export function humanoidRig(id: string, prefix: string, d: HumanoidDims, withWat
   if (d.brow && d.eye) {
     j.push({ id: 'browN', parent: 'head', x: d.eye[0] + d.brow.dx, y: d.eye[1] - d.brow.up, part: d.brow.part, z: 66 });
   }
+  if (d.browFar && d.eye) {
+    j.push({ id: 'browF', parent: 'head', x: d.eye[0] + d.browFar.dx, y: d.eye[1] - d.browFar.up, part: d.browFar.part, z: 66 });
+  }
   if (d.face && d.eye) {
     j.push({ id: 'eyeN', parent: 'head', x: d.eye[0], y: d.eye[1], part: `${d.face.eye}.eye`, z: 64 });
     j.push({ id: 'mouth', parent: 'head', x: d.face.mouthAt[0], y: d.face.mouthAt[1], part: `${d.face.mouth}.mouth`, z: 63 });
@@ -79,6 +93,23 @@ export function humanoidRig(id: string, prefix: string, d: HumanoidDims, withWat
   }
   for (const e of d.extra ?? []) j.push({ ...e });
   const hand = d.hand ?? 30;
+  registerRig(id, {
+    hip: d.hip,
+    thigh: d.thigh,
+    shin: d.shin,
+    hipX: d.hipX,
+    shoulderX: d.shoulderX,
+    shoulderY: d.shoulderY,
+    farShoulder: d.farShoulder ?? -0.4,
+    upper: d.upper,
+    hand,
+    torso: d.torso,
+    belly: d.belly,
+    sole: d.foot?.sole ?? 6,
+    heel: d.foot?.heel ?? -5,
+    ball: d.foot?.ball ?? 8,
+    blink: d.face?.blink ?? 'shut',
+  });
   return {
     id,
     joints: j,
@@ -90,5 +121,6 @@ export function humanoidRig(id: string, prefix: string, d: HumanoidDims, withWat
       ankleL: { joint: 'shinL', x: 0, y: d.shin - 4 },
     },
     animations: [...HUMANOID_ANIMS],
+    ...(d.face?.glow ? { glowing: ['eyeN', 'browN', 'mouth'] } : {}),
   };
 }

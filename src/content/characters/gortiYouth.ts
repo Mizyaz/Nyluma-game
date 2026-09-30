@@ -53,7 +53,7 @@ export const YOUTH_DIMS: HumanoidDims = {
   hip: 50, thigh: 23, shin: 23, torso: 44, shoulderY: 37, shoulderX: 3, upper: 22, hipX: 5, headX: 3, hand: 27,
   eye: EYE_AT,
   brow: { part: 'gorti.youth.brow', up: 9.5, dx: -10 },
-  face: { eye: 'gorti.youth', mouth: 'gorti.youth', mouthAt: [9, -17] },
+  face: { eye: 'gorti.youth', mouth: 'gorti.youth', mouthAt: [9, -17], blink: 'squash' },
   hair: TENDRILS.map((t, i) => {
     const end = t.pts[t.pts.length - 1]!;
     return { part: `gorti.youth.${t.id}`, id: t.id, at: t.base, tip: [end[0] - t.base[0], end[1] - t.base[1]] as Pt, z: 55 + i, k: 150, c: 6 };

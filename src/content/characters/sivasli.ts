@@ -1,8 +1,8 @@
-import { ellipsePath, limb, Rng, taper, type Pt } from '../../render/2d/svg';
-import { DETAIL, flat, INK, PASTEL } from '../../render/2d/style';
+import { ellipsePath, limb, Rng, smooth, taper, type Pt } from '../../render/2d/svg';
+import { darkOf, DETAIL, flat, INK, LINE, lineFor, PASTEL, SHADE } from '../../render/2d/style';
 import type { PartArt } from '../../render/2d/rig/rigTypes';
-import { almondEye, browPart, eyeSet, mouthSet, paintedMouth } from './face';
-import { ink, label, leaf, part, path, roundPoly, stitches, tr } from './kit';
+import { almondEye, browPart, bushyBrow, eyeSet, mouthSet, paintedMouth } from './face';
+import { comic, comicLimb, fold, ink, label, leaf, part, path, roundPoly, stitches, tr } from './kit';
 import { humanoidRig, type HumanoidDims } from './skeleton';
 
 // Gorti's human form, the Sivaslı amca/dede (painting 2, the large left
@@ -28,6 +28,14 @@ export const SIVAS = {
   sun: '#f6b77f',
   ray: '#f3e08e',
   freckle: '#c07f5e',
+  skin: '#f0c2a2',
+  blush: '#eb9d90',
+  nose: '#f2b196',
+  earIn: '#dd9884',
+  grey: '#a29ba9',
+  greyLight: '#dcd8e0',
+  greyDark: '#6f6879',
+  iris: '#6d4d3d',
   suit: '#a3a5ad',
   suitDeep: '#83858f',
   shirt: '#f5f2ea',
@@ -56,6 +64,25 @@ export const HUMAN_SUN_DIMS: HumanoidDims = {
   face: { eye: 'gorti.sun', mouth: 'gorti.sun', mouthAt: [10, -18] },
 };
 
+/**
+ * The plain head: the Sivaslı kel amca himself, bald and shiny, with a
+ * bushy moustache, kind eyes, big ears and a grey fringe round the back.
+ */
+export const HUMAN_BALD_DIMS: HumanoidDims = {
+  ...HUMAN_BASE,
+  parts: { head: 'gorti.bald.head' },
+  eye: [10, -30.5],
+  brow: { part: 'gorti.bald.brow', up: 6.4, dx: -5.4 },
+  browFar: { part: 'gorti.bald.browF', up: 5.9, dx: 6.6 },
+  face: { eye: 'gorti.bald', mouth: 'gorti.bald', mouthAt: [15.4, -7.2] },
+  // A few loose hairs on the crown that bob about.
+  hair: [{ part: 'gorti.bald.wisp', id: 'wisp', at: [-1, -55.2], tip: [1, -8], z: 61, k: 110, c: 3.6 }],
+  extra: [
+    // The moustache over the mouth, a little springy.
+    { id: 'stache', parent: 'head', x: 15.4, y: -13.6, part: 'gorti.bald.stache', z: 65, spring: { k: 230, c: 9, lag: 0.3, gain: 0.0016, tip: [0, 5] } },
+  ],
+};
+
 // ------------------------------------------------------------------ heads
 
 function moonHead(): PartArt {
@@ -79,7 +106,8 @@ function moonEye(): PartArt[] {
 
 function moonMouth(): PartArt[] {
   const m = 3;
-  return mouthSet('gorti.human', { x0: -m - 3, y0: -m - 3, x1: m + 3, y1: m + 3 }, (v, ox, oy) => paintedMouth(v, ox, oy, m, { lip: SIVAS.mauve, inside: '#4a2a4f', sad: 0.5 }));
+  // The laugh opens wider than the small everyday mouth.
+  return mouthSet('gorti.human', { x0: -m * 1.8 - 3, y0: -m - 3, x1: m * 1.8 + 3, y1: m * 2.3 + 3 }, (v, ox, oy) => paintedMouth(v, ox, oy, v === 'laugh' ? m * 1.35 : m, { lip: SIVAS.mauve, inside: '#4a2a4f', sad: 0.5 }));
 }
 
 function sunHead(): PartArt {
@@ -130,6 +158,161 @@ function sunEyes(): PartArt[] {
 function sunMouth(): PartArt[] {
   const m = 4.4;
   return mouthSet('gorti.sun', { x0: -m - 3, y0: -m - 3, x1: m + 3, y1: m + 3 }, (v, ox, oy) => paintedMouth(v, ox, oy, m, { lip: '#e98a7a', inside: '#6b2c34', sad: 0.3 }));
+}
+
+
+// ------------------------------------------------------------ bald head
+
+/** Skull and face in one outline (three-quarter, facing right). */
+const SKULL: Pt[] = [
+  [-12, -8.5], [-17.2, -16.5], [-20, -27.5], [-19.6, -39], [-15.2, -48.2], [-7.4, -54.2], [2.6, -56.4], [12, -53.4], [18.2, -46.4],
+  [21.4, -38.4], [22.6, -32.6], [21.2, -28.2], [21.6, -22.6], [21.4, -15.8], [21, -8.6], [19.6, -2.6], [14.4, 1.8], [6.6, 2], [-0.6, -0.8], [-7, -4.6],
+];
+
+function baldHead(): PartArt {
+  return part('gorti.bald.head', { x0: -25, y0: -62, x1: 29, y1: 10 }, (ox, oy) => {
+    const o = (pts: Pt[]): Pt[] => tr(pts, ox, oy);
+    const P = (x: number, y: number): string => `${ox + x} ${oy + y}`;
+    const skinLine = lineFor(SIVAS.skin);
+    const crease = darkOf(SIVAS.skin, 0.42);
+    // The neck: short and thick, in the jaw's shadow.
+    let s = comicLimb([ox - 1, oy + 7], [ox + 1.5, oy - 12], 17, 16, SIVAS.skin, {
+      line: LINE.limb,
+      tone: SHADE.warm,
+      hatchColor: SHADE.hatchWarm,
+      bulge: 0.2,
+      shade: `M${P(-12, -12)}L${P(14, -12)}L${P(14, -2)}Q${P(4, 1.5)} ${P(-12, -3)}Z`,
+      over: fold(`M${P(3, 1)}q2.5 -3 1.5 -7`, crease, LINE.fine),
+    });
+    // Skull and face, lit from the front and above: the back of the head
+    // and the underside of the jaw in shadow, the eye sockets under the
+    // brow, a shine on the crown.
+    const shade =
+      // Eye sockets under the brow ridge.
+      `M${P(-1, -34)}Q${P(10, -37.5)} ${P(22.5, -33.5)}L${P(21.5, -29)}Q${P(12, -32.5)} ${P(0, -30.5)}Z` +
+      // Under the jaw.
+      `M${P(-8, -4)}Q${P(5, 0.6)} ${P(20, -3.4)}L${P(22, 5)}L${P(-8, 5)}Z`;
+    // The shine of the bald crown: a long gleam, a second one, a sparkle.
+    const star = (x: number, y: number, r: number): string =>
+      `M${P(x, y - r)}Q${P(x + r * 0.16, y - r * 0.16)} ${P(x + r, y)}Q${P(x + r * 0.16, y + r * 0.16)} ${P(x, y + r)}Q${P(x - r * 0.16, y + r * 0.16)} ${P(x - r, y)}Q${P(x - r * 0.16, y - r * 0.16)} ${P(x, y - r)}Z`;
+    const shine =
+      `M${P(-14.4, -43.6)}Q${P(-10.6, -52.6)} ${P(1.2, -55)}Q${P(-6.6, -50.8)} ${P(-11.2, -42.8)}Q${P(-12.8, -42.6)} ${P(-14.4, -43.6)}Z` +
+      `M${P(4.4, -53.8)}Q${P(9.2, -53.8)} ${P(12, -50.4)}Q${P(8.2, -51.6)} ${P(4.4, -53.8)}Z` +
+      star(-4.2, -47.6, 2.6);
+    const wrinkles =
+      fold(`M${P(4, -41.2)}Q${P(10.5, -43)} ${P(17.4, -41.4)}`, crease, LINE.fine * 1.1) +
+      fold(`M${P(3, -44.8)}Q${P(9.5, -46.6)} ${P(16, -45)}`, crease, LINE.fine * 1.1) +
+      fold(`M${P(6, -48.2)}Q${P(9.5, -49.2)} ${P(13.4, -48.2)}`, crease, LINE.fine) +
+      // Crow's feet at the near eye, bags under both.
+      fold(`M${P(-0.6, -31.2)}l-2.8 -1.6M${P(-0.8, -29.6)}l-3.1 0.1M${P(-0.4, -28)}l-2.6 1.4`, crease, LINE.fine) +
+      fold(`M${P(1.8, -26.6)}Q${P(5, -24.8)} ${P(8.4, -26.4)}`, crease, LINE.fine) +
+      fold(`M${P(14.2, -26.9)}Q${P(16.4, -25.8)} ${P(18.6, -27)}`, crease, LINE.fine) +
+      // The smile line round the moustache.
+      fold(`M${P(12.6, -19.6)}Q${P(9.2, -16)} ${P(10.2, -8.6)}`, crease, LINE.detail * 0.9) +
+      // Chin.
+      fold(`M${P(13.2, -0.6)}Q${P(16, 0.4)} ${P(18.6, -1.4)}`, crease, LINE.fine);
+    const blush = `<path d="${ellipsePath(ox + 3.2, oy - 20.6, 5.6, 3.7)}" fill="${SIVAS.blush}"/>` + fold(`M${P(0.2, -19.2)}l1.3 -2.2M${P(2.6, -18.6)}l1.3 -2.2M${P(5, -18.9)}l1.2 -2`, darkOf(SIVAS.blush, 0.3), LINE.fine * 0.9);
+    s += comic(smooth(o(SKULL)), SIVAS.skin, {
+      line: LINE.body,
+      tone: SHADE.warm,
+      rim: [4.2, -2.2],
+      hatch: 2.4,
+      hatchColor: SHADE.hatchWarm,
+      shade,
+      glint: [-1.1, 1.4],
+      light: shine,
+      lightFill: '#fffaf2',
+      over: wrinkles + blush,
+    });
+    // The grey fringe round the back of the head, above and behind the ear.
+    const fringe: Pt[] = [
+      [-5.4, -38.6], [-9.6, -41.4], [-14.6, -41], [-18.8, -38.4], [-21.6, -35.2], [-20.4, -32.6], [-22.6, -29.2], [-21, -26.4], [-22.4, -22.6],
+      [-20, -19.8], [-20.6, -16], [-17.4, -13.6], [-17.6, -10.6], [-14, -9.8], [-12.8, -13.6], [-14.2, -19], [-14, -26], [-12.6, -32.2], [-9.4, -35.8], [-5.6, -36.4],
+    ];
+    let strands = '';
+    for (let i = 0; i < 7; i++) {
+      const y = -37 + i * 3.8;
+      strands += `M${P(-17.2 + (i % 2) * 1.2, y)}q-2 1.4 -2.6 3.6`;
+    }
+    s += comic(smooth(o(fringe)), SIVAS.grey, {
+      line: LINE.small,
+      rim: [1.8, -1.2],
+      glint: [-0.8, 0.9],
+      lightFill: SIVAS.greyLight,
+      over: fold(strands.replace(/M/g, 'M'), SIVAS.greyDark, LINE.fine),
+    });
+    // A little sideburn in front of the ear.
+    s += comic(smooth(o([[-3.4, -37.6], [-1.4, -36.4], [-0.6, -31.6], [-2.4, -29.4], [-4, -32.4]])), SIVAS.grey, { line: LINE.small * 0.85, lightFill: SIVAS.greyLight, glint: [-0.5, 0.6] });
+    // The big ear.
+    const ear: Pt[] = [[-3.4, -32.6], [-7, -36.2], [-12.2, -36.4], [-15.4, -32.4], [-15.6, -25.6], [-13.4, -19.2], [-9.6, -15.2], [-5.6, -15.6], [-4.4, -20.6], [-3, -26.2]];
+    const earIn =
+      `<path d="${smooth(o([[-5.8, -30.4], [-9.4, -33.2], [-12.6, -31.2], [-12.8, -25.6], [-10.8, -20.4], [-7.8, -18.4], [-7.2, -22.6], [-9.4, -25], [-8.6, -28.4]]))}" fill="${SIVAS.earIn}"/>` +
+      fold(`M${P(-10.8, -30.2)}Q${P(-8.2, -29.6)} ${P(-8.4, -26.4)}`, darkOf(SIVAS.earIn, 0.35), LINE.fine);
+    s += comic(smooth(o(ear)), SIVAS.skin, { line: LINE.small, tone: SHADE.warm, rim: [1.8, -1.4], glint: [0.8, 0.9], over: earIn });
+    // The nose: big and round; its bridge melts into the face.
+    const nose: Pt[] = [[12.2, -32], [14.6, -28.4], [18.2, -25.6], [22.8, -24.4], [26, -21.4], [25.6, -17.6], [22.4, -16], [18.8, -16.8], [15.4, -16.2], [12.6, -17.8], [13, -21.4], [11.6, -26]];
+    const nd = smooth(o(nose));
+    s += comic(nd, SIVAS.nose, {
+      line: 0,
+      tone: SHADE.warm,
+      shade: `M${P(12, -18.4)}Q${P(18, -14.6)} ${P(26.4, -18.8)}L${P(27, -14)}L${P(11, -14)}Z`,
+      light: `M${P(21.2, -23.2)}Q${P(23.8, -23.4)} ${P(24.6, -21.2)}Q${P(22.6, -22)} ${P(21.2, -23.2)}Z`,
+      lightFill: '#fff4ea',
+    });
+    s += ink(`M${P(14.8, -28.6)}Q${P(18.6, -25.2)} ${P(23, -24.4)}Q${P(26.6, -22.4)} ${P(25.8, -18.2)}Q${P(24.4, -15.8)} ${P(21.4, -16.4)}`, LINE.small, skinLine);
+    // Nose wing and nostril.
+    s += ink(`M${P(16.6, -21.4)}Q${P(13.2, -20.8)} ${P(14.4, -17.6)}Q${P(16.6, -16.2)} ${P(18.6, -17.4)}`, LINE.detail, skinLine);
+    s += `<path d="M${P(19.4, -18.4)}q1.6 -0.8 2.8 0.2q-1.4 0.6 -2.8 -0.2Z" fill="${darkOf(SIVAS.nose, 0.55)}"/>`;
+    return s;
+  });
+}
+
+/** Kind eyes, both in one part: warm brown, a catch-light, a relaxed lid. */
+function baldEyes(): PartArt[] {
+  return eyeSet('gorti.bald', { x0: -12, y0: -8, x1: 13, y1: 7 }, (v, ox, oy) =>
+    almondEye(v, ox - 5, oy, 4.1, 2.8, { outer: -1, iris: SIVAS.iris, lid: 0.2, lidFill: SIVAS.skin, look: 0.34, pupil: 0.5, glint: true, line: LINE.detail * 1.1 }) +
+    almondEye(v, ox + 6.4, oy - 0.3, 3.1, 2.5, { outer: 1, iris: SIVAS.iris, lid: 0.2, lidFill: SIVAS.skin, look: 0.5, pupil: 0.5, glint: true, line: LINE.detail }),
+  );
+}
+
+function baldMouth(): PartArt[] {
+  const m = 4.2;
+  return mouthSet('gorti.bald', { x0: -m * 1.5 - 3, y0: -m - 3, x1: m * 1.5 + 3, y1: m * 1.8 + 3 }, (v, ox, oy) => paintedMouth(v, ox, oy, m, { lip: '#e98d86', inside: '#6a2b37', sad: 0.25, line: LINE.detail * 1.15 }));
+}
+
+/** The bushy salt-and-pepper moustache (pivot under the nose). */
+function baldStache(): PartArt {
+  return part('gorti.bald.stache', { x0: -16, y0: -6, x1: 14, y1: 10 }, (ox, oy) => {
+    const pts: Pt[] = [
+      [-0.8, -2.2], [-4.8, -2.8], [-9.2, -1.8], [-12.8, 0.6], [-14.6, 3.8], [-13.6, 6.8], [-11.6, 4.6], [-9, 3.4], [-6.6, 4.8], [-4, 3.4], [-1.4, 4.6],
+      [1.2, 3.3], [3.8, 4.4], [6.2, 3.1], [8.8, 4.8], [10.6, 2.8], [10.2, 0.2], [7.2, -1.8], [3.2, -2.6],
+    ];
+    const d = smooth(tr(pts, ox, oy), 0.8);
+    let hairs = '';
+    const rng = new Rng(404);
+    for (let i = 0; i < 11; i++) {
+      const x = -11 + i * 2;
+      const side = x < -0.5 ? -1 : 1;
+      hairs += `M${ox + x + rng.range(-0.4, 0.4)} ${oy - 1 + rng.range(-0.5, 0.5)}q${side * 1.2} 2 ${side * 0.6} ${3.6 + rng.range(-0.5, 0.7)}`;
+    }
+    return comic(d, SIVAS.grey, {
+      line: LINE.small,
+      rim: [1.2, -2],
+      hatch: 1.9,
+      glint: [0.4, 1.6],
+      lightFill: SIVAS.greyLight,
+      over: fold(hairs, SIVAS.greyDark, LINE.fine) + fold(`M${ox - 0.4} ${oy - 2}q0.2 2.6 -0.4 5.4`, SIVAS.greyDark, LINE.fine * 1.2),
+    });
+  });
+}
+
+/** Three loose grey hairs on the crown (pivot at their roots). */
+function baldWisp(): PartArt {
+  return part('gorti.bald.wisp', { x0: -6, y0: -12, x1: 7, y1: 2 }, (ox, oy) =>
+    ink(`M${ox - 1.6} ${oy + 0.6}q-2.4 -3.6 -0.4 -6.2q1.6 -1.8 -0.2 -3.8`, LINE.fine * 1.25, SIVAS.greyDark) +
+    ink(`M${ox + 0.4} ${oy + 0.4}q0.8 -4.2 3.4 -5.6q1.8 -1 1.2 -3`, LINE.fine * 1.25, SIVAS.greyDark) +
+    ink(`M${ox + 1.8} ${oy + 0.6}q2.6 -1.6 4 -1`, LINE.fine * 1.1, SIVAS.greyDark),
+  );
 }
 
 // ------------------------------------------------------------------ body
@@ -261,6 +444,9 @@ export function sivasliParts(): PartArt[] {
   return [
     moonHead(), ...moonEye(), ...moonMouth(), browPart('gorti.human.brow', SIVAS.moonDeep, 11, 3.4, { stroke: DETAIL }),
     sunHead(), ...sunEyes(), ...sunMouth(), browPart('gorti.sun.brow', '#c7743f', 9, 2.8, { stroke: DETAIL }),
+    baldHead(), ...baldEyes(), ...baldMouth(), baldStache(), baldWisp(),
+    bushyBrow('gorti.bald.brow', SIVAS.grey, 11.5, 3.9, { inner: 1, line: LINE.detail * 1.2, hair: SIVAS.greyDark }),
+    bushyBrow('gorti.bald.browF', SIVAS.grey, 7.8, 3.1, { inner: -1, line: LINE.detail * 1.1, hair: SIVAS.greyDark }),
     torso(), upperArm(), forearm(), thigh(), shin(), foot(),
     suitTorso(), suitArm(), forearm(true), thigh(true), shin(true), shoe(),
   ];
@@ -268,5 +454,7 @@ export function sivasliParts(): PartArt[] {
 
 export const RIG_GORTI_HUMAN = humanoidRig('gorti.human', 'gorti.human', HUMAN_MOON_DIMS);
 export const RIG_GORTI_HUMAN_SUN = humanoidRig('gorti.human.sun', 'gorti.human', HUMAN_SUN_DIMS);
+/** The kel amca: the same body and skeleton, the plain bald head (swap heads with RigView.setRig). */
+export const RIG_GORTI_HUMAN_BALD = humanoidRig('gorti.human.bald', 'gorti.human', HUMAN_BALD_DIMS);
 export const RIG_GORTI_SUIT = humanoidRig('gorti.suit', 'gorti.suit', { ...HUMAN_MOON_DIMS, parts: { head: 'gorti.human.head' } });
 

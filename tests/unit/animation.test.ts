@@ -6,6 +6,7 @@ import {
   humanRigFor,
   RIG_GORTI_CHILD,
   RIG_GORTI_HUMAN,
+  RIG_GORTI_HUMAN_BALD,
   RIG_GORTI_HUMAN_SUN,
   RIG_GORTI_SUIT,
   RIG_GORTI_WARRIOR,
@@ -100,12 +101,24 @@ describe('rig parts', () => {
   });
 
   it('gives Gorti and the torch-bearer every eye and mouth shape', () => {
-    for (const rig of [RIG_GORTI_CHILD, RIG_GORTI_YOUTH, RIG_GORTI_WARRIOR, RIG_GORTI_HUMAN, RIG_GORTI_HUMAN_SUN, RIG_GORTI_SUIT, RIG_COWARD]) {
+    for (const rig of [RIG_GORTI_CHILD, RIG_GORTI_YOUTH, RIG_GORTI_WARRIOR, RIG_GORTI_HUMAN, RIG_GORTI_HUMAN_SUN, RIG_GORTI_HUMAN_BALD, RIG_GORTI_SUIT, RIG_COWARD]) {
       const eye = rig.joints.find((j) => j.id === 'eyeN')!.part!;
       const mouth = rig.joints.find((j) => j.id === 'mouth')!.part!;
       for (const v of ['happy', 'sad', 'shut']) expect(keys.has(`${eye}.${v}`), `${rig.id} ${eye}.${v}`).toBe(true);
-      for (const v of ['smile', 'open', 'grin', 'grit', 'frown']) expect(keys.has(`${mouth}.${v}`), `${rig.id} ${mouth}.${v}`).toBe(true);
+      for (const v of ['smile', 'open', 'grin', 'grit', 'frown', 'laugh']) expect(keys.has(`${mouth}.${v}`), `${rig.id} ${mouth}.${v}`).toBe(true);
     }
+  });
+
+  it('puts the three Sivaslı heads on one body, so they swap', () => {
+    const body = (r: typeof RIG_GORTI_HUMAN): string[] =>
+      r.joints.filter((j) => j.parent === null || !['head', 'eyeN', 'browN', 'browF', 'mouth'].includes(j.parent ?? '') && !['eyeN', 'browN', 'browF', 'mouth'].includes(j.id)).map((j) => `${j.id}:${j.parent}:${j.x},${j.y}:${j.id === 'head' ? '' : j.part}`);
+    expect(body(RIG_GORTI_HUMAN_BALD)).toEqual(body(RIG_GORTI_HUMAN));
+    expect(body(RIG_GORTI_HUMAN_SUN)).toEqual(body(RIG_GORTI_HUMAN));
+    const bald = humanoidPose(RIG_GORTI_HUMAN_BALD.id, 'idle', 0, { emote: 'laugh', emoteK: 1 });
+    expect(bald.frames?.mouth).toBe('laugh');
+    expect(bald.frames?.eyeN).toBe('happy');
+    // Lidded eyes close on their shut shape in a blink.
+    expect(humanoidPose(RIG_GORTI_HUMAN_BALD.id, 'idle', 0, { blink: 1 }).frames?.eyeN).toBe('shut');
   });
 
   it('lets the youth\'s branch tendrils sway on springs', () => {

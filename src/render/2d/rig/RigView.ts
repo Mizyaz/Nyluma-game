@@ -18,8 +18,6 @@ const RATE: Record<string, number> = {
   browN: 30,
 };
 
-/** Marks on Gorti's screen that glow: the diorama does not shade them. */
-const GLOWING = new Set(['eyeN', 'browN', 'mouth']);
 
 /**
  * Runtime cutout rig: one container of images positioned every frame with
@@ -81,7 +79,8 @@ export class RigView {
       img.setOrigin(f.px / f.w, f.py / f.h);
       img.setScale(1 / f.scale);
       if (j.additive) img.setBlendMode(Phaser.BlendModes.ADD);
-      if (GLOWING.has(j.id)) stage.hint(img, { lit: false });
+      // Marks on a screen face glow: the diorama does not shade them.
+      if (this.rig.glowing?.includes(j.id)) stage.hint(img, { lit: false });
       this.images.set(j.id, img);
     }
     this.applyOrder();
