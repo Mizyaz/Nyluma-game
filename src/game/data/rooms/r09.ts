@@ -19,10 +19,10 @@ export const R09: RoomDef = {
   solids: [
     { x: 0, y: 900, w: 1300, h: 200, style: 'moss' },
     { x: 1300, y: 960, w: 400, h: 140, style: 'stone' },
+    // Stepping stones across the river (wading through its bed works too).
     { x: 1360, y: 880, w: 80, h: 24, style: 'stone', oneWay: true },
     { x: 1530, y: 872, w: 80, h: 24, style: 'stone', oneWay: true },
     { x: 1700, y: 900, w: 1500, h: 200, style: 'moss' },
-    { x: 2200, y: 640, w: 160, h: 24, style: 'root', oneWay: true },
   ],
   memories: [{ id: 'm7', x: 2300, y: 900 }],
   triggers: [

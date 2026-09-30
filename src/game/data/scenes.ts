@@ -58,6 +58,8 @@ const CHECKPOINT_NAMES: Record<string, string> = {
 
 /** Story facts a checkpoint needs so its room does not replay what came before. */
 const SETUP: Record<string, { flags?: readonly string[]; form?: string }> = {
+  // On the whale spiral the tree has bloomed (the spiral is its bloom).
+  r03_canopy: { flags: ['r03.moon', 'r03.sun', 'r03.star', 'r03.bloom'] },
   r06_knots: { flags: ['r06.shout'], form: 'root' },
   r12_room: { flags: ['r12.intercut', 'r12.door'] },
 };

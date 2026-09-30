@@ -13,6 +13,8 @@ import { hasFrame, frameRef } from '../../art/TextureFactory';
 // Moon speaks.
 const PLATE_A = { x: 1180, y: 1100 };
 const PLATE_B = { x: 2060, y: 1100 };
+/** The Moon's face over the hilltop (905). */
+const MOON = { x: 3640, y: 515 };
 
 export function r05(w: WorldScene): RoomScript {
   let s1: MemoryStone | null = null;
@@ -37,13 +39,13 @@ export function r05(w: WorldScene): RoomScript {
       async (cs) => {
         const p = w.player;
         p.lock(true, 'idle');
-        w.camTo(3600, 420);
+        w.camTo(3600, MOON.y + 170);
         if (p.form !== 'human') {
           cs.caption('Gorti’nin bedeni, ayın bakışı altında yeniden ağırlaştı.', 3600);
           await new Promise<void>((res) => (cs.skipped ? res() : w.transform('human', res)));
         }
         p.lock(true, 'look');
-        moon = new Face(w, 'baby', 3640, 250, DEPTH.backProps + 20);
+        moon = new Face(w, 'baby', MOON.x, MOON.y, DEPTH.backProps + 20);
         moon.setScale(0.7);
         moon.c.setAlpha(0);
         await cs.tween({ targets: moon.c, alpha: 1, duration: 1300 });
@@ -51,7 +53,7 @@ export function r05(w: WorldScene): RoomScript {
         w.shake(0.003, 900);
         app.audio.sfx('rumble', { vol: 0.5 });
         await cs.wait(2000);
-        const old = new Face(w, 'old', 3640, 250, DEPTH.backProps + 21);
+        const old = new Face(w, 'old', MOON.x, MOON.y, DEPTH.backProps + 21);
         old.setScale(0.7);
         old.c.setAlpha(0);
         await cs.tween({ targets: old.c, alpha: 1, duration: 1800 });
@@ -98,7 +100,7 @@ export function r05(w: WorldScene): RoomScript {
       s2.locked = true;
       setPlate(1, true);
       if (w.quest.has('r05.moon')) {
-        moon = new Face(w, 'old', 3640, 250, DEPTH.backProps + 20);
+        moon = new Face(w, 'old', MOON.x, MOON.y, DEPTH.backProps + 20);
         moon.setScale(0.7);
       }
       w.onCleanup(() => {

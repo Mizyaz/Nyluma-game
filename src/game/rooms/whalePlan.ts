@@ -5,7 +5,9 @@ import type { RoomDef, SolidDef } from '../data/roomTypes';
 
 // Where the whales go: every drawn wooden or root jump-through platform
 // becomes a whale whose flat back is the platform's top. Pure data (no
-// Phaser) so it can be checked in unit tests.
+// Phaser) so it can be checked in unit tests. A room's set pieces (a lift, a
+// spiral, a bridge) may pick a whale's species and facing themselves
+// (SolidDef.whale); everything else follows the platform's width and room.
 
 /** The "wooden jumps": drawn root/wood one-way platforms (furniture tops stay furniture). */
 export function isWhalePlatform(s: SolidDef): boolean {
@@ -104,7 +106,8 @@ function placeOn(room: RoomDef, s: SolidDef, index: number, sp: WhaleSpecies): C
   const right = freeSide(room, s, 1, top, s.y + hang * 0.7);
   const free = left >= tail && right >= tail;
   let facing: 1 | -1;
-  if (free) facing = seed & 1 ? 1 : -1;
+  if (s.whale?.facing) facing = s.whale.facing;
+  else if (free) facing = seed & 1 ? 1 : -1;
   else facing = left >= right ? 1 : -1;
   const cx = s.x + s.w / 2;
   const x0 = cx + (facing > 0 ? lay.bounds.x0 : -lay.bounds.x1) * scale;
@@ -118,12 +121,14 @@ function placeOn(room: RoomDef, s: SolidDef, index: number, sp: WhaleSpecies): C
     x: cx,
     y: s.y,
     // Behind the terrain; a lower whale in front of a higher one, so every
-    // back reads over the belly hanging above it.
-    depth: DEPTH.terrain - 4 + s.y / Math.max(1, room.height),
+    // back reads over the belly hanging above it. A whale on the far side of
+    // something it circles (a tree trunk) goes behind the room's props too.
+    depth: (s.whale?.behind ? DEPTH.terrain - 40 : DEPTH.terrain - 4) + s.y / Math.max(1, room.height),
     seed,
     // The whole whale hangs clear of the ground (fins included).
     clear: hang <= freeBelow(room, s, x0, x1),
-    free,
+    // A formation's facing is set by its path: it leads, never follows.
+    free: free && !s.whale?.facing,
   };
 }
 
@@ -132,15 +137,21 @@ export function planWhales(room: RoomDef): WhalePlace[] {
   room.solids.forEach((s, i) => {
     if (isWhalePlatform(s)) idx.push(i);
   });
+  // Species by width for the whales whose room does not choose one.
+  const open = idx.filter((i) => !room.solids[i]!.whale?.species);
   const species = assignSpecies(
-    idx.map((i) => room.solids[i]!.w),
+    open.map((i) => room.solids[i]!.w),
     hashSeed(room.id),
   );
-  const cands = idx.map((i, k): Candidate => {
+  const wanted = new Map(open.map((i, k) => [i, species[k]!]));
+  const cands = idx.map((i): Candidate => {
     const s = room.solids[i]!;
+    const chosen = s.whale?.species;
+    if (chosen) return placeOn(room, s, i, chosen);
     // The species its width asks for, unless it would hang into the terrain
     // below: then the next shallower one that fits (blue whales hang least).
-    const order = [species[k]!, ...SHALLOW_FIRST.filter((sp) => sp !== species[k])].filter((sp) => allowed(sp, s.w));
+    const want = wanted.get(i)!;
+    const order = [want, ...SHALLOW_FIRST.filter((sp) => sp !== want)].filter((sp) => allowed(sp, s.w));
     let best: Candidate | null = null;
     for (const sp of order) {
       const c = placeOn(room, s, i, sp);

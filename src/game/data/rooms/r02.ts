@@ -1,62 +1,82 @@
 import type { RoomDef } from '../roomTypes';
 
-// Chapter I — fossil-root ascent (vertical).
+// Chapter I — fossil-root chamber. A blue whale passes through the earth as
+// if it were water and speaks in the three voices of the whale language
+// (deep, middle, high); its song wakes the way up: three whales rise out of
+// the soil one above the other, a staircase to the upper tunnel, and each
+// answers in one of the voices as it arrives: a blue whale deep, a bowhead
+// in the middle, a sperm whale high. The tunnel mouth keeps a memory.
 export const R02: RoomDef = {
   id: 'r02',
   chapter: 1,
   title: 'Fosil Kökler',
   width: 1600,
-  height: 2400,
+  height: 1220,
   theme: 'roots',
   music: 'roots',
   player: 'gorti',
   checkpoints: [
-    { id: 'r02_start', x: 220, y: 2280, facing: 1, silent: true },
-    { id: 'r02_node', x: 860, y: 2280 },
-    { id: 'r02_climb', x: 1340, y: 1510 },
-    { id: 'r02_upper', x: 260, y: 1250 },
-    { id: 'r02_top', x: 900, y: 900 },
+    { id: 'r02_start', x: 220, y: 1100, facing: 1, silent: true },
+    { id: 'r02_node', x: 640, y: 1100 },
+    { id: 'r02_climb', x: 960, y: 1100, silent: true },
+    { id: 'r02_upper', x: 1500, y: 680 },
+    { id: 'r02_top', x: 1535, y: 680, silent: true },
   ],
   solids: [
-    { x: 0, y: 2280, w: 1600, h: 120, style: 'soil' },
-    { x: 0, y: 0, w: 110, h: 2280, style: 'soil' },
-    { x: 1490, y: 500, w: 110, h: 1780, style: 'soil' },
+    { x: 0, y: 1100, w: 1600, h: 120, style: 'soil' },
+    { x: 0, y: 0, w: 110, h: 1100, style: 'soil' },
     { x: 110, y: 0, w: 1490, h: 60, style: 'soil' },
-    { x: 1100, y: 460, w: 500, h: 40, style: 'soil' },
-    // Climb route, grown by the whale's song as the whale passes
-    { id: 'p1', x: 1180, y: 2170, w: 220, h: 24, style: 'root', oneWay: true, grow: true, when: 'r02.song' },
-    { id: 'p2', x: 1000, y: 2060, w: 200, h: 24, style: 'root', oneWay: true, grow: true, when: 'r02.song' },
-    { id: 'p3', x: 1220, y: 1950, w: 220, h: 24, style: 'root', oneWay: true, grow: true, when: 'r02.song' },
-    { id: 'p4', x: 1020, y: 1840, w: 200, h: 24, style: 'root', oneWay: true, grow: true, when: 'r02.song' },
-    { id: 'p5', x: 1240, y: 1730, w: 220, h: 24, style: 'root', oneWay: true, grow: true, when: 'r02.song' },
-    { id: 'p6', x: 1040, y: 1620, w: 200, h: 24, style: 'root', oneWay: true, grow: true, when: 'r02.song' },
-    { id: 'p7', x: 1250, y: 1510, w: 240, h: 24, style: 'root', oneWay: true, grow: true, when: 'r02.song' },
-    // Side alcove route
-    { id: 'a1', x: 700, y: 1860, w: 160, h: 24, style: 'root', oneWay: true, grow: true, when: 'r02.song' },
-    { id: 'a2', x: 420, y: 1880, w: 150, h: 24, style: 'root', oneWay: true, grow: true, when: 'r02.song' },
-    { x: 110, y: 1900, w: 230, h: 30, style: 'soil' },
-    // Upper section (steps where roots used to be reached for)
-    { x: 820, y: 1440, w: 320, h: 40, style: 'soil' },
-    { x: 560, y: 1345, w: 140, h: 24, style: 'root', oneWay: true },
-    { x: 110, y: 1250, w: 330, h: 40, style: 'soil' },
-    { x: 480, y: 1140, w: 200, h: 24, style: 'root', oneWay: true },
-    { x: 250, y: 1030, w: 200, h: 24, style: 'root', oneWay: true },
-    { x: 540, y: 965, w: 140, h: 24, style: 'root', oneWay: true },
-    { x: 760, y: 900, w: 360, h: 40, style: 'soil' },
-    { x: 1180, y: 790, w: 200, h: 24, style: 'root', oneWay: true },
-    { x: 900, y: 680, w: 220, h: 24, style: 'root', oneWay: true },
-    { x: 850, y: 570, w: 200, h: 24, style: 'root', oneWay: true },
+    // The upper tunnel: its floor (the top of the lift) and its lintel.
+    { x: 1400, y: 680, w: 200, h: 420, style: 'soil' },
+    { x: 1330, y: 60, w: 270, h: 410, style: 'soil' },
+    // The whale lift, risen by the song: 105 px a step (root jumps ~140),
+    // nose to tail toward the tunnel, backs overlapping so a straight jump
+    // up always finds the next whale.
+    {
+      id: 'w1',
+      x: 880,
+      y: 995,
+      w: 230,
+      h: 24,
+      style: 'root',
+      oneWay: true,
+      when: 'r02.song',
+      whale: { species: 'blue', facing: 1, from: [-40, 170], time: 1.6, delay: 0, call: 0.84 },
+    },
+    {
+      id: 'w2',
+      x: 1080,
+      y: 890,
+      w: 150,
+      h: 24,
+      style: 'root',
+      oneWay: true,
+      when: 'r02.song',
+      whale: { species: 'bowhead', facing: 1, from: [-40, 170], time: 1.6, delay: 1.1, call: 1 },
+    },
+    {
+      id: 'w3',
+      x: 1190,
+      y: 785,
+      w: 160,
+      h: 24,
+      style: 'root',
+      oneWay: true,
+      when: 'r02.song',
+      whale: { species: 'sperm', facing: 1, from: [-40, 170], time: 1.6, delay: 2.2, call: 1.2 },
+    },
   ],
-  memories: [{ id: 'm1', x: 205, y: 1900 }],
-  triggers: [{ id: 'whale', x: 760, y: 2000, w: 120, h: 280 }],
-  exits: [{ id: 'up', x: 1560, y: 250, w: 40, h: 210, to: 'r03' }],
+  memories: [{ id: 'm1', x: 1420, y: 680 }],
+  triggers: [{ id: 'whale', x: 560, y: 900, w: 120, h: 200 }],
+  exits: [{ id: 'up', x: 1560, y: 470, w: 40, h: 210, to: 'r03' }],
   props: [
-    { key: 'prop.coil', x: 1320, y: 2282, depth: -10, unless: 'r02.song' },
-    { key: 'prop.fossilroot', x: 300, y: 2282, depth: -60 },
-    { key: 'prop.fossil', x: 520, y: 1650, depth: -60, oy: 0.5 },
-    { key: 'prop.crystals.teal', x: 1450, y: 2282, depth: -5 },
-    { key: 'prop.crystals.blue', x: 160, y: 1252, depth: -5, scale: 0.8 },
-    { key: 'prop.crystals.orange', x: 1080, y: 902, depth: -5, scale: 0.8 },
-    { key: 'prop.fossilroot', x: 1300, y: 462, depth: -60, scale: 0.7 },
+    // The sleeping root at the foot of the lift: it stretches away with the song.
+    { key: 'prop.coil', x: 1010, y: 1102, depth: -10, unless: 'r02.song' },
+    { key: 'prop.fossilroot', x: 300, y: 1102, depth: -60 },
+    { key: 'prop.fossil', x: 420, y: 700, depth: -60, oy: 0.5 },
+    { key: 'prop.crystals.teal', x: 1330, y: 1102, depth: -5 },
+    { key: 'prop.crystals.blue', x: 160, y: 1102, depth: -5, scale: 0.8 },
+    { key: 'prop.crystals.orange', x: 1585, y: 682, depth: -5, scale: 0.8 },
+    { key: 'prop.fossilroot', x: 760, y: 1102, depth: -60, scale: 0.7, flipX: true },
   ],
 };

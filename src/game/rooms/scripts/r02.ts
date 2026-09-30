@@ -5,9 +5,16 @@ import { WhaleActor } from '../../entities/WhaleActor';
 import type { WorldScene } from '../../scenes/WorldScene';
 import type { RoomScript } from './types';
 
-// Chapter I — fossil-root ascent. Walking under it, Gorti meets the whale
-// memory: a blue whale passes through the earth, speaks in three tones, and
-// its song wakes the way up: whales swim in where the climb goes.
+/** The passing whale's back line: in view from the floor, behind the lift. */
+const SWIM_Y = 850;
+/** When it sings: as it swims past the foot of the lift (the lift rises in its wake). */
+const SONG_MS = 3600;
+
+// Chapter I — fossil-root chamber. Walking in, Gorti meets the whale memory:
+// a blue whale passes through the earth, speaks in three tones, and its song
+// wakes the way up: in its wake three whales rise out of the soil one above
+// the other, a lift to the upper tunnel, each answering the song in one of
+// its voices (deep, middle, high) as it arrives (see the room data).
 export function r02(w: WorldScene): RoomScript {
   let whale: WhaleActor | null = null;
 
@@ -15,14 +22,14 @@ export function r02(w: WorldScene): RoomScript {
     if (!w.quest.set('r02.whale')) return;
     // A blue whale (the dialogue speaks of Gorti's bond with blue whales),
     // swimming through the earth behind the roots; its call has three voices.
-    whale = whale ?? new WhaleActor(w, { species: 'blue', size: 210, x: -400, y: 1958, scale: 1.3, facing: 1, depth: DEPTH.backProps + 5, seed: 1402 });
-    whale.swim(-360, 1960, 1958, 7000);
+    whale = whale ?? new WhaleActor(w, { species: 'blue', size: 210, x: -400, y: SWIM_Y, scale: 1.3, facing: 1, depth: DEPTH.backProps + 5, seed: 1402 });
+    whale.swim(-360, 1960, SWIM_Y, 7000);
     app.audio.sfx('whale');
     app.ui.hud.caption(CAPTIONS.whalePass, 3600);
     const lines = DIALOGUE.whale ?? [];
     lines.forEach((l, i) => w.time.delayedCall(3800 + i * 4200, () => app.ui.hud.caption(l.text, 4100)));
-    // The song wakes the roots.
-    w.time.delayedCall(2600, () => {
+    // The song wakes the way up as the whale passes the foot of the lift.
+    w.time.delayedCall(SONG_MS, () => {
       app.audio.sfx('rootGrow');
       w.shake(0.004, 700);
       w.flag('r02.song');
@@ -42,8 +49,9 @@ export function r02(w: WorldScene): RoomScript {
       if (id === 'whale') whalePasses();
     },
     onFixed() {
-      // Whoever runs past the whale still finds the roots awake.
-      if (w.player.x > 1000 && !w.quest.has('r02.song')) {
+      // Whoever comes in past the whale's place (a later checkpoint) still
+      // meets it, and finds the way up awake at once.
+      if (w.player.x > 800 && !w.quest.has('r02.whale')) {
         whalePasses();
         w.flag('r02.song');
       }

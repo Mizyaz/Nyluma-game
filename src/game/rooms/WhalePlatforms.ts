@@ -14,7 +14,10 @@ import { pick, WORDS, type ComicWords } from '../fx/comicWords';
 // Collision stays with the room (the platform's static body); the whale is
 // visual only. Landings are read from the player's ground state each frame:
 // the whale dips on a spring, pastel bubbles and droplets puff out and it
-// calls in its species' voice. Now and then a far whale calls.
+// calls in its species' voice. Now and then a far whale calls. Whales of a
+// set piece (SolidDef.whale) arrive their own way when their gate opens:
+// rising out of the earth one after the other, gliding in on the wind,
+// circling in around a trunk; each answers in its own pitch as it arrives.
 
 /**
  * What the manager reads from the scene (WorldScene), structurally. Feet are
@@ -40,6 +43,8 @@ interface Entry {
   shown: boolean;
   /** Swim-in progress (<0 waits for its turn); 1 = in place. */
   swimIn: number;
+  /** Seconds the swim-in takes. */
+  enterS: number;
   /** Visibility 0..1 (fades when the gate closes). */
   vis: number;
   lastCall: number;
@@ -104,7 +109,7 @@ export class WhalePlatforms {
     const b = { x0: 0, y0: 0, x1: 0, y1: 0 };
     w.bounds(b);
     b.y1 += 12;
-    this.entries.push({ rt, w, place, shown: false, swimIn: 1, vis: 0, lastCall: -9, b });
+    this.entries.push({ rt, w, place, shown: false, swimIn: 1, enterS: SWIM_IN_S, vis: 0, lastCall: -9, b });
   }
 
   get count(): number {
@@ -147,6 +152,7 @@ export class WhalePlatforms {
 
     const view = this.scene.cameras.main.worldView;
     let arrivals = 0;
+    let answered = false;
     for (const e of this.entries) {
       const on = e.rt.active;
       if (!this.synced) {
@@ -156,34 +162,57 @@ export class WhalePlatforms {
       } else if (on !== e.shown) {
         e.shown = on;
         // Revealed during play: swim in, one after another (fade in with
-        // reduced motion).
+        // reduced motion). A set piece's whales keep their own order and
+        // each answers as it arrives; any other group answers once.
         if (on) {
-          e.swimIn = -0.16 * arrivals++;
-          if (arrivals === 1) this.answer = e;
+          const f = e.rt.def.whale;
+          e.enterS = f?.time ?? SWIM_IN_S;
+          e.swimIn = -(f?.delay ?? 0.16 * SWIM_IN_S * arrivals) / e.enterS;
+          if (!f?.call && !answered) {
+            this.answer = e;
+            answered = true;
+          }
+          arrivals++;
         }
       }
       if (e.shown) e.vis = 1;
       else e.vis = Math.max(0, e.vis - dt * 2.5);
       let enter = 1;
       if (e.swimIn < 1) {
-        e.swimIn += dt / SWIM_IN_S;
+        e.swimIn += dt / e.enterS;
         const k = Math.max(0, Math.min(1, e.swimIn));
-        enter = 1 - (1 - k) * (1 - k);
-        e.w.offX = app.settings.reducedMotion ? 0 : -e.w.facing * 110 * (1 - enter);
+        const f = e.rt.def.whale;
+        enter = f?.ease === 'inOut' ? (1 - Math.cos(Math.PI * k)) / 2 : 1 - (1 - k) * (1 - k);
+        const [fx, fy] = f?.from ?? [-e.w.facing * 110, 0];
+        const still = app.settings.reducedMotion;
+        e.w.offX = still ? 0 : fx * (1 - enter);
+        e.w.offY = still ? 0 : fy * (1 - enter);
         if (e.swimIn >= 1) {
           e.w.offX = 0;
+          e.w.offY = 0;
           if (Math.random() < 0.6) e.w.spout();
-          if (this.answer === e) {
+          if (f?.call) {
+            e.lastCall = this.clock;
+            app.audio.whaleCall(e.place.species, 'short', { vol: 0.7, pitch: f.call, distance: 0.25, pan: this.pan(e.place.x) });
+            e.w.vocalize(1.3);
+          } else if (this.answer === e) {
             this.answer = null;
             app.audio.whaleCall(e.place.species, 'short', { vol: 0.6, pitch: e.w.voice, distance: 0.3, pan: this.pan(e.place.x) });
             e.w.vocalize(1.2);
           }
         }
       }
+      // A set piece's whale bears weight once it has (nearly) arrived.
+      if (e.rt.def.whale && e.rt.active) {
+        const solid = e.swimIn >= 0.75;
+        if (e.rt.body.enable !== solid) e.rt.body.enable = solid;
+      }
       const latent = e.rt.def.latent ? 0.1 + 0.9 * e.rt.reveal : 1;
       const alpha = e.vis * latent * Math.min(1, Math.max(0, e.swimIn) * 2.2);
       const b = e.b;
-      const inView = b.x1 + CULL_MARGIN > view.x && b.x0 - CULL_MARGIN < view.right && b.y1 + CULL_MARGIN > view.y && b.y0 - CULL_MARGIN < view.bottom;
+      const ox = e.w.offX;
+      const oy = e.w.offY;
+      const inView = b.x1 + ox + CULL_MARGIN > view.x && b.x0 + ox - CULL_MARGIN < view.right && b.y1 + oy + CULL_MARGIN > view.y && b.y0 + oy - CULL_MARGIN < view.bottom;
       const show = alpha > 0.01 && inView;
       e.w.setVisible(show);
       if (!show) continue;
@@ -201,7 +230,9 @@ export class WhalePlatforms {
     this.puff(e, x, impact);
     if (this.clock - e.lastCall > 1.2) {
       e.lastCall = this.clock;
-      app.audio.whaleCall(e.place.species, 'short', { vol: 0.65 + 0.35 * impact, pitch: e.w.voice, pan: this.pan(e.place.x) });
+      // A set piece's whale keeps its note (the lift climbs deep, middle, high).
+      const pitch = e.rt.def.whale?.call ?? e.w.voice;
+      app.audio.whaleCall(e.place.species, 'short', { vol: 0.65 + 0.35 * impact, pitch, pan: this.pan(e.place.x) });
       e.w.vocalize(e.place.species === 'blue' ? 1.4 : 1);
     }
     if (impact > 0.45 && Math.random() < 0.45) e.w.spout();

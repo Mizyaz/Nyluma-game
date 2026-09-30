@@ -26,16 +26,30 @@ describe('whale platforms', () => {
       }
       count += plan.length;
     }
-    expect(count).toBeGreaterThan(30);
+    // Only the set pieces keep their jumps (the r02 lift, the r03 bridge and
+    // spiral, the r04 wind whale).
+    expect(count).toBeGreaterThanOrEqual(10);
     // Furniture tops (hidden solids) and bed/stone/metal jumps stay as they are.
     expect(planWhales(ROOMS.r01)).toEqual([]);
     expect(planWhales(ROOMS.r11)).toEqual([]);
   });
 
-  it('chooses the species by width and mixes them within a room', () => {
+  it('chooses the species by width unless a set piece chooses its whales', () => {
     expect(assignSpecies([80, 90, 150, 160, 220, 240], 1)).toEqual(['bowhead', 'bowhead', 'sperm', 'sperm', 'blue', 'blue']);
     expect(assignSpecies([160], 1)).toEqual(['sperm']);
-    for (const r of [ROOMS.r02, ROOMS.r03]) expect(new Set(planWhales(r).map((p) => p.species)).size).toBe(3);
+    for (const r of rooms) {
+      for (const p of planWhales(r)) {
+        const f = r.solids[p.index]!.whale;
+        if (f?.species) expect(p.species).toBe(f.species);
+        if (f?.facing) expect(p.facing).toBe(f.facing);
+      }
+    }
+    // The r02 lift answers in the three voices (three species), all swimming
+    // toward the tunnel; every species still swims somewhere.
+    const lift = planWhales(ROOMS.r02);
+    expect(new Set(lift.map((p) => p.species)).size).toBe(3);
+    expect(lift.every((p) => p.facing === 1)).toBe(true);
+    expect(new Set(rooms.flatMap((r) => planWhales(r).map((p) => p.species)))).toEqual(new Set(WHALE_SPECIES));
     for (const r of rooms) {
       for (const p of planWhales(r)) {
         const w = r.solids[p.index]!.w;

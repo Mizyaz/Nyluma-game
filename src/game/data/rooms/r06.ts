@@ -16,15 +16,16 @@ export const R06: RoomDef = {
     { id: 'r06_start', x: 200, y: 900, facing: 1, silent: true },
     { id: 'r06_knots', x: 560, y: 900, silent: true },
     { id: 'r06_k1', x: 1150, y: 900 },
-    { id: 'r06_k2', x: 1860, y: 740 },
+    { id: 'r06_k2', x: 1860, y: 760 },
     { id: 'r06_horse', x: 2300, y: 900 },
   ],
   solids: [
     { x: 0, y: 900, w: 3000, h: 200, style: 'moss' },
-    { x: 1500, y: 820, w: 120, h: 80, style: 'moss' },
-    { x: 1620, y: 740, w: 320, h: 160, style: 'moss' },
-    { x: 1940, y: 820, w: 110, h: 80, style: 'moss' },
-    { x: 2600, y: 600, w: 160, h: 24, style: 'root', oneWay: true },
+    // The mound of the second knot: two hops up (70 px, easy in either
+    // body), over the knot, and a walk down the far side.
+    { x: 1500, y: 830, w: 120, h: 70, style: 'moss' },
+    { x: 1620, y: 760, w: 320, h: 140, style: 'moss' },
+    { x: 1940, y: 830, w: 110, h: 70, style: 'moss' },
   ],
   memories: [{ id: 'm5', x: 2580, y: 900 }],
   triggers: [{ id: 'shout', x: 520, y: 700, w: 80, h: 200 }],

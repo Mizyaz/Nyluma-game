@@ -60,6 +60,7 @@ export class WhaleActor {
   baseY: number;
   /** Visual offset while swimming in (px). */
   offX = 0;
+  offY = 0;
   /** Motion amplitude (reduced-motion setting lowers it). */
   calm = 1;
   private body: Phaser.GameObjects.Image | null;
@@ -200,7 +201,7 @@ export class WhaleActor {
     this.bobK += ((1 - 0.8 * settle) - this.bobK) * Math.min(1, dt * 3);
     const bob = m.bob * this.bobK * this.calm * (this.swimming ? 2.4 : 1) * Math.sin(this.t * 0.95 + this.phase * 6.28);
     this.c.x = this.baseX + this.offX;
-    this.c.y = this.baseY + bob + this.dipY;
+    this.c.y = this.baseY + this.offY + bob + this.dipY;
     this.c.rotation = this.tilt + (this.swimming ? 0.03 * Math.sin(w - 0.7) : 0);
     // Jaw: hangs a little, opens to call.
     if (this.jaw) {

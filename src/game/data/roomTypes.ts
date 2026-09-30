@@ -1,4 +1,5 @@
 import type { MusicCue } from '../../music/types';
+import type { WhaleSpecies } from '../art/characters/whales';
 import type { FormId, Note, PlayerKind, RoomId } from '../state/types';
 
 export interface Rect {
@@ -29,6 +30,29 @@ export type SolidStyle =
   | 'office'
   | 'none';
 
+/**
+ * A whale platform's part in a set piece (a lift, a spiral, a bridge): the
+ * room picks what the width-based planner would otherwise choose, and how the
+ * whale arrives when its gate opens.
+ */
+export interface WhaleDef {
+  species?: WhaleSpecies;
+  /** +1: head to the right. Whales of a formation face along its path. */
+  facing?: 1 | -1;
+  /** Drawn behind the room's props (the far side of a tree trunk it circles). */
+  behind?: boolean;
+  /** Revealed in play: comes from this offset to its place (px)… */
+  from?: readonly [number, number];
+  /** …taking this long (s)… */
+  time?: number;
+  /** …after this delay (s): a formation arrives one after the other. */
+  delay?: number;
+  /** Settling into place (default) or drifting the whole way, gently at both ends (carried on a wind). */
+  ease?: 'out' | 'inOut';
+  /** Calls as it arrives and when landed on, at this pitch (below 1 deep, above 1 high). */
+  call?: number;
+}
+
 export interface SolidDef extends Rect, Gate {
   id?: string;
   style: SolidStyle;
@@ -39,6 +63,8 @@ export interface SolidDef extends Rect, Gate {
   grow?: boolean;
   /** Skip drawing (collision only, e.g. a wall outside the camera). */
   hidden?: boolean;
+  /** Whale platforms (drawn root/wood jumps): a set piece's choices. */
+  whale?: WhaleDef;
 }
 
 export interface CheckpointDef {

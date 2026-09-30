@@ -14,7 +14,7 @@ import { addArt, addGlow, bloomAt } from './helpers';
 // purple horse forms at the far end and Gorti rides away on it.
 const KNOTS = [
   { id: 'k1', x: 1000, y: 900 },
-  { id: 'k2', x: 1780, y: 740 },
+  { id: 'k2', x: 1780, y: 760 },
   { id: 'k3', x: 2450, y: 900 },
 ];
 const HORSE = { x: 2780, y: 900 };

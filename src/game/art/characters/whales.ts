@@ -20,10 +20,10 @@ import { Rng, ellipsePath, fillPath, line, type Pt } from '../svg';
 export type WhaleSpecies = 'sperm' | 'blue' | 'bowhead';
 export const WHALE_SPECIES: readonly WhaleSpecies[] = ['sperm', 'blue', 'bowhead'];
 
-/** Back lengths (logical px) each species is drawn at. */
+/** Back lengths (logical px) each species is drawn at (the largest blue whale is a bridge). */
 export const WHALE_SIZES: Readonly<Record<WhaleSpecies, readonly number[]>> = {
   sperm: [96, 150, 210],
-  blue: [150, 210],
+  blue: [150, 210, 300],
   bowhead: [96, 150],
 };
 

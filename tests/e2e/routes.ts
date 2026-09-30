@@ -176,131 +176,66 @@ export const ROUTES: Record<string, Route> = {
   },
 
   async r02(b) {
-    // Walking past x 1000 on the floor, the whale passes and its song grows
-    // the root steps (p1–p7) up the right side.
-    const ROOTS: [number, number][] = [
-      [1250, 2280],
-      [1250, 2170],
-      [1190, 2060],
-      [1300, 1950],
-      [1200, 1840],
-      [1320, 1730],
-      [1210, 1620],
-      [1330, 1510],
+    // Past the whale's place on the floor, the whale passes and its song
+    // raises the lift: three whales one above the other (backs overlapping),
+    // then the tunnel floor. Each stand point is under the next whale.
+    const LIFT: [number, number][] = [
+      [1000, 1100],
+      [1095, 995],
+      [1215, 890],
+      [1330, 785],
+      [1470, 680],
     ];
     await stages(b, 'r02', [
       {
-        name: 'root steps',
-        when: (s) => on(s, 2280) || ROOTS.some(([, y]) => on(s, y, 950, 1500)),
+        name: 'whale lift',
+        when: (s) => on(s, 1100) || LIFT.some(([, y]) => on(s, y, 860, 1400)),
         run: async (s) => {
-          if (on(s, 2280)) await b.walkTo(1250, 10);
-          await b.waitFor((x) => x.flags.includes('r02.song'), 5000, 'the whale song');
-          await climb(b, ROOTS);
-          if (on(await b.s(), 1510)) {
-            await b.walkTo(1270, 6);
-            await b.jumpTo(1000);
-          }
+          if (on(s, 1100)) await b.walkTo(1000, 10);
+          await b.waitFor((x) => x.flags.includes('r02.song'), 8000, 'the whale song');
+          await climb(b, LIFT);
         },
       },
-      {
-        name: 'across to the left wall',
-        when: (s) => on(s, 1440, 800, 1160) || on(s, 1345, 540, 720),
-        run: () =>
-          hops(b, [
-            { y: 1440, x0: 800, x1: 1160, from: 832, to: 630 },
-            { y: 1345, x0: 540, x1: 720, from: 572, to: 400 },
-          ]),
-      },
-      {
-        name: 'left ledges',
-        when: (s) => on(s, 1250, 100, 460) || on(s, 1140, 460, 700) || on(s, 1030, 230, 470) || on(s, 965, 520, 700),
-        run: async () => {
-          await climb(b, [
-            [400, 1250],
-            [500, 1140],
-            [415, 1030],
-          ]);
-          await hops(b, [
-            { y: 1030, x0: 230, x1: 470, from: 435, to: 610 },
-            { y: 965, x0: 520, x1: 700, from: 665, to: 830 },
-          ]);
-        },
-      },
-      {
-        name: 'upper ledges',
-        when: (s) => on(s, 900, 740, 1140) || on(s, 790, 1160, 1400) || on(s, 680, 880, 1140) || on(s, 570, 830, 1070),
-        run: async () => {
-          // Take-offs near the facing edges (with a margin for overshoot):
-          // from the middle of the 790 root, 680 is out of jumping range.
-          await climb(b, [
-            [1085, 900],
-            [1215, 790],
-            [1010, 680],
-            [1025, 570],
-            [1200, 460],
-          ]);
-        },
-      },
-      { name: 'exit', when: (s) => on(s, 460, 1080, 1600), run: () => leave(b, 1, 'r03') },
-      {
-        name: 'back to the floor',
-        when: (s) => !!s.player?.onGround,
-        run: async (s) => {
-          // Somewhere unexpected (the side alcove): step off to the floor.
-          const x = s.player!.x;
-          await b.walkTo(s.player!.y < 1950 && x < 900 ? (x < 345 ? 370 : x < 600 ? 600 : 885) : 1250, 10, 15_000).catch(() => undefined);
-        },
-      },
+      { name: 'exit', when: (s) => on(s, 680, 1390, 1600), run: () => leave(b, 1, 'r03') },
     ]);
     await b.untilRoom('r03');
   },
 
   async r03(b) {
-    // Over the poisoned pool on root steps (touching it only sends Gorti
-    // back), over the crystal steps, then the tree scene plays by itself.
+    // Up onto the whale lying across the poisoned pool (touching the pool
+    // only sends Gorti back), along its back and down onto the far bank;
+    // at the tree the Moon and Sun scene plays by itself and the tree
+    // blooms into the whale spiral: straight up it to the canopy exit.
     const CROSS: Hop[] = [
-      { y: 1200, x0: 0, x1: 720, from: 678, to: 860 },
-      { y: 1170, x0: 800, x1: 920, from: 885, to: 1020 },
-      { y: 1130, x0: 940, x1: 1110, from: 1072, to: 1212 },
-      { y: 1150, x0: 1150, x1: 1280, from: 1243, to: 1420 },
-      { y: 1180, x0: 1330, x1: 1740, from: 1700, to: 1860 },
-      { y: 1150, x0: 1780, x1: 1940, from: 1905, to: 2030 },
-      { y: 1130, x0: 1950, x1: 2110, from: 2075, to: 2260 },
-      // Out of the pit on its right: straight up onto the pit step (clear of
-      // the crystal above), then up to the tree.
-      { y: 1260, x0: 1700, x1: 1810, from: 1840, to: 1840 },
-      { y: 1340, x0: 1800, x1: 2140, from: 2118, to: 2118 },
-      { y: 1260, x0: 2040, x1: 2170, from: 2115, to: 2230 },
+      { y: 1200, x0: 0, x1: 790, from: 745, to: 800 },
+      // Walk off the far end of its back.
+      { y: 1140, x0: 740, x1: 1120, from: 1135, to: 1135 },
     ];
-    const TREE: [number, number][] = [
-      [2400, 1180],
-      [2535, 1070],
-      [2730, 960],
-      [2520, 850],
-      [2740, 740],
-      [2530, 630],
-      [2750, 520],
-      [2540, 410],
-      [2760, 300],
+    const SPIRAL: [number, number][] = [
+      [2150, 1180],
+      [2150, 1080],
+      [2150, 980],
+      [2150, 880],
+      [2150, 780],
+      [2150, 680],
     ];
     await stages(b, 'r03', [
-      { name: 'to the tree', when: (s) => CROSS.some((h) => on(s, h.y, h.x0, h.x1)), run: () => hops(b, CROSS) },
+      { name: 'over the pool', when: (s) => CROSS.some((h) => on(s, h.y, h.x0, h.x1)), run: () => hops(b, CROSS) },
       {
         name: 'the tree scene',
-        when: (s) => on(s, 1180, 2130, 3000) && !s.flags.includes('r03.bloom'),
+        when: (s) => on(s, 1180, 1090, 2600) && !s.flags.includes('r03.bloom'),
         run: async () => {
-          await b.walkTo(2320, 10);
+          await b.walkTo(1870, 10);
           await b.settle();
         },
       },
       {
-        name: 'climb the bloom',
-        when: (s) => s.flags.includes('r03.bloom') && TREE.some(([, y]) => on(s, y, 2130, 3000)),
-        run: async (s) => {
-          if (on(s, 1180)) await b.walkTo(2400, 8);
-          // Branches 150–200 px wide, 110 px apart: jump from the near edge.
-          // The top branch reaches into the exit.
-          await climb(b, TREE, 20, { takeoff: 55, aim: 25 });
+        name: 'climb the spiral',
+        when: (s) => s.flags.includes('r03.bloom') && SPIRAL.some(([, y]) => on(s, y, 1090, 2600)),
+        run: async () => {
+          // The whales circle in one after the other: wait for the last.
+          await b.wait(2500);
+          await climb(b, SPIRAL, 20);
           await b.waitFor((x) => x.room !== 'r03', 3000, 'the canopy exit').catch(() => undefined);
         },
       },
@@ -309,20 +244,32 @@ export const ROUTES: Record<string, Route> = {
   },
 
   async r04(b) {
-    // Up the crystal steps to the plateau; at the memory pool the scene plays
-    // by itself and Gorti becomes human; the way east is open.
+    // The first wind carries a whale to the foot of the cliff: up onto it
+    // and onto the cliff top, where the memory pool scene plays by itself
+    // and Gorti becomes human; the way east is open.
     const UP: Hop[] = [
-      { y: 900, x0: 0, x1: 1265, from: 1232, to: 1385 },
-      { y: 830, x0: 1310, x1: 1460, from: 1390, to: 1525 },
-      { y: 730, x0: 1450, x1: 1600, from: 1530, to: 1720 },
-      // Fallen into the ditch: back up to the left.
-      { y: 960, x0: 1235, x1: 1665, from: 1290, to: 1200 },
+      { y: 900, x0: 0, x1: 1400, from: 1385, to: 1470 },
+      { y: 830, x0: 1400, x1: 1610, from: 1590, to: 1700 },
+      // Dropped into the hollow at the foot of the cliff: back up to the left.
+      { y: 960, x0: 1360, x1: 1660, from: 1405, to: 1330 },
     ];
     await stages(b, 'r04', [
-      { name: 'crystal steps', when: (s) => UP.some((h) => on(s, h.y, h.x0, h.x1)), run: () => hops(b, UP) },
+      {
+        name: 'the wind whale',
+        when: (s) => UP.some((h) => on(s, h.y, h.x0, h.x1)),
+        run: async (s) => {
+          if (on(s, 900)) {
+            await b.walkTo(1300, 10);
+            // It drifts in on the wind (~4.6 s): wait until it bears weight.
+            await b.waitFor((x) => x.flags.includes('r04.wind'), 8000, 'the first wind');
+            await b.wait(3500);
+          }
+          await hops(b, UP);
+        },
+      },
       {
         name: 'memory pool',
-        when: (s) => on(s, 640, 1630, 2570) && !s.flags.includes('r04.human'),
+        when: (s) => on(s, 760, 1630, 2570) && !s.flags.includes('r04.human'),
         run: async () => {
           await b.walkTo(2300, 10);
           await b.settle();
@@ -335,29 +282,24 @@ export const ROUTES: Record<string, Route> = {
 
   async r05(b) {
     // The stones already rest on their plates and the gate is open: along
-    // the floor, up the root staircase to the hill, where the Moon scene
-    // plays by itself.
-    const STAIRS: Hop[] = [
-      { y: 1100, x0: 0, x1: 3400, from: 2762, to: 2835 },
-      { y: 1030, x0: 2775, x1: 2895, from: 2840, to: 2905 },
-      { y: 960, x0: 2845, x1: 2965, from: 2900, to: 2945 },
-      // The soil ledge overhangs the right end of this step.
-      { y: 890, x0: 2915, x1: 2965, from: 2945, to: 3060 },
-      { y: 850, x0: 2965, x1: 3245, from: 3200, to: 3285 },
-      { y: 780, x0: 3225, x1: 3345, from: 3290, to: 3355 },
-      { y: 710, x0: 3295, x1: 3415, from: 3360, to: 3470 },
+    // the floor and up the hill's two terraces to the top, where the Moon
+    // scene plays by itself.
+    const HILL: Hop[] = [
+      { y: 1100, x0: 0, x1: 2870, from: 2835, to: 2905 },
+      { y: 1035, x0: 2850, x1: 3060, from: 3025, to: 3095 },
+      { y: 970, x0: 3040, x1: 3250, from: 3215, to: 3285 },
     ];
     await stages(b, 'r05', [
-      { name: 'staircase', when: (s) => STAIRS.some((h) => on(s, h.y, h.x0, h.x1)), run: () => hops(b, STAIRS) },
+      { name: 'up the hill', when: (s) => HILL.some((h) => on(s, h.y, h.x0, h.x1)), run: () => hops(b, HILL) },
       {
         name: 'the Moon',
-        when: (s) => on(s, 640, 3380, 3900) && !s.flags.includes('r05.moon'),
+        when: (s) => on(s, 905, 3230, 3900) && !s.flags.includes('r05.moon'),
         run: async () => {
           await b.walkTo(3620, 10);
           await b.settle();
         },
       },
-      { name: 'onward', when: (s) => on(s, 640, 3380, 3900), run: () => leave(b, 1, 'r06') },
+      { name: 'onward', when: (s) => on(s, 905, 3230, 3900), run: () => leave(b, 1, 'r06') },
     ]);
     await b.untilRoom('r06');
   },
@@ -367,10 +309,10 @@ export const ROUTES: Record<string, Route> = {
     // passes); the horse forms and walking up to it mounts it.
     const MOUND: Hop[] = [
       { y: 900, x0: 0, x1: 1500, from: 1462, to: 1560 },
-      { y: 820, x0: 1480, x1: 1630, from: 1580, to: 1700 },
+      { y: 830, x0: 1480, x1: 1630, from: 1580, to: 1700 },
       // Walk off the far side.
-      { y: 740, x0: 1600, x1: 1960, from: 2110, to: 2110 },
-      { y: 820, x0: 1920, x1: 2070, from: 2110, to: 2110 },
+      { y: 760, x0: 1600, x1: 1960, from: 2110, to: 2110 },
+      { y: 830, x0: 1920, x1: 2070, from: 2110, to: 2110 },
     ];
     await stages(b, 'r06', [
       {
@@ -440,8 +382,6 @@ export const ROUTES: Record<string, Route> = {
     await stages(b, 'r09', [
       { name: 'river', when: (s) => RIVER.some((h) => on(s, h.y, h.x0, h.x1)), run: () => hops(b, RIVER) },
       { name: 'to the pool', when: (s) => on(s, 900, 1690, 3200), run: () => leave(b, 1, 'r10') },
-      // The sparrow's branch (not on the way): step off it.
-      { name: 'off the branch', when: (s) => on(s, 640, 2180, 2380), run: () => b.walkTo(2420, 6, 8000).catch(() => undefined) },
     ]);
     await b.untilRoom('r10');
   },
