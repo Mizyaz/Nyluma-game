@@ -21,6 +21,8 @@ export interface LayerInfo {
 
 export interface LayerSpec {
   scroll: number;
+  /** Depth in the 3D diorama, px (see PropDef.z); default: from `scroll`. */
+  z?: number;
   /** Raster resolution (0.5 for far, soft layers). */
   res: number;
   draw: (ctx: CanvasRenderingContext2D, info: LayerInfo, rng: Rng) => void;

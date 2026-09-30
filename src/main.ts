@@ -8,6 +8,17 @@ import { AudioSystem } from './game/systems/AudioSystem';
 import { UI } from './ui/UI';
 import { installVoices } from './game/audio/voices';
 
+/** Does this browser offer WebGL2 (the diorama's three.js needs it)? */
+function hasWebGL2(): boolean {
+  try {
+    const gl = document.createElement('canvas').getContext('webgl2');
+    gl?.getExtension('WEBGL_lose_context')?.loseContext();
+    return !!gl;
+  } catch {
+    return false;
+  }
+}
+
 function boot(): void {
   const params = new URLSearchParams(location.search);
   app.input = new InputSystem();
@@ -27,7 +38,24 @@ function boot(): void {
   document.getElementById('app')?.addEventListener('contextmenu', (e) => e.preventDefault());
 
   const parent = document.getElementById('game')!;
-  app.game = new Phaser.Game(gameConfig(parent, params.has('canvas')));
+  // The paper diorama (three.js under Phaser's canvas) unless asked for the
+  // flat picture, or the browser has no WebGL2; Phaser then draws with a
+  // see-through background. It loads beside the game's own boot.
+  const diorama = !params.has('flat') && !params.has('canvas') && hasWebGL2();
+  app.game = new Phaser.Game(gameConfig(parent, params.has('canvas'), diorama));
+  if (diorama) {
+    // Opaque until the diorama takes over a room (a see-through canvas
+    // would show the page under the menus).
+    app.game.config.backgroundColor.setTo(15, 13, 24, 255);
+    app.game.events.once(Phaser.Core.Events.READY, () => {
+      void import('./game/stage/Stage')
+        .then((m) => m.createStage(app.game, params))
+        .catch((e: unknown) => {
+          console.warn('[stage] could not load the diorama; flat rendering', e);
+          app.game.config.backgroundColor.setTo(15, 13, 24, 255);
+        });
+    });
+  }
   app.ui = new UI(app.game);
   app.ui.applySettings(app.settings);
   installVoices(app.ui.dialogue);

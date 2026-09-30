@@ -26,6 +26,10 @@ import { ComicWords, WORDS, pick } from '../fx/comicWords';
 import { FaceDialogue } from '../cinematics/FaceDialogue';
 import { ROMAN } from '../../ui/Menus';
 import type { AmbienceId } from '../systems/AudioSystem';
+import { stage } from '../stage/hooks';
+
+/** How much closer the view comes while Gorti stands still (diorama only). */
+const PUSH_IN = 0.1;
 
 export interface WorldData {
   room: RoomId;
@@ -106,6 +110,10 @@ export class WorldScene extends Phaser.Scene {
     this.camMode = 'player';
     this.elapsed = 0;
     this.probeExtra = {};
+    this.push = 0;
+    this.pushing = false;
+    this.stillT = 0;
+    this.zoomTweens = 0;
   }
 
   /** Loads what this room needs beyond the atlases (painting artwork). */
@@ -199,6 +207,8 @@ export class WorldScene extends Phaser.Scene {
     if (hasFrame('fx.shadow')) {
       const sh = frameRef('fx.shadow');
       this.contact = this.add.image(0, 0, sh.atlas, sh.frame).setDepth(DEPTH.player - 3).setVisible(false);
+      // In the diorama it lies on the ground under his feet.
+      stage.lift(this.contact, { as: 'decal' });
     }
     this.cleanups.push(() => {
       this.warpBg?.destroy();
@@ -285,6 +295,8 @@ export class WorldScene extends Phaser.Scene {
     this.activateCheckpoint(cp.id, true);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.cleanup());
+    // The paper diorama takes the room over (3D mode; nothing in flat mode).
+    stage.attach(this);
   }
 
   private camFollow!: Phaser.GameObjects.Zone;
@@ -595,6 +607,7 @@ export class WorldScene extends Phaser.Scene {
     this.narrative.tick(dt);
     this.script.onUpdate?.(dt, time);
     this.updateCamera(dt);
+    this.pushIn(dt);
     this.room.stream(this.cameras.main.scrollX);
     this.warpBg?.update(dt);
     this.bursts.update(dt);
@@ -634,6 +647,50 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * The diorama's slow push-in while Gorti stands still (as the prototype's
+   * camera did), made with the camera's zoom so that everything Phaser
+   * draws stays in line with the 3D picture. Off with reduced motion, in
+   * flat mode, and whenever a script works the camera.
+   */
+  private pushIn(dtMs: number): void {
+    const cam = this.cameras.main;
+    const p = this.player;
+    const free =
+      this.camMode === 'player' &&
+      this.zoomTweens === 0 &&
+      !this.paused &&
+      !this.transitioning &&
+      p.state === 'normal' &&
+      app.input.context === 'gameplay' &&
+      !app.settings.reducedMotion &&
+      stage.draws(this);
+    if (!free) {
+      this.pushing = false;
+      this.stillT = 0;
+      return;
+    }
+    const dt = dtMs / 1000;
+    if (!this.pushing) {
+      // Take over from wherever the zoom is (after a script's close-up).
+      this.push = Math.max(0, Math.min(1, (cam.zoom / this.baseZoom - 1) / PUSH_IN));
+      this.pushing = true;
+    }
+    const still = p.onGround && Math.abs(p.body.velocity.x) < 12;
+    this.stillT = still ? this.stillT + dt : 0;
+    const k = Math.max(0, Math.min(1, (this.stillT - 0.9) / 2.6));
+    const want = k * k * (3 - 2 * k);
+    this.push += (want - this.push) * (1 - Math.exp(-dt * (want > this.push ? 0.7 : 3)));
+    const z = this.baseZoom * (1 + PUSH_IN * this.push);
+    if (Math.abs(cam.zoom - z) > 1e-5) cam.setZoom(z);
+  }
+
+  private push = 0;
+  private pushing = false;
+  private stillT = 0;
+  /** Scripted zoom tweens running (the push-in waits for them). */
+  private zoomTweens = 0;
+
   /** Scripted camera zoom (a close-up); `null` returns to the room's zoom. */
   zoomTo(zoom: number | null, ms: number): Promise<void> {
     const cam = this.cameras.main;
@@ -644,7 +701,15 @@ export class WorldScene extends Phaser.Scene {
         res();
         return;
       }
-      this.tweens.add({ targets: cam, zoom: to, duration: ms, ease: 'Sine.easeInOut', onComplete: () => res() });
+      this.zoomTweens++;
+      let over = false;
+      const done = (): void => {
+        if (over) return;
+        over = true;
+        this.zoomTweens = Math.max(0, this.zoomTweens - 1);
+        res();
+      };
+      this.tweens.add({ targets: cam, zoom: to, duration: ms, ease: 'Sine.easeInOut', onComplete: done, onStop: done });
     });
   }
 

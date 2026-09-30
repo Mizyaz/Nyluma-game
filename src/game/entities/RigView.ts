@@ -3,6 +3,7 @@ import { drawOrder, isNear, orderJoints, solve, type Angles, type Solved } from 
 import type { RigDef, RigJoint } from '../art/rigTypes';
 import { frameRef, hasFrame } from '../art/TextureFactory';
 import type { PoseOut, PoseParams } from './animPoses';
+import { stage } from '../stage/hooks';
 
 export type PoseFn = (anim: string, t: number, prm: PoseParams, rigId: string) => PoseOut;
 
@@ -16,6 +17,9 @@ const RATE: Record<string, number> = {
   // Brows snap: reactions must read instantly.
   browN: 30,
 };
+
+/** Marks on Gorti's screen that glow: the diorama does not shade them. */
+const GLOWING = new Set(['eyeN', 'browN', 'mouth']);
 
 /**
  * Runtime cutout rig: one container of images positioned every frame with
@@ -59,6 +63,8 @@ export class RigView {
     this.ordered = orderJoints(rig);
     this.container = scene.add.container(x, y);
     this.container.setDepth(depth);
+    // In the diorama the figure is a paper puppet: its parts a hair apart.
+    stage.lift(this.container, { rig: true });
     this.buildImages();
     this.snap();
   }
@@ -75,6 +81,7 @@ export class RigView {
       img.setOrigin(f.px / f.w, f.py / f.h);
       img.setScale(1 / f.scale);
       if (j.additive) img.setBlendMode(Phaser.BlendModes.ADD);
+      if (GLOWING.has(j.id)) stage.hint(img, { lit: false });
       this.images.set(j.id, img);
     }
     this.applyOrder();

@@ -159,12 +159,11 @@ basis, without warranties or conditions of any kind. The remaining MIT
 components carry the same MIT permission notice as reproduced above with their
 respective copyright lines.
 
-### three.js 0.186.1 — MIT License (only in `diorama.html`)
+### three.js 0.186.1 — MIT License
 https://threejs.org — https://github.com/mrdoob/three.js
 
-Bundled into the 3D diorama prototype page (`dist/diorama.html`,
-`dist/assets/diorama-*.js`), including its post-processing addons; the game
-itself does not load it.
+Draws the game's 3D paper diorama (`dist/assets/three-*.js` and the stage's
+own chunk), including its post-processing full-screen pass helper.
 
 ```
 The MIT License

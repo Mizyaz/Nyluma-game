@@ -7,13 +7,19 @@ import { EndingScene } from './scenes/EndingScene';
 import { WarpScene } from './scenes/WarpScene';
 import { CinemaScene } from './scenes/CinemaScene';
 
-export function gameConfig(parent: HTMLElement, forceCanvas: boolean): Phaser.Types.Core.GameConfig {
+/**
+ * `diorama`: the 3D stage draws under Phaser's canvas, so the canvas has an
+ * alpha channel (the stage sets the clear colour: see-through while the
+ * world shows, the flat colour otherwise).
+ */
+export function gameConfig(parent: HTMLElement, forceCanvas: boolean, diorama = false): Phaser.Types.Core.GameConfig {
   return {
     type: forceCanvas ? Phaser.CANVAS : Phaser.AUTO,
     parent,
     width: VIEW_W,
     height: VIEW_H,
     backgroundColor: '#0f0d18',
+    transparent: diorama,
     scale: {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,

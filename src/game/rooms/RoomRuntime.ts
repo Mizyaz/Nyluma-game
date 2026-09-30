@@ -23,6 +23,7 @@ import type {
 } from '../data/roomTypes';
 import type { Quest } from '../state/GameState';
 import { WhalePlatforms } from './WhalePlatforms';
+import { stage } from '../stage/hooks';
 import { isWhalePlatform } from './whalePlan';
 
 export interface SolidRt {
@@ -174,6 +175,8 @@ export class RoomRuntime {
         img.setScrollFactor(s, s);
         img.setDepth(layer.depth ?? DEPTH.sky + li * 10);
         this.layerImages.push(img);
+        // In the diorama: at the depth its scroll factor implies (or its own).
+        stage.lift(img, { z: layer.z, thick: 0, cast: false });
       }
     });
     void rng;
@@ -214,6 +217,8 @@ export class RoomRuntime {
       img.setAlpha(0.92);
       this.layerImages.push(img);
       this.fgImages.push(img);
+      // In the diorama: out of focus in front of the box, along the view's foot.
+      stage.lift(img, { thick: 0, cast: false, lit: false });
     }
   }
 
@@ -286,6 +291,8 @@ export class RoomRuntime {
     this.texKeys.add(c.key);
     const img = this.scene.add.image(c.x, c.y, c.key).setOrigin(0, 0).setScale(1 / res);
     img.setDepth(c.solid.def.latent ? DEPTH.terrain + 2 : DEPTH.terrain);
+    // In the diorama: the painting on the front of the solid's slab.
+    stage.lift(img, { as: 'terrain', solid: c.solid.def });
     c.image = img;
     c.solid.images.push(img);
     this.applySolidVisual(c.solid);
@@ -358,6 +365,8 @@ export class RoomRuntime {
       if (p.alpha !== undefined) img.setAlpha(p.alpha);
       if (p.angle) img.setAngle(p.angle);
       if (p.scroll !== undefined) img.setScrollFactor(p.scroll);
+      // In the diorama: at its own depth if it has one; hung things sway.
+      stage.lift(img, { z: p.z, sway: (p.oy ?? 1) === 0 && p.scroll === undefined });
     }
     this.props.push({ def: p, img, glow: null, active: this.isOn(p) });
   }

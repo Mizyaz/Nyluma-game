@@ -3,6 +3,7 @@ import { frameRef, hasFrame } from '../art/TextureFactory';
 import type { PaintingArt, PaintingPlacement } from '../data/paintings';
 import type { WorldScene } from '../scenes/WorldScene';
 import type { Interactable } from '../world/Interactable';
+import { stage } from '../stage/hooks';
 
 /** Wood, gilded liner and wall shadow of every frame. */
 const WOOD = 0x5b3b24;
@@ -50,6 +51,8 @@ export class Painting implements Interactable {
     this.y = floorY;
     this.lookAt = { x: cx, y: cy };
     this.root = scene.add.container(cx, cy).setDepth(place.mount === 'wall' ? -45 : -9);
+    // In the diorama: a framed card (its drawn frame and wire included).
+    stage.lift(this.root, { thick: 4 });
     if (place.mount === 'wall') this.buildWall();
     else this.buildEasel(floorY - cy);
     this.buildFrame();

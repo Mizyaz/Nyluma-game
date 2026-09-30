@@ -142,6 +142,16 @@ export interface PropDef extends Gate {
   angle?: number;
   /** Parallax scroll factor for decorative background props. */
   scroll?: number;
+  /**
+   * Depth in the 3D paper diorama (world px): 0 is the plane the actors
+   * walk on, negative is further back, positive toward the viewer. The prop
+   * then stands at its world position and size at that depth, and its
+   * scroll factor is not used in 3D. Without it, the depth comes from
+   * `scroll` (parallax) or `depth` (the DEPTH band). The flat game ignores
+   * it. Entries between -60 and -900 also set the depth of the box's back
+   * (a painted back wall lines up with the box's floor and side walls).
+   */
+  z?: number;
   /** Origin; defaults to bottom-centre so props stand on the ground. */
   ox?: number;
   oy?: number;

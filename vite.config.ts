@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
-import { extname, join, normalize, resolve } from 'node:path';
-import { defineConfig, normalizePath, type Plugin } from 'vite';
+import { extname, join, normalize } from 'node:path';
+import { defineConfig, type Plugin } from 'vite';
 import { checkLibrary } from './src/music/library';
 
 /** Ships the third-party license notices next to the game. */
@@ -58,46 +58,11 @@ function musicLibrary(): Plugin {
   };
 }
 
-/**
- * The 3D diorama prototype (diorama.html, src/diorama/) is a second page of
- * the build that reuses the game's art and animation modules. Left alone,
- * Rollup would move every module both pages use into a shared chunk, and the
- * game's own files would change. So the prototype gets private copies: each
- * local module it reaches resolves to the same file under a `?diorama` id,
- * and its page skips the module-preload polyfill (which would be shared
- * too). The game's bundle comes out byte for byte as before.
- */
-function dioramaIsolation(): Plugin {
-  const TAG = '?diorama';
-  const SRC = normalizePath(resolve('src')) + '/';
-  const OWN = normalizePath(resolve('src/diorama')) + '/';
-  const PAGE = normalizePath(resolve('diorama.html'));
-  const NO_POLYFILL = '\0diorama:no-polyfill';
-  const fromDiorama = (importer: string): boolean => importer.endsWith(TAG) || importer.startsWith(OWN) || importer === PAGE;
-  return {
-    name: 'diorama-isolation',
-    apply: 'build',
-    enforce: 'pre',
-    async resolveId(source, importer, options) {
-      if (!importer || !fromDiorama(importer)) return null;
-      if (source === 'vite/modulepreload-polyfill') return NO_POLYFILL;
-      if (!source.startsWith('.') && !source.startsWith('/')) return null;
-      const from = importer.endsWith(TAG) ? importer.slice(0, -TAG.length) : importer;
-      const r = await this.resolve(source, from, { ...options, skipSelf: true });
-      if (!r || r.external || r.id.includes('?') || !r.id.startsWith(SRC) || r.id.startsWith(OWN)) return r;
-      return /\.[cm]?[jt]s$/.test(r.id) ? { ...r, id: r.id + TAG } : r;
-    },
-    load(id) {
-      return id === NO_POLYFILL ? '' : null;
-    },
-  };
-}
-
 // Route-free static game: relative base works at a domain root and in a
 // repository sub-path (GitHub Pages project sites) alike.
 export default defineConfig(({ mode }) => ({
   base: './',
-  plugins: [notices(), musicLibrary(), dioramaIsolation()],
+  plugins: [notices(), musicLibrary()],
   define: {
     // The e2e build exposes a read-only state probe for browser tests.
     // Production builds compile it away entirely.
@@ -109,12 +74,12 @@ export default defineConfig(({ mode }) => ({
     chunkSizeWarningLimit: 1600,
     sourcemap: false,
     rollupOptions: {
-      // The game, and the 3D diorama prototype of its first room as a page
-      // of its own (see dioramaIsolation).
-      input: { index: resolve('index.html'), diorama: resolve('diorama.html') },
       output: {
+        // three.js comes with the paper diorama (src/game/stage), loaded
+        // beside the game's boot.
         manualChunks: {
           phaser: ['phaser'],
+          three: ['three'],
         },
       },
     },
