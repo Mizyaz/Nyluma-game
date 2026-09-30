@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#191728" />
+    <meta name="description" content="Kristaller Dünyası — 14. Oda, kâğıt diorama olarak: oyunun el çizimleri gerçek bir 3B sahnede (deneme)." />
+    <title>14. Oda — 3B diorama denemesi</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <style>
+      :root {
+        --ink: #191728;
+        --ivory: #e8dcca;
+        --vein: #d7b3ff;
+        --serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, 'Times New Roman', serif;
+        --sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #0f0d18;
+        color: var(--ivory);
+        font-family: var(--sans);
+        overflow: hidden;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      #stage {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+      }
+      #view {
+        position: relative;
+        aspect-ratio: 16 / 9;
+        width: min(100vw, calc(100vh * 16 / 9));
+        overflow: hidden;
+        background: #1d1a28;
+        touch-action: none;
+      }
+      #view canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        cursor: grab;
+      }
+      #view canvas:active {
+        cursor: grabbing;
+      }
+      .pill {
+        position: absolute;
+        padding: 6px 12px;
+        border-radius: 8px;
+        background: rgba(25, 23, 40, 0.82);
+        border: 1px solid rgba(215, 179, 255, 0.18);
+        font-size: 13px;
+        line-height: 1.35;
+        pointer-events: none;
+        white-space: nowrap;
+      }
+      #title {
+        top: 12px;
+        left: 12px;
+        font-family: var(--serif);
+        font-size: 15px;
+        letter-spacing: 0.02em;
+      }
+      #title small {
+        display: block;
+        font-family: var(--sans);
+        font-size: 11px;
+        opacity: 0.7;
+        letter-spacing: 0;
+      }
+      #hint {
+        bottom: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        border-left: 4px solid #9459d8;
+      }
+      #fx {
+        top: 12px;
+        right: 12px;
+        font-size: 12px;
+        text-align: right;
+      }
+      #fx b {
+        color: var(--vein);
+        font-weight: 600;
+      }
+      #fx .off {
+        opacity: 0.45;
+        text-decoration: line-through;
+      }
+      #loading {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        font-family: var(--serif);
+        font-size: 20px;
+        color: var(--ivory);
+        background: #1d1a28;
+      }
+      body.shot .pill {
+        display: none;
+      }
+      /* Touch: paper buttons, only on touch screens. */
+      #pad {
+        display: none;
+      }
+      @media (pointer: coarse) {
+        #pad {
+          display: block;
+        }
+        #hint {
+          display: none;
+        }
+      }
+      #pad button {
+        position: fixed;
+        bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+        width: 76px;
+        height: 76px;
+        border-radius: 50%;
+        border: 1.5px solid #4a4152;
+        background: rgba(251, 246, 234, 0.9);
+        color: #2e2734;
+        font-size: 30px;
+        line-height: 1;
+        touch-action: none;
+        -webkit-tap-highlight-color: transparent;
+        box-shadow: 0 3px 0 rgba(46, 39, 52, 0.25);
+      }
+      #pad button.on {
+        background: #c3dc8c;
+        transform: translateY(2px);
+      }
+      #padL {
+        left: calc(18px + env(safe-area-inset-left, 0px));
+      }
+      #padR {
+        left: calc(108px + env(safe-area-inset-left, 0px));
+      }
+      #padJ {
+        right: calc(18px + env(safe-area-inset-right, 0px));
+        width: 88px;
+        height: 88px;
+      }
+      #padG {
+        right: calc(118px + env(safe-area-inset-right, 0px));
+        width: 56px;
+        height: 56px;
+        font-size: 15px;
+      }
+    </style>
+    <script type="module" crossorigin src="./assets/diorama-DgQAxjuY.js"></script>
+  </head>
+  <body>
+    <div id="stage">
+      <div id="view">
+        <div id="loading">Oda hazırlanıyor…</div>
+        <div id="title" class="pill">14. Oda <small>3B kâğıt diorama denemesi · Three.js</small></div>
+        <div id="fx" class="pill"></div>
+        <div id="hint" class="pill">A / D ya da ← →: yürü · Boşluk: zıpla · Fareyle sürükle: kamerayı çevir</div>
+        <div id="pad" aria-hidden="true">
+          <button id="padL" type="button">◀</button>
+          <button id="padR" type="button">▶</button>
+          <button id="padG" type="button">Geniş</button>
+          <button id="padJ" type="button">⤒</button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
