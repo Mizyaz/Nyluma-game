@@ -10,12 +10,13 @@ import { PaperBox, WALL_T, type SolidView } from './box';
 import { paperCanvas } from './cards';
 import { boxedZ, eyeDistance, offAxis, restCentre, scrollDepth, viewRect, type CamState, type Rect } from './depth';
 import { stage as hooks, type LiftOpts, type StageDriver } from './hooks';
-import { FRAME_BOTTOM, frontBuilder, frontSpec, type FrontPart } from './front';
+import { FRAME_BOTTOM, frontBuilder, frontSpec, setFrontBuilder, type FrontPart } from './front';
 import { Lights, type LampAnchor } from './lights';
 import { Mirror, swayAngle, type MirrorFrame } from './mirror';
 import { Post } from './post';
 import { Governor, pickTier, type Tier } from './quality';
 import { TextureCache } from './textures';
+import { buildTornFront } from './tornFront';
 import { boxFrame, boxTheme, roomStage, type BoxFrame, type BoxTheme, type RoomStage } from './themes';
 
 // The paper diorama under the game: a three.js canvas beneath Phaser's,
@@ -24,6 +25,12 @@ import { boxFrame, boxTheme, roomStage, type BoxFrame, type BoxTheme, type RoomS
 // the lifted art and figures, the lights) and Phaser draws what it keeps
 // (effects, words, masks, overlays, fades) on a transparent canvas above.
 // Menus and other scenes: the stage hides and rests.
+
+/** 0xRRGGBB as '#rrggbb'. */
+const hex = (c: number): string => `#${c.toString(16).padStart(6, '0')}`;
+
+// Every box's front is torn paper (tornFront.ts), open where the game happens.
+setFrontBuilder((s) => buildTornFront({ ...s, outside: hex(s.outside), inside: hex(s.inside), core: hex(s.core) }));
 
 /** Vertical field of view at a room's resting zoom (the prototype's). */
 const FOV = 34;
