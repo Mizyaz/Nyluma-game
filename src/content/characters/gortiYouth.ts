@@ -51,6 +51,8 @@ const TENDRILS: { id: string; base: Pt; pts: Pt[]; w: number; color: string; bir
 
 export const YOUTH_DIMS: HumanoidDims = {
   hip: 50, thigh: 23, shin: 23, torso: 44, shoulderY: 37, shoulderX: 3, upper: 22, hipX: 5, headX: 3, hand: 27,
+  belly: [15, -17],
+  foot: { sole: 6, heel: -6.5, ball: 10 },
   eye: EYE_AT,
   brow: { part: 'gorti.youth.brow', up: 9.5, dx: -10 },
   face: { eye: 'gorti.youth', mouth: 'gorti.youth', mouthAt: [9, -17], blink: 'squash' },

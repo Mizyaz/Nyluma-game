@@ -32,6 +32,8 @@ const EYE_AT: Pt = [5, -27];
 
 export const WARRIOR_DIMS: HumanoidDims = {
   hip: 62, thigh: 29, shin: 29, torso: 64, shoulderY: 49, shoulderX: 3, upper: 26, hipX: 5, headX: 3, hand: 30,
+  belly: [15, -22],
+  foot: { sole: 6.3, heel: -6, ball: 11 },
   eye: EYE_AT,
   brow: { part: 'gorti.warrior.brow', up: 6.2, dx: -5 },
   face: { eye: 'gorti.warrior', mouth: 'gorti.warrior', mouthAt: [11, -11] },

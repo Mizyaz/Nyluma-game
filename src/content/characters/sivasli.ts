@@ -45,6 +45,8 @@ export const SIVAS = {
 
 const HUMAN_BASE = {
   hip: 43, thigh: 19, shin: 20, torso: 57, shoulderY: 46, shoulderX: 9, upper: 23, hipX: 7, headX: 9, hand: 29,
+  belly: [22.5, -24] as [number, number],
+  foot: { sole: 6.5, heel: -6.5, ball: 9 },
 } as const;
 
 /** Moon head: one eye in the crescent, a brow, a small mouth on the inner curve. */

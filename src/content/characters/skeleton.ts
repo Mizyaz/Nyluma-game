@@ -1,6 +1,6 @@
 import type { Pt } from '../../render/2d/svg';
 import type { RigDef, RigJoint } from '../../render/2d/rig/rigTypes';
-import { registerRig } from '../../render/2d/rig/animPoses';
+import { registerRig } from '../../render/2d/rig/poseKit';
 
 // The humanoid skeleton every Gorti body and inner form shares, so the
 // procedural poses (animPoses: humanoidPose) drive them all: joint ids,
@@ -53,7 +53,7 @@ export interface HumanoidDims {
 
 export const HUMANOID_ANIMS = [
   'idle', 'walk', 'run', 'rise', 'fall', 'land', 'interact', 'reach', 'song', 'breath', 'transform', 'hurt',
-  'collapse', 'push', 'sit', 'kneel', 'shout',
+  'collapse', 'push', 'sit', 'kneel', 'shout', 'laugh', 'kahkaha', 'smash',
 ];
 
 export function humanoidRig(id: string, prefix: string, d: HumanoidDims, withWatch = false, glowKey?: string): RigDef {
@@ -104,7 +104,7 @@ export function humanoidRig(id: string, prefix: string, d: HumanoidDims, withWat
     upper: d.upper,
     hand,
     torso: d.torso,
-    belly: d.belly,
+    belly: d.belly ? [d.belly[0], d.belly[1]] : undefined,
     sole: d.foot?.sole ?? 6,
     heel: d.foot?.heel ?? -5,
     ball: d.foot?.ball ?? 8,

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { humanoidPose, idleAction } from '../../src/render/2d/rig/animPoses';
+import { SMASH } from '../../src/render/2d/rig/actionPoses';
+import { orderJoints, solve } from '../../src/render/2d/rig/fk';
+import { profileOf } from '../../src/render/2d/rig/poseKit';
+import type { RigDef } from '../../src/render/2d/rig/rigTypes';
 import { allParts, allRigs } from '../../src/content/art/manifest';
 import { RIG_COWARD } from '../../src/content/characters/forms';
 import {
@@ -46,6 +50,104 @@ describe('jump animation', () => {
     const done = humanoidPose('gorti.human', 'land', 0, { k: 1, impact: 1 });
     expect(hipsY(hard)).toBeGreaterThan(hipsY(soft));
     expect(hipsY(done)).toBeLessThan(hipsY(soft));
+  });
+});
+
+describe('acting poses: laugh, kahkaha, smash', () => {
+  const rigs: RigDef[] = [RIG_GORTI_HUMAN_BALD, RIG_GORTI_HUMAN, RIG_GORTI_SUIT, RIG_GORTI_CHILD, RIG_GORTI_YOUTH, RIG_GORTI_WARRIOR, RIG_COWARD];
+  const at = (rig: RigDef, anim: string, t: number, prm = {}) => {
+    const p = humanoidPose(rig.id, anim, t, prm);
+    return { p, s: solve(orderJoints(rig), p.angles, p.offsets) };
+  };
+  /** Where a hand's palm is (root frame). */
+  const palm = (rig: RigDef, s: ReturnType<typeof solve>, side: 'R' | 'L'): [number, number] => {
+    const f = s.get(`fore${side}`)!;
+    const len = profileOf(rig.id).hand * 0.82;
+    return [f.x - Math.sin(f.rot) * len, f.y + Math.cos(f.rot) * len];
+  };
+
+  it('keeps the feet on the ground while laughing', () => {
+    for (const rig of rigs) {
+      for (const anim of ['laugh', 'kahkaha']) {
+        for (const t of [0.4, 0.73, 1.1]) {
+          const { s } = at(rig, anim, t);
+          for (const f of ['footR', 'footL']) {
+            const y = s.get(f)!.y;
+            expect(y, `${rig.id} ${anim} ${f}`).toBeLessThan(-4);
+            expect(y, `${rig.id} ${anim} ${f}`).toBeGreaterThan(-9);
+          }
+        }
+      }
+    }
+  });
+
+  it('holds the belly with both hands, the head thrown back', () => {
+    for (const rig of [RIG_GORTI_HUMAN_BALD, RIG_GORTI_CHILD, RIG_GORTI_YOUTH, RIG_GORTI_WARRIOR]) {
+      const { p, s } = at(rig, 'laugh', 0.9);
+      const torso = s.get('torso')!;
+      const [bx, by] = profileOf(rig.id).belly!;
+      const belly: [number, number] = [torso.x + bx * Math.cos(torso.rot) - by * Math.sin(torso.rot), torso.y + bx * Math.sin(torso.rot) + by * Math.cos(torso.rot)];
+      for (const side of ['R', 'L'] as const) {
+        const [hx, hy] = palm(rig, s, side);
+        expect(Math.hypot(hx - belly[0], hy - belly[1]), `${rig.id} ${side}`).toBeLessThan(8);
+      }
+      expect(p.angles.head!).toBeLessThan(-0.25);
+      expect(p.frames?.mouth).toBe('laugh');
+      expect(p.frames?.eyeN).toBe('happy');
+    }
+  });
+
+  it('bounces with every "ha" and eases in and out on k', () => {
+    const ys = [0, 0.03, 0.06, 0.09, 0.12, 0.15, 0.18, 0.21].map((t) => hipsY(humanoidPose('gorti.human.bald', 'laugh', 1 + t)));
+    expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(1.2);
+    const rest = humanoidPose('gorti.human.bald', 'idle', 0);
+    const start = humanoidPose('gorti.human.bald', 'laugh', 0.5, { k: 0 });
+    expect(start.angles.armR).toBeCloseTo(rest.angles.armR!, 5);
+    expect(start.angles.torso).toBeCloseTo(rest.angles.torso!, 5);
+  });
+
+  it('throws an arm up in the roaring laugh, leaning back', () => {
+    for (const rig of rigs) {
+      const { p, s } = at(rig, 'kahkaha', 1);
+      const [, hy] = palm(rig, s, 'R');
+      expect(hy, rig.id).toBeLessThan(s.get('armR')!.y - 10);
+      expect(p.angles.torso!).toBeLessThan(-0.1);
+    }
+  });
+
+  it('smashes: wind-up, a blow over the top, impact, recovery', () => {
+    for (const rig of rigs) {
+      const L = profileOf(rig.id).thigh + profileOf(rig.id).shin;
+      // Wound up: the fist cocked behind and above the shoulder, a knee up.
+      const w = at(rig, 'smash', 0, { k: 0.4 });
+      const [wx, wy] = palm(rig, w.s, 'R');
+      expect(wx, rig.id).toBeLessThan(w.s.get('armR')!.x);
+      expect(wy, rig.id).toBeLessThan(w.s.get('armR')!.y);
+      expect(w.s.get('footR')!.y, rig.id).toBeLessThan(-L * 0.3);
+      // The blow swings forward over the top, never back through the legs.
+      let last = -Infinity;
+      for (let k = 0.42; k <= SMASH.impact + 1e-9; k += 0.01) {
+        const a = humanoidPose(rig.id, 'smash', 0, { k }).angles.armR!;
+        expect(a).toBeGreaterThanOrEqual(last - 1e-9);
+        last = a;
+      }
+      // Impact: low, the fist hammered down in front, both feet down, squashed.
+      const h = at(rig, 'smash', 0, { k: SMASH.impact + 0.02 });
+      const [hx, hy] = palm(rig, h.s, 'R');
+      expect(hx, rig.id).toBeGreaterThan(h.s.get('armR')!.x + 8);
+      expect(hy, rig.id).toBeGreaterThan(h.s.get('armR')!.y + 8);
+      expect(hipsY(h.p) - hipsY(w.p), rig.id).toBeGreaterThan(L * 0.2);
+      for (const f of ['footR', 'footL']) expect(h.s.get(f)!.y, `${rig.id} ${f}`).toBeGreaterThan(-12);
+      expect(h.p.sy!).toBeLessThan(0.95);
+      // Recovered: back in the stance.
+      const end = humanoidPose(rig.id, 'smash', 0, { k: 1 });
+      const rest = humanoidPose(rig.id, 'idle', 0);
+      for (const id of ['torso', 'armR', 'foreR', 'armL', 'foreL']) expect(end.angles[id], `${rig.id} ${id}`).toBeCloseTo(rest.angles[id]!, 3);
+    }
+    // Played on time it is the same move.
+    const byT = humanoidPose('gorti.human.bald', 'smash', SMASH.dur * 0.3);
+    const byK = humanoidPose('gorti.human.bald', 'smash', 0, { k: 0.3 });
+    expect(byT.angles).toEqual(byK.angles);
   });
 });
 

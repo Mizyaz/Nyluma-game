@@ -9,6 +9,7 @@
 //                                          over one cycle, other anims step k (and t = k·T)
 //   zoom=2.5  w=200  h=330                 scale and cell size
 //   head=1                                 frame the head up close
+//   ox=0.4                                 where the root stands across the cell (0..1)
 //   facing=1|-1|both                       (default 1)
 //   ticks=92                               ground ticks moving with the travel of a
 //                                          cycle of that length (px): a planted foot stays on its tick
@@ -142,7 +143,7 @@ function drawCell(rig: RigDef, col: Col, facing: 1 | -1): HTMLCanvasElement {
   const t = col.prm.t ?? 0;
   const pose = rig.id === 'horse' ? horsePose(col.anim, t) : poseFor(rig.id, col.anim, t, col.prm);
   const solved = solve(ordered, pose.angles, pose.offsets);
-  let ox = cw / 2;
+  let ox = cw * Number(q.get('ox') ?? 0.5);
   let oy = ch - 22;
   if (head) {
     const hj = solved.get('head');

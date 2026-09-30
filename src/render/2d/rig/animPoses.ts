@@ -1,4 +1,8 @@
 import type { Angles } from './fk';
+import { HA, haPulse, kahkahaPose, laughEnv, laughPose, smashPhase, smashPose, SMASH } from './actionPoses';
+import { clamp01, profileOf, rigProfile, type RigProfile } from './poseKit';
+
+export { registerRig, rigProfile, type RigProfile } from './poseKit';
 
 // Procedural pose library for the humanoid cutout rigs. A pose is a set of
 // local joint angles (radians) plus joint offsets. Limbs hang down at 0; a
@@ -72,8 +76,6 @@ const EMOTES: Record<Emote, (t: number) => BrowSet> = {
   laugh: (t) => ({ raise: -4.2 - 1.6 * Math.abs(S(t * HA)), knit: -0.34, asym: -0.8 }),
 };
 
-/** Angular rate of the "ha"s of a laugh (rad/s: about 4.3 per second). */
-const HA = 13.5;
 
 /** What the brows do during each animation: big, readable reactions. */
 function browsFor(anim: string, t: number, prm: PoseParams, st: HumanoidStyle): BrowSet {
@@ -109,6 +111,22 @@ function browsFor(anim: string, t: number, prm: PoseParams, st: HumanoidStyle): 
     case 'stomp':
       b = t < 0.26 ? { raise: 1.5, knit: 0.55, asym: 0 } : { raise: 2.8, knit: 0.75, asym: 0 };
       break;
+    case 'laugh':
+    case 'kahkaha': {
+      const e = laughEnv(t, prm);
+      const big = anim === 'kahkaha' ? 1.3 : 1;
+      const l = EMOTES.laugh(anim === 'kahkaha' ? t * 0.9 : t);
+      b = { raise: l.raise * big * e, knit: l.knit * e, asym: l.asym * e };
+      break;
+    }
+    case 'smash': {
+      // Frowning hard on the wind-up, fierce on the blow, easing after.
+      const u = prm.k ?? t / SMASH.dur;
+      const ph = smashPhase(clamp01(u));
+      const fade = ph === 'recover' ? 1 - clamp01((u - 0.68) / 0.3) : 1;
+      b = ph === 'wind' ? { raise: 2.2, knit: 0.72, asym: -1.2 } : { raise: 3 * fade, knit: 0.9 * fade, asym: 0 };
+      break;
+    }
     case 'walk':
       b = { raise: 0, knit: st === 'suit' ? -0.3 : 0.1, asym: 0 };
       break;
@@ -417,6 +435,37 @@ function faceFor(anim: string, t: number, prm: PoseParams, st: HumanoidStyle, id
       f.ey = 0.55;
       f.mouth = 'grit';
       break;
+    case 'laugh':
+    case 'kahkaha': {
+      // Eyes squeezed into happy arcs; the mouth wide open, opening wider
+      // with each "ha".
+      const e = laughEnv(t, prm);
+      const pulse = anim === 'kahkaha' ? haPulse(t, HA * 0.9) : haPulse(t);
+      f.eye = e > 0.2 ? 'happy' : '';
+      f.mouth = e > 0.35 ? 'laugh' : e > 0.1 ? 'grin' : '';
+      f.ms = anim === 'kahkaha' ? 0.95 + 0.3 * pulse : 0.82 + 0.24 * pulse;
+      break;
+    }
+    case 'smash': {
+      const u = clamp01(prm.k ?? t / SMASH.dur);
+      const ph = smashPhase(u);
+      if (ph === 'wind') {
+        f.ey = 0.6;
+        f.mouth = 'grit';
+      } else if (ph === 'strike' || u < 0.6) {
+        // The shout of the blow.
+        f.ey = 0.7;
+        f.mouth = 'open';
+        f.ms = 1.45;
+      } else if (ph === 'impact') {
+        f.eye = 'shut';
+        f.mouth = 'grit';
+      } else {
+        f.ey = 0.85;
+        f.mouth = u < 0.8 ? 'grit' : '';
+      }
+      break;
+    }
     case 'torchUp':
       f.ey = 1.1;
       f.mouth = 'open';
@@ -523,47 +572,7 @@ function applyFace(p: PoseOut, f: Face, prm: PoseParams, prof: RigProfile | unde
   };
 }
 
-// ------------------------------------------------------------ rig profiles
 
-/**
- * What the poses need to know of a rig beyond its id: its bone lengths
- * (feet planted with inverse kinematics, hands put on the belly), its
- * foot, where its belly is, and how its eyes blink. Registered by the
- * skeleton builder (content/characters/skeleton.ts: humanoidRig).
- */
-export interface RigProfile {
-  /** Hips above the feet line, thigh and shin lengths, hip joints' x. */
-  hip: number;
-  thigh: number;
-  shin: number;
-  hipX: number;
-  /** Shoulder joints (torso frame), upper arm and forearm-to-hand lengths. */
-  shoulderX: number;
-  shoulderY: number;
-  farShoulder: number;
-  upper: number;
-  hand: number;
-  /** Hips to the neck. */
-  torso: number;
-  /** The front of the belly in the torso frame (where hands hold it). */
-  belly?: [number, number];
-  /** Foot: sole depth below the ankle, heel and ball x (the foot's frame). */
-  sole?: number;
-  heel?: number;
-  ball?: number;
-  /** How the eyes blink: lids close ('shut') or the eye squashes to a line. */
-  blink?: 'shut' | 'squash';
-}
-
-const PROFILES = new Map<string, RigProfile>();
-
-export function registerRig(id: string, prof: RigProfile): void {
-  PROFILES.set(id, prof);
-}
-
-export function rigProfile(id: string): RigProfile | undefined {
-  return PROFILES.get(id);
-}
 
 function base(): PoseOut {
   return { angles: {}, offsets: {} };
@@ -718,6 +727,15 @@ export function humanoidPose(rigId: string, anim: string, t: number, prm: PosePa
       }
       break;
     }
+    case 'laugh':
+      laughPose(p, profileOf(rigId), t, prm, st === 'coward');
+      break;
+    case 'kahkaha':
+      kahkahaPose(p, profileOf(rigId), t, prm);
+      break;
+    case 'smash':
+      smashPose(p, profileOf(rigId), t, prm);
+      break;
     case 'crouch': {
       // The instant before leaving the ground (snapped at take-off, then the
       // joints spring open into 'takeoff').
@@ -1129,7 +1147,7 @@ export function humanoidPose(rigId: string, anim: string, t: number, prm: PosePa
     p.offsets.eyeN = { x: e.x, y: e.y + prm.look * 2.4 };
   }
   const idle = anim === 'idle' ? idleAction(prm.idleT ?? 0, st) : null;
-  applyFace(p, faceFor(anim, t, prm, st, idle), prm, PROFILES.get(rigId));
+  applyFace(p, faceFor(anim, t, prm, st, idle), prm, rigProfile(rigId));
   applyBrows(p, browsFor(anim, t, prm, st), st);
   return p;
 }

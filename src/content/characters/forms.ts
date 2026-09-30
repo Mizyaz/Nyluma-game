@@ -231,11 +231,15 @@ export function formParts(): PartArt[] {
 
 const COWARD_DIMS: HumanoidDims = {
   hip: 42, thigh: 19, shin: 19, torso: 34, shoulderY: 30, shoulderX: 2, upper: 16, hipX: 3, headX: 1, hand: 22, eye: [7.4, -18.5],
+  belly: [12, -14],
+  foot: { sole: 6, heel: -5.5, ball: 8 },
   brow: { part: 'coward.brow', up: 5.2, dx: 0 },
   face: { eye: 'coward', mouth: 'coward', mouthAt: [10.5, -7.5] },
 };
 const MECH_DIMS: HumanoidDims = {
   hip: 46, thigh: 21, shin: 21, torso: 38, shoulderY: 33, shoulderX: 2, upper: 21, hipX: 4, headX: 1, hand: 28, eye: [7, -20],
+  belly: [13, -16],
+  foot: { sole: 6, heel: -6.5, ball: 9 },
   brow: { part: 'mech.brow', up: 6, dx: -1.5 },
 };
 
