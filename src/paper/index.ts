@@ -7,4 +7,5 @@ export { Planes, PlaneCamera } from './planes';
 export { Press, actorScale, waitFor, SPAN, type Print } from './press';
 export { PaperBox, type BoxSpec, type BoxColors } from './box';
 export { PaperStage, printScaleAt, restScale, type Shadowed } from './stage';
+export { CastShadow, type Caster } from './castShadow';
 export { Screen, fitScene, pixelRatio, deviceSize, GAME_W, GAME_H, type Fit } from './screen';

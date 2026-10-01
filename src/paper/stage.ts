@@ -5,6 +5,7 @@ import { MAX_SHADOWS, PaperBox, type BoxSpec } from './box';
 import type { Press } from './press';
 import { Lighting, WHIMSICAL, type Mood } from './light';
 import { RoomAir } from './air';
+import { CastShadow, type Caster } from './castShadow';
 
 // A room on the paper stage: the box, the eye that looks into it, one camera
 // per depth, and the cards standing in it. The world scene keeps its world:
@@ -28,6 +29,7 @@ export class PaperStage {
   private readonly insideCam: PlaneCamera;
   private readonly frontCam: PlaneCamera;
   private readonly shadowed = new Set<Shadowed>();
+  private readonly casters = new Set<CastShadow>();
   /** The point the eye follows (world x), and a scripted look (null: follow). */
   private target: { x: number; y: number } | null = null;
   private look: { x: number; y: number } | null = null;
@@ -113,6 +115,18 @@ export class PaperStage {
     this.shadowed.delete(s);
   }
 
+  /** A figure throws its shadow from the room's lamps onto the floor. */
+  castShadow(c: Caster): CastShadow {
+    const s = new CastShadow(this, c);
+    this.casters.add(s);
+    return s;
+  }
+
+  removeCast(s: CastShadow): void {
+    this.casters.delete(s);
+    s.destroy();
+  }
+
   /**
    * Stands an image at depth z as a card printed for that depth: its texture
    * is swapped for the press's print of `key` once it is made (the art was
@@ -172,6 +186,7 @@ export class PaperStage {
     }
     this.planes.update();
     this.light(dt);
+    for (const c of this.casters) c.update();
     this.writeShadows();
     this.box.inkWidth = Math.max(2, Math.round(this.lens.scale(0) * 1.7));
     this.box.update(lens);
@@ -206,6 +221,7 @@ export class PaperStage {
   destroy(): void {
     this.scene.events.off(Phaser.Scenes.Events.PRE_RENDER, this.preRender, this);
     this.shadowed.clear();
+    this.casters.clear();
     this.box.destroy();
   }
 }

@@ -25,6 +25,8 @@ export interface PaperLight {
   flicker?: number;
   /** Follows something (the light moves with it); null hides the light. */
   follow?: () => { x: number; y: number; z?: number } | null;
+  /** Throws the figures' shadows (default yes; a figure's own glow does not). */
+  cast?: boolean;
 }
 
 export interface Mood {
@@ -37,8 +39,12 @@ export interface Mood {
   front: { color: number; amount: number; from: number; to: number };
   /** Darkness at the picture's edges (0..1). */
   vignette: number;
-  /** A soft lamp high over the stage that goes with the eye (keeps the play readable). */
-  key?: { color: number; intensity: number; radius: number; above: number; z: number };
+  /**
+   * A soft lamp before the stage that goes with the eye (keeps the play
+   * readable, and throws the figures' shadows up the back wall): how high
+   * over the floor, how far toward the viewer, and how far beside the eye.
+   */
+  key?: { color: number; intensity: number; radius: number; above: number; z: number; lead?: number };
   /** How much a light still reaches the side of the paper turned from it (0..1). */
   wrap: number;
   /** Motes drifting in the air (air.ts). */
@@ -53,7 +59,7 @@ export const WHIMSICAL: Mood = {
   front: { color: 0x211a30, amount: 0.92, from: 20, to: 100 },
   vignette: 0.55,
   wrap: 0.5,
-  key: { color: 0xffe2c0, intensity: 0.28, radius: 1450, above: 560, z: 260 },
+  key: { color: 0xffe2c0, intensity: 0.36, radius: 1500, above: 230, z: 620, lead: -150 },
   air: { colors: [0xfff0c8, 0xe4d6ff, 0xc6fff2, 0xffd2ee], count: 70, rise: 9, glow: 1 },
 };
 
@@ -65,7 +71,7 @@ export const NIGHTMARE: Mood = {
   front: { color: 0x120f18, amount: 0.95, from: 20, to: 90 },
   vignette: 0.68,
   wrap: 0.4,
-  key: { color: 0xc8d2ff, intensity: 0.18, radius: 1300, above: 600, z: 240 },
+  key: { color: 0xc8d2ff, intensity: 0.24, radius: 1400, above: 250, z: 600, lead: 140 },
   air: { colors: [0xcfcadc, 0xa9a3bb], count: 60, rise: -5, glow: 0.45 },
 };
 
@@ -103,6 +109,7 @@ interface Lit {
   g: number;
   b: number;
   radius: number;
+  cast: boolean;
 }
 
 type Tintable = Phaser.GameObjects.GameObject &
@@ -153,7 +160,7 @@ export class Lighting {
     this.t += dt;
     this.lit = [];
     const key = this.mood.key;
-    if (key) this.lit.push({ x: eye.x, y: eye.floor - key.above, z: key.z, r: r8(key.color) * key.intensity, g: g8(key.color) * key.intensity, b: b8(key.color) * key.intensity, radius: key.radius });
+    if (key) this.lit.push({ x: eye.x + (key.lead ?? 0), y: eye.floor - key.above, z: key.z, r: r8(key.color) * key.intensity, g: g8(key.color) * key.intensity, b: b8(key.color) * key.intensity, radius: key.radius, cast: true });
     for (const l of this.lights) {
       let { x, y, z } = l;
       if (l.follow) {
@@ -168,7 +175,7 @@ export class Lighting {
         const t = this.t * 9 + x * 0.013;
         k *= 1 - l.flicker * (0.5 + 0.5 * Math.sin(t) * Math.sin(t * 0.37 + 1.7));
       }
-      this.lit.push({ x, y, z, r: r8(l.color) * k, g: g8(l.color) * k, b: b8(l.color) * k, radius: l.radius });
+      this.lit.push({ x, y, z, r: r8(l.color) * k, g: g8(l.color) * k, b: b8(l.color) * k, radius: l.radius, cast: l.cast ?? true });
     }
     // The strongest first: the shader's few slots go to the lights that show most.
     this.lit.sort((a, b) => b.r + b.g + b.b - (a.r + a.g + a.b));
@@ -183,6 +190,29 @@ export class Lighting {
       col.set([l.r, l.g, l.b, 0], i * 4);
     }
     return n;
+  }
+
+  /**
+   * The lamp that throws a figure's shadow at (x, y, z): the one lighting
+   * it most from above y, where it is, and how strongly it lights it (k;
+   * 0: none does).
+   */
+  casterAt(x: number, y: number, z: number, out: { x: number; y: number; z: number; k: number }): void {
+    out.k = 0;
+    for (const l of this.lit) {
+      if (!l.cast || l.y > y) continue;
+      const dx = x - l.x;
+      const dy = y - l.y;
+      const dz = z - l.z;
+      const q = (dx * dx + dy * dy + dz * dz) / (l.radius * l.radius);
+      if (q >= 1) continue;
+      const k = ((1 - q) * (1 - q) * (l.r + l.g + l.b)) / 3;
+      if (k <= out.k) continue;
+      out.k = k;
+      out.x = l.x;
+      out.y = l.y;
+      out.z = l.z;
+    }
   }
 
   /** Light reaching a card at (x, y, z) facing the viewer: rgb, each 0..1. */

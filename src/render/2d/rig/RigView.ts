@@ -4,7 +4,7 @@ import type { RigDef, RigJoint } from './rigTypes';
 import { frameRef, hasFrame } from '../TextureFactory';
 import type { PoseOut, PoseParams } from './animPoses';
 import { profileOf } from './poseKit';
-import type { PaperStage, Shadowed } from '../../../paper';
+import type { CastShadow, PaperStage, Shadowed } from '../../../paper';
 import { DEPTH } from '../../../engine/constants';
 
 export type PoseFn = (anim: string, t: number, prm: PoseParams, rigId: string) => PoseOut;
@@ -32,6 +32,15 @@ const RATE: Record<string, number> = {
 const FOLLOW = 30;
 const FOLLOW_PX = 900;
 
+/** Seconds a figure takes to turn about: a paper puppet flipped over on its rod. */
+const TURN = 0.2;
+/**
+ * How far the near limbs stand before the body and the far ones behind it
+ * (world px): seen from the eye they slide a little against each other as
+ * it moves, and the near foot stands a little lower on the floor.
+ */
+const SPREAD = 7;
+
 const clampAbs = (v: number, m: number): number => (v > m ? m : v < -m ? -m : v);
 
 
@@ -51,6 +60,14 @@ export class RigView {
   private offsets: Record<string, { x: number; y: number }> = {};
   private poseFn: PoseFn;
   facing: 1 | -1 = 1;
+  /** The figure as it shows: its x scale's sign and squeeze while it turns about (1, -1 at rest). */
+  private shown = 1;
+  private turnFrom = 1;
+  private turnT = 1;
+  /** The side the parts are ordered and shaded for (flips halfway through a turn). */
+  private orderFacing: 1 | -1 = 1;
+  /** Frames since it was made (the first facing is taken at once). */
+  private frames = 0;
   anim = 'idle';
   animT = 0;
   params: PoseParams = {};
@@ -79,6 +96,10 @@ export class RigView {
   private lastAnim = '';
   /** Soft shadows on the paper stage's floor under the feet (see `makeContact`). */
   private contact: Shadowed[] = [];
+  /** Its shadow thrown by the room's lamps (paper stage). */
+  private cast: CastShadow | null = null;
+  /** How tall it stands (world px), measured at its first pose. */
+  private standH = 0;
   private paper: PaperStage | null = null;
   private readonly mat = { world: new Phaser.GameObjects.Components.TransformMatrix(), parent: new Phaser.GameObjects.Components.TransformMatrix() };
 
@@ -102,8 +123,18 @@ export class RigView {
    */
   private makeContact(depth: number): void {
     const paper = (this.scene as { paper?: PaperStage }).paper;
-    if (this.scene.sys.settings.key !== 'world' || depth >= DEPTH.player || !paper) return;
+    if (this.scene.sys.settings.key !== 'world' || !paper) return;
     this.paper = paper;
+    // Every figure throws its shadow from the lamps (the player too).
+    const self = this;
+    this.cast = paper.castShadow({
+      figure: this.container,
+      feet: () => this.soles(),
+      get height() {
+        return self.standH || 120;
+      },
+    });
+    if (depth >= DEPTH.player) return;
     const half = hasFrame('fx.shadow') ? frameRef('fx.shadow').w * 0.15 : 14;
     for (const id of ['footR', 'footL']) {
       if (!this.ordered.some((j) => j.id === id)) continue;
@@ -111,6 +142,39 @@ export class RigView {
       paper.addShadow(s);
       this.contact.push(s);
     }
+  }
+
+  /** Where the figure stands: under its soles (world px), or its own place when it has no feet. */
+  private soles(): { x: number; y: number } | null {
+    const c = this.container;
+    if (!c.scene) return null;
+    if (!this.standH) this.standH = Math.max(40, c.getBounds().height);
+    let x = 0;
+    let y = -Infinity;
+    let n = 0;
+    for (const id of ['footR', 'footL']) {
+      const p = this.sole(id);
+      if (!p) continue;
+      x += p.x;
+      y = Math.max(y, p.y);
+      n++;
+    }
+    return n ? { x: x / n, y } : { x: c.x, y: c.y };
+  }
+
+  /** The middle of a foot's sole in the world (null: no such foot). */
+  private sole(joint: string): { x: number; y: number } | null {
+    const j = this.solved.get(joint);
+    if (!j) return null;
+    const m = this.container.getWorldTransformMatrix(this.mat.world, this.mat.parent);
+    const prof = profileOf(this.rig.id);
+    const u = ((prof.heel ?? -5) + (prof.ball ?? 8)) / 2 + 1;
+    const v = prof.sole ?? 6;
+    const cs = Math.cos(j.rot);
+    const sn = Math.sin(j.rot);
+    const lx = j.x + u * cs - v * sn;
+    const ly = j.y + u * sn + v * cs;
+    return { x: m.getX(lx, ly), y: m.getY(lx, ly) };
   }
 
   /** The shadow under one foot as the figure stands now (null: none). */
@@ -131,7 +195,9 @@ export class RigView {
     const h = Math.max(0, this.paper.spec.floor - m.getY(lx, ly));
     const k = Math.max(0, 1 - h / 24);
     if (k <= 0.03) return null;
-    return { x: m.getX(lx, ly), z: this.paper.planes.zOf(c), r: half * (0.7 + 0.3 * k), a: 0.8 * k * c.alpha };
+    const foot = this.ordered.find((o) => o.id === joint);
+    const dz = foot?.side ? (isNear(foot, this.orderFacing) ? SPREAD : -SPREAD) : 0;
+    return { x: m.getX(lx, ly), z: this.paper.planes.zOf(c) + dz, r: half * (0.7 + 0.3 * k), a: 0.8 * k * c.alpha };
   }
 
   private buildImages(): void {
@@ -166,18 +232,45 @@ export class RigView {
   setFacing(f: 1 | -1): void {
     if (f === this.facing) return;
     this.facing = f;
-    this.applyOrder();
+    if (this.frames === 0 || !this.container.visible) {
+      this.endTurn();
+      return;
+    }
+    // Turn about from where it shows now (a turn back midway too).
+    this.turnFrom = this.shown;
+    this.turnT = 0;
+  }
+
+  /** Finishes a turn at once. */
+  private endTurn(): void {
+    this.turnT = 1;
+    this.shown = this.facing;
+    if (this.orderFacing !== this.facing) {
+      this.orderFacing = this.facing;
+      this.applyOrder();
+    }
+  }
+
+  private stepTurn(dt: number): void {
+    if (this.turnT >= 1) return;
+    this.turnT = Math.min(1, this.turnT + dt / TURN);
+    this.shown = this.facing + ((this.turnFrom - this.facing) * (1 + Math.cos(Math.PI * this.turnT))) / 2;
+    // Edge on, the other side comes round: its parts reorder and reshade.
+    if (Math.sign(this.shown) === this.facing && this.orderFacing !== this.facing) {
+      this.orderFacing = this.facing;
+      this.applyOrder();
+    }
   }
 
   private applyOrder(): void {
     this.container.removeAll(false);
-    for (const j of drawOrder(this.ordered, this.facing)) {
+    for (const j of drawOrder(this.ordered, this.orderFacing)) {
       const img = this.images.get(j.id);
       if (!img) continue;
       const v = this.variant.get(j.id);
       const f = frameRef(v ? `${j.part!}.${v}` : j.part!);
       // Side-aware shading: the far limb uses the darker frame.
-      const near = isNear(j, this.facing);
+      const near = isNear(j, this.orderFacing);
       const key = near ? j.part! : j.part! + '.far';
       const fr = near || v ? f : safeFar(key, f);
       img.setTexture(fr.atlas, fr.frame);
@@ -195,6 +288,7 @@ export class RigView {
 
   /** Jump straight to the current target pose (no easing). */
   snap(): void {
+    this.endTurn();
     const pose = this.poseFn(this.anim, this.animT, this.params, this.rig.id);
     this.angles = { ...pose.angles };
     this.offsets = {};
@@ -219,6 +313,8 @@ export class RigView {
 
   update(dtMs: number): void {
     const dt = Math.min(dtMs, 50) / 1000;
+    this.frames++;
+    this.stepTurn(dt);
     this.animT += dt;
     const pose = this.poseFn(this.anim, this.animT, this.params, this.rig.id);
     // Within one animation the joints move with the pose; what is left
@@ -347,8 +443,34 @@ export class RigView {
     }
     const sx = (pose.sx ?? 1) * this.squashX;
     const sy = (pose.sy ?? 1) * this.squashY;
-    this.container.setScale(this.facing * this.scale * sx, this.scale * sy);
+    this.spread(this.orderFacing * this.scale * sx, this.scale * sy);
+    this.container.setScale(this.shown * this.scale * sx, this.scale * sy);
     this.container.setRotation(this.extraRot * this.facing);
+  }
+
+  /**
+   * The limbs' depth inside the figure (paper stage only): a part `d` world
+   * px before the figure's plane shows (x − eye) · d / (eye's distance)
+   * further out from the eye's line, so near and far limbs part a little
+   * off the middle of the picture. (kx, ky: the figure's scale.)
+   */
+  private spread(kx: number, ky: number): void {
+    const paper = this.paper;
+    if (!paper || !kx || !ky) return;
+    const c = this.container;
+    const lens = paper.lens;
+    const d = lens.eye.z - paper.planes.zOf(c);
+    if (d <= 1) return;
+    const wx = (c.x - lens.eye.x) / d / kx;
+    const wy = (c.y - (this.standH || 120) / 2 - lens.eye.y) / d / ky;
+    for (const j of this.ordered) {
+      if (!j.side) continue;
+      const img = this.images.get(j.id);
+      if (!img) continue;
+      const dz = isNear(j, this.orderFacing) ? SPREAD : -SPREAD;
+      img.x += dz * wx;
+      img.y += dz * wy;
+    }
   }
 
   setPosition(x: number, y: number): void {
@@ -389,6 +511,8 @@ export class RigView {
   destroy(): void {
     for (const s of this.contact) this.paper?.removeShadow(s);
     this.contact = [];
+    if (this.cast) this.paper?.removeCast(this.cast);
+    this.cast = null;
     this.container.destroy(true);
     this.images.clear();
   }

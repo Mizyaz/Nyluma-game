@@ -190,7 +190,7 @@ export class WorldScene extends Phaser.Scene {
     this.player = new Player(this, cp.x, cp.y, kind, form);
     // Gorti's screen face glows: a soft pink light goes with him.
     const pl = this.player;
-    this.paper.lighting.add({ x: 0, y: 0, z: 40, color: 0xff86d6, radius: 320, intensity: 0.8, follow: () => (pl.rig.container.visible ? { x: pl.x + pl.facing * 10, y: pl.feetY - 108 } : null) });
+    this.paper.lighting.add({ x: 0, y: 0, z: 40, color: 0xff86d6, radius: 320, intensity: 0.8, cast: false, follow: () => (pl.rig.container.visible ? { x: pl.x + pl.facing * 10, y: pl.feetY - 108 } : null) });
     this.player.setFacing(cp.facing ?? 1);
     this.physics.add.collider(this.player.zone, this.room.group);
 

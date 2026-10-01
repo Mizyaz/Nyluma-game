@@ -34,11 +34,12 @@ function moodFor(_room: RoomDef): Mood {
 
 /** The light a prop gives, if it is a light: crystals glow, lamps burn, windows let the night in. */
 export function propLight(key: string): Omit<PaperLight, 'x' | 'y' | 'z'> | null {
-  if (key.startsWith('prop.crystaltree')) return { color: 0xc6a8ff, radius: 380, intensity: key.endsWith('bloom') ? 0.95 : 0.7 };
+  // Crystals glow: they light what is near, too low and soft to throw shadows.
+  if (key.startsWith('prop.crystaltree')) return { color: 0xc6a8ff, radius: 380, intensity: key.endsWith('bloom') ? 0.95 : 0.7, cast: false };
   if (key.startsWith('prop.crystals.')) {
     const hue = key.slice('prop.crystals.'.length);
     const color = hue === 'teal' ? 0x8ff0dc : hue === 'orange' ? 0xffb27a : 0x9ab8ff;
-    return { color, radius: 260, intensity: 0.75 };
+    return { color, radius: 260, intensity: 0.75, cast: false };
   }
   if (key === 'p1.lamp') return { color: 0xffd59a, radius: 560, intensity: 1, flicker: 0.08 };
   if (key === 'p1.window') return { color: 0xcfdcff, radius: 820, intensity: 0.75 };
