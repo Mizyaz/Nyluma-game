@@ -87,6 +87,8 @@ export class RoomRuntime {
   private chunks: ChunkDesc[] = [];
   private streamed = false;
   private texKeys = new Set<string>();
+  /** The scenery painted on the back wall (see buildBackground). */
+  private backdrop: Phaser.GameObjects.Image[] = [];
   latentActive = false;
   /** Whales swimming where the wooden and root jumps were. */
   whales: WhalePlatforms | null = null;
@@ -179,6 +181,12 @@ export class RoomRuntime {
       const [c, ctx] = artCanvas(Math.max(2, tw), Math.max(2, th));
       ctx.scale(res, res);
       ctx.translate(-pi * pieceW, 0);
+      // The sky first: the layers leave it open.
+      const sky = ctx.createLinearGradient(0, 0, 0, h);
+      sky.addColorStop(0, theme.sky[0]);
+      sky.addColorStop(1, theme.sky[1]);
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, w, h);
       layers.forEach((layer, li) => layer.draw(ctx, { w, h, horizon }, new Rng(hashSeed(`${this.def.id}:layer:${li}`))));
       const key = `bg:${this.def.id}:${pi}`;
       if (this.scene.textures.exists(key)) this.scene.textures.remove(key);
@@ -187,7 +195,13 @@ export class RoomRuntime {
       const img = this.scene.add.image(box.x0 + pi * pieceW, box.top, key).setOrigin(0, 0).setScale(1 / res);
       img.setDepth(DEPTH.sky);
       this.paper.planes.put(img, z);
+      this.backdrop.push(img);
     }
+  }
+
+  /** Evening falls on the scenery (the sun has gone down). */
+  dusk(): void {
+    for (const img of this.backdrop) img.setTint(0x8a7a98);
   }
 
   // ------------------------------------------------------------ solids

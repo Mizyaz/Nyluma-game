@@ -8,21 +8,24 @@ import type { Lens } from './lens';
 // picture gets true perspective. Cameras draw far to near, so a nearer
 // plane always covers a farther one; inside a plane, depth orders as usual.
 //
-// Every camera snaps each quad to whole device pixels. With art printed at
-// the plane's own scale (press.ts), one texel lands on one pixel.
+// Every camera rounds to whole device pixels the quads that land on the
+// screen at their own size: with art printed at the plane's own scale
+// (press.ts), one texel lands on one pixel.
 
-/** A camera that keeps quads on whole device pixels at any zoom. */
+/** A camera looking at one depth. */
 export class PlaneCamera extends Phaser.Cameras.Scene2D.Camera {
   /** The depth it looks at (world px; 0 = the actors' plane). */
   z = 0;
   /** Fixed to the screen: 1280 × 720 game units covering the picture. */
   screen = false;
+  /** Where it draws among the others (its depth, or a hair after it). */
+  order = 0;
+  /** The shape it is cut to (see `Planes.clip`). */
+  clipShape: Phaser.GameObjects.Graphics | null = null;
 
-  override preRender(): void {
-    super.preRender();
-    // Phaser only snaps at whole-number zooms; quads are snapped by their
-    // top-left corner, so a printed card keeps its exact size.
-    (this as { renderRoundPixels: boolean }).renderRoundPixels = true;
+  constructor(x: number, y: number, width: number, height: number) {
+    super(x, y, width, height);
+    this.roundPixels = true;
   }
 }
 
@@ -70,38 +73,50 @@ export class Planes {
     return this.byZ.get(k) ?? this.make(k);
   }
 
-  /** A camera of its own, drawn in depth order with the planes (the box's shaders use these). */
+  /** The plane's camera, kept in the plane table (the screen's is not). */
   private make(z: number): PlaneCamera {
-    const { width, height } = this.scene.scale;
-    const cam = new PlaneCamera(0, 0, width, height);
-    cam.z = z;
-    cam.transparent = true;
-    cam.setScene(this.scene);
-    const added = this.scene.cameras.addExisting(cam, false);
-    if (!added || !cam.id) throw new Error('paper: out of cameras (31 planes at most)');
+    const cam = this.add(z, z, !Number.isFinite(z));
     if (Number.isFinite(z)) this.byZ.set(z, cam);
-    this.sortCameras();
-    this.dirty = true;
     return cam;
   }
 
-  /** A camera drawn between the planes at an exact depth, outside the plane table. */
+  /** A camera drawn between the planes at an exact depth, in screen space, outside the plane table (the box's shaders use these). */
   layer(z: number): PlaneCamera {
+    return this.add(z, z, true);
+  }
+
+  /**
+   * A camera of the plane at depth z that shows only what is put on it
+   * (`placeOn`), cut to `shape`: a Graphics in the plane's world
+   * coordinates that is not on the display list. WebGL cuts with the
+   * camera's mask filter; the Canvas renderer has no camera filters, so
+   * there each object put on it gets a geometry mask instead.
+   */
+  clip(z: number, shape: Phaser.GameObjects.Graphics): PlaneCamera {
+    const k = key(z);
+    const cam = this.add(k, k + 0.5, false);
+    cam.clipShape = shape;
+    if (this.scene.game.renderer.type === Phaser.WEBGL) cam.filters?.internal.addMask(shape, false, cam);
+    return cam;
+  }
+
+  private add(z: number, order: number, screen: boolean): PlaneCamera {
     const { width, height } = this.scene.scale;
     const cam = new PlaneCamera(0, 0, width, height);
     cam.z = z;
-    cam.screen = true;
+    cam.order = order;
+    cam.screen = screen;
     cam.transparent = true;
     cam.setScene(this.scene);
     const added = this.scene.cameras.addExisting(cam, false);
-    if (!added || !cam.id) throw new Error('paper: out of cameras (31 planes at most)');
+    if (!added || !cam.id) throw new Error('paper: out of cameras (31 at most)');
     this.sortCameras();
     this.dirty = true;
     return cam;
   }
 
   private sortCameras(): void {
-    this.scene.cameras.cameras.sort((a, b) => (a as PlaneCamera).z - (b as PlaneCamera).z);
+    this.scene.cameras.cameras.sort((a, b) => (a as PlaneCamera).order - (b as PlaneCamera).order);
   }
 
   /** Stands an object in the plane at depth z. */
@@ -117,6 +132,8 @@ export class Planes {
     // simply drawn at its game-units place.
     if (cam.screen && obj.setScrollFactor) obj.setScrollFactor(1);
     obj.cameraFilter = this.mask() & ~cam.id;
+    const maskable = obj as unknown as Partial<Phaser.GameObjects.Components.Mask>;
+    if (cam.clipShape && this.scene.game.renderer.type !== Phaser.WEBGL && maskable.setMask) maskable.setMask(cam.clipShape.createGeometryMask());
     return obj;
   }
 
@@ -147,7 +164,7 @@ export class Planes {
       const cam = c as PlaneCamera;
       if (cam.width !== W || cam.height !== H) cam.setSize(W, H);
       if (cam.screen) {
-        if (cam === this.screen || !Number.isFinite(cam.z)) {
+        if (cam === this.screen) {
           cam.setZoom(cover);
           cam.setScroll(SCREEN_W / 2 - W / 2, SCREEN_H / 2 - H / 2);
         } else {

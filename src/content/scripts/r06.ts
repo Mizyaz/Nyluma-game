@@ -68,7 +68,6 @@ export function r06(w: WorldScene): RoomScript {
         cs.caption(CAPTIONS.grow, 5000);
         p.lock(true, 'transform');
         drips?.start();
-        const cam = w.cameras.main;
         const prog = { s: 1 };
         await cs.tween({
           targets: prog,
@@ -79,7 +78,7 @@ export function r06(w: WorldScene): RoomScript {
             p.rig.scale = prog.s;
           },
         });
-        if (!app.settings.reducedMotion) cam.zoomTo(w.baseZoom * 0.8, 900);
+        if (!app.settings.reducedMotion) void w.zoomTo(w.baseZoom * 0.8, 900);
         await cs.wait(900);
         cs.caption(CAPTIONS.control, 4600);
         w.shake(0.005, 1200);
@@ -88,7 +87,7 @@ export function r06(w: WorldScene): RoomScript {
         await cs.tween({ targets: prog, s: 1, duration: 900, ease: 'Cubic.easeIn', onUpdate: () => (p.rig.scale = prog.s) });
         drips?.stop();
         await new Promise<void>((res) => (cs.skipped ? res() : w.transform('root', res)));
-        cam.zoomTo(w.baseZoom, 700);
+        void w.zoomTo(null, 700);
         cs.caption(CAPTIONS.onlyRise, 4600);
         await cs.wait(1200);
       },
@@ -96,7 +95,7 @@ export function r06(w: WorldScene): RoomScript {
         const p = w.player;
         p.rig.scale = 1;
         drips?.stop();
-        w.cameras.main.setZoom(w.baseZoom);
+        void w.zoomTo(null, 0);
         if (p.form !== 'root') {
           p.setForm('root');
           w.quest.setForm('root');

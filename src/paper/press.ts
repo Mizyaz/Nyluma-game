@@ -43,7 +43,7 @@ export interface Print {
   scale: number;
 }
 
-const printKey = (key: string, scale: number): string => `paper:${key}@${scale.toFixed(4)}`;
+const printKey = (key: string, scale: number): string => `paper:${key}@${scale.toFixed(6)}`;
 
 /** The scale a part prints at, under the side limit. */
 export function fitScale(p: { w: number; h: number }, scale: number, max = MAX_SIDE): number {
@@ -141,6 +141,10 @@ export class Press {
     if (part) img.setOrigin((ox * part.w) / p.w, (oy * part.h) / p.h);
     const k = worldScale / p.scale;
     img.setScale(k * Math.sign(img.scaleX || 1), k * Math.sign(img.scaleY || 1));
+    // Shown one texel to one pixel (the camera's zoom undoes the print's
+    // scale), its corners go to whole pixels; zoomed or turned, they don't.
+    img.willRoundVertices = (camera: Phaser.Cameras.Scene2D.Camera): boolean =>
+      camera.roundPixels && img.rotation === 0 && Math.abs(camera.zoom * Math.abs(img.scaleX) - 1) < 1e-6 && Math.abs(camera.zoom * Math.abs(img.scaleY) - 1) < 1e-6;
     return true;
   }
 
@@ -165,7 +169,7 @@ class WaitFile extends Phaser.Loader.File {
     key: string,
     private readonly job: Promise<unknown>,
   ) {
-    super(loader, { type: 'paperWait', key, url: `paper-wait:${key}` });
+    super(loader, { type: 'paperWait', cache: false, key, url: `paper-wait:${key}` });
   }
 
   override load(): void {

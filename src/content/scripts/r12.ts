@@ -75,7 +75,7 @@ export function r12(w: WorldScene): RoomScript {
         p.lock(true, 'idle');
         p.setVisible(false);
         w.camTo(2150, 500);
-        w.cameras.main.centerOn(2150, 500);
+        w.paper.snap();
         await cs.wait(800);
         app.audio.sfx('stamp');
         w.shake(0.012, 260);
@@ -139,8 +139,8 @@ export function r12(w: WorldScene): RoomScript {
             w.flag('r12.sold', false);
             w.quest.markEnding();
             persist();
-            w.cameras.main.fadeOut(1400, 15, 13, 24);
-            w.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => w.scene.start('ending'));
+            w.paper.screen.fadeOut(1400, 15, 13, 24);
+            w.paper.screen.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => w.scene.start('ending'));
           },
           false,
         );

@@ -120,17 +120,6 @@ body {
   box-shadow: 0 0 0 var(--lw) var(--line), 3px 5px 0 var(--lw) var(--shade);
 }
 
-/* The paper diorama (three.js) lies under Phaser's canvas, on the same box
-   (the stage copies its size and place), and never takes input. Below
-   everything in #app (a stacking context of its own): Phaser's canvas and
-   the overlays keep their order. */
-#game > canvas.stage3d {
-  position: absolute;
-  z-index: -1;
-  pointer-events: none;
-  box-shadow: none;
-}
-
 /* The stage overlay tracks the letterboxed canvas rectangle. */
 #stage {
   position: absolute;

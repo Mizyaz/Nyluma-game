@@ -6,7 +6,7 @@ import { frameRef, hasFrame } from '../../render/2d/TextureFactory';
 import { P1 } from '../art/painting1';
 import { CAPTIONS, DIALOGUE } from '../data/dialogue.tr';
 import { PAINTINGS } from '../data/paintings';
-import { BOX, ROOM_W, WIDE, WIDE_TOP } from '../rooms/r01Stage';
+import { WIDE } from '../rooms/r01Stage';
 import type { CinemaScene } from '../../engine/scenes/CinemaScene';
 import type { WorldScene } from '../../engine/scenes/WorldScene';
 import { GemPortal } from '../../render/2d/fx/gemPortal';
@@ -149,9 +149,7 @@ export function r01(w: WorldScene): RoomScript {
   const openBounds = (open: boolean): void => {
     if (open === wideBounds) return;
     wideBounds = open;
-    const cam = w.cameras.main;
-    if (open) cam.setBounds(0, WIDE_TOP, ROOM_W, w.def.height - WIDE_TOP);
-    else cam.setBounds(0, 0, w.def.width, w.def.height);
+    // The paper stage keeps the eye inside the box by itself.
   };
 
   /**
@@ -161,19 +159,12 @@ export function r01(w: WorldScene): RoomScript {
   const showPainting = (): void => {
     const art = PAINTINGS.stranger;
     if (!w.textures.exists(art.key)) return;
-    const z = WIDE.zoom;
-    // Screen → object space of a scroll-less object under this zoom.
-    const at = (sx: number, sy: number): [number, number] => [VIEW_W / 2 + (sx - VIEW_W / 2) / z, VIEW_H / 2 + (sy - VIEW_H / 2) / z];
-    const boxTop = (BOX.lidBack - WIDE_TOP) * z;
-    const boxBottom = (BOX.bottom - WIDE_TOP) * z;
-    // The painting's box runs from y 245 to 745 of its 897 px.
+    // On the screen camera (1280 × 720 game units covering the picture): the
+    // painting fills the screen's height, on its stone ground.
     const src = w.textures.get(art.key).getSourceImage() as { width: number; height: number };
-    const k = (boxBottom - boxTop) / ((500 / 897) * src.height);
-    const top = boxTop - (245 / 897) * src.height * k;
-    const [cx, cy] = at(VIEW_W / 2, top + (src.height * k) / 2);
-    const [gx, gy] = at(VIEW_W / 2, VIEW_H / 2);
-    const ground = w.add.rectangle(gx, gy, VIEW_W / z + 8, VIEW_H / z + 8, hex(P1.stone)).setScrollFactor(0).setDepth(DEPTH.overlay + 5);
-    const pic = w.add.image(cx, cy, art.key).setScrollFactor(0).setDepth(DEPTH.overlay + 6).setScale(k / z);
+    const k = VIEW_H / src.height;
+    const ground = w.add.rectangle(VIEW_W / 2, VIEW_H / 2, VIEW_W * 3, VIEW_H * 3, hex(P1.stone)).setScrollFactor(0).setDepth(DEPTH.overlay + 5);
+    const pic = w.add.image(VIEW_W / 2, VIEW_H / 2, art.key).setScrollFactor(0).setDepth(DEPTH.overlay + 6).setScale(k);
     overlay = [ground, pic];
   };
 
@@ -211,7 +202,7 @@ export function r01(w: WorldScene): RoomScript {
     openBounds(true);
     void w.zoomTo(WIDE.zoom, 0);
     w.camTo(WIDE.x, WIDE.y);
-    w.cameras.main.centerOn(WIDE.x, WIDE.y);
+    w.paper.snap();
     for (const img of foreground()) img.setAlpha(0);
     showPainting();
     later(OPENING.dissolveAt, () => dissolvePainting(OPENING.dissolve));

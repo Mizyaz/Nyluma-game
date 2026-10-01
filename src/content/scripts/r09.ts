@@ -41,11 +41,7 @@ export function r09(w: WorldScene): RoomScript {
           strips.push(s);
         }
         app.audio.sfx('paper');
-        const cam = w.cameras.main;
-        if (!app.settings.reducedMotion) {
-          cam.zoomTo(w.baseZoom * 1.25, 1600);
-          cam.rotateTo(0.04, false, 1600);
-        }
+        if (!app.settings.reducedMotion) void w.zoomTo(w.baseZoom * 1.25, 1600);
         await Promise.all(strips.map((s, i) => cs.tween({ targets: s, x: VIEW_W / 2, duration: 900 + i * 120, ease: 'Cubic.easeInOut' })));
         await cs.wait(400);
       },

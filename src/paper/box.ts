@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import type { Lens } from './lens';
+import { Lens } from './lens';
 
 // The paper box every room is staged in, drawn in true perspective by two
 // shaders that cast a ray through each device pixel:
@@ -60,7 +60,7 @@ export interface BoxSpec {
   paper?: { grain: number; hatch: number; spacing: number };
 }
 
-const rgb = (c: number): { x: number; y: number; z: number } => ({ x: ((c >> 16) & 255) / 255, y: ((c >> 8) & 255) / 255, z: (c & 255) / 255 });
+const rgb = (c: number): [number, number, number] => [((c >> 16) & 255) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255];
 
 const MAX_GAPS = 6;
 export const MAX_SHADOWS = 24;
@@ -71,7 +71,9 @@ precision highp float;
 #else
 precision mediump float;
 #endif
-uniform vec2 resolution;
+// The quad's texture coordinates (GL convention: y up) and the screen's size, device px.
+varying vec2 outTexCoord;
+uniform vec2 uView;
 uniform vec4 uLens;
 uniform vec3 uEye;
 uniform vec4 uBox;
@@ -158,7 +160,7 @@ float segDist(vec2 p, vec4 s) {
 }
 
 void main() {
-  vec2 q = vec2(gl_FragCoord.x, uLens.w - gl_FragCoord.y);
+  vec2 q = vec2(outTexCoord.x * uView.x, (1.0 - outTexCoord.y) * uView.y);
   float f = uLens.x;
   vec3 d = vec3((q.x - uLens.y) / f, (q.y - uLens.z) / f, -1.0);
   float x0 = uBox.x;
@@ -270,7 +272,7 @@ float hole(vec2 p) {
 }
 
 void main() {
-  vec2 q = vec2(gl_FragCoord.x, uLens.w - gl_FragCoord.y);
+  vec2 q = vec2(outTexCoord.x * uView.x, (1.0 - outTexCoord.y) * uView.y);
   float f = uLens.x;
   vec2 d = vec2((q.x - uLens.y) / f, (q.y - uLens.z) / f);
   float tf = uEye.z - uDepth.y;
@@ -314,6 +316,8 @@ export class PaperBox {
   private readonly gap = new Float32Array(MAX_GAPS * 4);
   /** Ink width of the box's edges, device px. */
   inkWidth = 4;
+  /** The lens of the last update (the shaders read it when they draw). */
+  private lens = new Lens();
 
   constructor(
     scene: Phaser.Scene,
@@ -331,46 +335,71 @@ export class PaperBox {
     const id = ++shaderSeq;
     const c = spec.colors;
     const paperU = spec.paper ?? { grain: 0.06, hatch: 0.22, spacing: 16 };
-    const common = {
-      uLens: { type: '4f', value: { x: 1, y: 0, z: 0, w: 1 } },
-      uEye: { type: '3f', value: { x: 0, y: 0, z: 1 } },
-      uBox: { type: '4f', value: { x: spec.x0, y: spec.x1, z: spec.top, w: spec.floor } },
-      uDepth: { type: '4f', value: { x: spec.back, y: spec.front, z: 0, w: 0 } },
-      uPaper: { type: '4f', value: { x: paperU.grain, y: paperU.hatch, z: paperU.spacing, w: (spec.tear.seed % 97) * 0.37 } },
-      uInk: { type: '3f', value: rgb(c.ink) },
-      uInkW: { type: '1f', value: this.inkWidth },
-    };
-    const inside = new Phaser.Display.BaseShader(`paper.inside.${id}`, INSIDE_FRAG(deriv), undefined, {
-      ...common,
-      uBack: { type: '3f', value: rgb(c.back) },
-      uFloor: { type: '3f', value: rgb(c.floor) },
-      uSide: { type: '3f', value: rgb(c.side) },
-      uCeil: { type: '3f', value: rgb(c.ceiling) },
-      uEdge: { type: '3f', value: rgb(c.edge) },
-      uLid: { type: '3f', value: rgb(c.lid) },
-      uOutside: { type: '3f', value: rgb(c.outside) },
-      uPit: { type: '3f', value: rgb(c.pit) },
-      uSeg: { type: '4fv', value: this.seg },
-      uGap: { type: '4fv', value: this.gap },
-      uGaps: { type: '1f', value: 0 },
-      uShadow: { type: '4fv', value: this.shadows },
-      uShadows: { type: '1f', value: 0 },
-    });
     const t = spec.tear;
-    const front = new Phaser.Display.BaseShader(`paper.front.${id}`, FRONT_FRAG(deriv), undefined, {
-      ...common,
-      uOuter: { type: '3f', value: rgb(c.outer) },
-      uCore: { type: '3f', value: rgb(c.core) },
-      uTear: { type: '4f', value: { x: t.top, y: t.bottom, z: t.left, w: t.right } },
-      uTear2: { type: '4f', value: { x: t.wander, y: t.jag, z: (t.seed % 101) * 1.37, w: 0 } },
-      uBottom: { type: '1f', value: spec.bottom },
-    });
-    const { width, height } = scene.scale;
-    this.inside = scene.add.shader(inside, 0, 0, width, height).setOrigin(0, 0);
-    this.frontFace = scene.add.shader(front, 0, 0, width, height).setOrigin(0, 0);
+    type Set = (name: string, value: unknown) => void;
+    // Every uniform, every draw (the program skips the ones that did not change).
+    const common = (set: Set): void => {
+      const L = this.lens;
+      set('uView', [L.w, L.h]);
+      set('uLens', [L.f, L.cx, L.cy, L.h]);
+      set('uEye', [L.eye.x, L.eye.y, L.eye.z]);
+      set('uBox', [spec.x0, spec.x1, spec.top, spec.floor]);
+      set('uDepth', [spec.back, spec.front, 0, 0]);
+      set('uPaper', [paperU.grain, paperU.hatch, paperU.spacing, (t.seed % 97) * 0.37]);
+      set('uInk', rgb(c.ink));
+      set('uInkW', this.inkWidth);
+    };
     const gaps = (spec.gaps ?? []).slice(0, MAX_GAPS);
     gaps.forEach(([a, b], i) => this.gap.set([a, b, 0, 0], i * 4));
-    this.inside.setUniform('uGaps.value', gaps.length);
+    const { width, height } = scene.scale;
+    this.inside = scene.add
+      .shader(
+        {
+          name: `paper.inside.${id}`,
+          fragmentSource: INSIDE_FRAG(deriv),
+          setupUniforms: (set: Set) => {
+            common(set);
+            set('uBack', rgb(c.back));
+            set('uFloor', rgb(c.floor));
+            set('uSide', rgb(c.side));
+            set('uCeil', rgb(c.ceiling));
+            set('uEdge', rgb(c.edge));
+            set('uLid', rgb(c.lid));
+            set('uOutside', rgb(c.outside));
+            set('uPit', rgb(c.pit));
+            set('uSeg[0]', this.seg);
+            set('uGap[0]', this.gap);
+            set('uGaps', gaps.length);
+            set('uShadow[0]', this.shadows);
+            set('uShadows', this.shadowCount);
+          },
+        },
+        0,
+        0,
+        width,
+        height,
+      )
+      .setOrigin(0, 0);
+    this.frontFace = scene.add
+      .shader(
+        {
+          name: `paper.front.${id}`,
+          fragmentSource: FRONT_FRAG(deriv),
+          setupUniforms: (set: Set) => {
+            common(set);
+            set('uOuter', rgb(c.outer));
+            set('uCore', rgb(c.core));
+            set('uTear', [t.top, t.bottom, t.left, t.right]);
+            set('uTear2', [t.wander, t.jag, (t.seed % 101) * 1.37, 0]);
+            set('uBottom', spec.bottom);
+          },
+        },
+        0,
+        0,
+        width,
+        height,
+      )
+      .setOrigin(0, 0);
   }
 
   /** Before each frame: the lens, the inked corners, the shadows. */
@@ -379,18 +408,9 @@ export class PaperBox {
       this.drawFlat(lens, this.flat.inside, this.flat.front);
       return;
     }
+    this.lens = lens;
     const { w, h } = lens;
-    for (const sh of [this.inside, this.frontFace] as Phaser.GameObjects.Shader[]) {
-      if (sh.width !== w || sh.height !== h) sh.setSize(w, h);
-      sh.setUniform('uLens.value.x', lens.f);
-      sh.setUniform('uLens.value.y', lens.cx);
-      sh.setUniform('uLens.value.z', lens.cy);
-      sh.setUniform('uLens.value.w', h);
-      sh.setUniform('uEye.value.x', lens.eye.x);
-      sh.setUniform('uEye.value.y', lens.eye.y);
-      sh.setUniform('uEye.value.z', lens.eye.z);
-      sh.setUniform('uInkW.value', this.inkWidth);
-    }
+    for (const sh of [this.inside, this.frontFace] as Phaser.GameObjects.Shader[]) if (sh.width !== w || sh.height !== h) sh.setSize(w, h);
     // The eight inside corners of the box, on screen.
     const s = this.spec;
     const P = (x: number, y: number, z: number): [number, number] => {
@@ -412,7 +432,6 @@ export class PaperBox {
       const pb = P(b[0], b[1], b[2]);
       this.seg.set([pa[0], pa[1], pb[0], pb[1]], i * 4);
     });
-    (this.inside as Phaser.GameObjects.Shader).setUniform('uShadows.value', this.shadowCount);
   }
 
   /** The box in flat colours (no grain, no tear): for the Canvas renderer. */

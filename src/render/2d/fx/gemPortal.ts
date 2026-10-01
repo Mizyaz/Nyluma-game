@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import { app } from '../../../engine/App';
 import { GemArt, GEM_HUES } from './gemArt';
+import type { PaperStage } from '../../../paper';
 
 // A small living mouth of the gem tunnel, set into a wall where a room's
 // way on begins: square frames of pastel gems stream out of its depth and
@@ -72,7 +73,10 @@ export class GemPortal {
     this.mask = scene.make.graphics({}, false);
     this.mask.fillStyle(0xffffff, 1);
     arch(this.mask, 6);
-    this.root.setMask(this.mask.createGeometryMask());
+    // Cut to the arch: on the paper stage, a camera of the actors' plane cut to it.
+    const paper = (scene as { paper?: PaperStage }).paper;
+    if (paper) paper.planes.placeOn(this.root, paper.planes.clip(0, this.mask));
+    else if (scene.game.renderer.type !== Phaser.WEBGL) this.root.setMask(this.mask.createGeometryMask());
     this.update(0);
   }
 

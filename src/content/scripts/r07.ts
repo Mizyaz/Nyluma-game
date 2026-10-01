@@ -125,7 +125,8 @@ export function r07(w: WorldScene): RoomScript {
   const restart = (): void => {
     if (restarting) return;
     restarting = true;
-    const cam = w.cameras.main;
+    // Fades go on the screen camera, drawn over every plane.
+    const cam = w.paper.screen;
     cam.fadeOut(300, 15, 13, 24);
     cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       const cp = w.def.checkpoints.find((c) => c.id === w.quest.progress.checkpoint) ?? w.def.checkpoints[0]!;
@@ -187,7 +188,6 @@ export function r07(w: WorldScene): RoomScript {
         if (hoofCount % 9 === 0) fish.spawn(x - 30, y - 6, -100 - Math.random() * 60, -380 - Math.random() * 80, 1.6);
       };
       w.camTo(cp.x + 360, RIDE_GROUND_Y - 200);
-      w.cameras.main.setDeadzone(40, 60);
       if (w.quest.set('r07.enter')) {
         app.ui.hud.caption(CAPTIONS.r07enter, 5000);
         w.time.delayedCall(2500, () => app.ui.hud.toast(JUMPING ? 'Boşluk: zıpla  ·  ← →: hızını ayarla' : '← →: hızını ayarla', 5200));

@@ -36,7 +36,8 @@ export class StoneFrame {
 
   /** Keeps it screen-sized under the camera's zoom (call every frame). */
   update(): void {
-    this.img.setScale(1 / (RES * this.scene.cameras.main.zoom));
+    // A screen overlay: drawn by the screen camera in 1280 × 720 units.
+    this.img.setScale(1 / RES);
   }
 
   destroy(): void {

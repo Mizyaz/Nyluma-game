@@ -155,7 +155,6 @@ const CANVAS_BACKGROUND: Detail = { fewerFrames: 1, size: 0.55, sides: false };
  * Screen-space layer; camera zoom is compensated.
  */
 export class CrystalWarp {
-  private readonly scene: Phaser.Scene;
   private readonly art: GemArt;
   private readonly tunnel: ZoomTunnel;
   private readonly spec: FrameSpec;
@@ -187,7 +186,6 @@ export class CrystalWarp {
     depth: number,
     additive = false,
   ) {
-    this.scene = scene;
     this.speed = look.speed;
     this.alpha = look.alpha;
     this.depth = depth;
@@ -225,7 +223,8 @@ export class CrystalWarp {
     this.tunnel.advance(this.speed * dt);
     if (!this.calm) this.turn += SPIN * dt;
     if (!this.visible) return;
-    const zoom = this.scene.cameras.main.zoom || 1;
+    // Screen-fixed (drawn in 1280 × 720 units by the screen camera).
+    const zoom = 1;
     const outer = (OUTER * this.spread) / zoom;
     // The far end of the tunnel drifts a little.
     const bendX = this.calm ? 0 : (Math.sin(this.t * 0.23) * 90) / zoom;

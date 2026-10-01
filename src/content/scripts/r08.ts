@@ -174,7 +174,7 @@ export function r08(w: WorldScene): RoomScript {
           cs.caption(CAPTIONS.sunFall, 5200);
           await cs.tween({ targets: s.c, y: 900, alpha: 0.2, duration: 2800, ease: 'Sine.easeIn' });
         }
-        w.cameras.main.setBackgroundColor('#2d2338');
+        w.room.dusk();
         await cs.wait(600);
         await new Promise<void>((res) => (cs.skipped ? res() : w.transform('root', res)));
         await cs.wait(900);
@@ -239,7 +239,7 @@ export function r08(w: WorldScene): RoomScript {
       if (st.phase === 'done') {
         sun?.c.setVisible(false);
         sparrow = new Sparrow(w, 1080, 560, DEPTH.actors + 3);
-        w.cameras.main.setBackgroundColor('#2d2338');
+        w.room.dusk();
       }
       w.onCleanup(() => {
         sun?.destroy();

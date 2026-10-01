@@ -6,6 +6,7 @@ import { CAST_NAMES, type CastId } from '../cinematics/castNames';
 import type { Portrait, PortraitWindow } from '../cinematics/portraits';
 import { voiceOf } from '../cinematics/voice';
 import { fitScene } from '../../paper/screen';
+import { ClipView } from '../../paper/clip';
 
 export interface CinemaData {
   cast: readonly CastId[];
@@ -17,7 +18,6 @@ interface Slot {
   id: CastId;
   win: PortraitWindow;
   portrait: Portrait;
-  mask: Phaser.GameObjects.Graphics;
   /** Dark veil over a listener's window. */
   veil: Phaser.GameObjects.Rectangle;
   /** 0 listening … 1 speaking (eased). */
@@ -34,6 +34,8 @@ const INK = 0x4f4557;
  */
 export class CinemaScene extends Phaser.Scene {
   private slots: Slot[] = [];
+  /** The portraits' windows (each portrait is seen only inside its own). */
+  private clip!: ClipView;
   private bars: Phaser.GameObjects.Rectangle[] = [];
   private dim!: Phaser.GameObjects.Rectangle;
   private closing = false;
@@ -49,6 +51,7 @@ export class CinemaScene extends Phaser.Scene {
     // The full height of the screen; wide screens show more at the sides.
     fitScene(this, 'height');
     this.slots = [];
+    this.clip = new ClipView(this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdownSlots());
     this.closing = false;
     this.fade = 0;
@@ -81,16 +84,16 @@ export class CinemaScene extends Phaser.Scene {
     frame.fillStyle(0xf3ead8, 1).fillRoundedRect(win.cx - half, win.cy - half, win.size, win.size, 14);
     frame.fillStyle(0xc9cfee, 1).fillCircle(win.cx, win.cy - win.size * 0.05, win.size * 0.36);
     const portrait = CAST[id](this, win);
-    const shape = this.make.graphics({}, false);
-    shape.fillStyle(0xffffff, 1).fillRoundedRect(win.cx - half, win.cy - half, win.size, win.size, 14);
-    portrait.root.setMask(shape.createGeometryMask());
+    this.clip.shape.fillStyle(0xffffff, 1).fillRoundedRect(win.cx - half, win.cy - half, win.size, win.size, 14);
+    this.clip.add(portrait.root);
     const veil = this.add.rectangle(win.cx, win.cy, win.size, win.size, 0xf3ead8, 1).setAlpha(0.45);
+    this.clip.add(veil);
     // A thin soft rim on top of everything.
     const rim = this.add.graphics();
     rim.lineStyle(1.5, INK, 0.75).strokeRoundedRect(win.cx - half - 2, win.cy - half - 2, win.size + 4, win.size + 4, 16);
     rim.lineStyle(1, INK, 0.35).strokeRoundedRect(win.cx - half - 7, win.cy - half - 7, win.size + 14, win.size + 14, 18);
     for (const o of [frame, portrait.root, rim]) o.setData('fadeable', true);
-    return { id, win, portrait, mask: shape, veil, lit: 0 };
+    return { id, win, portrait, veil, lit: 0 };
   }
 
   /** Who is framed where (the dialogue balloon points its tail at the speaker). */
@@ -130,7 +133,6 @@ export class CinemaScene extends Phaser.Scene {
   private shutdownSlots(): void {
     for (const s of this.slots) {
       s.portrait.destroy();
-      s.mask.destroy();
     }
     this.slots = [];
   }

@@ -187,8 +187,6 @@ export class PaperStage {
   }
 }
 
-const round4 = (v: number): number => Math.round(v * 1e4) / 1e4;
-
 /** Device px per world px at depth z, for `actor` at the actors' plane and the eye `dist` from it. */
 export function restScale(actor: number, dist: number, z: number): number {
   return (actor * dist) / (dist - z);
@@ -196,5 +194,5 @@ export function restScale(actor: number, dist: number, z: number): number {
 
 /** The print scale of a part shown `worldScale` large at depth z (see PaperStage.printScale). */
 export function printScaleAt(actor: number, dist: number, z: number, worldScale = 1): number {
-  return round4(worldScale * restScale(actor, dist, z));
+  return worldScale * restScale(actor, dist, z);
 }
