@@ -161,6 +161,38 @@ Conventions:
   their own widths (`L`, `HATCH`) rather than the kit's defaults.
 - `src/ui/LoadingView.ts` is the loading screen. It uses the same faces as inline SVG (`skyFaceSvg`), and a crystal cluster grows with the progress.
 
+### Transitions: the game as a pop-up book
+
+- `WorldScene.goToRoom` launches `WarpScene` with `{chapter, dir, glow, onPeak}`. `onPeak`
+  still restarts the world exactly once, behind the page, and passes it an `Arrival` handshake
+  (`WorldData.arrive`). The world freezes play (input context `none`) until the turn says it is
+  over. A room asked for meanwhile waits for it (`pendingRoom`).
+- Between rooms, `src/ui/PageTurn.ts` grabs the last frame and cuts it into vertical strips of
+  paper. CSS places the strips in 3D along a curling page; the geometry is in `pageCurl.ts`,
+  which is tested. Every motion is a Web Animation on transform and opacity, so the compositor
+  runs it while the next room is built. The turn goes forward from right to left, and back the
+  other way.
+- Under the page the next room's cards stand up from lying flat, far to near, with a spring
+  (`src/paper/popUp.ts`): each plane's camera is squashed upright about its floor line.
+- Gorti's screen glow flies over the turn into his screen (`PageBits.ts`).
+- Between chapters the page turns onto a chapter page (`src/ui/ChapterPage.ts`, art in
+  `src/content/art/chapterArt.ts`):
+  - a torn sheet taped onto the chapter's endpaper;
+  - "BÖLÜM", with the numeral painted on by a brush;
+  - the title from `CHAPTER_TITLES`, letter by letter;
+  - a small moving pop-up picture.
+- The chapter page opens like a gatefold onto the first room. The HUD's chapter card
+  (`areaTitle`) is shown only when no chapter page was. `opensChapter` (GameState) decides
+  when a page is due: new game, chapter select, a save at a chapter start and the ending's
+  replay come in through it too.
+- Reduced motion: a cross-fade through paper (through the chapter page between chapters).
+- No frame could be grabbed: paper is wiped in instead.
+- Everything ends within 8 s whatever happens.
+- To hold a transition on screen in dev, open `/dev/transitions.html`
+  (`?mode=room|chapter&ch=1..6&dir=-1&reduced=1&portrait=1`).
+- `CrystalWarp` in `crystalFx.ts` is no longer used by the transitions. The rooms' background
+  tunnels still use the shared gem-tunnel code.
+
 ## Other pending work
 
 - Adaptive, balanced line art across the game, following the rules above.

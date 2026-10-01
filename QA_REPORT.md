@@ -5,7 +5,79 @@ listeler. Ölçümler aşağıdaki test ortamında alınmıştır; gerçek cihaz
 performansını temsil etmez. İlk bölüm bu sürümün kontrolleridir. Sonraki
 bölümlerdeki sonuçlar önceki sürümlerin oyun kodu içindir.
 
-## Bu sürüm: 1. tablonun gül ağacı, göz-yaprağı ve duvar resimleri, stilize çizim
+## Bu sürüm: sayfa çevirerek oda ve bölüm geçişleri
+
+Bu sürümde değişenler:
+
+- Odadan odaya geçiş artık açılır bir kitabın sayfasını çevirmek gibi.
+  - Ekrandaki son kare kâğıt bir sayfa oluyor. Serbest kenarı kalkıyor,
+    kâğıt kıvrılıp 3B perspektifte dönüyor.
+  - Sayfanın arkası, kıvrımdaki parıltı ve alttaki sayfaya düşen gölgesi
+    görünüyor. Kalkarken kâğıt tozu savruluyor.
+  - Altında yeni odanın kartları yatık hâlden ayağa kalkıyor: arkadakiler
+    önce, öndekiler sonra, her biri biraz yaylanarak.
+  - Gorti'nin pembe ekran ışığı eski sayfadan çıkıp sayfanın üstünden
+    geçiyor ve yeni odada ekranına konuyor.
+  - Hikâyede ileri giderken sayfa sağdan sola, geri giderken soldan sağa
+    dönüyor. Oyun yaklaşık 1,1–1,3 saniye sonra sürüyor.
+- Bölümden bölüme geçişte sayfa, bölümün kendi sayfasına çevriliyor.
+  - Yırtık kenarlı bir kâğıt, bölümün desenli forzasına bantlanmış.
+  - Önce "BÖLÜM" etiketi yapışıyor, sonra roma rakamı fırçayla boyanıyor,
+    bölüm adı harf harf beliriyor.
+  - Yanında bölümün küçük, hareketli açılır resmi duruyor:
+    - I: aralık "14" kapısından bakan Gorti
+    - II: taşın ardında rakun ve uykulu Ay
+    - III: gülen Güneş'in altında dörtnala mor at
+    - IV: nefes alan koğuş yatağı ve titreyen lamba
+    - V: damga vuran ofis masası ve tıkırdayan saat
+    - VI: üç açık kutu ve sallanan ampul
+  - Sayfa ortadan iki kanat gibi açılıp bölümün ilk odasına geçiyor
+    (yaklaşık 2,8–3 sn).
+  - Eski sarı bölüm etiketi yalnızca bu sayfa gösterilmediğinde çıkıyor.
+- Yeni oyun, bölüm seçimi, bölüm başındaki bir kayıt ve sondaki "Yeniden
+  oyna" da bölüm sayfasından giriyor.
+- Hareket azaltma açıkken sayfa dönmüyor, kartlar kalkmıyor. Yerine kâğıt
+  üzerinden kısa bir geçiş var; bölümler arasında bu geçiş bölüm sayfası
+  üzerinden.
+- Son kare alınamazsa ekranın üstüne kâğıt siliniyor. Geçiş ne olursa olsun
+  8 saniyede bitiyor.
+- Sayfanın kalkması, çevrilmesi, kartların kalkması, fırça ve bölüm çanı
+  için yeni sesler eklendi.
+
+Birleştirme commit'i (`23292e9`) üzerinde koşulan kontroller. Oyun kodu
+geçiş dalının commit'i `d698f2c` ile aynı.
+
+| Kontrol | Sonuç |
+| --- | --- |
+| `npm run typecheck` | Hatasız |
+| `npx vitest run` | 18 dosya, 159 test geçti |
+| `npm run kd -- check` | Tamam: 6 bölüm, 4 oda dosyası, 12 TS oda |
+| `npm run build`, `npm run build:e2e` | Başarılı |
+| `npx playwright test --grep-invert @campaign --workers=1` | 25 geçti, 13 atlandı, 10.2 dk |
+
+Atlanan 13 testin 12'si yalnızca `SHOTS=1` ile koşan ekran görüntüsü
+testleri; 1'i `DEV_ROUTE` isteyen geliştirici rotası testi.
+
+Geçiş dalında (`d698f2c`) iki tam kampanya da koşuldu ve ikisi de geçti:
+klavyeyle tam oyun 6.2 dk, telefonda yalnız dokunmayla tam oyun 6.7 dk
+(toplam 12.9 dk).
+
+Görsel kontrol: geçişler kare kare çekildi ve incelendi.
+
+- Oda geçişi r01→r02: 960×540 ve 844×390 ekranda.
+- Bölüm geçişi r03→r04: 960×540 ekranda.
+- 2. bölüm sayfası: 390×844 dik telefonda.
+- 1. bölüme geri dönen sayfa.
+
+Bilinen sorunlar (düzeltiliyor):
+
+- Dönen sayfanın şeritleri arasında ince dikey çizgiler görünüyor.
+- Kıvrım durağan karede düz bir kâğıt panel gibi okunuyor.
+
+Henüz denenmeyenler: gerçek GPU'lu cihaz ve telefon. Yeni seslerin hatasız
+çaldığı doğrulandı, ama kulakla dinlenmedi.
+
+## Önceki sürüm: 1. tablonun gül ağacı, göz-yaprağı ve duvar resimleri, stilize çizim
 
 Bu sürümde değişenler:
 
@@ -51,7 +123,7 @@ Görsel kontrol: ağaç, göz-yaprak ve resimler tek başına 3-4 kat büyütül
 ekranda (ilk oda) incelendi. Ağaç Gorti'nin boyunda. Hepsinin çizgileri ve
 gölgeleri ekran ölçeğinde okunuyor.
 
-## Önceki sürüm: 1. tablonun resimleri, göz-yaprak, Gorti'nin TV yüzü geri döndü
+## Daha önceki sürüm: 1. tablonun resimleri, göz-yaprak, Gorti'nin TV yüzü geri döndü
 
 Bu sürümde eklenenler:
 
@@ -110,7 +182,7 @@ Not: oyun döngüsü elle adımlanınca Gorti başsız tarayıcıda uykudan
 uyanmadı; bu yüzden oyun içi çekimler gerçek zamanlı alındı.
 
 
-## Daha önceki sürüm: kâğıt motoru, ışık kaynakları, duvarlar, derinlikte yürüyüş
+## Daha eski sürüm: kâğıt motoru, ışık kaynakları, duvarlar, derinlikte yürüyüş
 
 Bu sürümde eklenenler:
 
@@ -167,7 +239,7 @@ Bilinen sınırlar: Gorti'nin çizimi oyuncu düzlemi için basılır; derinde b
 etkileşimleri etkilemez: konuşma ve İncele yalnızca x ve y'ye bakar.
 
 
-## Daha eski sürüm: düz odalar, Sivaslı amca, yıkma, bölüm kütüphanesi
+## Daha da eski sürüm: düz odalar, Sivaslı amca, yıkma, bölüm kütüphanesi
 
 Bu sürümde eklenenler:
 
@@ -224,7 +296,7 @@ oyun saniyede 1–2 kare çizer. Karakter değişikliklerinden önceki ve sonrak
 sürüm aynı koşullarda art arda ölçüldü, fark görülmedi. Gerçek cihazlarda
 ölçülmedi.
 
-## Daha da eski sürüm: tablolar, Rezonans, yüz sahneleri, yaylılar, pastel tünel
+## Çok daha eski sürüm: tablolar, Rezonans, yüz sahneleri, yaylılar, pastel tünel
 
 Bu sürümde eklenenler:
 
