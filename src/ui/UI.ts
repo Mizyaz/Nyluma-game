@@ -1,6 +1,5 @@
 import type * as Phaser from 'phaser';
 import { app } from '../engine/App';
-import { VIEW_W } from '../engine/constants';
 import { CAST_NAMES, type CastId } from '../engine/cinematics/castNames';
 import { NAMES } from '../content/data/dialogue.tr';
 import type { Settings } from '../engine/state/types';
@@ -55,8 +54,8 @@ export class UI {
 
   /**
    * Lays the overlay out around the canvas. Landscape (computers, phones held
-   * sideways): the stage is the letterboxed canvas rectangle. Portrait: the
-   * canvas spans the width under a band for the HUD, and the stage is the
+   * sideways): the canvas fills the window and the stage lies on it. Portrait:
+   * the canvas spans the width under a band for the HUD, and the stage is the
    * whole viewport, so texts, panels and menus use the room around the game.
    */
   sync(): void {
@@ -124,14 +123,17 @@ export class UI {
   private speakerX(who: string): number | null {
     const scenes = this.game.scene;
     if (scenes.isActive('cinema')) {
-      const cinema = scenes.getScene('cinema') as unknown as { windows?: readonly { id: CastId; win: { cx: number } }[] };
+      // The face scene's 1280 × 720 layout, as its camera fits it on the canvas.
+      const cinema = scenes.getScene('cinema') as unknown as { windows?: readonly { id: CastId; win: { cx: number } }[]; cameras: { main: { worldView: { x: number; width: number } } } };
       const slot = cinema.windows?.find((s) => CAST_NAMES[s.id] === who);
-      if (slot) return Math.round((slot.win.cx / VIEW_W) * 100) / 100;
+      const view = cinema.cameras.main.worldView;
+      if (slot && view.width > 0) return Math.round(((slot.win.cx - view.x) / view.width) * 100) / 100;
     }
     if (who === NAMES.gorti && scenes.isActive('world')) {
-      const world = scenes.getScene('world') as unknown as { player?: { x: number }; cameras?: { main?: { worldView: { x: number; width: number } } } };
-      const view = world.cameras?.main?.worldView;
-      if (world.player && view && view.width > 0) return Math.round(((world.player.x - view.x) / view.width) * 100) / 100;
+      // Through the paper stage's eye: where he stands on the actors' plane.
+      const world = scenes.getScene('world') as unknown as { player?: { x: number }; paper?: { lens: { w: number; project(x: number, y: number, z: number): { x: number } } } };
+      const lens = world.paper?.lens;
+      if (world.player && lens && lens.w > 0) return Math.round((lens.project(world.player.x, 0, 0).x / lens.w) * 100) / 100;
     }
     return null;
   }

@@ -120,7 +120,7 @@ body {
   box-shadow: 0 0 0 var(--lw) var(--line), 3px 5px 0 var(--lw) var(--shade);
 }
 
-/* The stage overlay tracks the letterboxed canvas rectangle. */
+/* The stage overlay tracks the canvas rectangle. */
 #stage {
   position: absolute;
   left: 0;

@@ -410,17 +410,19 @@ test.describe('layout', () => {
         const t = document.querySelector('.hud-stack')!.getBoundingClientRect();
         return { c: [c.left, c.top, c.width, c.height], s: [s.left, s.top, s.width, s.height], stackTop: t.top, portrait: document.getElementById('app')!.classList.contains('portrait'), sw: document.documentElement.scrollWidth, iw: innerWidth };
       });
-      expect(r.c[2]! / r.c[3]!).toBeCloseTo(16 / 9, 1);
       expect(r.sw).toBeLessThanOrEqual(r.iw);
       if (h > w * 0.9) {
-        // Portrait: full-width game view under the HUD band, texts below it.
+        // Portrait: a 16:9 game view across the width under the HUD band, texts below it.
         expect(r.portrait).toBe(true);
+        expect(r.c[2]! / r.c[3]!).toBeCloseTo(16 / 9, 1);
         expect(Math.abs(r.c[2]! - w)).toBeLessThan(1.5);
         expect(r.c[1]).toBeGreaterThan(40);
         for (const [i, v] of [0, 0, w, h].entries()) expect(Math.abs(r.s[i]! - v)).toBeLessThan(1.5);
         expect(r.stackTop).toBeGreaterThanOrEqual(r.c[1]! + r.c[3]! - 1);
       } else {
+        // Landscape: the game view fills the window, and the overlay lies on it.
         expect(r.portrait).toBe(false);
+        for (const [i, v] of [0, 0, w, h].entries()) expect(Math.abs(r.c[i]! - v)).toBeLessThan(1.5);
         for (let i = 0; i < 4; i++) expect(Math.abs(r.c[i]! - r.s[i]!)).toBeLessThan(1.5);
       }
       await expect(page.locator('.hud')).toBeVisible();
