@@ -43,8 +43,8 @@ export class Npc {
     return Math.abs(px - this.x) < NEAR;
   }
 
-  /** `talk` while its own line types, `listen` through the rest of the talk. */
-  update(dtMs: number, px: number, mode: 'idle' | 'talk' | 'listen'): void {
+  /** `talk` while its own line types, `listen` through the rest of the talk, `laugh` along with Gorti. */
+  update(dtMs: number, px: number, mode: 'idle' | 'talk' | 'listen' | 'laugh'): void {
     this.t += dtMs;
     const near = this.near(px);
     this.rig.setFacing(near || mode !== 'idle' ? (px < this.x ? -1 : 1) : this.facing);

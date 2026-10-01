@@ -22,8 +22,9 @@ export class LaughMove implements Move {
   perform(ctx: MoveContext): void {
     const { player, world } = ctx;
     const c = player.chest();
-    player.pose('laugh', 1.0, true);
-    player.emote('joy', 1500);
+    player.pose('laugh', 1.2, true);
+    player.emote('laugh', 1500);
+    world.laughAlong(1400, 520);
     world.comic.pop(c.x + player.facing * 36, c.y - 130, LAUGHS[Math.floor(Math.random() * LAUGHS.length)]!, 'call', true);
     world.bursts.burst(c.x, c.y + 14, 12);
     app.audio.sfx('pulse', { vol: 0.55, pitch: 1.25 + Math.random() * 0.2 });

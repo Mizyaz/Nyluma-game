@@ -10,7 +10,7 @@ import { ArtPortrait, FacePortrait, RigPortrait, type PortraitFactory } from './
 function gortiRig(): ReturnType<typeof rigFor> {
   const world = app.game.scene.getScene('world') as WorldScene | null;
   const p = world?.player;
-  return p ? rigFor(p.kind, p.form) : rigFor('gorti', 'root');
+  return p ? p.rig.rig : rigFor('gorti', 'root');
 }
 
 /**
@@ -24,6 +24,7 @@ const CLOSE_UP: Record<string, { scale: number; dx: number; dy: number }> = {
   'gorti.root.warrior': { scale: 4.3, dx: 2, dy: 5 },
   'gorti.human': { scale: 3.6, dx: 1, dy: 2 },
   'gorti.human.sun': { scale: 4, dx: 3, dy: 0 },
+  'gorti.human.bald': { scale: 3.6, dx: 2, dy: 2 },
   'gorti.suit': { scale: 3.6, dx: 1, dy: 2 },
   coward: { scale: 3.5, dx: 5, dy: 1 },
   mech: { scale: 4.2, dx: 5, dy: -1 },

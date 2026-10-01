@@ -75,10 +75,13 @@ export class ContentScript implements RoomScript {
     this.syncNpcs();
     const px = this.w.player.x;
     const dlg = app.ui.dialogue;
+    const lt = this.w.laughter;
+    const laughing = lt.left > 0;
     for (const [id, npc] of this.npcs) {
       const name = CAST[this.npcSpec(id)!.who]?.name;
       const inTalk = this.w.narrative.busy && dlg.isOpen && npc.near(px);
-      npc.update(dtMs, px, !inTalk ? 'idle' : dlg.speaker === name && dlg.typing ? 'talk' : 'listen');
+      if (inTalk) npc.update(dtMs, px, dlg.speaker === name && dlg.typing ? 'talk' : 'listen');
+      else npc.update(dtMs, px, laughing && Math.abs(npc.x - px) < lt.reach ? 'laugh' : 'idle');
     }
     if (time - this.hintAt > HINT_EVERY && !this.w.narrative.busy) {
       const ctx = this.w.room.condCtx();

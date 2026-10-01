@@ -17,12 +17,13 @@ import {
 import type { RigDef } from '../render/2d/rig/rigTypes';
 import { humanRigFor, rootRigFor, RIG_GORTI_SUIT } from '../content/characters/gorti';
 import { RIG_COWARD, RIG_MECH } from '../content/characters/forms';
-import { RIG_GORTI_HUMAN, RIG_GORTI_HUMAN_SUN } from '../content/characters/sivasli';
+import { RIG_GORTI_HUMAN, RIG_GORTI_HUMAN_BALD, RIG_GORTI_HUMAN_SUN } from '../content/characters/sivasli';
 import type { SkyOut } from '../engine/content/types';
 import { FocusMeter, bezier } from './AbilitySystem';
 import type { FormId, PlayerKind, RoomId } from '../engine/state/types';
 import { humanoidPose, idleStartFor, styleOf, type Emote, type IdleKind, type PoseParams } from '../render/2d/rig/animPoses';
 import { RigView } from '../render/2d/rig/RigView';
+import { cycleOf, profileOf } from '../render/2d/rig/poseKit';
 
 export type PState = 'normal' | 'reach' | 'song' | 'locked' | 'transform' | 'reform' | 'hidden';
 
@@ -53,10 +54,13 @@ function currentRoom(): RoomId {
  * face when his kahkaha has brought one out.
  */
 const HUMAN_HEADS: Record<SkyOut, RigDef> = {
-  none: RIG_GORTI_HUMAN,
+  none: RIG_GORTI_HUMAN_BALD,
   sun: RIG_GORTI_HUMAN_SUN,
   moon: RIG_GORTI_HUMAN,
 };
+
+/** Poses that play once over the time they are given (Player.pose). */
+const ACTING = new Set(['laugh', 'kahkaha', 'smash']);
 
 export function rigFor(kind: PlayerKind, form: FormId, room: RoomId = currentRoom(), head?: SkyOut): RigDef {
   if (kind === 'coward') return RIG_COWARD;
@@ -416,6 +420,7 @@ export class Player {
 
   private actionAnim: string | null = null;
   private actionT = 0;
+  private actionDur = 1;
   private actionHold = false;
 
   /**
@@ -425,6 +430,7 @@ export class Player {
   pose(anim: string, seconds: number, hold = false): void {
     this.actionAnim = anim;
     this.actionT = seconds;
+    this.actionDur = Math.max(0.01, seconds);
     this.actionHold = hold;
     if (hold) this.body.setVelocityX(0);
   }
@@ -435,19 +441,6 @@ export class Player {
   }
 
   /** Turns the head for a while (negative looks up). */
-  /** Stride length follows the legs of the body he has now (the warrior's are long). */
-  private get legScale(): number {
-    const rig = this.rig.rig;
-    if (rig === this.legRig) return this.legK;
-    const j = (id: string): number => rig.joints.find((x) => x.id === id)?.y ?? 0;
-    const leg = j('shinR') + j('footR');
-    // Tuned on legs of 46 px (the youth's and the old root body's).
-    this.legK = this.kind === 'gorti' && this.form === 'root' && leg > 0 ? Math.max(0.75, Math.min(1.4, leg / 46)) : 1;
-    this.legRig = rig;
-    return this.legK;
-  }
-  private legRig: RigDef | null = null;
-  private legK = 1;
   private visVx = 0;
   private accLean = 0;
 
@@ -549,7 +542,11 @@ export class Player {
     else if (this.state === 'song') anim = 'song';
     else if (this.state === 'transform') anim = 'transform';
     else if (this.state === 'reform') anim = 'collapse';
-    else if (this.actionT > 0 && this.actionAnim && this.onGround) anim = this.actionAnim;
+    else if (this.actionT > 0 && this.actionAnim && this.onGround) {
+      anim = this.actionAnim;
+      // The acting poses ease in and back out over the time they were given.
+      if (ACTING.has(anim)) prm.k = 1 - this.actionT / this.actionDur;
+    }
     else if (!this.onGround) {
       const vy = b.velocity.y;
       prm.vy = vy;
@@ -567,7 +564,8 @@ export class Player {
       prm.impact = this.landImpact;
     } else if (Math.abs(b.velocity.x) > 12) {
       anim = this.pushing ? 'push' : 'walk';
-      const strideLen = (this.kind === 'gorti' && this.form === 'root' ? 124 : this.kind === 'suit' ? 70 : 92) * this.legScale;
+      // One walk cycle per this much ground, so a planted foot stays put.
+      const strideLen = cycleOf(this.rig.rig.id, profileOf(this.rig.rig.id));
       this.walkPhase += (Math.abs(b.velocity.x) * dtMs) / 1000 / strideLen * Math.PI * 2;
       prm.phase = this.walkPhase;
       prm.speed = speed;

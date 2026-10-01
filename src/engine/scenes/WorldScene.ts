@@ -31,9 +31,12 @@ import type { SkyScene } from './SkyScene';
 import type { SkyJson, SkyOut } from '../content/types';
 import { breakFlag } from '../content/compile';
 import { shatter } from '../../render/2d/fx/shatter';
+import { SMASH } from '../../render/2d/rig/actionPoses';
 
 /** Holding the laugh this long (s) makes it a kahkaha. */
 const KAHKAHA_S = 0.75;
+/** How long the kahkaha pose holds Gorti (s). */
+const KAHKAHA_POSE_S = 1.6;
 
 /** How much closer the view comes while Gorti stands still (diorama only). */
 const PUSH_IN = 0.1;
@@ -472,8 +475,9 @@ export class WorldScene extends Phaser.Scene {
     const p = this.player;
     p.setFacing(b.x >= p.x ? 1 : -1);
     p.emote('effort', 700);
-    p.pose('smash', 0.62, true);
-    this.time.delayedCall(260, () => {
+    p.pose('smash', SMASH.dur, true);
+    // The blow lands halfway through the pose.
+    this.time.delayedCall(SMASH.dur * SMASH.impact * 1000, () => {
       app.audio.sfx('stamp');
       app.audio.sfx('rumble', { vol: 0.6 });
       this.shake(0.011, 420);
@@ -542,6 +546,12 @@ export class WorldScene extends Phaser.Scene {
   skyOut: SkyOut = 'none';
   /** Seconds the laugh has been held (-1: not laughing). */
   private laughHold = -1;
+  /** Gorti's laugh is catching: people within `reach` px laugh along for `left` more ms. */
+  laughter = { left: 0, reach: 0 };
+
+  laughAlong(ms: number, reach: number): void {
+    this.laughter = { left: ms, reach };
+  }
 
   /** Changes the sky: what is out lights the room, turns the amca's head and opens `sky:` gates. */
   setSky(sky: SkyJson): void {
@@ -558,8 +568,9 @@ export class WorldScene extends Phaser.Scene {
     const next: SkyOut = this.skyOut === 'sun' ? 'moon' : 'sun';
     const p = this.player;
     const c = p.chest();
-    p.pose('kahkaha', 1.3, true);
-    p.emote('joy', 2000);
+    p.pose('kahkaha', KAHKAHA_POSE_S, true);
+    p.emote('laugh', 2000);
+    this.laughAlong(KAHKAHA_POSE_S * 1000 + 300, 1100);
     this.comic.pop(c.x, c.y - 180, next === 'sun' ? 'HAHAHA!' : 'HOHOHO!', 'storm', true);
     this.comic.focusLines(c.x, c.y - 60, 1);
     this.shake(0.006, 520);
@@ -677,6 +688,7 @@ export class WorldScene extends Phaser.Scene {
   override update(time: number, delta: number): void {
     if (!this.player) return;
     const dt = Math.min(delta, 50);
+    if (this.laughter.left > 0) this.laughter.left -= dt;
     const i = app.input;
     if (!this.paused && !this.transitioning) {
       const ctx = i.context;
