@@ -100,6 +100,17 @@ Conventions:
   a shaded rim and a pale lip, pores, cracks with twigs, chipped corners, dark mortar. A cave
   wall also gets moss, fossils (ammonite, shell, leaf, fish), crystal sprouts and drips. Any
   wall can get chalk doodles (star, spiral, sun, moon, tallies, flower, a little Gorti).
+- The dormitory wall (r10, `dormDetails`): striped star wallpaper with lifting seams, a boarded
+  wainscot, curtains and sills at the windows, children's crayon drawings pinned or taped up,
+  coat hooks with a scarf, pencil height marks, cracks and damp stains.
+- The office wall (r12, `officeWall`/`officeDetails`): a cornice, raised panels with bevels, a
+  sage rail over a boarded lower wall and a wooden skirting; each window fills a panel, with a
+  blind and a radiator under it. The other panels hold, in turn: certificates (one gone, its
+  mark left), a stopped clock over a notice board, a calendar crossed off by a falling chart,
+  and the marks of pictures taken away between two wall lamps.
+- Keep a wall's details between about 0.5 and 0.75 of its height: the eye's frame cuts the top
+  of the back wall, on phones most of all. To see a whole wall at once, paint its theme's layers
+  onto a plain canvas in the dev page (`themeDef(id).layers`, seeded as `RoomRuntime` does).
 
 ### Walking in depth
 
