@@ -5,7 +5,7 @@ import { CAST } from '../cinematics/cast';
 import { CAST_NAMES, type CastId } from '../cinematics/castNames';
 import type { Portrait, PortraitWindow } from '../cinematics/portraits';
 import { voiceOf } from '../cinematics/voice';
-import { applyComicLook } from '../../render/2d/fx/comicFx';
+import { fitScene } from '../../paper/screen';
 
 export interface CinemaData {
   cast: readonly CastId[];
@@ -46,18 +46,19 @@ export class CinemaScene extends Phaser.Scene {
 
   create(data: CinemaData): void {
     this.scene.bringToTop();
-    applyComicLook(this);
+    // The full height of the screen; wide screens show more at the sides.
+    fitScene(this, 'height');
     this.slots = [];
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdownSlots());
     this.closing = false;
     this.fade = 0;
     this.dimLevel = data.dim === false ? 0 : 0.3;
     const reduced = app.settings.reducedMotion;
-    this.dim = this.add.rectangle(VIEW_W / 2, VIEW_H / 2, VIEW_W, VIEW_H, 0x1d1b1e, 1).setAlpha(0);
+    this.dim = this.add.rectangle(VIEW_W / 2, VIEW_H / 2, VIEW_W * 4, VIEW_H, 0x1d1b1e, 1).setAlpha(0);
     const barH = 62;
     this.bars = [
-      this.add.rectangle(VIEW_W / 2, -barH / 2, VIEW_W, barH, 0x000000, 1),
-      this.add.rectangle(VIEW_W / 2, VIEW_H + barH / 2, VIEW_W, barH, 0x000000, 1),
+      this.add.rectangle(VIEW_W / 2, -barH / 2, VIEW_W * 4, barH, 0x000000, 1),
+      this.add.rectangle(VIEW_W / 2, VIEW_H + barH / 2, VIEW_W * 4, barH, 0x000000, 1),
     ];
     this.tweens.add({ targets: this.bars[0], y: barH / 2, duration: reduced ? 1 : 420, ease: 'Cubic.easeOut' });
     this.tweens.add({ targets: this.bars[1], y: VIEW_H - barH / 2, duration: reduced ? 1 : 420, ease: 'Cubic.easeOut' });

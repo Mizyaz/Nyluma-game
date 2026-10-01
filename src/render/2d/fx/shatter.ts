@@ -1,6 +1,5 @@
 import * as Phaser from 'phaser';
 import { DEPTH } from '../../../engine/constants';
-import { stage } from '../../2.5d/hooks';
 
 // Breaking a drawn thing: its picture splits into pieces that fly off, spin
 // and fall, with a few inked paper shards between them (comic debris). The
@@ -42,7 +41,6 @@ export function shatter(scene: Phaser.Scene, img: Phaser.GameObjects.Image, colo
       const wx = left + (img.flipX ? fw - px - w / 2 : px + w / 2) * sx;
       const wy = top + (py + h / 2) * sy;
       p.setPosition(wx, wy).setDepth(DEPTH.fx - 1);
-      stage.keep(p);
       const dx = wx - cx;
       pieces.push({ obj: p, vx: dx * 3.2 + (Math.random() - 0.5) * 260, vy: -380 - Math.random() * 420 + (wy - cy) * 1.5, spin: (Math.random() - 0.5) * 9 });
     }

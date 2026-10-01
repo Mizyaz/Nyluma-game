@@ -1,6 +1,10 @@
 import * as Phaser from 'phaser';
 import { app, persist } from '../App';
 import { DEPTH, HULL_H, HULL_W, JUMPING, PULSE_RADIUS, PULSE_WINDUP_MS, VIEW_W, VIEW_H, CAMERA_ZOOM } from '../constants';
+import { allParts } from '../../content/art/manifest';
+import { propZ, staging, type RoomStaging } from '../../content/stage';
+import { PaperStage, Press, actorScale, printScaleAt, waitFor } from '../../paper';
+import type { PartArt } from '../../render/2d/rig/rigTypes';
 import { hex, P } from '../../render/2d/palette';
 import { frameRef, hasFrame } from '../../render/2d/TextureFactory';
 import { themeDef } from '../../render/2d/painters/backgrounds';
@@ -21,12 +25,10 @@ import type { ExtraInteract, RoomScript } from '../../content/scripts/types';
 import type { Interactable } from '../world/Interactable';
 import { PaintingGallery } from '../world/PaintingGallery';
 import { MoveSystem } from '../../gameplay/moves/MoveSystem';
-import { applyComicLook } from '../../render/2d/fx/comicFx';
 import { ComicWords, WORDS, pick } from '../../render/2d/fx/comicWords';
 import { FaceDialogue } from '../cinematics/FaceDialogue';
 import { ROMAN } from '../../ui/Menus';
 import type { AmbienceId } from '../systems/AudioSystem';
-import { stage } from '../../render/2.5d/hooks';
 import type { SkyScene } from './SkyScene';
 import type { SkyJson, SkyOut } from '../content/types';
 import { breakFlag } from '../content/compile';
@@ -38,8 +40,9 @@ const KAHKAHA_S = 0.75;
 /** How long the kahkaha pose holds Gorti (s). */
 const KAHKAHA_POSE_S = 1.6;
 
-/** How much closer the view comes while Gorti stands still (diorama only). */
-const PUSH_IN = 0.1;
+/** Every part's artwork by key (what the press prints from). */
+let partsByKey: Map<string, PartArt> | null = null;
+const partArt = (key: string): PartArt | undefined => (partsByKey ??= new Map(allParts().map((p) => [p.key, p]))).get(key);
 
 export interface WorldData {
   room: RoomId;
@@ -78,7 +81,10 @@ export class WorldScene extends Phaser.Scene {
   /** Colour bursts: the Rezonans moves and the bombardment that comes now and then. */
   bursts!: ColorBursts;
   private steps: StepCrystals | null = null;
-  private contact: Phaser.GameObjects.Image | null = null;
+  /** The paper stage this room stands on, and how it is staged. */
+  paper!: PaperStage;
+  staged!: RoomStaging;
+  private press: Press | null = null;
   private ambient: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private target: ActionTarget | null = null;
   private pulseWind = 0;
@@ -119,15 +125,25 @@ export class WorldScene extends Phaser.Scene {
     this.camMode = 'player';
     this.elapsed = 0;
     this.probeExtra = {};
-    this.push = 0;
-    this.pushing = false;
-    this.stillT = 0;
-    this.zoomTweens = 0;
   }
 
-  /** Loads what this room needs beyond the atlases (painting artwork). */
+  /**
+   * Loads what this room needs beyond the atlases (painting artwork), and
+   * prints every card for the depth it stands at, so the room starts with
+   * its art exact.
+   */
   preload(): void {
     PaintingGallery.preload(this, this.data0.room);
+    const def = roomDef(this.data0.room);
+    this.staged = staging(def);
+    this.press?.destroy();
+    this.press = new Press(this.textures, partArt);
+    const actor = actorScale() * this.staged.zoom;
+    const dist = this.staged.framing.dist;
+    const jobs = [...(def.props ?? []), ...(def.breakables ?? []).map((b) => ({ key: b.key, scale: b.scale, z: undefined }))]
+      .filter((p) => partArt(p.key))
+      .map((p) => ({ key: p.key, scale: printScaleAt(actor, dist, propZ(p as Parameters<typeof propZ>[0]), p.scale ?? 1) }));
+    waitFor(this.load, `prints:${def.id}`, this.press.print(jobs));
   }
 
   /** Registers something Gorti can inspect that handles itself. */
@@ -151,9 +167,15 @@ export class WorldScene extends Phaser.Scene {
     const cp = this.def.checkpoints.find((c) => c.id === this.data0.checkpoint) ?? this.def.checkpoints[0]!;
     this.killY = this.def.killY ?? this.def.height + 90;
 
-    this.room = new RoomRuntime(this, this.def, quest);
+    // The room's paper box, its eye and its planes (before anything uses the camera).
+    const st = this.staged;
+    this.paper = new PaperStage(this, st.box, st.framing, this.press!, actorScale(), st.zoom);
+    const press = this.press!;
+    this.cleanups.push(() => press.destroy());
+    this.press = null;
+
+    this.room = new RoomRuntime(this, this.def, quest, this.paper, st);
     this.room.build();
-    if (app.settings.reducedMotion) this.room.setParallaxReduced(true);
 
     // Nothing is earned by tasks any more: what the story has reached by now
     // (the room and its flags) implies the abilities, so a continuous game
@@ -187,8 +209,7 @@ export class WorldScene extends Phaser.Scene {
     this.particles.setDepth(DEPTH.fx);
     this.gallery = new PaintingGallery(this);
     this.moves = new MoveSystem(this);
-    // The comic-book look and its sound words.
-    applyComicLook(this);
+    // Comic sound words (the art itself is shown exactly as drawn: no screen filter).
     this.comic = new ComicWords(this);
     this.cleanups.push(() => this.moves.destroy());
     this.cleanups.push(() => {
@@ -215,35 +236,23 @@ export class WorldScene extends Phaser.Scene {
     );
     this.cleanups.push(() => this.bursts.destroy());
     this.buildAmbient();
-    // Crystals under each step, and a contact shadow that stays on the
-    // surface while Gorti is airborne. (The crystal tube that once floated
-    // behind every room cluttered the panel; the warp between rooms keeps it.)
+    // Crystals under each step, and Gorti's shadow on the floor (it stays on
+    // the surface below him, fading with height).
     const look = warpLook(this.def.theme);
     this.steps = new StepCrystals(this, look.colors);
-    if (hasFrame('fx.shadow')) {
-      const sh = frameRef('fx.shadow');
-      this.contact = this.add.image(0, 0, sh.atlas, sh.frame).setDepth(DEPTH.player - 3).setVisible(false);
-      // In the diorama it lies on the ground under his feet.
-      stage.lift(this.contact, { as: 'decal' });
-    }
+    this.paper.addShadow({ shadow: () => this.playerShadow() });
     this.cleanups.push(() => {
       this.steps?.destroy();
       this.steps = null;
-      this.contact = null;
     });
 
-    // Camera
-    const cam = this.cameras.main;
-    cam.setBounds(0, 0, this.def.width, this.def.height);
+    // The eye follows Gorti.
     this.baseZoom = this.def.zoom ?? CAMERA_ZOOM;
-    cam.setZoom(this.baseZoom);
     this.camTarget = { x: this.player.x, y: this.player.zone.y };
-    const followObj = this.add.zone(this.player.x, this.player.zone.y, 2, 2);
-    this.camFollow = followObj;
-    cam.startFollow(followObj, true, app.settings.reducedMotion ? 0.2 : 0.1, app.settings.reducedMotion ? 0.2 : 0.12);
-    cam.setDeadzone(110, 80);
-    cam.centerOn(this.player.x, this.player.zone.y - 60);
-    cam.fadeIn(500, 15, 13, 24);
+    this.paper.follow = app.settings.reducedMotion ? 0.2 : 0.35;
+    this.paper.setTarget(this.player.x, this.player.zone.y);
+    this.paper.snap();
+    this.paper.screen.fadeIn(500, 15, 13, 24);
 
     // Fixed-step gameplay aligned with Arcade physics.
     this.physics.world.on(Phaser.Physics.Arcade.Events.WORLD_STEP, this.fixedStep, this);
@@ -314,11 +323,7 @@ export class WorldScene extends Phaser.Scene {
     this.activateCheckpoint(cp.id, true);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.cleanup());
-    // The paper diorama takes the room over (3D mode; nothing in flat mode).
-    stage.attach(this);
   }
-
-  private camFollow!: Phaser.GameObjects.Zone;
 
   // ------------------------------------------------------------ fixed step
 
@@ -619,7 +624,7 @@ export class WorldScene extends Phaser.Scene {
     p.state = 'reform';
     p.body.setVelocity(0, 0);
     p.body.setAllowGravity(false);
-    const cam = this.cameras.main;
+    const cam = this.paper.screen;
     this.time.delayedCall(150, () => {
       cam.fadeOut(260, 15, 13, 24);
       cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
@@ -630,8 +635,8 @@ export class WorldScene extends Phaser.Scene {
         p.focus.refill();
         p.state = 'normal';
         this.script.onRespawn?.();
-        this.camFollow.setPosition(p.x, p.zone.y);
-        cam.centerOn(p.x, p.zone.y - 60);
+        this.paper.setTarget(p.x, p.zone.y);
+        this.paper.snap();
         cam.fadeIn(360, 15, 13, 24);
       });
     });
@@ -716,35 +721,24 @@ export class WorldScene extends Phaser.Scene {
     this.room.animateMarkers(time);
     this.narrative.tick(dt);
     this.script.onUpdate?.(dt, time);
-    const cam = this.cameras.main;
-    this.sky?.look((this.player.x - cam.worldView.x) * cam.zoom, (this.player.feetY - 80 - cam.worldView.y) * cam.zoom);
+    const eye = this.paper.lens.project(this.player.x, this.player.feetY - 80, 0);
+    this.sky?.lookAtScreen(eye.x, eye.y);
     this.updateCamera(dt);
-    this.pushIn(dt);
     this.room.stream(this.cameras.main.scrollX);
     this.bursts.update(dt);
     this.gallery?.update(dt);
     this.moves.update(dt);
-    this.updateContactShadow();
     this.updateHud(time);
   }
 
-  /** Soft shadow on the surface below Gorti, shrinking with height. */
-  private updateContactShadow(): void {
-    const sh = this.contact;
-    if (!sh) return;
+  /** Gorti's shadow on the floor below him, shrinking and fading with height. */
+  private playerShadow(): { x: number; z: number; r: number; a: number } | null {
     const p = this.player;
-    if (p.state === 'hidden' || !p.rig.container.visible) {
-      sh.setVisible(false);
-      return;
-    }
+    if (!p || p.state === 'hidden' || !p.rig.container.visible) return null;
     const ground = this.room.groundBelow(p.x, p.feetY);
-    if (ground === null) {
-      sh.setVisible(false);
-      return;
-    }
-    const hgt = Math.max(0, ground - p.feetY);
-    const k = Math.max(0, 1 - hgt / 320);
-    sh.setVisible(k > 0.02).setPosition(p.x, ground + 1).setScale(0.62 * (0.55 + 0.45 * k), 0.62 * (0.55 + 0.45 * k)).setAlpha(0.85 * k);
+    if (ground === null) return null;
+    const k = Math.max(0, 1 - Math.max(0, ground - p.feetY) / 320);
+    return { x: p.x, z: 0, r: 34 * (0.55 + 0.45 * k), a: 0.9 * k };
   }
 
   private updateCamera(dt: number): void {
@@ -752,91 +746,48 @@ export class WorldScene extends Phaser.Scene {
     if (this.camMode === 'player' && p.state !== 'hidden') {
       const want = p.facing * (app.settings.reducedMotion ? 40 : 90);
       this.camLook += (want - this.camLook) * Math.min(1, dt / 600);
-      this.camFollow.setPosition(p.x + this.camLook, p.zone.y - 40);
+      this.paper.lookAt(null);
+      this.paper.setTarget(p.x + this.camLook, p.zone.y - 40);
     } else {
-      this.camFollow.setPosition(this.camTarget.x, this.camTarget.y);
+      this.paper.lookAt(this.camTarget.x, this.camTarget.y);
     }
   }
 
   /**
-   * The diorama's slow push-in while Gorti stands still (as the prototype's
-   * camera did), made with the camera's zoom so that everything Phaser
-   * draws stays in line with the 3D picture. Off with reduced motion, in
-   * flat mode, and whenever a script works the camera.
+   * Scripted camera zoom (a close-up), in the old camera's terms (the room's
+   * resting zoom is `baseZoom`); `null` returns to the room's zoom. The eye
+   * keeps its place: the lens narrows, so the perspective stays.
    */
-  private pushIn(dtMs: number): void {
-    const cam = this.cameras.main;
-    const p = this.player;
-    const free =
-      this.camMode === 'player' &&
-      this.zoomTweens === 0 &&
-      !this.paused &&
-      !this.transitioning &&
-      p.state === 'normal' &&
-      app.input.context === 'gameplay' &&
-      !app.settings.reducedMotion &&
-      stage.draws(this);
-    if (!free) {
-      this.pushing = false;
-      this.stillT = 0;
-      return;
-    }
-    const dt = dtMs / 1000;
-    if (!this.pushing) {
-      // Take over from wherever the zoom is (after a script's close-up).
-      this.push = Math.max(0, Math.min(1, (cam.zoom / this.baseZoom - 1) / PUSH_IN));
-      this.pushing = true;
-    }
-    const still = p.onGround && Math.abs(p.body.velocity.x) < 12;
-    this.stillT = still ? this.stillT + dt : 0;
-    const k = Math.max(0, Math.min(1, (this.stillT - 0.9) / 2.6));
-    const want = k * k * (3 - 2 * k);
-    this.push += (want - this.push) * (1 - Math.exp(-dt * (want > this.push ? 0.7 : 3)));
-    const z = this.baseZoom * (1 + PUSH_IN * this.push);
-    if (Math.abs(cam.zoom - z) > 1e-5) cam.setZoom(z);
-  }
-
-  private push = 0;
-  private pushing = false;
-  private stillT = 0;
-  /** Scripted zoom tweens running (the push-in waits for them). */
-  private zoomTweens = 0;
-
-  /** Scripted camera zoom (a close-up); `null` returns to the room's zoom. */
   zoomTo(zoom: number | null, ms: number): Promise<void> {
-    const cam = this.cameras.main;
-    const to = zoom ?? this.baseZoom;
+    const to = (zoom ?? this.baseZoom) / this.baseZoom;
+    const paper = this.paper;
     return new Promise((res) => {
       if (ms <= 0 || app.settings.reducedMotion) {
-        cam.setZoom(to);
+        paper.zoom = to;
         res();
         return;
       }
-      this.zoomTweens++;
       let over = false;
       const done = (): void => {
         if (over) return;
         over = true;
-        this.zoomTweens = Math.max(0, this.zoomTweens - 1);
         res();
       };
-      this.tweens.add({ targets: cam, zoom: to, duration: ms, ease: 'Sine.easeInOut', onComplete: done, onStop: done });
+      this.tweens.add({ targets: paper, zoom: to, duration: ms, ease: 'Sine.easeInOut', onComplete: done, onStop: done });
     });
   }
 
-  /** Scripted camera focus (cutscenes); `null` returns control to the player. */
+  /** Scripted camera focus (cutscenes): the eye frames this point; `null` returns control to the player. */
   camTo(x: number | null, y = 0): void {
-    const cam = this.cameras.main;
     if (x === null) {
       this.camMode = 'player';
-      cam.setDeadzone(110, 80);
+      this.paper.lookAt(null);
       return;
     }
-    // A scripted shot is framed exactly (no slack around the target).
-    cam.setDeadzone(0, 0);
     this.camMode = 'free';
     this.camTarget.x = x;
     this.camTarget.y = y;
+    this.paper.lookAt(x, y);
   }
 
   get camFree(): { x: number; y: number } {
@@ -897,7 +848,7 @@ export class WorldScene extends Phaser.Scene {
 
   shake(intensity: number, ms: number): void {
     if (!app.settings.screenShake || app.settings.reducedMotion) return;
-    this.cameras.main.shake(ms, intensity);
+    this.paper.shake(ms, intensity);
   }
 
   flash(color: number, alpha: number): void {
@@ -939,7 +890,8 @@ export class WorldScene extends Phaser.Scene {
     };
     if (app.settings.reducedMotion) cfg.frequency = 400;
     this.ambient = this.add.particles(0, 0, f.atlas, cfg);
-    this.ambient.setScrollFactor(0.3);
+    // Drifts over the whole picture (the screen's own camera).
+    this.ambient.setScrollFactor(0);
     this.ambient.setDepth(DEPTH.front);
   }
 

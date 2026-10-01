@@ -4,7 +4,7 @@ import type { RigDef, RigJoint } from './rigTypes';
 import { frameRef, hasFrame } from '../TextureFactory';
 import type { PoseOut, PoseParams } from './animPoses';
 import { profileOf } from './poseKit';
-import { stage } from '../../2.5d/hooks';
+import type { PaperStage, Shadowed } from '../../../paper';
 import { DEPTH } from '../../../engine/constants';
 
 export type PoseFn = (anim: string, t: number, prm: PoseParams, rigId: string) => PoseOut;
@@ -77,8 +77,9 @@ export class RigView {
   private lastAngles: Angles = {};
   private lastOffsets: Record<string, { x: number; y: number }> = {};
   private lastAnim = '';
-  /** Soft shadows on the ground under the feet (see `makeContact`). */
-  private contact: { img: Phaser.GameObjects.Image; joint: string }[] = [];
+  /** Soft shadows on the paper stage's floor under the feet (see `makeContact`). */
+  private contact: Shadowed[] = [];
+  private paper: PaperStage | null = null;
   private readonly mat = { world: new Phaser.GameObjects.Components.TransformMatrix(), parent: new Phaser.GameObjects.Components.TransformMatrix() };
 
   constructor(scene: Phaser.Scene, rig: RigDef, poseFn: PoseFn, x: number, y: number, depth: number) {
@@ -88,64 +89,49 @@ export class RigView {
     this.ordered = orderJoints(rig);
     this.container = scene.add.container(x, y);
     this.container.setDepth(depth);
-    // In the diorama the figure is a paper puppet: its parts a hair apart.
-    stage.lift(this.container, { rig: true });
     this.buildImages();
     this.makeContact(depth);
     this.snap();
   }
 
   /**
-   * A figure standing in the game world gets a soft contact shadow under
-   * each foot, darkest while the foot is planted, fading as it lifts; in the
-   * diorama it lies on the floor. Not the player (the world scene keeps his
-   * on the ground below him while he jumps), not a rider (his feet are off
-   * the ground), nothing outside the world (the title menu, portraits).
+   * A figure standing in the game world casts a soft shadow under each
+   * foot onto the paper stage's floor, darkest while the foot is planted,
+   * fading as it lifts. Not the player (the world scene casts his), not a
+   * rider (his feet are off the ground), nothing outside the world.
    */
   private makeContact(depth: number): void {
-    if (this.scene.sys.settings.key !== 'world' || depth >= DEPTH.player || !hasFrame('fx.shadow')) return;
-    const f = frameRef('fx.shadow');
+    const paper = (this.scene as { paper?: PaperStage }).paper;
+    if (this.scene.sys.settings.key !== 'world' || depth >= DEPTH.player || !paper) return;
+    this.paper = paper;
+    const half = hasFrame('fx.shadow') ? frameRef('fx.shadow').w * 0.15 : 14;
     for (const id of ['footR', 'footL']) {
       if (!this.ordered.some((j) => j.id === id)) continue;
-      const img = this.scene.add.image(0, 0, f.atlas, f.frame).setDepth(depth - 1).setVisible(false);
-      stage.lift(img, { as: 'decal' });
-      this.contact.push({ img, joint: id });
+      const s: Shadowed = { shadow: () => this.footShadow(id, half) };
+      paper.addShadow(s);
+      this.contact.push(s);
     }
-    // Every frame too: scripts move and hide the container itself.
-    if (!this.contact.length) return;
-    const events = this.scene.events;
-    events.on(Phaser.Scenes.Events.POST_UPDATE, this.placeContact, this);
-    this.container.once(Phaser.GameObjects.Events.DESTROY, () => events.off(Phaser.Scenes.Events.POST_UPDATE, this.placeContact, this));
   }
 
-  /** The contact shadows under the feet as the figure stands now. */
-  private placeContact(): void {
-    if (!this.contact.length) return;
+  /** The shadow under one foot as the figure stands now (null: none). */
+  private footShadow(joint: string, half: number): { x: number; z: number; r: number; a: number } | null {
     const c = this.container;
-    const shown = c.visible && c.alpha > 0.02 && !!c.scene;
+    const j = this.solved.get(joint);
+    if (!j || !c.visible || c.alpha <= 0.02 || !c.scene || !this.paper) return null;
     const m = c.getWorldTransformMatrix(this.mat.world, this.mat.parent);
     const prof = profileOf(this.rig.id);
     // The middle of the sole, in the foot's frame.
     const u = ((prof.heel ?? -5) + (prof.ball ?? 8)) / 2 + 1;
     const v = prof.sole ?? 6;
-    for (const s of this.contact) {
-      const j = this.solved.get(s.joint);
-      if (!shown || !j) {
-        s.img.setVisible(false);
-        continue;
-      }
-      const cs = Math.cos(j.rot);
-      const sn = Math.sin(j.rot);
-      const lx = j.x + u * cs - v * sn;
-      const ly = j.y + u * sn + v * cs;
-      const x = m.getX(lx, ly);
-      // Height of the sole above the ground line (the rig's root).
-      const h = Math.max(0, c.y - m.getY(lx, ly));
-      const k = Math.max(0, 1 - h / 24);
-      const sc = 0.3 * (0.7 + 0.3 * k);
-      // Below 1 so the diorama draws it see-through (a decal at full alpha is cut out).
-      s.img.setVisible(k > 0.03).setPosition(x, c.y + 1).setScale(sc).setAlpha(0.9 * k * c.alpha);
-    }
+    const cs = Math.cos(j.rot);
+    const sn = Math.sin(j.rot);
+    const lx = j.x + u * cs - v * sn;
+    const ly = j.y + u * sn + v * cs;
+    // Height of the sole above the floor it would fall on.
+    const h = Math.max(0, this.paper.spec.floor - m.getY(lx, ly));
+    const k = Math.max(0, 1 - h / 24);
+    if (k <= 0.03) return null;
+    return { x: m.getX(lx, ly), z: this.paper.planes.zOf(c), r: half * (0.7 + 0.3 * k), a: 0.8 * k * c.alpha };
   }
 
   private buildImages(): void {
@@ -161,7 +147,6 @@ export class RigView {
       img.setScale(1 / f.scale);
       if (j.additive) img.setBlendMode(Phaser.BlendModes.ADD);
       // Marks on a screen face glow: the diorama does not shade them.
-      if (this.rig.glowing?.includes(j.id)) stage.hint(img, { lit: false });
       this.images.set(j.id, img);
     }
     this.applyOrder();
@@ -363,12 +348,10 @@ export class RigView {
     const sy = (pose.sy ?? 1) * this.squashY;
     this.container.setScale(this.facing * this.scale * sx, this.scale * sy);
     this.container.setRotation(this.extraRot * this.facing);
-    this.placeContact();
   }
 
   setPosition(x: number, y: number): void {
     this.container.setPosition(x + this.offX, y + this.offY);
-    this.placeContact();
   }
 
   /** Attachment point in world coordinates. */
@@ -392,21 +375,18 @@ export class RigView {
 
   setVisible(v: boolean): void {
     this.container.setVisible(v);
-    this.placeContact();
   }
 
   setAlpha(a: number): void {
     this.container.setAlpha(a);
-    this.placeContact();
   }
 
   setDepth(d: number): void {
     this.container.setDepth(d);
-    for (const s of this.contact) s.img.setDepth(d - 1);
   }
 
   destroy(): void {
-    for (const s of this.contact) s.img.destroy();
+    for (const s of this.contact) this.paper?.removeShadow(s);
     this.contact = [];
     this.container.destroy(true);
     this.images.clear();

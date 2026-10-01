@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { GRAVITY, VIEW_H, VIEW_W } from './constants';
+import { GRAVITY } from './constants';
 import { BootScene } from './scenes/BootScene';
 import { MenuScene } from './scenes/MenuScene';
 import { WorldScene } from './scenes/WorldScene';
@@ -7,28 +7,30 @@ import { SkyScene } from './scenes/SkyScene';
 import { EndingScene } from './scenes/EndingScene';
 import { WarpScene } from './scenes/WarpScene';
 import { CinemaScene } from './scenes/CinemaScene';
+import { deviceSize } from '../paper/screen';
 
 /**
- * `diorama`: the 3D stage draws under Phaser's canvas, so the canvas has an
- * alpha channel (the stage sets the clear colour: see-through while the
- * world shows, the flat colour otherwise).
+ * The canvas has one pixel per device pixel (see paper/screen.ts): the game
+ * size is the box's size in device px and the scale manager shows it at
+ * 1/dpr, so the browser never stretches the picture.
  */
-export function gameConfig(parent: HTMLElement, forceCanvas: boolean, diorama = false): Phaser.Types.Core.GameConfig {
+export function gameConfig(parent: HTMLElement, forceCanvas: boolean): Phaser.Types.Core.GameConfig {
+  const r = parent.getBoundingClientRect();
+  const size = deviceSize(r.width || window.innerWidth, r.height || window.innerHeight);
   return {
     type: forceCanvas ? Phaser.CANVAS : Phaser.AUTO,
     parent,
-    width: VIEW_W,
-    height: VIEW_H,
+    width: size.w,
+    height: size.h,
     backgroundColor: '#0f0d18',
-    transparent: diorama,
     scale: {
-      mode: Phaser.Scale.FIT,
-      autoCenter: Phaser.Scale.CENTER_BOTH,
+      mode: Phaser.Scale.NONE,
+      zoom: 1 / size.dpr,
     },
     render: {
       antialias: true,
       pixelArt: false,
-      roundPixels: false,
+      roundPixels: true,
       mipmapFilter: 'LINEAR_MIPMAP_LINEAR',
       powerPreference: 'high-performance',
     },

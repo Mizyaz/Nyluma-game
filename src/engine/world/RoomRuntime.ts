@@ -1,10 +1,10 @@
 import * as Phaser from 'phaser';
-import { CAMERA_ZOOM, DEPTH, LATENT_GRACE_S, VIEW_H, VIEW_W } from '../constants';
+import { DEPTH, LATENT_GRACE_S, VIEW_W } from '../constants';
 import { hex, P } from '../../render/2d/palette';
 import { hashSeed } from '../../render/2d/svg';
 import { paintSolid, TERRAIN_MARGIN } from '../../render/2d/painters/terrain';
-import { paintForeground, themeDef, type LayerSpec } from '../../render/2d/painters/backgrounds';
-import { artCanvas, frameRef, hasFrame, registerCanvas, unregister } from '../../render/2d/TextureFactory';
+import { themeDef } from '../../render/2d/painters/backgrounds';
+import { addStaticCanvas, artCanvas, frameRef, hasFrame, registerCanvas, unregister } from '../../render/2d/TextureFactory';
 import { Rng } from '../../render/2d/svg';
 import type {
   AnchorDef,
@@ -25,8 +25,9 @@ import type { Quest } from '../state/GameState';
 import { evalCond, type CondCtx } from '../content/cond';
 import type { SkyOut } from '../content/types';
 import { WhalePlatforms } from '../../gameplay/whales/WhalePlatforms';
-import { stage } from '../../render/2.5d/hooks';
 import { isWhalePlatform } from '../../gameplay/whales/whalePlan';
+import type { PaperStage } from '../../paper';
+import { isBoxFloor, propZ, type RoomStaging } from '../../content/stage';
 
 export interface SolidRt {
   def: SolidDef;
@@ -58,18 +59,6 @@ export interface Marker<T> {
   active: boolean;
 }
 
-/** Where a parallax layer's canvas lies: its own area, or the room's parallax extent. */
-function layerRect(layer: LayerSpec, def: RoomDef): { x: number; y: number; w: number; h: number } {
-  if (layer.area) return layer.area;
-  const s = layer.scroll;
-  return {
-    x: -40 * s,
-    y: -20 * s,
-    w: Math.ceil(VIEW_W + Math.max(0, def.width - VIEW_W) * s + 80),
-    h: Math.ceil(VIEW_H + Math.max(0, def.height - VIEW_H) * s + 40),
-  };
-}
-
 const CHUNK = 1024;
 const STREAM_THRESHOLD = 6000;
 /** Terrain texture resolution (logical px → texels). */
@@ -91,7 +80,6 @@ export class RoomRuntime {
   nodes: Marker<SongNodeDef>[] = [];
   sites: Marker<SiteDef>[] = [];
   interacts: Marker<InteractDef>[] = [];
-  private fgImages: Phaser.GameObjects.Image[] = [];
   memories: (Marker<MemoryPickupDef> & { taken: boolean })[] = [];
   checkpoints: (Marker<CheckpointDef> & { lit: boolean })[] = [];
   exits: Marker<ExitDef>[] = [];
@@ -99,12 +87,17 @@ export class RoomRuntime {
   private chunks: ChunkDesc[] = [];
   private streamed = false;
   private texKeys = new Set<string>();
-  private layerImages: Phaser.GameObjects.Image[] = [];
   latentActive = false;
   /** Whales swimming where the wooden and root jumps were. */
   whales: WhalePlatforms | null = null;
 
-  constructor(scene: Phaser.Scene, def: RoomDef, quest: Quest) {
+  constructor(
+    scene: Phaser.Scene,
+    def: RoomDef,
+    quest: Quest,
+    private readonly paper: PaperStage,
+    private readonly staged: RoomStaging,
+  ) {
     this.scene = scene;
     this.def = def;
     this.quest = quest;
@@ -157,99 +150,44 @@ export class RoomRuntime {
 
   // ------------------------------------------------------------ background
 
-  private buildBackground(): void {
-    const theme = themeDef(this.def.theme);
-    const cam = this.scene.cameras.main;
-    cam.setBackgroundColor(theme.sky[1]);
-    const rng = new Rng(hashSeed(this.def.id + ':bg'));
-    theme.layers.forEach((layer, li) => {
-      const s = layer.scroll;
-      const { x: lx, y: ly, w: lw, h: lh } = layerRect(layer, this.def);
-      // Horizon sits in the lower part of the layer for surface themes.
-      const horizon = Math.round(lh - VIEW_H * (1 - theme.horizon) - (this.def.height - VIEW_H) * s * 0.0);
-      const res = layer.res;
-      const maxW = 2040;
-      const pieces = Math.ceil((lw * res) / maxW);
-      const pieceW = Math.ceil(lw / pieces);
-      for (let pi = 0; pi < pieces; pi++) {
-        // Each piece reaches 2 px into the next, so no hairline shows between them.
-        const cw = Math.min(pieceW + 2, lw - pi * pieceW);
-        const [c, ctx] = artCanvas(Math.max(2, Math.ceil(cw * res)), Math.max(2, Math.ceil(Math.min(lh, 2040 / res) * res)));
-        ctx.scale(res, res);
-        ctx.translate(-pi * pieceW, 0);
-        const r2 = new Rng(hashSeed(`${this.def.id}:layer:${li}`));
-        layer.draw(ctx, { w: lw, h: lh, horizon }, r2);
-        const key = `bg:${this.def.id}:${li}:${pi}`;
-        registerCanvas(this.scene.textures, key, c, { w: cw, h: lh, px: 0, py: 0 }, res);
-        this.texKeys.add(key);
-        const img = this.scene.add.image(lx + pi * pieceW, ly, key).setOrigin(0, 0).setScale(1 / res);
-        img.setScrollFactor(s, s);
-        img.setDepth(layer.depth ?? DEPTH.sky + li * 10);
-        this.layerImages.push(img);
-        // In the diorama: at the depth its scroll factor implies (or its own).
-        stage.lift(img, { z: layer.z, thick: 0, cast: false });
-      }
-    });
-    void rng;
-    this.buildForeground();
-  }
-
   /**
-   * Out-of-focus silhouettes in front of the world (2.5D depth): they scroll
-   * faster than the terrain and stay pinned to the bottom of the view.
+   * The room's scenery, painted on the box's back wall as a diorama's
+   * backdrop is: the theme's layers one over the other, printed at the back
+   * wall's own scale in strips of whole texels (so they meet without seams).
    */
-  private buildForeground(): void {
-    const sf = 1.35;
-    const h = 150;
-    const res = 0.5;
-    const x0 = -400;
-    const lw = Math.ceil(this.def.width * sf + VIEW_W + 800);
-    const zoom = this.def.zoom ?? CAMERA_ZOOM;
-    // Wide framings (the ride, the Sun arena) keep the ground near the bottom
-    // edge, where the strip would cover the player: no foreground there.
-    if (zoom < 1.2) return;
-    // Screen-pinned vertically; camera zoom scales about the view centre.
-    const bottom = VIEW_H / 2 + (VIEW_H + 12 - VIEW_H / 2) / zoom;
-    const maxW = 2040;
-    const pieces = Math.ceil((lw * res) / maxW);
-    const pieceW = Math.ceil(lw / pieces);
+  private buildBackground(): void {
+    const st = this.staged;
+    if (!st.backdrop) return;
+    const box = st.box;
+    const theme = themeDef(this.def.theme);
+    const layers = theme.layers.filter((l) => !l.area);
+    if (!layers.length) return;
+    const z = box.back + 1;
+    const w = box.x1 - box.x0;
+    const h = box.floor - box.top;
+    // The painted horizon at the eye's height, as a real backdrop would have it.
+    const horizon = Math.round(box.floor - st.framing.height - box.top);
+    // Exact for the back wall, but never more than ~14 Mpx for a room.
+    const res = Math.min(this.paper.printScale(z), Math.sqrt(14e6 / (w * h)));
+    const STRIP = 2040;
+    const pieceW = STRIP / res;
+    const pieces = Math.ceil(w / pieceW);
+    const th = Math.ceil(h * res);
     for (let pi = 0; pi < pieces; pi++) {
-      const cw = Math.min(pieceW, lw - pi * pieceW);
-      const [c, ctx] = artCanvas(Math.max(2, Math.ceil(cw * res)), Math.ceil(h * res));
+      // Each strip reaches 2 texels into the next, so no hairline shows between them.
+      const tw = Math.min(STRIP + 2, Math.ceil((w - pi * pieceW) * res));
+      const [c, ctx] = artCanvas(Math.max(2, tw), Math.max(2, th));
       ctx.scale(res, res);
       ctx.translate(-pi * pieceW, 0);
-      paintForeground(ctx, lw, h, this.def.theme, new Rng(hashSeed(`${this.def.id}:fg`)));
-      const key = `fg:${this.def.id}:${pi}`;
-      registerCanvas(this.scene.textures, key, c, { w: cw, h, px: 0, py: 0 }, res);
+      layers.forEach((layer, li) => layer.draw(ctx, { w, h, horizon }, new Rng(hashSeed(`${this.def.id}:layer:${li}`))));
+      const key = `bg:${this.def.id}:${pi}`;
+      if (this.scene.textures.exists(key)) this.scene.textures.remove(key);
+      addStaticCanvas(this.scene.textures, key, c);
       this.texKeys.add(key);
-      const img = this.scene.add.image(x0 + pi * pieceW, bottom, key).setOrigin(0, 1).setScale(1 / res);
-      img.setScrollFactor(sf, 0);
-      img.setDepth(DEPTH.fg);
-      img.setAlpha(0.92);
-      this.layerImages.push(img);
-      this.fgImages.push(img);
-      // In the diorama: out of focus in front of the box, along the view's foot.
-      stage.lift(img, { thick: 0, cast: false, lit: false });
+      const img = this.scene.add.image(box.x0 + pi * pieceW, box.top, key).setOrigin(0, 0).setScale(1 / res);
+      img.setDepth(DEPTH.sky);
+      this.paper.planes.put(img, z);
     }
-  }
-
-  setParallaxReduced(reduced: boolean): void {
-    for (const img of this.fgImages) img.setScrollFactor(reduced ? 1 : 1.35, 0);
-    // Reduced motion: flatten parallax differences (layers move with the world
-    // at a single gentle factor instead of several speeds).
-    // A room's own back wall (scroll 0.9 and up) keeps moving with the room.
-    const theme = themeDef(this.def.theme);
-    let idx = 0;
-    theme.layers.forEach((layer) => {
-      const lw = layerRect(layer, this.def).w;
-      const pieces = Math.ceil((lw * layer.res) / 2040);
-      for (let p = 0; p < pieces; p++) {
-        const img = this.layerImages[idx++];
-        if (!img) continue;
-        const s = reduced && layer.scroll < 0.9 ? Math.min(layer.scroll, 0.15) : layer.scroll;
-        img.setScrollFactor(s, s);
-      }
-    });
   }
 
   // ------------------------------------------------------------ solids
@@ -267,6 +205,8 @@ export class RoomRuntime {
     const rt: SolidRt = { def, index, zone, body, images: [], active: true, reveal: def.latent ? 0 : 1, grace: 0 };
     this.solids.push(rt);
     if (def.hidden || def.style === 'none') return;
+    // The main floor is the paper box's own floor.
+    if (isBoxFloor(def, this.staged.box.floor)) return;
     // Wooden and root jumps are whales now: one floats where the platform
     // was, its back on the platform's top line. Nothing is painted.
     if (isWhalePlatform(def)) {
@@ -302,8 +242,6 @@ export class RoomRuntime {
     this.texKeys.add(c.key);
     const img = this.scene.add.image(c.x, c.y, c.key).setOrigin(0, 0).setScale(1 / res);
     img.setDepth(c.solid.def.latent ? DEPTH.terrain + 2 : DEPTH.terrain);
-    // In the diorama: the painting on the front of the solid's slab.
-    stage.lift(img, { as: 'terrain', solid: c.solid.def });
     c.image = img;
     c.solid.images.push(img);
     this.applySolidVisual(c.solid);
@@ -375,13 +313,19 @@ export class RoomRuntime {
       if (p.flipX) img.setFlipX(true);
       if (p.alpha !== undefined) img.setAlpha(p.alpha);
       if (p.angle) img.setAngle(p.angle);
-      if (p.scroll !== undefined) img.setScrollFactor(p.scroll);
-      // In the diorama: at its own depth if it has one; hung things sway,
-      // things standing on the floor lean a little.
-      const hung = (p.oy ?? 1) === 0 && p.scroll === undefined;
-      stage.lift(img, { z: p.z, sway: hung, lean: !hung && (p.oy ?? 1) === 1 && p.scroll === undefined && !p.angle });
+      // A card at its depth, printed for it.
+      this.paper.card(img, p.key, propZ(p), p.scale ?? 1);
+      if (this.standsOnFloor(p)) {
+        const r = (frameRef(p.key).w * (p.scale ?? 1)) / 2;
+        this.paper.addShadow({ shadow: () => (img.visible && img.alpha > 0.5 ? { x: img.x, z: propZ(p), r: Math.min(220, r * 0.85), a: 0.55 } : null) });
+      }
     }
     this.props.push({ def: p, img, glow: null, active: this.isOn(p) });
+  }
+
+  /** A prop standing on the box's floor (it casts a shadow there). */
+  private standsOnFloor(p: PropDef): boolean {
+    return (p.oy ?? 1) === 1 && Math.abs(p.y - this.staged.box.floor) < 12 && !p.angle;
   }
 
   private marker<T extends { x: number; y: number }>(

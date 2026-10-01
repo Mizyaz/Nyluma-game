@@ -2,7 +2,6 @@ import * as Phaser from 'phaser';
 import { frameRef, hasFrame } from '../../render/2d/TextureFactory';
 import { Rng } from '../../render/2d/svg';
 import { whaleLayout, type WhaleLayout, type WhaleSpecies } from '../../content/characters/whales';
-import { stage } from '../../render/2.5d/hooks';
 
 // A whale as a lightweight cutout actor (like the creatures in Creatures.ts):
 // body, tail stock, flukes, pectoral fin, jaw and eyelid images in one
@@ -111,8 +110,6 @@ export class WhaleActor {
     this.baseY = o.y;
     const L = this.lay;
     this.c = scene.add.container(o.x, o.y).setDepth(o.depth).setScale(o.scale * o.facing, o.scale);
-    // In the diorama: a thick paper whale under the platform line.
-    stage.lift(this.c, { thick: 3 });
     this.spoutImg = part(scene, L.keys.spout);
     this.fluke = part(scene, L.keys.fluke);
     this.tail = part(scene, L.keys.tail);

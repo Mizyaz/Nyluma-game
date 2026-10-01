@@ -154,8 +154,15 @@ export function allFrameKeys(): string[] {
 export const ATLAS_SIZE = 2048;
 const PAD = 3;
 
+/**
+ * SVG markup for a part rasterized `scale` texels per px: the canvas is the
+ * next whole texel up and the view box grows with it, so the art is never
+ * stretched (one texel is exactly 1/scale px of the part).
+ */
 export function svgMarkup(p: { w: number; h: number; body: string }, scale: number): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.ceil(p.w * scale)}" height="${Math.ceil(p.h * scale)}" viewBox="0 0 ${p.w} ${p.h}">${p.body}</svg>`;
+  const cw = Math.max(1, Math.ceil(p.w * scale - 1e-6));
+  const ch = Math.max(1, Math.ceil(p.h * scale - 1e-6));
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${cw}" height="${ch}" viewBox="0 0 ${cw / scale} ${ch / scale}">${p.body}</svg>`;
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -212,7 +219,10 @@ export async function buildAtlases(
   parts: readonly PartArt[],
   prefix: string,
   onProgress: (done: number, total: number) => void,
+  /** Texels per px each part is rasterized at (default: its own `scale`, else 2). */
+  rasterScale: (p: PartArt) => number = (p) => p.scale ?? 2,
 ): Promise<void> {
+  const scaleOf = (p: PartArt): number => Math.min(rasterScale(p), (ATLAS_SIZE - PAD * 2) / p.w, (ATLAS_SIZE - PAD * 2) / p.h);
   const total = parts.length;
   let done = 0;
   const images = new Map<string, HTMLImageElement>();
@@ -221,14 +231,14 @@ export async function buildAtlases(
   const workers = Array.from({ length: 6 }, async () => {
     while (queue.length) {
       const p = queue.shift()!;
-      const scale = p.scale ?? 2;
+      const scale = scaleOf(p);
       try {
         images.set(p.key, await rasterizeSvg(svgMarkup(p, scale)));
       } catch {
         // Decorative failure must not block the game: an empty frame is used.
         const c = document.createElement('canvas');
-        c.width = Math.max(1, Math.ceil(p.w * scale));
-        c.height = Math.max(1, Math.ceil(p.h * scale));
+        c.width = Math.max(1, Math.ceil(p.w * scale - 1e-6));
+        c.height = Math.max(1, Math.ceil(p.h * scale - 1e-6));
         images.set(p.key, c as unknown as HTMLImageElement);
       }
       done++;
@@ -239,9 +249,9 @@ export async function buildAtlases(
 
   const items: { p: PartArt; key: string; w: number; h: number; darken: boolean }[] = [];
   for (const p of parts) {
-    const scale = p.scale ?? 2;
-    const w = Math.ceil(p.w * scale);
-    const h = Math.ceil(p.h * scale);
+    const scale = scaleOf(p);
+    const w = Math.max(1, Math.ceil(p.w * scale - 1e-6));
+    const h = Math.max(1, Math.ceil(p.h * scale - 1e-6));
     items.push({ p, key: p.key, w, h, darken: false });
     if (p.far) items.push({ p, key: p.key + '.far', w, h, darken: true });
   }
@@ -264,7 +274,7 @@ export async function buildAtlases(
       cy = PAD;
       shelfH = 0;
     }
-    const scale = it.p.scale ?? 2;
+    const scale = scaleOf(it.p);
     pages[pages.length - 1]!.push({
       key: it.key,
       img: images.get(it.p.key)!,

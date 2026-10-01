@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import { app, persist } from '../App';
 import { DEPTH, VIEW_H, VIEW_W } from '../constants';
+import { fitScene } from '../../paper/screen';
 import { hex, P } from '../../render/2d/palette';
 import { CAPTIONS } from '../../content/data/dialogue.tr';
 import { chapterStartProgress, Quest } from '../state/GameState';
@@ -12,6 +13,7 @@ export class EndingScene extends Phaser.Scene {
   }
 
   create(): void {
+    fitScene(this, 'contain');
     this.cameras.main.setBackgroundColor('#0f0d18');
     const g = this.add.graphics().setDepth(DEPTH.sky);
     g.fillStyle(hex(P.paper), 0.08);

@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { VIEW_H, VIEW_W } from '../constants';
+import { fitScene } from '../../paper/screen';
 import { Face } from '../../gameplay/actors/Celestial';
 import type { SkyJson, SkyOut } from '../content/types';
 
@@ -35,6 +36,8 @@ export class SkyScene extends Phaser.Scene {
   private k = { m: 1, ma: 1, s: 1, sa: 1 };
   private tint!: Phaser.GameObjects.Rectangle;
   private laughT = 0;
+  /** The part of the 1280 × 720 layout the screen shows (the faces keep to its corners). */
+  private view: () => Phaser.Geom.Rectangle = () => new Phaser.Geom.Rectangle(0, 0, VIEW_W, VIEW_H);
 
   constructor() {
     super({ key: 'sky' });
@@ -45,8 +48,10 @@ export class SkyScene extends Phaser.Scene {
     this.sky = { ...NONE };
     this.k = { m: 1, ma: 1, s: 1, sa: 1 };
     this.laughT = 0;
+    this.view = fitScene(this, 'height');
     this.tint = this.add.rectangle(0, 0, VIEW_W, VIEW_H, 0x000000, 0).setOrigin(0).setDepth(0);
     this.set(data.sky ?? NONE, false);
+    this.place();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.moon?.destroy();
       this.sun?.destroy();
@@ -81,6 +86,20 @@ export class SkyScene extends Phaser.Scene {
     this.eye.y = y;
   }
 
+  /** Where the faces look, as a point of the device-pixel screen. */
+  lookAtScreen(x: number, y: number): void {
+    const p = this.cameras.main.getWorldPoint(x, y);
+    this.look(p.x, p.y);
+  }
+
+  /** The moon in the top left corner of what shows, the sun in the top right; the light over all of it. */
+  private place(): void {
+    const v = this.view();
+    this.tint.setPosition(v.x, v.y).setSize(v.width, v.height);
+    this.moon?.c.setPosition(v.x + MOON_AT.x, v.y + MOON_AT.y);
+    this.sun?.c.setPosition(v.right - (VIEW_W - SUN_AT.x), v.y + SUN_AT.y);
+  }
+
   /** Short speech movement of a face (a line it says). */
   talk(who: 'moon' | 'sun', ms = 1800): void {
     (who === 'moon' ? this.moon : this.sun)?.say(ms);
@@ -110,6 +129,7 @@ export class SkyScene extends Phaser.Scene {
 
   override update(_time: number, dtMs: number): void {
     if (this.laughT > 0) this.laughT -= dtMs / 1000;
+    this.place();
     const out = this.sky.out;
     if (this.moon) {
       this.moon.setScale(MOON_AT.scale * this.k.m);

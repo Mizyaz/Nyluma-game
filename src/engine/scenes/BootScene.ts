@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { app } from '../App';
 import { allParts } from '../../content/art/manifest';
 import { buildAtlases } from '../../render/2d/TextureFactory';
+import { actorScale } from '../../paper/press';
 import { makeFxTextures } from '../../render/2d/fxArt';
 import { GemArt } from '../../render/2d/fx/gemArt';
 
@@ -16,7 +17,10 @@ export class BootScene extends Phaser.Scene {
     const started = performance.now();
     makeFxTextures(this.textures);
     GemArt.ensure(this);
-    buildAtlases(this.textures, allParts(), 'atlas', (d, t) => app.ui.loading(d / t))
+    // Printed at the device's own scale for the actors' plane (see paper/press.ts):
+    // one texel of a figure is one pixel of the screen.
+    const s = actorScale();
+    buildAtlases(this.textures, allParts(), 'atlas', (d, t) => app.ui.loading(d / t), (p) => ((p.scale ?? 2) / 2) * s)
       .then(() => {
         (window as unknown as { __kdBootMs?: number }).__kdBootMs = performance.now() - started;
         app.ui.loading(null);
