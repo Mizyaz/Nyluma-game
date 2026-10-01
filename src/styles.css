@@ -1631,9 +1631,11 @@ a {
 
 /* A pop-up paper theatre in the night that builds itself while the game
    draws its pictures (LoadingView.ts, loadingStage.ts). --u is one theatre
-   unit in px. Every card stands at its depth --z, scaled by --c so that it
-   shows at its drawn size; cards are hinged at the floor and pop up. Only
-   transform and opacity ever move. */
+   unit in px. The theatre is a stack of flat layers (.ld-z), back to front,
+   that the pointer slides against each other; their cards are hinged at the
+   floor and pop up. It shares the machine with the game, so it is cheap to
+   paint: what moves has a layer of its own, painted once, and only
+   transform and opacity ever change; nothing moves inside an SVG. */
 .loading {
   position: absolute;
   inset: 0;
@@ -1665,8 +1667,6 @@ a {
   flex: none;
   width: calc(var(--W) * var(--u));
   height: calc(var(--H) * var(--u));
-  perspective: calc(1500 * var(--u));
-  perspective-origin: 50% var(--oy);
   pointer-events: none;
 }
 
@@ -1685,46 +1685,34 @@ a {
   height: 100%;
 }
 
-.ld-rig,
-.ld-rig2,
+/* The layers. Each slides with the pointer by its depth (LoadingView); its
+   cards pop up toward the eye. Closing, the theatre comes a little nearer as
+   it fades. */
 .ld-look,
 .ld-z {
   position: absolute;
   inset: 0;
-  transform-style: preserve-3d;
 }
 
-/* The whole diorama breathes: two slow turns out of step; the pointer turns it too. */
-.ld-rig,
-.ld-rig2,
 .ld-look {
-  transform-origin: 50% var(--oy) calc(-60 * var(--u));
-}
-
-.ld-rig {
-  animation: ld-sway-y 13s ease-in-out infinite alternate;
+  transform-origin: 50% var(--oy);
   transition: scale 0.45s cubic-bezier(0.55, 0, 0.85, 0.3);
 }
 
-.ld-rig2 {
-  animation: ld-sway-x 9s ease-in-out -4s infinite alternate;
-}
-
-.ld-look {
-  will-change: transform;
-}
-
-.done .ld-rig {
+.done .ld-look {
   scale: 1.1;
 }
 
 .ld-z {
-  transform-origin: 50% var(--oy);
-  transform: translateZ(calc(var(--z) * var(--u))) scale3d(var(--c), var(--c), var(--c));
+  transform-origin: 0 0;
+  perspective: calc(1500 * var(--u));
+  perspective-origin: 50% var(--oy);
 }
 
 .ld-card,
-.ld-floor,
+.ld-flat,
+.ld-fs,
+.ld-fsh,
 .ld-lamp,
 .ld-cr,
 .ld-spark,
@@ -1735,6 +1723,28 @@ a {
 .ld-face,
 .ld-whale {
   position: absolute;
+}
+
+/* What moves has a layer of its own, painted once and then only moved. */
+.ld-z,
+.ld-card,
+.ld-fs,
+.ld-fsh,
+.ld-cr,
+.ld-gorti,
+.ld-head,
+.ld-eyes,
+.ld-digits,
+.ld-count,
+.ld-drape,
+.ld-val {
+  will-change: transform;
+}
+
+.ld-lamp i,
+.ld-beam,
+.ld-joy {
+  will-change: opacity;
 }
 
 /* A card lies folded on the floor until its turn, then springs up past upright and settles. */
@@ -1753,7 +1763,7 @@ a {
   transition-delay: var(--w, 0s);
 }
 
-/* Hanging things are let down on their threads. */
+/* Hanging things are let down on their threads, and swing there. */
 .ld-card.ld-drop {
   transform: translateY(calc(-46 * var(--u)));
   transition:
@@ -1761,52 +1771,61 @@ a {
     opacity 0.35s ease-out;
 }
 
-/* A card's soft shadow stands --g units behind it, down and to the left. */
-.ld-z.on > .ld-sh,
-.ld-still .ld-sh {
-  transform: translate3d(calc(var(--g) * -0.42 * var(--u)), calc(var(--g) * 0.5 * var(--u)), calc(var(--g) * -1 * var(--u)));
-}
-
-/* The box behind the frame, painted inside as the night sky with its glow
-   low down, as the backdrop is. */
-.ld-wall,
-.ld-ceil {
-  position: absolute;
-  background:
-    radial-gradient(circle, rgba(246, 231, 166, 0.8) 0 calc(1.3 * var(--u)), transparent calc(1.9 * var(--u))) 0 0 / calc(61 * var(--u)) calc(47 * var(--u)),
-    radial-gradient(circle, rgba(248, 198, 220, 0.6) 0 calc(1 * var(--u)), transparent calc(1.6 * var(--u))) calc(23 * var(--u)) calc(19 * var(--u)) / calc(83 * var(--u)) calc(59 * var(--u)),
-    linear-gradient(#2e2454, #3b2a5c 55%, #6b5690);
-}
-
-.ld-ceil {
-  background-color: #2a2045;
-  background-image: none;
-}
-
 .ld-bob {
   position: absolute;
   inset: 0;
   transform-origin: 50% 0;
+}
+
+.ld-z.on .ld-bob {
   animation: ld-bob 3.8s ease-in-out var(--d) infinite alternate;
 }
 
+/* The Moon and the Sun blink now and then. */
 .ld-blink {
   position: absolute;
   inset: 0;
   opacity: 0;
+}
+
+.ld-z.on .ld-blink {
   animation: ld-blink 5.3s linear infinite;
 }
 
-.ld-blink.ld-sun {
+.ld-z.on .ld-blink.ld-sun {
   animation-duration: 7.9s;
   animation-delay: -3s;
 }
 
+/* The proscenium's shadow on the stage comes with it. */
+.ld-fsh {
+  opacity: 0;
+  transition: opacity 0.6s ease-out;
+}
+
+.ld-z.on > .ld-fsh {
+  opacity: 1;
+  transition-delay: var(--w, 0s);
+}
+
+/* The whale swims along its wire, bobbing as it goes. */
 .ld-whale {
+  opacity: 0;
+  transition: opacity 0.6s ease-out;
+}
+
+.ld-z.on > .ld-whale {
+  opacity: 1;
+  transition-delay: var(--w, 0s);
   animation: ld-swim 34s linear -12s infinite;
 }
 
-.ld-whale svg {
+.ld-fish {
+  position: absolute;
+  inset: 0;
+}
+
+.ld-z.on > .ld-whale > .ld-fish {
   animation: ld-bob 1.9s ease-in-out infinite alternate;
 }
 
@@ -1845,7 +1864,6 @@ a {
 .ld-lamp i {
   position: absolute;
   inset: -40% 6% 22%;
-  border-radius: 50%;
   background: radial-gradient(closest-side, rgba(255, 240, 180, 0.9), rgba(255, 196, 150, 0.32) 55%, transparent);
   opacity: 0;
   transition: opacity 0.5s ease-out;
@@ -1863,14 +1881,20 @@ a {
   background: linear-gradient(rgba(196, 184, 232, 0), rgba(196, 184, 232, 0.38));
 }
 
-/* Fireflies wander over the hills, glowing and dimming. */
+/* Fireflies wander over the hills, glowing and dimming, once the hills are up. */
 .ld-fly {
   position: absolute;
   width: calc(18 * var(--u));
   height: calc(18 * var(--u));
   margin: calc(-9 * var(--u));
-  border-radius: 50%;
   background: radial-gradient(closest-side, #fffbe0 18%, rgba(240, 250, 160, 0.4) 36%, transparent);
+  visibility: hidden;
+  transition: visibility 0s;
+}
+
+.ld-z.on > .ld-fly {
+  visibility: visible;
+  transition-delay: calc(var(--w, 0s) + 0.4s);
   animation:
     ld-fly 9s ease-in-out var(--d) infinite alternate,
     ld-glow 1.9s ease-in-out var(--d) infinite alternate;
@@ -1897,11 +1921,6 @@ a {
 
 .ld-head {
   transition: transform 0.45s cubic-bezier(0.3, 1.5, 0.6, 1);
-}
-
-.ld-screen {
-  overflow: hidden;
-  border-radius: calc(8 * var(--u));
 }
 
 .ld-eyes,
@@ -1945,9 +1964,13 @@ a {
   font-variant-numeric: tabular-nums;
   text-align: center;
   color: #ffd6ee;
-  text-shadow:
-    0 0 calc(2.5 * var(--u)) #ff5db6,
-    0 0 calc(8 * var(--u)) #ff5db6;
+  text-shadow: 0 0 calc(3 * var(--u)) #ff5db6;
+}
+
+/* Scan lines and the snow, rounded to the screen. */
+.ld-scan,
+.ld-snow {
+  border-radius: calc(8 * var(--u));
 }
 
 .ld-scan {
@@ -1960,7 +1983,6 @@ a {
 }
 
 .ld-snow {
-  inset: -50%;
   background: var(--pencil), var(--grain), #8a6c88;
   background-size: 70px 70px;
 }
@@ -2120,47 +2142,32 @@ a {
   transition: none !important;
 }
 
-/* Reduced motion: no sway, parallax or bobbing; the pieces simply fade in. */
-.ld-still .ld-rig,
-.ld-still .ld-rig2,
-.ld-still .ld-bob,
-.ld-still .ld-whale,
-.ld-still .ld-whale svg,
-.ld-still .ld-gorti,
-.ld-still .ld-ban,
-.ld-still .ld-cf,
-.ld-still .ld-cr + .ld-spark,
-.ld-still .ld-lamp i,
-.ld-still .ld-fly {
+/* Reduced motion: no parallax or bobbing; the pieces simply fade in, and the whale waits in the sky. */
+.ld-still .ld-z.on .ld-bob,
+.ld-still .ld-z.on > .ld-whale,
+.ld-still .ld-z.on > .ld-whale > .ld-fish,
+.ld-still .ld-z.on > .ld-fly,
+.ld-still .ld-cr.on + .ld-spark,
+.ld-still.ld-tada .ld-cr + .ld-spark,
+.ld-still.ld-tada .ld-gorti,
+.ld-still.ld-tada .ld-ban,
+.ld-still.ld-tada .ld-cf,
+.ld-still.ld-tada .ld-lamp i {
   animation: none;
 }
 
-.ld-still .ld-card:not(.ld-sh),
+.ld-still .ld-whale {
+  translate: calc(var(--run) * 0.35 * var(--u)) 0;
+}
+
+.ld-still .ld-card,
 .ld-still .ld-cr,
 .ld-still .ld-drape,
 .ld-still .ld-val,
-.ld-still.done .ld-rig {
+.ld-still .ld-look {
   transform: none;
   scale: none;
   transition: opacity 0.6s ease var(--w, 0s);
-}
-
-@keyframes ld-sway-y {
-  from {
-    transform: rotateY(-3deg);
-  }
-  to {
-    transform: rotateY(3deg);
-  }
-}
-
-@keyframes ld-sway-x {
-  from {
-    transform: rotateX(1.5deg);
-  }
-  to {
-    transform: rotateX(-2deg);
-  }
 }
 
 @keyframes ld-bob {
@@ -2320,7 +2327,10 @@ a {
 
 @keyframes ld-snow {
   to {
-    translate: 9% 13%;
+    background-position:
+      41px 23px,
+      -29px 37px,
+      0 0;
   }
 }
 

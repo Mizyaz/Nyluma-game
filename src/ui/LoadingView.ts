@@ -10,15 +10,23 @@ import { buildStage, STAGE_SIZE, type StageKind } from './loadingStage';
 // curtains part with a burst of paper confetti; close() fades it into the
 // game. The words passed to set() stay readable on a paper strip.
 //
-// Cheap to run: everything moves by CSS transforms and opacity on the
-// compositor; the only script loop eases the pointer parallax and stops
-// when it settles. The pieces wait their turns by transition delays, not
-// timers, so the ripple plays on while the game keeps the page busy.
-// Reduced motion: no sway, parallax or bobbing, and the pieces simply fade
-// in.
+// It runs beside the game drawing its atlases on the same machine, so it is
+// cheap: the theatre is a stack of flat layers, each painted once; only
+// their transforms and opacities move, on the compositor. The pointer
+// slides the layers against each other (the one script loop, which stops
+// when it settles). The pieces wait their turns by transition delays, not
+// timers, so the ripple plays on while the game keeps the page busy, and
+// set() touches the page only when something there changes.
+// Reduced motion: no parallax or bobbing, and the pieces simply fade in.
 
 /** Time between two pieces coming up (ms), so a jump in progress plays as a ripple. */
 const BEAT = 85;
+
+/** A layer of the theatre and how it slides with the pointer (see loadingStage's Slide). */
+interface Slider {
+  el: HTMLElement;
+  p: number[];
+}
 
 export class LoadingView {
   readonly el: HTMLElement;
@@ -27,6 +35,8 @@ export class LoadingView {
   private readonly count: HTMLElement;
   private readonly still: boolean;
   private kind: StageKind | null = null;
+  /** One theatre unit, px. */
+  private u = 1;
   /** Everything that comes up with the progress, in order. */
   private pieces: { at: number; el: HTMLElement }[] = [];
   private up = 0;
@@ -39,8 +49,10 @@ export class LoadingView {
   private pct = -1;
   private words = '';
   private gather = '';
+  private message = false;
+  private tada = false;
   private drapes: HTMLElement[] = [];
-  private look: HTMLElement | null = null;
+  private layers: Slider[] = [];
   private head: HTMLElement | null = null;
   private eyes: HTMLElement | null = null;
   private digits: HTMLElement | null = null;
@@ -71,7 +83,7 @@ export class LoadingView {
     }
   }
 
-  /** Shows how far the drawings are (0..1), with a word about it. */
+  /** Shows how far the drawings are (0..1), with a word about it. It is called for every picture, so it changes the page only when what shows changes. */
   set(progress: number, label: string): void {
     const p = Math.min(1, Math.max(0, progress || 0));
     if (label !== this.words) {
@@ -82,9 +94,15 @@ export class LoadingView {
     // the end of the growing: no ta-da, and Gorti's screen goes to snow.
     this.first ??= label;
     const message = p >= 1 && label !== this.first;
-    this.el.classList.toggle('ld-msg', message);
+    if (message !== this.message) {
+      this.message = message;
+      this.el.classList.toggle('ld-msg', message);
+    }
     if (message) {
-      this.el.classList.remove('ld-tada');
+      if (this.tada) {
+        this.tada = false;
+        this.el.classList.remove('ld-tada');
+      }
       return;
     }
     const pct = Math.round(p * 100);
@@ -100,8 +118,11 @@ export class LoadingView {
       for (const d of this.drapes) d.style.setProperty('--k', gather);
     }
     while (this.due < this.pieces.length && this.pieces[this.due]!.at <= p) this.due++;
-    this.bringUp();
-    if (p >= 1) this.el.classList.add('ld-tada');
+    if (this.due > this.up) this.bringUp();
+    if (p >= 1 && !this.tada) {
+      this.tada = true;
+      this.el.classList.add('ld-tada');
+    }
   }
 
   /** Fades away, then leaves. */
@@ -178,8 +199,10 @@ export class LoadingView {
     const kind: StageKind = a > 1.62 ? 'wide' : a > 1.02 ? 'mid' : 'tall';
     const [W, H] = STAGE_SIZE[kind];
     const u = Math.min((aw * (kind === 'tall' ? 1 : 0.92)) / W, ah / H);
+    this.u = u;
     this.el.style.setProperty('--u', `${u.toFixed(4)}px`);
     if (kind !== this.kind) this.build(kind);
+    else if (this.lx || this.ly) this.slide();
     this.fitTitle();
   };
 
@@ -191,7 +214,7 @@ export class LoadingView {
     this.box.style.cssText = `--W:${W};--H:${H};--oy:${art.oy}`;
     this.box.innerHTML = art.html;
     this.pieces = [...this.box.querySelectorAll<HTMLElement>('[data-at]')].map((el) => ({ at: Number(el.dataset.at), el })).sort((a, b) => a.at - b.at);
-    this.look = this.box.querySelector('.ld-look');
+    this.layers = [...this.box.querySelectorAll<HTMLElement>('[data-p]')].map((el) => ({ el, p: (el.dataset.p ?? '').split(' ').map(Number) }));
     this.head = this.box.querySelector('.ld-head');
     this.eyes = this.box.querySelector('.ld-eyes');
     this.digits = this.box.querySelector('.ld-digits');
@@ -205,8 +228,9 @@ export class LoadingView {
       this.el.classList.remove('ld-instant');
     }
     this.due = Math.max(this.due, this.up);
+    // The new layers start square to the screen and ease back to the pointer.
     this.lx = this.ly = 0;
-    if (this.look) this.look.style.transform = '';
+    if (this.tx || this.ty) this.ease();
   }
 
   /** Shrinks the title to its banner when the lettering runs wide (it varies by system font). */
@@ -239,13 +263,26 @@ export class LoadingView {
     this.raf = requestAnimationFrame(this.frame);
   }
 
-  /** Eases the stage toward the pointer: the near layers move more than the far ones. */
+  /** Eases the stage toward the pointer. */
   private frame = (now: number): void => {
     const k = 1 - Math.exp(-Math.min(64, now - this.last) / 170);
     this.last = now;
     this.lx += (this.tx - this.lx) * k;
     this.ly += (this.ty - this.ly) * k;
-    if (this.look) this.look.style.transform = `rotateX(${(this.ly * 4).toFixed(2)}deg) rotateY(${(-this.lx * 7).toFixed(2)}deg)`;
+    this.slide();
     this.raf = Math.abs(this.tx - this.lx) + Math.abs(this.ty - this.ly) > 0.002 ? requestAnimationFrame(this.frame) : 0;
   };
+
+  /**
+   * Slides each layer by its depth: the near ones with the pointer, the far
+   * ones against it (a point (x, y) of a layer moves lx·(a0 + a1·x + a2·y)
+   * across and ly·(b0 + b1·x + b2·y) down, in units).
+   */
+  private slide(): void {
+    const { lx, ly, u } = this;
+    for (const { el, p } of this.layers) {
+      const [a0 = 0, a1 = 0, a2 = 0, b0 = 0, b1 = 0, b2 = 0] = p;
+      el.style.transform = `matrix(${(1 + lx * a1).toFixed(5)},${(ly * b1).toFixed(5)},${(lx * a2).toFixed(5)},${(1 + ly * b2).toFixed(5)},${(lx * a0 * u).toFixed(2)},${(ly * b0 * u).toFixed(2)})`;
+    }
+  }
 }
