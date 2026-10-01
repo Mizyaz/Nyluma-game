@@ -3,9 +3,66 @@
 Bu rapor yalnızca gerçekten çalıştırılan kontrolleri ve bunların sonuçlarını
 listeler. Ölçümler aşağıdaki test ortamında alınmıştır; gerçek cihaz
 performansını temsil etmez. İlk bölüm bu sürümün kontrolleridir. Sonraki
-bölümlerdeki sonuçlar önceki sürümün (`22d984d`) oyun kodu içindir.
+bölümlerdeki sonuçlar önceki sürümlerin oyun kodu içindir.
 
-## Bu sürüm: tablolar, Rezonans, yüz sahneleri, yaylılar, pastel tünel
+## Bu sürüm: düz odalar, Sivaslı amca, yıkma, bölüm kütüphanesi
+
+Bu sürümde eklenenler:
+
+- bölümler ve odalar JSON dosyalarından kurulur (şema, `npm run kd` aracı,
+  Bölüm VI'nın b01–b04 odaları);
+- odalarda konuşulan karakterler (NPC); Ay ve Güneş hep ekranda;
+- R ile kök ⇄ insan formu; insan formu kel Sivaslı amca: E ile göbeğini tutup
+  güler, E basılı kahkahayla Güneş ile Ay yer değiştirir (kafası da), yakındaki
+  karakterler de güler;
+- yıkılabilirler ve yıkma hareketi (parçalar uçuşur, yol açılır);
+- karakterlerde daha çok ayrıntı, yeni yürüyüş (ayak kaymaz), gülme, kahkaha ve
+  yıkma pozları, ayak gölgeleri;
+- r01–r12 tek zeminde yürünür, zıplama kapalı;
+- çizgi roman mürekkep konturları.
+
+| Kontrol | Sonuç |
+| --- | --- |
+| `npm run typecheck` | Hatasız |
+| `npm test` (Vitest) | 18 dosya, 153 test geçti |
+| `npm run kd -- check` | Hatasız: 6 bölüm, 4 oda dosyası, 12 TS oda |
+| Tarayıcı testleri (`--grep-invert @campaign`, 2 işçi) | 23 geçti, 1 kaldı, 13 atlandı (yalnızca `SHOTS`/`DEV_ROUTE` ile çalışanlar), 5,7 dk. Kalan test aşağıda; düzeltmeden sonra tek başına koşuldu ve geçti (29,9 s) |
+| Tam kampanyalar (klavye, dokunmatik telefon; 2 işçi aynı anda) | İkisi de geçti: klavye 6,0 dk, telefon 6,4 dk. Oda başına klavye / telefon (s): r01 33/37, r02 8/8, r03 17/27, r04 24/28, r05 24/25, r06 17/18, r07 96/96, r08 30/30, r09 19/22, r10 25/26, r11 19/20, r12 33/34 |
+
+Tarayıcı testlerinde bu sürümde güncellenenler (oyunun bilerek değişen
+davranışına göre):
+
+- Sivaslı amca testi artık gülmeyi (E) ve kahkahayı (E basılı, Güneş ⇄ Ay)
+  sınar; eskiden yeri sarsan hareketi bekliyordu;
+- bölüm seçiminde bütün bölümler açık (bilerek açılmıştı), test IV'ün kapalı
+  olmasını bekliyordu;
+- r01'in tablosu yatağın yanında asılı; test onu eski yerinde arıyordu;
+- r01 tablonun altında başlar (İncele yazısı görünür); Rezonans testi önce
+  boş zemine yürür.
+
+Testlerin bulduğu ve oyunda düzeltilen sorun: renk bombardımanı, açılışta
+Gorti uyurken (oyuncunun elinde değilken) iki kez patlıyordu. Artık Gorti
+oyuncuya geçince başlıyor; ilk bombardıman sayacı 1'den başlar.
+
+Görsel kontrol: 16 odanın her biri dört noktada, oyun döngüsü elle
+adımlanarak (yavaş makinede de aynı kare) çekildi. Bulunan ve düzeltilen iki
+sorun: r03'te yürüyüş yolunun 100 px üstüne sarkan bir toprak blok Gorti'nin
+kafasını örtüyordu (kaldırıldı); b02'deki Güneş Başlı, Güneş çıkınca
+Gorti'nin kendi insan formuyla aynı görünüyordu (yerine meşaleli Korkak
+kondu). Işınlamayla çekilen birkaç karede Gorti duvarın içinde ya da kapanmamış
+bir yatak çukurunda görünür; oyunda oraya gidilemez.
+
+Oyun içinde elle adımlanarak doğrulananlar: insan formunda Ay ya da Güneş
+çıkmamışken kel kafa; gülme pozu; kahkahadan sonra gökyüzü `none`'dan `sun`'a
+döner; yakındaki NPC `laugh` animasyonuna geçer; b03'te yıkma blokları kırar
+(`b03.bloklar.broken`).
+
+Performans: bu ortamda (yazılım WebGL, başka işlerle paylaşılan 4 çekirdek)
+oyun saniyede 1–2 kare çizer. Karakter değişikliklerinden önceki ve sonraki
+sürüm aynı koşullarda art arda ölçüldü, fark görülmedi. Gerçek cihazlarda
+ölçülmedi.
+
+## Önceki sürüm: tablolar, Rezonans, yüz sahneleri, yaylılar, pastel tünel
 
 Bu sürümde eklenenler:
 
