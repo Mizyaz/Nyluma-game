@@ -5,7 +5,36 @@ listeler. Ölçümler aşağıdaki test ortamında alınmıştır; gerçek cihaz
 performansını temsil etmez. İlk bölüm bu sürümün kontrolleridir. Sonraki
 bölümlerdeki sonuçlar önceki sürümlerin oyun kodu içindir.
 
-## Bu sürüm: 1. tablonun resimleri, göz-yaprak, Gorti'nin TV yüzü geri döndü
+## Bu sürüm: 1. tablonun gül ağacı, stilize çizim
+
+Bu sürümde değişenler:
+
+- 14. Oda'daki ağaç, tabloyu birebir kopyalamak yerine oyunun kendi çizgi
+  romanı diliyle, Gorti'nin gölge ve çizgi kitiyle yeniden çizildi. Tablodaki
+  nesneler tek tek ayrıldı: dikenli lila gövde ve tepesindeki kristal; dal
+  uçlarında güller; büyük gülden kanatlarını açarak çıkan büyük kuş; uzun
+  goncadan ağzını açıp bağıran yavru kuş; soldaki gülden yeni uçmuş küçük
+  kuş ve arkasında savrulan iki taç yaprak; kıvrık daldan sarkan gonca;
+  tırtıklı gül yaprakları; örgülü kökler; köklerin indiği kabarık mor sis ve
+  oyuncaklara doğru uzanan sis şeridi.
+- Çizgi kitinin `comic` fonksiyonuna tarama çizgisi kalınlığı seçeneği
+  (`hatchWidth`) eklendi. Tablonun ölçüsünde çizilip küçültülen parçalar
+  için gerekli. Varsayılan değişmedi.
+
+Kontroller:
+
+| Kontrol | Sonuç |
+| --- | --- |
+| `npx tsc --noEmit -p .` | Hatasız |
+| `npx vitest run` | 17 dosya, 150 test geçti |
+| `npm run kd -- check` | Tamam: 6 bölüm, 4 oda dosyası, 12 TS oda |
+| `npx playwright test --grep-invert @campaign -g "first room" --workers=1` | 2 geçti (masaüstünde ilk oda, yalnız dokunmayla ilk oda), 1 atlandı (dik telefonda WebGL ekran görüntüsü), 1.4 dk |
+
+Görsel kontrol: ağaç tek başına 4 kat büyütülerek ve oyunda 1280×720
+ekranda (ilk oda) incelendi. Ağaç Gorti'nin boyunda, çizgileri ve
+gölgeleri ekran ölçeğinde okunuyor.
+
+## Önceki sürüm: 1. tablonun resimleri, göz-yaprak, Gorti'nin TV yüzü geri döndü
 
 Bu sürümde eklenenler:
 
@@ -64,7 +93,7 @@ Not: oyun döngüsü elle adımlanınca Gorti başsız tarayıcıda uykudan
 uyanmadı; bu yüzden oyun içi çekimler gerçek zamanlı alındı.
 
 
-## Önceki sürüm: kâğıt motoru, ışık kaynakları, duvarlar, derinlikte yürüyüş
+## Daha önceki sürüm: kâğıt motoru, ışık kaynakları, duvarlar, derinlikte yürüyüş
 
 Bu sürümde eklenenler:
 
@@ -121,7 +150,7 @@ Bilinen sınırlar: Gorti'nin çizimi oyuncu düzlemi için basılır; derinde b
 etkileşimleri etkilemez: konuşma ve İncele yalnızca x ve y'ye bakar.
 
 
-## Daha önceki sürüm: düz odalar, Sivaslı amca, yıkma, bölüm kütüphanesi
+## Daha eski sürüm: düz odalar, Sivaslı amca, yıkma, bölüm kütüphanesi
 
 Bu sürümde eklenenler:
 
@@ -178,7 +207,7 @@ oyun saniyede 1–2 kare çizer. Karakter değişikliklerinden önceki ve sonrak
 sürüm aynı koşullarda art arda ölçüldü, fark görülmedi. Gerçek cihazlarda
 ölçülmedi.
 
-## Daha eski sürüm: tablolar, Rezonans, yüz sahneleri, yaylılar, pastel tünel
+## Daha da eski sürüm: tablolar, Rezonans, yüz sahneleri, yaylılar, pastel tünel
 
 Bu sürümde eklenenler:
 
