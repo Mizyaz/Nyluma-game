@@ -211,6 +211,10 @@ export class WorldScene extends Phaser.Scene {
     // short of the torn front.
     const box = this.paper.spec;
     this.player.depthRange = { min: Math.min(0, box.back + DEPTH_ROOM), max: Math.max(0, box.front - DEPTH_ROOM) };
+    // The scene is reused room after room: its planes go with the stage.
+    this.cleanups.push(() => {
+      this.hisPlane = this.hisFx = this.standsOn = this.fxOn = null;
+    });
     // Gorti's screen face glows and lights what is near him; the Sun and the
     // Moon light the room from where they show.
     const dlg = app.ui.dialogue;

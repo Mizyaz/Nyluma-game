@@ -72,7 +72,7 @@ not have to re-discover it by reading the codebase.
 | File | What it holds |
 |---|---|
 | `lens.ts` | `Lens`: the eye. `scale(z) = f / (eye.z − z)`, `project` and `unproject`. `frame()` shoots a room the way a shift lens does: the eye looks straight ahead and the picture moves, so a card is only ever scaled and keeps its shape. |
-| `planes.ts` | `Planes`: one Phaser camera per depth (keyed by `Math.round(z)`, at most 31, drawn back to front). `put(obj, z)` and `zOf(obj)`. |
+| `planes.ts` | `Planes`: one Phaser camera per depth (keyed by `Math.round(z)`, at most 31, drawn back to front). `put(obj, z)` and `zOf(obj)`. `free(z)`/`move(cam, z)`: a camera whose depth moves (a figure walking in depth). `within(cam, fn)` stands on `cam` what `fn` adds; `toMain(x, y)` turns a point of that plane into the actors'-plane point that shows there (for pooled effects). |
 | `press.ts` | `Press`: prints each SVG part at the exact device scale it shows at (`exactMarkup`, `fitScale`). |
 | `box.ts` | `PaperBox`: the box's shader (back wall, floor, ceiling, side walls, torn front). It takes the lamps (`MAX_LIGHTS`), the fog, the darkening at the front (`uNear`) and the contact shadows (`MAX_SHADOWS`). |
 | `light.ts` | `Lighting` and the moods `WHIMSICAL`, `NIGHTMARE` and `DAY`. Point lights fall off as `(1 − d²/r²)²` with a wrap term. Cards are tinted at their four corners (MULTIPLY_TWO). There is fog behind z = 0 and silhouettes in front. `casterAt()` picks the lamp that throws a figure's shadow. |
@@ -100,6 +100,24 @@ Conventions:
   a shaded rim and a pale lip, pores, cracks with twigs, chipped corners, dark mortar. A cave
   wall also gets moss, fossils (ammonite, shell, leaf, fish), crystal sprouts and drips. Any
   wall can get chalk doodles (star, spiral, sun, moon, tallies, flower, a little Gorti).
+
+### Walking in depth
+
+- Up and down (W/S, the arrows; on the touch pad, sliding the thumb up or down) walk Gorti away
+  from the viewer and toward them over the room's floor: `Player.z`, from 100 px short of the
+  back wall to 100 px short of the torn front (`DEPTH_ROOM` in WorldScene). The world stays flat:
+  physics, scripts, triggers and interactions see x and y only.
+- Off the actors' plane (|z| ≥ 0.5) his figure, root and glow stand on a free camera that walks
+  with him (`WorldScene.standDepth`), so the lens, the lights, the fog, the props' occlusion and
+  his shadows all take his depth. On the actors' plane he stays on the main camera, as before.
+- What his steps make stands at his depth (`atHim`); what a move makes stands where he made it,
+  on a second free camera (`atFx`). Pooled effects kept in the actors' plane (dust, step crystals,
+  sparks, birds) start where his depth shows (`Planes.toMain`).
+- On anything but the floor (a whale, a ledge) he walks back to the actors' plane; a root reach
+  and a teleport bring him there too.
+- A figure on a free camera takes only 30% of the silhouettes' darkening before the actors'
+  plane (`FIGURE_FRONT` in light.ts): the player stays readable.
+- His art is printed for the actors' plane, so off it the parts are drawn a little scaled.
 
 ### Characters as paper puppets (`src/render/2d/rig/RigView.ts`)
 
