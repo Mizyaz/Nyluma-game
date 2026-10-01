@@ -151,9 +151,15 @@ Conventions:
   that never throws his own shadow. It breathes, and swells when he talks, sings or laughs. Each
   Rezonans move flashes it in that move's colour. The amca shines with his head, and the coward
   with his torch.
-- The eye-leaf on r01's floor (`src/content/art/p1EyeLeaf.ts`) is the leaf Gorti holds in the
-  painting, drawn to his measure, not the toys', in the same comic manner as the tree: a leaf
-  blade (`BLADE`) cut into seven plates by cracks that run from the eye's hollow to the edge.
+- The slit eye in r01's floor (`src/content/art/p1FloorEye.ts`) is the painting's broken floor
+  with an eye looking out of it, drawn lying down in the floor's perspective (`K`): a lilac crust
+  broken into eight plates round a slit, each pushed a little apart so the dark under it shows,
+  the far ones' inner faces come down as a heavy lid, and the cracks run on into the boards. It
+  is four cards at one depth and one pivot (`FLOOR_EYE_ORIGIN`): the slit's depth with the white,
+  the iris twice (pupil narrow and wide) and the broken floor on top, so the lids cut the iris
+  wherever it looks. `src/content/scripts/floorEye.ts` (`FloorEyeWatch`) makes it follow Gorti
+  (up at him when he is over it, its pupil widening as he comes near). It never blinks.
+  `FLOOR_EYE_LOOK` is how far the iris can move.
 - The rose tree in r01 (`src/content/art/p1Tree.ts`) is drawn in the game's comic manner with
   the characters' kit (`comic`), not traced: each object of the painting is its own shape (the
   trunk, the crystal, the roses at the branch tips, the birds coming out of them, the roots, the
