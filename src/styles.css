@@ -2018,3 +2018,443 @@ a {
 #app {
   -webkit-touch-callout: none;
 }
+
+/* ------------------------------------------------------------ page turns */
+
+/* The transitions (WarpScene, src/ui/PageTurn.ts): the frame just shown
+   turns over as a page of the storybook, in CSS 3D over the canvas, and the
+   next room pops up under it. Over the game view and under the HUD; nothing
+   in it takes pointer events. */
+.pt {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  contain: layout style;
+}
+
+/* The next page, blank until its room is made. */
+.pt-under {
+  position: absolute;
+  background: var(--grain), var(--pencil), radial-gradient(ellipse at 60% 40%, #fbf6ea 0%, #efe5d2 70%, #e3d6bf 100%);
+}
+
+.pt-book {
+  position: absolute;
+  perspective-origin: 50% 50%;
+}
+
+.pt-leaf {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+
+.pt-strip {
+  position: absolute;
+  top: 0;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.pt-face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.pt-front canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* A page with nothing printed on it (no frame could be taken). */
+.pt-plain {
+  background: var(--grain), var(--pencil), #f7f0e1;
+}
+
+/* The back of the page: paper, its edges inked in its own darker tone, the
+   print showing faintly through, mirrored. */
+.pt-back {
+  transform: rotateY(180deg);
+  background: var(--grain), var(--pencil), #f4ebd9;
+  box-shadow:
+    inset 0 2px 0 #c8b79f,
+    inset 0 -2px 0 #c8b79f;
+}
+
+.pt-ghost {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.11;
+  transform: scaleX(-1);
+}
+
+.pt-sh,
+.pt-gl {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  will-change: opacity;
+}
+
+/* Shadow on the print: a cool plum tone, lightly hatched, and the paper's
+   edge inked as it rises off the page beneath. */
+.pt-front .pt-sh {
+  background:
+    repeating-linear-gradient(-58deg, rgba(59, 50, 69, 0.3) 0 1px, transparent 1px 5px),
+    rgba(59, 50, 69, 0.48);
+  box-shadow:
+    inset 0 2px 0 #6f6178,
+    inset 0 -2px 0 #6f6178;
+}
+
+.pt-back .pt-sh {
+  background:
+    repeating-linear-gradient(-58deg, rgba(104, 82, 100, 0.45) 0 1px, transparent 1px 4.5px),
+    rgba(96, 74, 98, 0.5);
+}
+
+/* The glint riding the curl. */
+.pt-gl {
+  background: rgba(255, 251, 241, 0.92);
+}
+
+/* The paper's cut edge along the free side of the page's back: a pale
+   bevel inked in the paper's own darker tone. */
+.pt-rim {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  background: linear-gradient(90deg, #b5a184 0 1.2px, #fffaf0 1.2px);
+}
+
+.pt-rim.r {
+  left: auto;
+  right: 0;
+  background: linear-gradient(270deg, #b5a184 0 1.2px, #fffaf0 1.2px);
+}
+
+/* The paper's thickness at the free edge. */
+.pt-edge {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 50% 50% 0;
+  background: linear-gradient(90deg, #b9a78f, #fffaf0 35%, #fffaf0 65%, #b9a78f);
+  backface-visibility: visible;
+}
+
+/* The outline of the roll where the paper turns out of sight. */
+.pt-ink {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  opacity: 0;
+  background: linear-gradient(90deg, #9d8a6c 0 1.2px, rgba(157, 138, 108, 0.35) 1.2px);
+  transform-origin: 50% 50%;
+}
+
+/* The shadows the lifted page throws on the page beneath: drawn 200px wide
+   (PageTurn's SHADOW_W) and scaled to size, darkest against the paper. */
+.pt-gs {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 200px;
+  height: 100%;
+  transform-origin: 0 0;
+  opacity: 0;
+  background: linear-gradient(90deg, rgba(48, 36, 60, 0.62), rgba(48, 36, 60, 0.26) 32%, rgba(48, 36, 60, 0.07) 70%, rgba(48, 36, 60, 0));
+}
+
+.pt-gs.flip {
+  background: linear-gradient(270deg, rgba(48, 36, 60, 0.62), rgba(48, 36, 60, 0.26) 32%, rgba(48, 36, 60, 0.07) 70%, rgba(48, 36, 60, 0));
+}
+
+/* Gorti's screen glow flying over the pages (PageBits.ts). */
+.pt-spark {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+.pt-spark > i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 50%;
+  translate: -50% -50%;
+}
+
+.pt-spark-halo {
+  width: var(--r);
+  height: var(--r);
+  background: radial-gradient(circle, rgba(255, 134, 214, 0.62) 0%, rgba(255, 134, 214, 0.26) 34%, rgba(255, 134, 214, 0.08) 56%, rgba(255, 134, 214, 0) 70%);
+  mix-blend-mode: screen;
+}
+
+.pt-spark-core {
+  width: calc(var(--r) * 0.2);
+  height: calc(var(--r) * 0.2);
+  background: radial-gradient(circle, #fffaff 0 28%, #ffd3f0 46%, rgba(255, 150, 220, 0.55) 62%, rgba(255, 134, 214, 0) 74%);
+}
+
+.pt-spark-tail {
+  width: calc(var(--r) * 0.09 * var(--k));
+  height: calc(var(--r) * 0.09 * var(--k));
+  opacity: 0;
+  background: radial-gradient(circle, #fff4fb 0 30%, rgba(255, 150, 220, 0.6) 55%, rgba(255, 134, 214, 0) 72%);
+}
+
+/* Paper dust off a lifted page: cream flecks inked in their own darker tone, some catching the light. */
+.pt-mote {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 40% 60% 55% 45%;
+  background: #f6efe0;
+  box-shadow: 0 0 0 0.6px #b9a98f;
+  opacity: 0;
+  translate: -50% -50%;
+  will-change: transform, opacity;
+}
+
+.pt-mote.lit {
+  background: #fffaf2;
+  box-shadow:
+    0 0 0 0.6px #d6c5a6,
+    0 0 6px 1px rgba(255, 244, 214, 0.8);
+}
+
+/* While a page turns the HUD's texts wait for the new room (the old ones go
+   with the old page), and while a chapter page is up the whole HUD steps
+   aside; both come back softly. */
+#stage .hud,
+#stage .hud .hud-stack {
+  transition: opacity 0.3s ease;
+}
+
+#stage.pt-chapter .hud,
+#stage.pt-room .hud .hud-stack {
+  opacity: 0;
+  transition: none;
+}
+
+/* The chapter page (ChapterPage.ts): a sheet torn from a sketchbook, taped
+   onto the chapter's endpaper; a gatefold whose halves (.cp-door) each show
+   their half of a copy of the page and swing open onto the room. */
+.cp {
+  position: absolute;
+  left: 0;
+  top: 0;
+  perspective-origin: 50% 50%;
+}
+
+/* Round the game view on an upright phone: the paper that was there, lifting. */
+.cp-veil {
+  position: absolute;
+  left: 0;
+  top: 0;
+  background: var(--grain), var(--hatch), var(--page);
+}
+
+.cp-door {
+  position: absolute;
+  top: 0;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.cp-door.l {
+  transform-origin: 0 50%;
+}
+
+.cp-door.r {
+  transform-origin: 100% 50%;
+}
+
+.cp-face,
+.cp-back {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* The back of a half: plain paper. */
+.cp-back {
+  transform: rotateY(180deg);
+  background: var(--grain), var(--pencil), #eadcc2;
+}
+
+/* A half turned from the light: plum shade, hatched; toward it: a pale sheen. */
+.cp-sh,
+.cp-gl {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
+.cp-sh {
+  background:
+    repeating-linear-gradient(-58deg, rgba(36, 24, 48, 0.3) 0 1px, transparent 1px 5px),
+    rgba(36, 24, 48, 0.5);
+}
+
+.cp-gl {
+  background: rgba(255, 251, 241, 0.55);
+}
+
+/* The endpaper: the chapter's night colour, a printed pattern, grain. */
+.cp-page {
+  position: absolute;
+  top: 0;
+  background:
+    var(--grain),
+    var(--tile) 0 0 / 140px 140px,
+    radial-gradient(ellipse at 55% 40%, var(--ground-hi) 0%, var(--ground) 58%, var(--ground-lo) 100%);
+}
+
+.cp-page > * {
+  position: absolute;
+}
+
+.cp-sheet {
+  left: 0;
+  top: 0;
+}
+
+/* The sheet's surface: pencil grain, a little light high on the right, the edges aged. */
+.cp-paper {
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background:
+    var(--grain),
+    var(--pencil),
+    radial-gradient(ellipse at 68% 28%, rgba(255, 253, 246, 0.55), rgba(255, 253, 246, 0) 55%),
+    radial-gradient(ellipse at 50% 50%, rgba(150, 118, 80, 0) 60%, rgba(150, 118, 80, 0.17) 100%);
+}
+
+/* The gatefold's fold. */
+.cp-crease {
+  top: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(60, 44, 70, 0), rgba(60, 44, 70, 0.13) 45%, rgba(255, 252, 244, 0.45) 55%, rgba(255, 252, 244, 0));
+}
+
+/* Washi tape: pastel stripes, see-through, torn ends. */
+.cp-tape {
+  translate: -50% -50%;
+  opacity: 0.8;
+  background: repeating-linear-gradient(90deg, var(--a) 0 7px, var(--b) 7px 14px);
+  clip-path: polygon(0 0, 100% 0, 96% 17%, 100% 33%, 96% 50%, 100% 67%, 96% 83%, 100% 100%, 0 100%, 4% 83%, 0 67%, 4% 50%, 0 33%, 4% 17%);
+}
+
+/* BÖLÜM on a butter caption tag, its shadow low on the left. */
+.cp-tag {
+  translate: -50% 0;
+  rotate: -3deg;
+  padding: 0.24em 0.5em 0.18em 0.82em;
+  font-family: var(--display);
+  font-weight: 900;
+  font-synthesis: none;
+  letter-spacing: 0.32em;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--ink);
+  background: var(--grain), var(--narr);
+  border: 1.5px solid #8a7f6f;
+  box-shadow: -3px 4px 0 rgba(36, 24, 48, 0.3);
+}
+
+.cp-num,
+.cp-flo {
+  overflow: visible;
+}
+
+.cp-wash {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+
+/* The brush that paints it (only seen while it paints). */
+.cp-brush {
+  opacity: 0;
+}
+
+/* The title: the comic lettering of .title, each word inked in its own
+   darker tone (--line, set per word), its shadow low on the left. */
+.cp-title {
+  margin: 0;
+  line-height: 1.12;
+}
+
+.cp-title .ch {
+  text-shadow:
+    var(--o) 0 0 var(--line),
+    calc(var(--o) * -1) 0 0 var(--line),
+    0 var(--o) 0 var(--line),
+    0 calc(var(--o) * -1) 0 var(--line),
+    calc(var(--o) * 0.7) calc(var(--o) * 0.7) 0 var(--line),
+    calc(var(--o) * -0.7) calc(var(--o) * 0.7) 0 var(--line),
+    calc(var(--o) * 0.7) calc(var(--o) * -0.7) 0 var(--line),
+    calc(var(--o) * -0.7) calc(var(--o) * -0.7) 0 var(--line),
+    calc(var(--o) * -2.2) calc(var(--o) * 2.6) 0 rgba(58, 42, 70, 0.32);
+}
+
+/* The picture: a card on a paper hinge, standing up off the page. */
+/* Seen from a little above its foot: lying, the card is a sliver on the page. */
+.cp-pic {
+  perspective-origin: 50% 62%;
+}
+
+.cp-hinge {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  bottom: -2.5%;
+  height: 5%;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #e9dcc3, #cfbb98);
+  box-shadow: 0 0 0 1px #b8a27c;
+}
+
+.cp-card-sh {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transform-origin: 50% 100%;
+  mix-blend-mode: multiply;
+}
+
+.cp-card {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 100%;
+}
+
+.cp-card > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}

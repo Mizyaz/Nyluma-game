@@ -2,7 +2,6 @@ import * as Phaser from 'phaser';
 import { sceneProgress } from '../../content/data/scenes';
 import { app, persist } from '../App';
 import { enterFullscreen } from '../../ui/fullscreen';
-import { warpLook } from '../../render/2d/fx/crystalFx';
 import type { WarpData } from './WarpScene';
 import { DEPTH, VIEW_H, VIEW_W } from '../constants';
 import { hex, P } from '../../render/2d/palette';
@@ -12,7 +11,7 @@ import { Rng } from '../../render/2d/svg';
 import { RIG_GORTI_ROOT } from '../../content/characters/gorti';
 import { humanoidPose } from '../../render/2d/rig/animPoses';
 import { RigView } from '../../render/2d/rig/RigView';
-import { chapterStartProgress, newProgress, normalizeProgress, Quest, startProgressAt } from '../state/GameState';
+import { chapterStartProgress, newProgress, normalizeProgress, opensChapter, Quest, startProgressAt } from '../state/GameState';
 import { isRoomId } from '../state/types';
 import { roomDef } from '../../content/data/rooms';
 import type { Progress } from '../state/types';
@@ -121,11 +120,12 @@ export class MenuScene extends Phaser.Scene {
     app.ui.menus.closeAll();
     const def = roomDef(progress.room);
     const cp = def.checkpoints.find((c) => c.id === progress.checkpoint) ?? def.checkpoints[0]!;
-    // Into the world through the crystal tunnel.
+    // Into the world through a page turn: onto the chapter's page when the chapter opens here.
+    const quest = app.quest;
     this.scene.launch('warp', {
-      strength: 1,
-      look: warpLook(def.theme),
-      onPeak: () => this.scene.start('world', { room: progress.room, checkpoint: cp.id } satisfies WorldData),
+      chapter: opensChapter(null, progress.room, cp.id, quest) ? def.chapter : null,
+      dir: 1,
+      onPeak: (arrive) => this.scene.start('world', { room: progress.room, checkpoint: cp.id, arrive } satisfies WorldData),
     } satisfies WarpData);
   }
 

@@ -4,7 +4,9 @@ import { DEPTH, VIEW_H, VIEW_W } from '../constants';
 import { fitScene } from '../../paper/screen';
 import { hex, P } from '../../render/2d/palette';
 import { CAPTIONS } from '../../content/data/dialogue.tr';
-import { chapterStartProgress, Quest } from '../state/GameState';
+import { chapterStartProgress, opensChapter, Quest } from '../state/GameState';
+import type { WarpData } from './WarpScene';
+import type { WorldData } from './WorldScene';
 
 /** The concluding card and credits after the sale. Not a failure screen. */
 export class EndingScene extends Phaser.Scene {
@@ -31,9 +33,15 @@ export class EndingScene extends Phaser.Scene {
     app.ui.ending.show(CAPTIONS.finalLine, {
       replay: () => {
         app.ui.ending.hide();
-        app.quest = new Quest(chapterStartProgress(1), app.profile);
+        const quest = new Quest(chapterStartProgress(1), app.profile);
+        app.quest = quest;
         persist();
-        this.scene.start('world', { room: 'r01', checkpoint: 'r01_start' });
+        // From the start again: the last page turns onto chapter I's.
+        this.scene.launch('warp', {
+          chapter: opensChapter(null, 'r01', 'r01_start', quest) ? 1 : null,
+          dir: 1,
+          onPeak: (arrive) => this.scene.start('world', { room: 'r01', checkpoint: 'r01_start', arrive } satisfies WorldData),
+        } satisfies WarpData);
       },
       chapters: () => {
         app.ui.ending.hide();
