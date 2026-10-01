@@ -5,7 +5,68 @@ listeler. Ölçümler aşağıdaki test ortamında alınmıştır; gerçek cihaz
 performansını temsil etmez. İlk bölüm bu sürümün kontrolleridir. Sonraki
 bölümlerdeki sonuçlar önceki sürümlerin oyun kodu içindir.
 
-## Bu sürüm: sayfa çevirerek oda ve bölüm geçişleri
+## Bu sürüm: 14. Oda'nın zeminindeki yarık göz
+
+Bu sürümde değişenler:
+
+- 14. Oda'nın zeminindeki göz-yaprak kaldırıldı. Yaprak sanılan şey
+  tablodaki yarık gözdü: zemin yarılmış ve yarıktan bir göz bakıyor. Oyunda
+  da artık böyle.
+  - Leylak rengi kabuk, yarığın çevresinde sekiz köşeli plakaya kırılmış.
+    Plakalar biraz ayrılmış ve kalkmış; aralarından karanlık görünüyor.
+  - Uzaktaki plakaların iç yüzleri gözün üstüne ağır bir kapak gibi iniyor.
+    Kapağın köşelerinden kirpik gibi ince çatlaklar çıkıyor.
+  - Öndeki plakaların kalınlığı görünüyor. Çatlaklar zemin tahtalarına kırık
+    çizgiler olarak devam ediyor; çevrede kabuk kırıntıları yatıyor.
+  - Gözün akı beyaz, irisi kırmızı-pembe, göz bebeği dikey bir yarık.
+    Yarıktan pembe bir ışık sızıyor.
+  - Hepsi zemine yatık, odanın perspektifinde çizildi.
+- Göz Gorti'yi izliyor:
+  - Odada nereye giderse irisi o yöne dönüyor.
+  - Gorti üstüne gelince yukarı, öne doğru yürüyünce aşağı bakıyor.
+  - Gorti yaklaştıkça göz bebeği açılıyor.
+  - Ara sıra bir an başka yere kayıp geri dönüyor; hareket azaltma açıkken
+    bu kaymalar yok.
+  - Göz hiç kırpmıyor. Kapaklar irisi nereye bakarsa baksın kesiyor.
+- İnceleme metni de değişti: "Yerde bir yarık açılmış. İçinden bir göz
+  bakıyor; bütün çatlaklar ona varıyor." / "Göz kırpmıyor. Gorti nereye
+  gitse ardından bakıyor."
+
+Göz commit'i (`f6708da`) üzerinde koşulan kontroller:
+
+| Kontrol | Sonuç |
+| --- | --- |
+| `npm run typecheck` | Hatasız |
+| `npx vitest run` | 18 dosya, 159 test geçti |
+| `npm run kd -- check` | Tamam: 6 bölüm, 4 oda dosyası, 12 TS oda |
+| `npm run build`, `npm run build:e2e` | Başarılı |
+| `npx playwright test --grep-invert @campaign --workers=1` | 23 geçti, 13 atlandı, 2 kaldı, 14.6 dk |
+| Kalan 2 test tek başına (`-g "drops held keys\|never stops Gorti"`) | 2 geçti, 1.2 dk |
+
+Tam koşu sırasında makinede başka işler de çalışıyordu (yük ortalaması
+15–17). Kalan iki test zamana bağlı hareket ölçüyor:
+
+- duraklatıp devam edince Gorti'nin 0,5 saniye içinde durması (hızı 5'in
+  altında olmalıydı, 43 ölçüldü);
+- renk bombardımanı sırasında Gorti'nin yürümesi (60 pikselden fazla
+  yürümeliydi, 50 yürüdü).
+
+Yük düştüğünde (yük ortalaması 6–8) ikisi tek başına koşuldu ve geçti.
+Atlanan 13 test önceki sürümdekilerle aynı: 12'si yalnızca `SHOTS=1` ile
+koşan ekran görüntüsü testleri, 1'i `DEV_ROUTE` isteyen geliştirici rotası
+testi.
+
+Tam kampanyalar bu sürümde koşulmadı; değişiklik yalnızca ilk odada.
+
+Görsel kontrol: göz tek başına 5 kat büyütülerek ve oyunda ilk odada
+incelendi: 1280×720 ekranda Gorti uzaktayken ve gözün üstündeyken, 844×390
+telefon ekranında.
+
+Önceki bölümde yazan sayfa çevirme sorunları (şeritler arasındaki ince
+çizgiler, düz panel gibi okunan kıvrım) bu sürümde de duruyor;
+düzeltmeleri sürüyor.
+
+## Önceki sürüm: sayfa çevirerek oda ve bölüm geçişleri
 
 Bu sürümde değişenler:
 
@@ -77,7 +138,7 @@ Bilinen sorunlar (düzeltiliyor):
 Henüz denenmeyenler: gerçek GPU'lu cihaz ve telefon. Yeni seslerin hatasız
 çaldığı doğrulandı, ama kulakla dinlenmedi.
 
-## Önceki sürüm: 1. tablonun gül ağacı, göz-yaprağı ve duvar resimleri, stilize çizim
+## Eski sürüm: 1. tablonun gül ağacı, göz-yaprağı ve duvar resimleri, stilize çizim
 
 Bu sürümde değişenler:
 
