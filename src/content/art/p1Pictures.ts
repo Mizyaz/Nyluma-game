@@ -1,5 +1,6 @@
 import type { PartArt } from '../../render/2d/rig/rigTypes';
-import { ellipsePath, nextId, poly, smooth, taper, type Pt } from '../../render/2d/svg';
+import { ellipsePath, poly, smooth, taper, type Pt } from '../../render/2d/svg';
+import { INK, clipped, flat, inked, line, n } from './p1Ink';
 
 // The two pictures on the 14th Room's back wall, drawn by hand after the
 // first painting and in its manner: flat colours in bold ink.
@@ -14,8 +15,7 @@ import { ellipsePath, nextId, poly, smooth, taper, type Pt } from '../../render/
 // pairs of blades, over an angular base) in a dark frame cracked at both
 // sides, hung straight on a wire from a nail.
 
-/** The painting's ink, and the pictures' colours (chosen by eye). */
-const INK = '#211a1f';
+/** The pictures' colours (chosen by eye). */
 const PIC = {
   frame: '#7b7f98',
   canvas: '#cfa6aa',
@@ -34,28 +34,6 @@ const PIC = {
   groove: '#414a59',
   nail: '#5d6070',
 } as const;
-
-const n = (v: number): string => (Math.round(v * 100) / 100).toString();
-
-/** A flat fill outlined in ink. */
-function inked(d: string, fill: string, w = 1.6): string {
-  return `<path d="${d}" fill="${fill}" stroke="${INK}" stroke-width="${n(w)}" stroke-linejoin="round" stroke-linecap="round"/>`;
-}
-
-/** A line in ink (or in `color`). */
-function line(d: string, w: number, color: string = INK, o = 1): string {
-  return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${n(w)}" stroke-linejoin="round" stroke-linecap="round"${o !== 1 ? ` opacity="${n(o)}"` : ''}/>`;
-}
-
-function flat(d: string, color: string, o = 1): string {
-  return `<path d="${d}" fill="${color}"${o !== 1 ? ` opacity="${n(o)}"` : ''}/>`;
-}
-
-/** Markup clipped to the path `d`. */
-function clipped(d: string, body: string): string {
-  const id = nextId('p1p');
-  return `<clipPath id="${id}"><path d="${d}"/></clipPath><g clip-path="url(#${id})">${body}</g>`;
-}
 
 /** Points mirrored across the vertical line u = c. */
 const mirror = (pts: readonly Pt[], c: number): Pt[] => pts.map(([u, v]) => [2 * c - u, v]);

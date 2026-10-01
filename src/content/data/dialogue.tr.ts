@@ -92,8 +92,8 @@ export const DIALOGUE: Record<string, Line[]> = {
     { text: 'On dördüncünün yanında tek bir ad: Gorti Evaskinan.' },
   ],
   window: [
-    { text: 'Pencerenin ardında gök yok. Yalnızca toprak, fosil kökler ve kristaller.' },
-    { text: 'Kristallerin içinde, bir zamanlar yüzmüş balıkların gölgeleri donup kalmış.' },
+    { text: 'Telden sarkan kırık bir çerçeve. İçinde turkuaz bir amblem: bir kule, iki yanında kanatlar.' },
+    { text: 'Tuvalin kenarları kopmuş ama amblemin tek bir çizgisi bile eksik değil.' },
   ],
   bed: [{ text: 'Hiç uyunmamış bir yatak. Yastıkta toprak kokusu.' }],
   tree: [
@@ -107,6 +107,10 @@ export const DIALOGUE: Record<string, Line[]> = {
   starfolk: [
     { text: 'Kristalden küçük bir yıldız, kollarını Gorti’ye doğru uzatmış.' },
     { text: 'Dokunmaya bir türlü cesaret edemiyor.' },
+  ],
+  eyeleaf: [
+    { text: 'Yerde mor bir yaprak. Bütün çatlakları ortadaki göze varıyor.' },
+    { text: 'Göz kırpmıyor. Gorti nereye gitse ardından bakıyor.' },
   ],
   picture: [
     { text: 'Duvarda yeşil bir yaratığın portresi.' },

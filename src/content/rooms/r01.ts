@@ -60,8 +60,9 @@ export const R01: RoomDef = {
     { id: 'marks', x: 990, y: 660, r: 60, prompt: 'İncele' },
     { id: 'starfolk', x: 1010, y: 660, r: 45, prompt: 'İncele' },
     { id: 'picture', x: 1255, y: 660, r: 120, prompt: 'İncele' },
-    { id: 'window', x: 1580, y: 640, r: 120, prompt: 'İncele' },
+    { id: 'window', x: 1580, y: 640, r: 100, prompt: 'İncele' },
     { id: 'bed', x: 430, y: 660, r: 70, prompt: 'İncele' },
+    { id: 'eyeleaf', x: 1935, y: 660, r: 70, prompt: 'İncele' },
   ],
   exits: [{ id: 'tunnel', x: 2150, y: 440, w: 50, h: 220, to: 'r02' }],
   props: [
@@ -90,6 +91,8 @@ export const R01: RoomDef = {
     { key: 'p1.flower', x: 1468, y: 662, depth: -15 },
     // The roots have already parted: the way on is always open.
     { key: 'p1.rootdoor', x: 1735, y: 662, depth: 12 },
+    // The eye-leaf the big Gorti holds out in the painting, lying on the boards.
+    { key: 'p1.eyeleaf', x: 1935, y: 664, depth: 5 },
     // Charms hanging from the bottom of the box, in front of it.
     { key: 'p1.charm.tag', ...charm(150) },
     { key: 'p1.charm.banner', ...charm(360), ox: 40 / 214 },

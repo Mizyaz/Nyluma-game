@@ -20,7 +20,7 @@ const STEP_DOWN_X = 564;
 /** He wakes by himself after this long if nobody wakes him (the opening shot included). */
 const WAKE_AFTER_MS = 18000;
 /** Things in the room with something to say (data/dialogue.tr.ts). */
-const INSPECTABLE = new Set(['toywhale', 'marks', 'window', 'bed', 'tree', 'gift', 'starfolk', 'picture']);
+const INSPECTABLE = new Set(['toywhale', 'marks', 'window', 'bed', 'tree', 'gift', 'starfolk', 'picture', 'eyeleaf']);
 
 /**
  * The opening, in ms from the first frame: the painting itself, then the

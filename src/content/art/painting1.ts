@@ -5,6 +5,7 @@ import { mix } from '../../render/2d/palette';
 import { lineFor } from '../../render/2d/style';
 import { ellipsePath, hashSeed, mixed, nextId, poly, Rng, rrect, smooth, taper, type Pt } from '../../render/2d/svg';
 import { applyGrain } from '../../render/2d/TextureFactory';
+import { eyeLeaf } from './p1EyeLeaf';
 import { portrait, sign } from './p1Pictures';
 
 // The first painting ("House of The Stranger") as the 14th Room: a pink box
@@ -805,7 +806,7 @@ function charms(): PartArt[] {
 export function painting1Parts(): PartArt[] {
   return [
     cube(), arm(), lamp(), tree(), gift(), starfolk(), flower(), rootling(), shade(), bang(),
-    portrait(), sign(), marks(), bed(), whaleToy(), rootDoor(), ...charms(),
+    portrait(), sign(), eyeLeaf(), marks(), bed(), whaleToy(), rootDoor(), ...charms(),
   ];
 }
 

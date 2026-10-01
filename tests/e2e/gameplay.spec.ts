@@ -57,14 +57,19 @@ test.describe('gameplay', () => {
     expect((await probe(page)).flags).toContain('r01.toywhale');
 
     // The bed, the gift and the other toys stand against the back wall:
-    // Gorti walks in front of them to the window.
-    await bot.walkTo(1441, 10);
+    // Gorti walks in front of them to the sign on the wall.
+    await bot.walkTo(1580, 10);
     const s2 = await probe(page);
     expect(s2.player!.onGround).toBe(true);
     expect(Math.abs(s2.player!.y - 660)).toBeLessThan(4);
     await bot.act('İncele');
     await bot.settle();
     expect((await probe(page)).flags).toContain('r01.window');
+    // Past the roots, the eye-leaf lies on the boards.
+    await bot.walkTo(1935, 10);
+    await bot.act('İncele');
+    await bot.settle();
+    expect((await probe(page)).flags).toContain('r01.eyeleaf');
     expect(errors).toEqual([]);
   });
 
@@ -319,9 +324,9 @@ test.describe('touch', () => {
     await startNewGame(page, GAME);
     const bot = new Bot(page);
     await bot.settle();
-    // Past the window: nothing to inspect for a while, so Eylem makes the
+    // Past the sign: nothing to inspect for a while, so Eylem makes the
     // Rezonans move. (Zıpla stays hidden: jumping is off.)
-    await bot.walkTo(1560, 10);
+    await bot.walkTo(1720, 10);
     await expect(page.locator('.tc[data-key="jump"]')).toBeHidden();
     const pad = await page.locator('.tc-pad').boundingBox();
     const act = await page.locator('.tc[data-key="action"]').boundingBox();
