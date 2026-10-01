@@ -42,6 +42,8 @@ export interface WhaleDef {
   ease?: 'out' | 'inOut';
   /** Calls as it arrives and when landed on, at this pitch (below 1 deep, above 1 high). */
   call?: number;
+  /** Scenery: it swims where it is drawn and bears no weight (nobody jumps onto it). */
+  scenery?: boolean;
 }
 
 export interface SolidDef extends Rect, Gate {
