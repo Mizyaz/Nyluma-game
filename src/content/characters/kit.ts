@@ -356,6 +356,8 @@ export interface ComicOpts {
   hatch?: number;
   /** Colour of the hatching (multiplied; default SHADE.hatch). */
   hatchColor?: string;
+  /** Width of the hatch lines (default LINE.fine * 0.8; larger for art drawn at a larger measure). */
+  hatchWidth?: number;
   /** A highlight crescent on the lit side: the shape less a copy moved away from the light by [dx, dy]. */
   glint?: [number, number];
   /** Hand-drawn highlight shapes (path data). */
@@ -387,7 +389,7 @@ export function comic(d: string, fill: string, o: ComicOpts = {}): string {
     const [dx, dy] = o.rim;
     const b = bounds(d) ?? { x0: -150, y0: -150, x1: 150, y1: 150 };
     s += `<mask id="r${id}" maskUnits="userSpaceOnUse" x="-2000" y="-2000" width="4000" height="4000"><rect x="-2000" y="-2000" width="4000" height="4000" fill="#fff"/><path d="${d}" fill="#000" transform="translate(${r2(dx)} ${r2(dy)})"/></mask>`;
-    shade += `<g mask="url(#r${id})"><path d="${d}" style="fill:${tone}"/>${o.hatch ? hatchLines(b, o.hatch, o.hatchColor ?? SHADE.hatch) : ''}</g>`;
+    shade += `<g mask="url(#r${id})"><path d="${d}" style="fill:${tone}"/>${o.hatch ? hatchLines(b, o.hatch, o.hatchColor ?? SHADE.hatch, o.hatchWidth) : ''}</g>`;
   }
   if (o.shade) shade += `<path d="${o.shade}" style="fill:${tone}"/>`;
   if (shade) s += `<g style="mix-blend-mode:multiply">${shade}</g>`;

@@ -6,6 +6,7 @@ import { lineFor } from '../../render/2d/style';
 import { ellipsePath, hashSeed, mixed, nextId, poly, Rng, rrect, smooth, taper, type Pt } from '../../render/2d/svg';
 import { applyGrain } from '../../render/2d/TextureFactory';
 import { eyeLeaf } from './p1EyeLeaf';
+import { crystalTree } from './p1Tree';
 import { portrait, sign } from './p1Pictures';
 
 // The first painting ("House of The Stranger") as the 14th Room: a pink box
@@ -76,13 +77,8 @@ export const P1 = {
   glyphBlueLight: '#cadcee',
   // Inside the box.
   bark: '#ae93bc',
-  barkDark: '#967ba7',
-  crystalBlue: '#cfe4ea',
   crystalLilac: '#dbd1e8',
-  pod: '#bc9ecd',
-  bud: '#cda9b9',
   leaf: '#a9cea3',
-  leafDark: '#92b08e',
   mist: '#decce5',
   giftBlue: '#8fc7dc',
   giftBlueTop: '#acd8e7',
@@ -417,53 +413,6 @@ function lamp(): PartArt {
 }
 
 // ================================================================ inside the box
-
-/** The crystal tree: purple bark, crystal tips, green leaves and leaf-birds. */
-function tree(): PartArt {
-  let s = '';
-  // The lilac mist at its foot, running off to the right along the floor.
-  s += shape(taper([[226, 290], [262, 284], [298, 291], [340, 285]], 13, 6), P1.mist, 1.6);
-  s += shape(smooth([[90, 298], [100, 282], [132, 274], [170, 271], [208, 275], [238, 283], [250, 297], [170, 302]]), P1.mist, 1.8);
-  // Lower leaves round the trunk.
-  for (const [x, y, len, a] of [
-    [160, 262, 46, 3.5], [150, 236, 42, 3.9], [176, 250, 44, -0.35], [182, 222, 40, -0.75], [158, 206, 36, 4.2], [168, 276, 40, 2.9], [178, 272, 42, 0.2],
-  ] as const) {
-    s += leafWithVein(x, y, len, a, P1.leafDark, 1.5);
-  }
-  // Trunk and branches.
-  const trunk: Pt[] = [[170, 298], [166, 250], [172, 196], [165, 146], [160, 104]];
-  s += shape(taper(trunk, 36, 20), P1.bark, 2.2, {
-    inner:
-      ln(open(trunk.map(([x, y]): Pt => [x - 6, y])), P1.barkDark, 2.2) +
-      ln(open(trunk.map(([x, y]): Pt => [x + 7, y + 4])), P1.barkDark, 1.8) +
-      fill(ellipsePath(170, 220, 4, 6), P1.barkDark),
-  });
-  s += shape(taper([[164, 156], [132, 132], [106, 116]], 16, 9), P1.bark, 2);
-  s += shape(taper([[170, 142], [204, 124], [228, 114]], 18, 10), P1.bark, 2);
-  s += shape(taper([[158, 108], [150, 88], [146, 72]], 12, 8), P1.bark, 1.8);
-  s += shape(taper([[164, 106], [178, 90], [188, 78]], 12, 8), P1.bark, 1.8);
-  // A bud on the left, a big purple pod on the right.
-  s += group('rotate(-24 96 110)', shape(ellipsePath(96, 110, 16, 12), P1.bud, 2) + ln('M84 110Q96 104 108 110', lineFor(P1.bud), 1.2, 0.8));
-  s += group('rotate(18 250 126)', shape(smooth([[226, 126], [240, 108], [264, 106], [280, 120], [274, 140], [250, 146], [232, 140]]), P1.pod, 2.2, { inner: ln(open([[236, 128], [254, 122], [274, 126]]), lineFor(P1.pod), 1.4, 0.7) }));
-  // The crystal tips.
-  s += shape(poly([[134, 76], [136, 36], [147, 16], [158, 36], [160, 76]]), P1.crystalBlue, 2, { inner: ln('M147 16L145 76', lineFor(P1.crystalBlue), 1.2, 0.8) });
-  s += shape(poly([[178, 82], [180, 52], [191, 34], [201, 52], [200, 82]]), P1.crystalLilac, 2, { inner: ln('M191 34L188 82', lineFor(P1.crystalLilac), 1.2, 0.8) });
-  // Small leaves along the branches.
-  for (const [x, y, len, a] of [[126, 128, 22, -2.4], [214, 118, 22, -1.2], [190, 128, 18, 1.1], [150, 90, 18, 3.6]] as const) s += leafWithVein(x, y, len, a, P1.leaf, 1.3);
-  // Two green leaf-birds perched on the ends.
-  const bird = (x: number, y: number, dir: 1 | -1, k: number): string => {
-    const T = (pts: Pt[]): Pt[] => pts.map(([u, v]): Pt => [x + u * dir * k, y + v * k]);
-    let b = shape(leafD(x - dir * 8 * k, y + 2 * k, 24 * k, dir > 0 ? Math.PI + 0.3 : -0.3), P1.leaf, 1.4);
-    b += shape(smooth(T([[-10, 4], [-4, -6], [8, -8], [16, -4], [18, 4], [8, 10], [-4, 10]])), P1.leaf, 1.8);
-    b += shape(smooth(T([[12, -6], [18, -14], [26, -12], [28, -4], [20, 0]])), P1.leaf, 1.6);
-    b += closedEye(x + dir * 22 * k, y - 8 * k, 2.4 * k, lineFor(P1.leaf), 1.3);
-    b += shape(leafD(x + dir * 2 * k, y - 4 * k, 16 * k, dir > 0 ? -2.2 : -0.9), mix(P1.leaf, P1.leafDark, 0.4), 1.3);
-    return b;
-  };
-  s += bird(70, 104, -1, 1);
-  s += bird(284, 82, 1, 1.15);
-  return part('p1.tree', 340, 300, 170, 300, s);
-}
 
 /** The wrapped gift: a blue box under pink paper, a yellow ribbon and bow. */
 function gift(): PartArt {
@@ -805,7 +754,7 @@ function charms(): PartArt[] {
 /** Every prop of the first painting's room. */
 export function painting1Parts(): PartArt[] {
   return [
-    cube(), arm(), lamp(), tree(), gift(), starfolk(), flower(), rootling(), shade(), bang(),
+    cube(), arm(), lamp(), crystalTree(), gift(), starfolk(), flower(), rootling(), shade(), bang(),
     portrait(), sign(), eyeLeaf(), marks(), bed(), whaleToy(), rootDoor(), ...charms(),
   ];
 }

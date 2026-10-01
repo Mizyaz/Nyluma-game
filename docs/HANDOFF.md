@@ -153,6 +153,11 @@ Conventions:
   with his torch.
 - The eye-leaf on r01's floor (`src/content/art/p1EyeLeaf.ts`) is the leaf Gorti holds in the
   painting, drawn to his measure, not the toys'.
+- The rose tree in r01 (`src/content/art/p1Tree.ts`) is drawn in the game's comic manner with
+  the characters' kit (`comic`), not traced: each object of the painting is its own shape (the
+  trunk, the crystal, the roses at the branch tips, the birds coming out of them, the roots, the
+  mist). It is drawn in the painting's measure and scaled down, so its contours and hatching use
+  their own widths (`L`, `HATCH`) rather than the kit's defaults.
 - `src/ui/LoadingView.ts` is the loading screen. It uses the same faces as inline SVG (`skyFaceSvg`), and a crystal cluster grows with the progress.
 
 ## Other pending work
