@@ -3,23 +3,29 @@ import { app } from '../../engine/App';
 import { DEPTH } from '../../engine/constants';
 import { P } from '../../render/2d/palette';
 import { CAPTIONS, DIALOGUE } from '../data/dialogue.tr';
-import { R03_TREE_X } from '../rooms/r03';
+import { R03_SPIRAL, R03_TREE_X } from '../rooms/r03';
 import { CreaturePool } from '../../gameplay/actors/Creatures';
 import { Face } from '../../gameplay/actors/Celestial';
 import type { WorldScene } from '../../engine/scenes/WorldScene';
+import type { Cutscene } from '../../engine/systems/NarrativeSystem';
 import type { RoomScript } from './types';
-import { addArt, addGlow } from './helpers';
+import { addArt, addGlow, bloomAt } from './helpers';
 
 /** Positions around the tree trunk. */
 const T = R03_TREE_X;
 /** The poisoned pool (touching it sends Gorti back, costing nothing). */
 const POOL = { x0: 760, x1: 1100, y: 1250 };
+/** The backs of the spiral's whales (room data), bottom to top: the roots carry Gorti up them. */
+const STEPS = R03_SPIRAL.map(({ y, back }, i) => ({ id: `s${i + 1}`, x: T + (back ? 14 : -14), y }));
+/** Into the canopy over the last whale: the way on. */
+const CANOPY = { x: T + 10, y: 560 };
 
 // Chapter I — the crystal-tree chamber. Over the poisoned pool on the back
 // of a whale lying across it, and at the tree the Moon and the Sun appear by
 // themselves in the canopy: a small star is born and flies into the tree,
-// which blooms into a way up (whales circle in around the trunk, see the
-// room data).
+// which blooms (whales circle in around the trunk, see the room data). At
+// the trunk Gorti's roots carry him up from whale to whale into the canopy,
+// and on to the surface.
 export function r03(w: WorldScene): RoomScript {
   let star: Phaser.GameObjects.Image | null = null;
   let starGlow: Phaser.GameObjects.Image | null = null;
@@ -27,7 +33,6 @@ export function r03(w: WorldScene): RoomScript {
   let sun: Face | null = null;
   let shaft: Phaser.GameObjects.Image | null = null;
   const birds = new CreaturePool(w, 'bird', 14, DEPTH.fx - 2);
-  let ascentShown = false;
 
   const showStar = (): void => {
     if (star) return;
@@ -105,7 +110,7 @@ export function r03(w: WorldScene): RoomScript {
         await cs.wait(2200);
         cs.caption(CAPTIONS.bloom2, 5200);
         w.player.lock(true, 'idle');
-        // Up the whale spiral to the canopy it leads into.
+        // The whale spiral up to the canopy.
         await cs.tween({ targets: w.camFree, y: 760, duration: 1600, ease: 'Sine.easeInOut' });
         await cs.wait(600);
       },
@@ -124,6 +129,61 @@ export function r03(w: WorldScene): RoomScript {
     );
   };
 
+  /** Stays where the roots set Gorti down: on a whale's back, which bears no weight. */
+  const holdOn = (): void => {
+    const p = w.player;
+    p.body.setAllowGravity(false);
+    p.body.setVelocity(0, 0);
+    p.lock(true, 'idle');
+  };
+
+  /** One pull of the roots up onto the next back (resolves on landing, or at once when skipped). */
+  const reachTo = (cs: Cutscene, to: { x: number; y: number }, onLand: () => void): Promise<void> => {
+    // The reach and pull poses, not the pose he waited in.
+    w.player.lock(false);
+    const landed = new Promise<void>((res) =>
+      w.player.startReach({
+        anchor: { x: to.x, y: to.y - 50 },
+        land: to,
+        onDone: () => {
+          holdOn();
+          onLand();
+          res();
+        },
+      }),
+    );
+    return Promise.race([landed, cs.wait(1500)]);
+  };
+
+  /** At the trunk: up the whale spiral from back to back, into the canopy and on. */
+  const ascent = (): void => {
+    void w.narrative.play(
+      'r03.ascent',
+      async (cs) => {
+        const p = w.player;
+        p.lock(true, 'look');
+        w.camTo(null);
+        cs.caption(CAPTIONS.ascent, 6500);
+        app.audio.sfx('whale', { vol: 0.5 });
+        await cs.wait(500);
+        for (const st of STEPS) {
+          if (cs.skipped) break;
+          await reachTo(cs, st, () => w.room.whales?.bump(st.id, st.x));
+          await cs.wait(260);
+        }
+        if (!cs.skipped) {
+          await reachTo(cs, CANOPY, () => bloomAt(w, CANOPY.x, CANOPY.y + 20, 6));
+          await cs.wait(300);
+        }
+      },
+      () => {
+        holdOn();
+        w.flag('r03.canopy', false);
+        w.goToRoom('r04');
+      },
+    );
+  };
+
   return {
     setup() {
       w.onCleanup(() => {
@@ -136,14 +196,12 @@ export function r03(w: WorldScene): RoomScript {
       const p = w.player;
       // The poisoned pool: back to the checkpoint (costs nothing).
       if (p.state === 'normal' && p.x > POOL.x0 && p.x < POOL.x1 && p.feetY > POOL.y) w.reform();
-      // At the tree, the sky answers by itself.
-      if (p.x > T - 360 && p.feetY <= 1182 && p.onGround && !w.quest.has('r03.bloom')) treeScene();
-      // Halfway up the spiral.
-      if (!ascentShown && w.quest.has('r03.bloom') && p.feetY < 990) {
-        ascentShown = true;
-        app.ui.hud.caption(CAPTIONS.ascent, 6000);
-        app.audio.sfx('whale', { vol: 0.5 });
-      }
+      if (!p.onGround || w.narrative.busy) return;
+      // At the tree, the sky answers by itself; once it has bloomed, the
+      // way up starts at the trunk.
+      if (!w.quest.has('r03.bloom')) {
+        if (p.x > T - 360) treeScene();
+      } else if (p.x > T - 140) ascent();
     },
     onUpdate(dt) {
       birds.update(dt);

@@ -144,9 +144,9 @@ describe('diorama geometry', () => {
     // On the wall's plane, as the resting eye (above the view's middle) sees it.
     const [ex, ey] = [640 + 213, 540 - 163];
     const seen = (x: number, y: number): [number, number] => [x + (z / D) * (ex - x), y + (z / D) * (ey - y)];
-    // Gorti, from his feet to the top of his head at a jump's height, anywhere on the floor, the bed or the gift.
+    // Gorti, from his feet to the top of his head at a jump's height, anywhere on the floor
+    // (the one floor: nobody stands on the bed or the gift any more).
     for (let x = 180; x <= 2180; x += 20) for (const y of x < 1690 ? [660, 560, 390] : [660, 560, 450]) expect(open(...seen(x, y))).toBe(true);
-    for (const x of [340, 430, 520, 860, 960]) expect(open(...seen(x, 320))).toBe(true);
     // The close-up on him waking in bed.
     const c = STAGE_BOX.closeUp;
     for (const [x, y] of [[c.x, c.y], [c.x + c.w, c.y + c.h]]) expect(open(x, y)).toBe(true);

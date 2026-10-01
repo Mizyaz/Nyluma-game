@@ -50,10 +50,6 @@ export const R01: RoomDef = {
     { x: 160, y: 0, w: 1540, h: 130, style: 'soil', hidden: true },
     { x: 1700, y: 130, w: 70, h: 300, style: 'root', hidden: true },
     { x: 1770, y: 0, w: 430, h: 440, style: 'soil', hidden: true },
-    // Tops of the bed and the gift (drawn as props): Gorti walks in front of
-    // them and can still hop onto them.
-    { x: 322, y: 590, w: 216, h: 20, style: 'bed', oneWay: true, hidden: true },
-    { x: 842, y: 590, w: 128, h: 20, style: 'wood', oneWay: true, hidden: true },
   ],
   interacts: [
     { id: 'toywhale', x: 620, y: 660, r: 70, prompt: 'İncele' },
@@ -63,7 +59,7 @@ export const R01: RoomDef = {
     { id: 'starfolk', x: 1010, y: 660, r: 45, prompt: 'İncele' },
     { id: 'picture', x: 1245, y: 660, r: 60, prompt: 'İncele' },
     { id: 'window', x: 1441, y: 630, r: 90, prompt: 'İncele' },
-    { id: 'bed', x: 430, y: 590, r: 70, prompt: 'İncele' },
+    { id: 'bed', x: 430, y: 660, r: 70, prompt: 'İncele' },
   ],
   exits: [{ id: 'tunnel', x: 2150, y: 440, w: 50, h: 220, to: 'r02' }],
   props: [

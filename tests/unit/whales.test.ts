@@ -26,8 +26,9 @@ describe('whale platforms', () => {
       }
       count += plan.length;
     }
-    // Only the set pieces keep their jumps (the r02 lift, the r03 bridge and
-    // spiral, the r04 wind whale).
+    // Only the set pieces keep their whales (the r02 rising whales, the r03
+    // bridge and spiral, the r04 wind whale): scenery now, or a bridge level
+    // with the floor (walk.test.ts).
     expect(count).toBeGreaterThanOrEqual(10);
     // Furniture tops (hidden solids) and bed/stone/metal jumps stay as they are.
     expect(planWhales(ROOMS.r01)).toEqual([]);
@@ -44,8 +45,8 @@ describe('whale platforms', () => {
         if (f?.facing) expect(p.facing).toBe(f.facing);
       }
     }
-    // The r02 lift answers in the three voices (three species), all swimming
-    // toward the tunnel; every species still swims somewhere.
+    // The r02 whales answer in the three voices (three species), all swimming
+    // toward the tunnel mouth; every species still swims somewhere.
     const lift = planWhales(ROOMS.r02);
     expect(new Set(lift.map((p) => p.species)).size).toBe(3);
     expect(lift.every((p) => p.facing === 1)).toBe(true);
