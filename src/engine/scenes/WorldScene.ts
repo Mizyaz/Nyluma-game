@@ -200,7 +200,15 @@ export class WorldScene extends Phaser.Scene {
     this.bursts = new ColorBursts(
       this,
       {
-        busy: () => this.transitioning || this.paused || app.input.context !== 'gameplay' || this.narrative.busy || app.ui.dialogue.isOpen,
+        // Also while Gorti is out of the player's hands (asleep in the
+        // opening, changing form…); riding (hidden) still counts as play.
+        busy: () =>
+          this.transitioning ||
+          this.paused ||
+          app.input.context !== 'gameplay' ||
+          this.narrative.busy ||
+          app.ui.dialogue.isOpen ||
+          (this.player.state !== 'normal' && this.player.state !== 'hidden'),
         onStorm: () => this.onColorStorm(),
       },
       burstMode(new URLSearchParams(location.search).get('bursts')),

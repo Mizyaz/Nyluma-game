@@ -40,7 +40,8 @@ test.describe('experience', () => {
     await bot.settle();
     expect((await probe(page)).features).toEqual(['painting:stranger']);
 
-    await bot.walkTo(745, 12);
+    // It hangs on the back wall by the bed.
+    await bot.walkTo(270, 12);
     await bot.act('İncele');
     await waitState(page, (s) => s.docOpen, 5000, 'painting open');
     const card = page.locator('.doc.painting .painting-card');
@@ -91,17 +92,25 @@ test.describe('experience', () => {
     expect(seen.birds).toBeGreaterThanOrEqual(4);
   });
 
-  test('as the Sivaslı amca, Gorti shakes the ground, brings out the Moon and a purple horse', async ({ page }) => {
+  test('as the Sivaslı amca, Gorti laughs, and his kahkaha swaps the Sun and the Moon', async ({ page }) => {
     const errors = watchErrors(page);
     await jump(page, { room: 'r06', form: 'human' });
     const s0 = await probe(page);
     expect(s0.player!.form).toBe('human');
     expect(s0.moves!.next).toBe('laugh');
 
+    // E: he holds his belly and laughs.
     await tap(page, 'KeyE');
-    const seen = await watchMoves(page, (s) => s.moves!.count === 1 && s.moves!.running.length === 0, 12_000, 'stomp over');
-    expect(seen.kinds).toEqual(new Set(['timeline', 'cracks', 'moon', 'horse']));
-    expect((await probe(page)).moves!.last).toBe('laugh');
+    const s1 = await waitState(page, (s) => s.moves!.count === 1, 5000, 'laugh');
+    expect(s1.moves!.last).toBe('laugh');
+    expect(s1.sky).toBe(s0.sky);
+
+    // E held on: the laugh becomes a kahkaha and the other one comes out.
+    await waitState(page, (s) => s.moves!.ready, 5000, 'ready again');
+    await page.keyboard.down('KeyE');
+    const s2 = await waitState(page, (s) => s.sky !== s0.sky, 10_000, 'kahkaha');
+    await page.keyboard.up('KeyE');
+    expect(s2.sky).toBe(s0.sky === 'sun' ? 'moon' : 'sun');
     expect(errors).toEqual([]);
   });
 

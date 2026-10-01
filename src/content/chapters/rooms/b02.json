@@ -44,25 +44,25 @@
   ],
   "npcs": [
     {
-      "id": "gunesBasli",
-      "who": "sunMan",
+      "id": "korkak",
+      "who": "coward",
       "x": 820,
       "facing": -1,
       "when": "sky:sun",
       "talk": [
         {
-          "who": "sunMan",
-          "text": "Ben varken o kapı açılmaz."
+          "who": "coward",
+          "text": "Gece olmasın, ne olur. Karanlıktan korkarım."
         },
         {
-          "who": "sunMan",
-          "text": "E'yi basılı tut, kahkahayı bas: Ay çıksın, ben gideyim."
+          "who": "coward",
+          "text": "Ama o kapı yalnızca Ay çıkınca açılır. Sen kahkahayı basarsan Ay çıkar, ben de kaçarım."
         }
       ],
       "again": [
         {
-          "who": "sunMan",
-          "text": "Kahkaha! E'yi basılı tut."
+          "who": "coward",
+          "text": "Gülme sakın! ...Peki peki: E'yi basılı tut."
         }
       ]
     }

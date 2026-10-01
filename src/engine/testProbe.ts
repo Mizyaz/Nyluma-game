@@ -49,6 +49,7 @@ export function installProbe(): void {
         renderer: app.game.renderer.type === 2 ? 'webgl' : 'canvas',
         music: app.audio.musicState(),
         bursts: active ? { count: world.bursts.count, active: world.bursts.active } : null,
+        sky: active ? world.skyOut : null,
         moves: active
           ? {
               count: world.moves.count,

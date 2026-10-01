@@ -37,6 +37,8 @@ export interface ProbeState {
   music: { cue: string; source: 'piano' | 'strings' | 'track' | 'none'; track: string | null; bars: number; notes: number };
   /** Colour bombardments since the room started; `active` while one plays. */
   bursts: { count: number; active: boolean } | null;
+  /** Which of the Sun and the Moon is out (the amca's kahkaha swaps them). */
+  sky: 'sun' | 'moon' | 'none' | null;
   /** Rezonans moves in this room: the next one, effects still running, birds flying. */
   moves: { count: number; last: string | null; ready: boolean; next: string | null; running: string[]; birds: number } | null;
   /** Self-handling things Gorti can inspect (paintings). */

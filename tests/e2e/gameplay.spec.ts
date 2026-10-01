@@ -201,11 +201,12 @@ test.describe('gameplay', () => {
     expect(errors).toEqual([]);
   });
 
-  test('chapter select starts an unlocked chapter', async ({ page }) => {
+  test('chapter select starts any chapter', async ({ page }) => {
     await seedSave(page, GAME, save({ room: 'r01', checkpoint: 'r01_start' }, { chaptersReached: [1, 2, 3] }));
     await page.reload();
     await page.getByRole('button', { name: 'Bölümler' }).click();
-    await expect(page.getByRole('button', { name: /IV\./ })).toBeDisabled();
+    // Every chapter is open, reached or not (OPEN_ALL).
+    await expect(page.getByRole('button', { name: /IV\./ })).toBeEnabled();
     await page.getByRole('button', { name: /III\./ }).click();
     const confirm = page.getByRole('button', { name: 'Evet' });
     if (await confirm.isVisible().catch(() => false)) await confirm.click();
