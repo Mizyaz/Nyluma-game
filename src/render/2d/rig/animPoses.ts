@@ -586,23 +586,19 @@ export function styleOf(rigId: string): HumanoidStyle {
   return 'root';
 }
 
+/** Each build's stance: knees, torso and head (the walk and run are in gaitPoses' GAITS). */
 interface StyleK {
-  stride: number;
-  knee: number;
-  arm: number;
-  bob: number;
-  lean: number;
   kneeBase: number;
   torsoBase: number;
   headBase: number;
 }
 
 const STYLE: Record<HumanoidStyle, StyleK> = {
-  root: { stride: 0.66, knee: 1.1, arm: 0.7, bob: 4.4, lean: 0.13, kneeBase: 0.06, torsoBase: 0.02, headBase: 0 },
-  human: { stride: 0.46, knee: 0.85, arm: 0.45, bob: 2.6, lean: 0.07, kneeBase: 0.09, torsoBase: -0.03, headBase: 0.05 },
-  coward: { stride: 0.38, knee: 0.8, arm: 0.1, bob: 1.5, lean: 0.1, kneeBase: 0.55, torsoBase: 0.16, headBase: 0.18 },
-  mech: { stride: 0.5, knee: 0.9, arm: 0.3, bob: 1.2, lean: 0.04, kneeBase: 0.12, torsoBase: 0, headBase: 0 },
-  suit: { stride: 0.3, knee: 0.6, arm: 0.12, bob: 1.2, lean: 0.05, kneeBase: 0.1, torsoBase: 0.2, headBase: 0.28 },
+  root: { kneeBase: 0.06, torsoBase: 0.02, headBase: 0 },
+  human: { kneeBase: 0.09, torsoBase: -0.03, headBase: 0.05 },
+  coward: { kneeBase: 0.55, torsoBase: 0.16, headBase: 0.18 },
+  mech: { kneeBase: 0.12, torsoBase: 0, headBase: 0 },
+  suit: { kneeBase: 0.1, torsoBase: 0.2, headBase: 0.28 },
 };
 
 function stanceBase(p: PoseOut, st: HumanoidStyle, t: number): void {
