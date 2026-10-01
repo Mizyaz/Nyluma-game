@@ -1,3 +1,5 @@
+import { GAMEPAD, KEYS, LETTERS } from '../../tuning';
+
 export type Action =
   | 'left'
   | 'right'
@@ -18,39 +20,9 @@ export type Action =
 /** Who currently owns the keyboard/touch input. */
 export type InputContext = 'menu' | 'gameplay' | 'dialogue' | 'song' | 'puzzle' | 'cutscene' | 'none';
 
-const CODE_MAP: Record<string, Action[]> = {
-  ArrowLeft: ['left', 'note1'],
-  ArrowRight: ['right', 'note3'],
-  ArrowDown: ['down', 'note2'],
-  ArrowUp: ['up'],
-  KeyA: ['left', 'note1'],
-  KeyD: ['right', 'note3'],
-  KeyS: ['down', 'note2'],
-  KeyW: ['up'],
-  Space: ['jump'],
-  KeyE: ['action'],
-  KeyQ: ['focus'],
-  KeyR: ['form'],
-  KeyF: ['song'],
-  Escape: ['pause'],
-  KeyM: ['journal'],
-  Enter: ['confirm'],
-  NumpadEnter: ['confirm'],
-};
-
-// Letter keys are matched by the produced character first so that the
-// on-screen labels (A, D, E, Q…) stay true on non-QWERTY layouts.
-const KEY_MAP: Record<string, Action[]> = {
-  a: ['left', 'note1'],
-  d: ['right', 'note3'],
-  s: ['down', 'note2'],
-  w: ['up'],
-  e: ['action'],
-  q: ['focus'],
-  r: ['form'],
-  f: ['song'],
-  m: ['journal'],
-};
+// The bindings themselves (keys, letters, gamepad) are in src/tuning.ts.
+const CODE_MAP = KEYS;
+const KEY_MAP = LETTERS;
 
 const EDGE_TTL_MS = 150;
 
@@ -64,8 +36,8 @@ interface Source {
 
 export function actionsForKey(code: string, key: string): Action[] {
   const k = key.length === 1 ? key.toLocaleLowerCase('en-US') : '';
-  if (k && KEY_MAP[k]) return KEY_MAP[k]!;
-  return CODE_MAP[code] ?? [];
+  if (k && KEY_MAP[k]) return [...KEY_MAP[k]!];
+  return [...(CODE_MAP[code] ?? [])];
 }
 
 function isEditable(t: EventTarget | null): boolean {
