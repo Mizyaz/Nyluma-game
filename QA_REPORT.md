@@ -5,7 +5,7 @@ listeler. Ölçümler aşağıdaki test ortamında alınmıştır; gerçek cihaz
 performansını temsil etmez. İlk bölüm bu sürümün kontrolleridir. Sonraki
 bölümlerdeki sonuçlar önceki sürümlerin oyun kodu içindir.
 
-## Bu sürüm: 1. tablonun gül ağacı, stilize çizim
+## Bu sürüm: 1. tablonun gül ağacı ve göz-yaprağı, stilize çizim
 
 Bu sürümde değişenler:
 
@@ -20,8 +20,13 @@ Bu sürümde değişenler:
 - Çizgi kitinin `comic` fonksiyonuna tarama çizgisi kalınlığı seçeneği
   (`hatchWidth`) eklendi. Tablonun ölçüsünde çizilip küçültülen parçalar
   için gerekli. Varsayılan değişmedi.
+- Göz-yaprak da aynı dille yeniden çizildi. Siyah mürekkep kalktı. Yaprak
+  artık gerçek bir yaprak siluetinde: yuvarlak dip, sivri uç, dipte kesik
+  sap. Yedi plakanın her biri gölgeli ve damarlı ayrı bir parça. Çatlaklar
+  mor ve gözde birleşiyor; uca giden çatlak orta damar oluyor. Göz büyüdü:
+  ağır mor kapak, kirpikler, kırmızı iris, iki parıltı.
 
-Kontroller:
+Ağaç commit'i (`56e2625`) üzerinde koşulan kontroller:
 
 | Kontrol | Sonuç |
 | --- | --- |
@@ -30,9 +35,13 @@ Kontroller:
 | `npm run kd -- check` | Tamam: 6 bölüm, 4 oda dosyası, 12 TS oda |
 | `npx playwright test --grep-invert @campaign -g "first room" --workers=1` | 2 geçti (masaüstünde ilk oda, yalnız dokunmayla ilk oda), 1 atlandı (dik telefonda WebGL ekran görüntüsü), 1.4 dk |
 
-Görsel kontrol: ağaç tek başına 4 kat büyütülerek ve oyunda 1280×720
-ekranda (ilk oda) incelendi. Ağaç Gorti'nin boyunda, çizgileri ve
-gölgeleri ekran ölçeğinde okunuyor.
+Göz-yaprak commit'i üzerinde aynı kontroller yeniden koşuldu: tip
+kontrolü hatasız, 17 dosyada 150 birim testi geçti, içerik kontrolü
+"Tamam", ilk oda e2e testlerinden 2'si geçti, 1'i atlandı (1.4 dk).
+
+Görsel kontrol: ağaç ve göz-yaprak tek başına 4 kat büyütülerek ve oyunda 1280×720
+ekranda (ilk oda) incelendi. Ağaç Gorti'nin boyunda. İkisinin de çizgileri
+ve gölgeleri ekran ölçeğinde okunuyor.
 
 ## Önceki sürüm: 1. tablonun resimleri, göz-yaprak, Gorti'nin TV yüzü geri döndü
 

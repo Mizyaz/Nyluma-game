@@ -152,7 +152,8 @@ Conventions:
   Rezonans move flashes it in that move's colour. The amca shines with his head, and the coward
   with his torch.
 - The eye-leaf on r01's floor (`src/content/art/p1EyeLeaf.ts`) is the leaf Gorti holds in the
-  painting, drawn to his measure, not the toys'.
+  painting, drawn to his measure, not the toys', in the same comic manner as the tree: a leaf
+  blade (`BLADE`) cut into seven plates by cracks that run from the eye's hollow to the edge.
 - The rose tree in r01 (`src/content/art/p1Tree.ts`) is drawn in the game's comic manner with
   the characters' kit (`comic`), not traced: each object of the painting is its own shape (the
   trunk, the crystal, the roses at the branch tips, the birds coming out of them, the roots, the

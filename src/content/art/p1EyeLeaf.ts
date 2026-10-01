@@ -1,32 +1,34 @@
 import type { PartArt } from '../../render/2d/rig/rigTypes';
+import { darkOf } from '../../render/2d/style';
 import { ellipsePath, poly, smooth, type Pt } from '../../render/2d/svg';
-import { INK, clipped, flat, inked, line, n } from './p1Ink';
+import { comic, ink } from '../characters/kit';
 
 // The eye-leaf. In the first painting the big Gorti holds it out at his side:
 // a lilac leaf cracked into seven plates whose cracks all run to an eye at
 // its heart, under a heavy purple lid, with a red iris. Here it lies on the
 // 14th Room's floor, turned a little to rest on its lower edge.
 //
-// Drawn by hand in the painting's own measure (the leaf about 265 across),
-// then shrunk to Gorti's measure rather than the toys' (in the painting he
-// holds it in one hand); a little larger than that, about three quarters of
-// his height across, so that it still reads lying on the floor.
+// Drawn in the game's comic manner with the characters' kit, as the rose
+// tree is: each plate its own slab, shaded and veined, the cracks between
+// them, the eye big and heavy-lidded. Drawn in the painting's measure (the
+// leaf about 265 across), then shrunk to Gorti's.
 
 /** The leaf's colours (chosen by eye). */
 const LEAF = {
-  upperLeft: '#b994bd',
-  top: '#c6a0c8',
-  upperRight: '#c39bc6',
   right: '#caa3cd',
   lowerRight: '#d4add6',
   bottom: '#d0a9d3',
   lowerLeft: '#d8b3da',
-  plateShade: '#7f5a88',
+  upperLeft: '#b994bd',
+  top: '#c6a0c8',
+  upperRight: '#c39bc6',
+  crack: '#5e3c6b',
+  edge: '#6a4576',
   stem: '#e9c8df',
-  stemCut: '#dcb3d0',
+  stemCut: '#f6e2ee',
   lid: '#9a6aa3',
   socket: '#74487f',
-  white: '#f4e4ef',
+  white: '#fbf1f6',
   iris: '#d64a83',
   pupil: '#3b1734',
   shadow: '#4a3550',
@@ -34,132 +36,179 @@ const LEAF = {
 
 /** How much smaller than the painting's measure it is drawn. */
 const SIZE = 0.36;
-/** How far it is turned (degrees, anticlockwise) to rest on its lower edge, and about where. */
+/** How far it is turned (degrees) to rest on its lower edge. */
 const TURN = -8;
-const PIVOT: Pt = [150, 175];
-/** The ink: the outline, the cracks, the eyelid. */
-const W = { outline: 5, crack: 4.2, lid: 5.4 };
+/** Contour weights in the painting's measure. */
+const L = { body: 6, small: 4.2, detail: 3, fine: 2.2 } as const;
+/** The eye, at the leaf's heart. */
+const E: Pt = [140, 100];
 
-// The outer edge, clockwise from the pale base, in runs between the ends of
-// the cracks. Where a crack meets the edge the edge dips in, so each plate
-// bulges a little on its own.
-const UL_OUT: Pt[] = [[44, 90], [50, 85], [54, 80], [57, 76], [62, 73], [66, 70], [69, 63], [70, 56], [72, 51], [77, 48], [83.8, 48.9]];
-const TOP_OUT: Pt[] = [[83.8, 48.9], [82, 42], [84, 35], [88, 32], [91, 27], [95, 22], [101, 17], [110, 13], [121, 11], [133, 11], [141, 14], [147, 19], [151, 26], [153, 33], [152, 39.9]];
-const UR_OUT: Pt[] = [[152, 39.9], [156, 36], [163, 34], [172, 35], [180, 40], [185, 47], [188, 54], [186.9, 60.5]];
-const R_OUT: Pt[] = [[186.9, 60.5], [193, 62], [200, 67], [207, 74], [215, 82], [223, 90], [231, 98], [239, 106], [246, 113], [251, 119], [252.1, 124.3]];
-const LR_OUT: Pt[] = [[252.1, 124.3], [258, 128], [264, 133], [267, 139], [264, 145], [257, 149], [250, 153], [245, 159], [240, 166], [234, 173], [226, 178], [215, 181], [204, 181], [195, 179], [190.6, 174.8]];
-const BM_OUT: Pt[] = [[190.6, 174.8], [184, 176], [172, 174], [158, 172], [144, 171], [132, 170], [125.6, 164.1]];
-const BL_OUT: Pt[] = [[125.6, 164.1], [118, 170], [106, 172], [93, 172], [82, 169], [72, 164], [64, 158], [58, 151], [53, 144], [50, 136], [50.8, 126.9]];
-const LOBE_OUT: Pt[] = [[50.8, 126.9], [44, 124], [34, 121], [24, 116], [15, 109], [11, 102], [13, 97], [26, 97], [38, 96], [44, 90]];
+/** The cracks' angles round the eye (degrees, clockwise from the tip); a plate lies between each two. */
+const CRACKS = [-4, 50, 102, 150, 204, 248, 298, 356] as const;
+const PLATE_COLOURS = [LEAF.right, LEAF.lowerRight, LEAF.bottom, LEAF.lowerLeft, LEAF.upperLeft, LEAF.top, LEAF.upperRight] as const;
 
-// The cracks, each from the edge (or a crack) in to the eye.
-const C_TOP_LEFT: Pt[] = [[83.8, 48.9], [89, 53], [95, 58], [100, 65], [104, 73], [108, 81], [112, 88]];
-const C_TOP_RIGHT: Pt[] = [[152, 39.9], [150, 46], [152, 53], [150, 62], [151, 72], [150, 82], [152, 90]];
-const C_UPPER_RIGHT: Pt[] = [[186.9, 60.5], [183, 65], [178, 71], [173, 77], [169, 84], [167, 91], [165, 98], [164, 103]];
-/** The long wavy one, from the eye's far corner out to the tip's edge. */
-const C_RIGHT: Pt[] = [[164, 103], [169, 109], [175, 112], [181, 108], [188, 111], [194, 118], [201, 115], [207, 121], [214, 118], [221, 123], [228, 120], [235, 126], [242, 124], [248, 129], [252.1, 124.3]];
-const C_LOWER_RIGHT: Pt[] = [[152, 118], [156, 128], [160, 137], [166, 147], [172, 156], [180, 165], [186, 171], [190.6, 174.8]];
-const C_BOTTOM: Pt[] = [[118, 118], [120, 128], [118, 138], [121, 148], [124, 157], [125.6, 164.1]];
-const C_LEFT: Pt[] = [[110, 113], [100, 117], [90, 118], [78, 120], [66, 123], [57, 125], [50.8, 126.9]];
+const at = (deg: number, r: number): Pt => {
+  const a = (deg * Math.PI) / 180;
+  return [E[0] + Math.cos(a) * r, E[1] + Math.sin(a) * r];
+};
 
-/** The hollow the cracks meet in, holding the eye: clockwise from the top-left crack. */
-const SOCKET: Pt[] = [[112, 88], [133, 82], [152, 90], [164, 103], [152, 118], [135, 119], [118, 118], [110, 113], [105, 101]];
+/** The hollow round the eye, where the cracks start. */
+function socketR(deg: number): number {
+  const a = (deg * Math.PI) / 180;
+  return 1 / Math.hypot(Math.cos(a) / 46, Math.sin(a) / 27);
+}
 
-const rev = (p: readonly Pt[]): Pt[] => [...p].reverse();
+/**
+ * The leaf's shape without its plates' bulges: a rounded base, widest a
+ * little before the eye, tapering to a point at the tip, its middle arched
+ * a little.
+ */
+const BLADE: Pt[] = (() => {
+  const [xb, xt] = [E[0] - 104, E[0] + 172];
+  const at2 = (u: number, side: number): Pt => {
+    const h = Math.pow(Math.sin(Math.PI * Math.pow(u, 0.72)), 0.9);
+    return [xb + (xt - xb) * u, E[1] - 6 * Math.sin(Math.PI * u) + side * (side < 0 ? 70 : 62) * h];
+  };
+  const n = 90;
+  const up = Array.from({ length: n + 1 }, (_, i) => at2(i / n, -1));
+  const down = Array.from({ length: n - 1 }, (_, i) => at2(1 - (i + 1) / n, 1));
+  return [...up, ...down];
+})();
 
-/** Runs joined end to end into one closed outline (shared ends kept once). */
-function chain(...runs: readonly (readonly Pt[])[]): Pt[] {
-  const out: Pt[] = [];
-  for (const run of runs) {
-    for (const p of run) {
-      const last = out[out.length - 1];
-      if (!last || last[0] !== p[0] || last[1] !== p[1]) out.push(p);
+/** How far from the eye the blade's edge is along a ray (the last crossing). */
+function bladeR(deg: number): number {
+  const a = (deg * Math.PI) / 180;
+  const [dx, dy] = [Math.cos(a), Math.sin(a)];
+  let best = 0;
+  for (let i = 0; i < BLADE.length; i++) {
+    const [p1, p2] = [BLADE[i]!, BLADE[(i + 1) % BLADE.length]!];
+    const [ex, ey] = [p2[0] - p1[0], p2[1] - p1[1]];
+    const den = dx * ey - dy * ex;
+    if (Math.abs(den) < 1e-9) continue;
+    const [wx, wy] = [p1[0] - E[0], p1[1] - E[1]];
+    const t = (wx * ey - wy * ex) / den;
+    const u = (wx * dy - wy * dx) / den;
+    if (t > 0 && u >= 0 && u <= 1) best = Math.max(best, t);
+  }
+  return best;
+}
+
+/** The leaf's edge: the blade, each plate bulging a little between its cracks. */
+function edgeR(deg: number): number {
+  let r = bladeR(deg);
+  let d = deg;
+  while (d < CRACKS[0]) d += 360;
+  while (d >= CRACKS[0] + 360) d -= 360;
+  for (let k = 0; k < CRACKS.length - 1; k++) {
+    if (d >= CRACKS[k]! && d <= CRACKS[k + 1]!) {
+      r *= 1 + 0.08 * Math.pow(Math.max(0, Math.sin(Math.PI * ((d - CRACKS[k]!) / (CRACKS[k + 1]! - CRACKS[k]!)))), 0.7);
+      break;
     }
   }
-  const [a, b] = [out[0], out[out.length - 1]];
-  if (out.length > 1 && a[0] === b[0] && a[1] === b[1]) out.pop();
-  return out;
+  return r;
 }
 
-const OUTLINE = chain(UL_OUT, TOP_OUT, UR_OUT, R_OUT, LR_OUT, BM_OUT, BL_OUT, LOBE_OUT);
+/** Points along a ring between two angles. */
+function arc(d0: number, d1: number, rf: (deg: number) => number, step = 2): Pt[] {
+  const n = Math.max(2, Math.ceil(Math.abs(d1 - d0) / step));
+  return Array.from({ length: n + 1 }, (_, i) => {
+    const d = d0 + ((d1 - d0) * i) / n;
+    return at(d, rf(d));
+  });
+}
 
-/** The seven plates, each with its colour. */
-const PLATES: readonly [Pt[], string][] = [
-  [chain(UL_OUT, C_TOP_LEFT, [[112, 88], [105, 101], [110, 113]], C_LEFT, LOBE_OUT), LEAF.upperLeft],
-  [chain(TOP_OUT, C_TOP_RIGHT, [[152, 90], [133, 82], [112, 88]], rev(C_TOP_LEFT)), LEAF.top],
-  [chain(UR_OUT, C_UPPER_RIGHT, [[164, 103], [152, 90]], rev(C_TOP_RIGHT)), LEAF.upperRight],
-  [chain(R_OUT, rev(C_RIGHT), rev(C_UPPER_RIGHT)), LEAF.right],
-  [chain(C_RIGHT, LR_OUT, rev(C_LOWER_RIGHT), [[152, 118], [164, 103]]), LEAF.lowerRight],
-  [chain(C_LOWER_RIGHT, BM_OUT, rev(C_BOTTOM), [[118, 118], [135, 119], [152, 118]]), LEAF.bottom],
-  [chain(C_BOTTOM, BL_OUT, rev(C_LEFT), [[110, 113], [118, 118]]), LEAF.lowerLeft],
-];
+/** A crack from the hollow out to the edge, wandering (the one to the tip least: it is the midrib). */
+function crack(deg: number): Pt[] {
+  const [rs, re] = [socketR(deg), edgeR(deg)];
+  const a = (deg * Math.PI) / 180;
+  const [px, py] = [-Math.sin(a), Math.cos(a)];
+  const n = 6;
+  const jag = deg === CRACKS[0] || deg === CRACKS[CRACKS.length - 1] ? 0.5 : 1;
+  return Array.from({ length: n + 1 }, (_, i): Pt => {
+    const t = i / n;
+    const o = i === 0 || i === n ? 0 : Math.sin(i * 2.1 + deg * 0.05) * (3 + 3 * t) * jag;
+    const [x, y] = at(deg, rs + t * (re - rs));
+    return [x + px * o, y + py * o];
+  });
+}
 
-/** The pale band at its base, where it was cut from its stem. */
-const BASE: Pt[] = [[10, 89], [24, 86], [38, 86], [47, 89], [46, 96], [31, 98], [17, 99], [10, 97]];
+/** Plate k: the hollow's rim, out along one crack, back along the edge, in along the other. */
+function plate(k: number): string {
+  const [d0, d1] = [CRACKS[k]!, CRACKS[k + 1]!];
+  const pts = [...arc(d0, d1, socketR, 4), ...crack(d1).slice(1), ...arc(d1, d0, edgeR).slice(1, -1), ...crack(d0).reverse()];
+  const color = PLATE_COLOURS[k]!;
+  // Veins running out from the eye, each plate its own.
+  let veins = '';
+  for (const f of [0.34, 0.66]) {
+    const d = d0 + (d1 - d0) * f;
+    const [rs, re] = [socketR(d), edgeR(d)];
+    veins += ink(smooth([at(d, rs + 10), at(d + 3, rs + (re - rs) * 0.5), at(d + 1, re * 0.86)], 0.8, false), L.fine, darkOf(color, 0.24));
+  }
+  return comic(poly(pts), color, { line: L.small, rim: [8, -3.5], glint: [-2.2, 2.2], hatch: 7, hatchWidth: 1.7, over: veins });
+}
 
-/** The eye: its lid, the shadow under its far corner, the white, the iris. */
+/** The eye: the hollow, the white with its red iris, the heavy lid, its lashes. */
 function eye(): string {
-  let s = '';
-  s += inked(smooth(SOCKET, 0.8), LEAF.lid, W.crack);
-  s += flat(smooth([[136, 113], [150, 109], [162, 104], [160, 111], [152, 117], [138, 118]], 0.9), LEAF.socket);
-  const white = 'M104 105C114 93 148 89 166 101C152 112 122 118 104 105Z';
-  s += flat(white, LEAF.white);
-  s += clipped(
-    white,
-    // The far half of the eye in the lid's shade.
-    flat(ellipsePath(154, 107, 15, 8), LEAF.socket, 0.8) +
-      flat(ellipsePath(126, 104.5, 6.8, 6.8), LEAF.iris) +
-      line(ellipsePath(126, 104.5, 6.8, 6.8), 1.5, INK) +
-      flat(ellipsePath(126, 104.5, 3, 3), LEAF.pupil) +
-      flat(ellipsePath(124.3, 102.4, 1.3, 1.3), '#ffffff', 0.9) +
-      line('M106 102C118 94 148 91 164 100', 3.2, LEAF.socket, 0.35),
-  );
-  s += line('M104 105C122 118 152 112 166 101', 2.6);
-  s += line('M101 105C112 91 150 86 169 101', W.lid);
+  const [x, y] = E;
+  let s = comic(ellipsePath(x, y, 46, 27), LEAF.socket, { line: L.small, ink: LEAF.crack, rim: [5, -3], glint: [-1.4, 1.4] });
+  const white = `M${x - 36} ${y + 2}Q${x} ${y - 30} ${x + 36} ${y - 1}Q${x + 2} ${y + 25} ${x - 36} ${y + 2}Z`;
+  const [ix, iy] = [x - 4, y + 1];
+  const iris = `<path d="${ellipsePath(ix, iy, 13.5, 13.5)}" fill="${LEAF.iris}"/>` + ink(ellipsePath(ix, iy, 13.5, 13.5), L.fine, darkOf(LEAF.iris, 0.45));
+  const pupil = `<path d="${ellipsePath(ix, iy, 6.2, 6.2)}" fill="${LEAF.pupil}"/>`;
+  const glints = `<path d="${ellipsePath(ix - 4, iy - 4, 2.4, 2.4)}" fill="#ffffff"/><path d="${ellipsePath(ix + 4.5, iy + 4, 1.2, 1.2)}" fill="#ffffff" opacity="0.8"/>`;
+  // The lid's shadow across the top of the white.
+  const lidShade = `M${x - 36} ${y + 2}Q${x} ${y - 30} ${x + 36} ${y - 1}L${x + 36} ${y + 4}Q${x} ${y - 12} ${x - 36} ${y + 7}Z`;
+  s += comic(white, LEAF.white, { line: L.detail, ink: LEAF.crack, inner: iris + pupil + glints, shade: lidShade, tone: '#d9c3e0' });
+  // The heavy lid, half closed over it, a crease above, lashes off its rim.
+  const lid = `M${x - 40} ${y + 1}Q${x - 2} ${y - 48} ${x + 40} ${y - 3}Q${x + 2} ${y - 13} ${x - 40} ${y + 1}Z`;
+  s += comic(lid, LEAF.lid, { line: L.small, ink: LEAF.crack, rim: [3, -2.5], glint: [-1.2, 1.4] });
+  s += ink(`M${x - 30} ${y - 16}Q${x} ${y - 44} ${x + 32} ${y - 20}`, L.detail, LEAF.crack);
+  for (const [lx, ly, dx, dy] of [[x + 20, y - 8, 6, -6], [x + 29, y - 5, 9, -2], [x + 36, y - 2, 8, 3]] as const) {
+    s += ink(`M${lx} ${ly}q${dx * 0.6} ${dy * 0.2} ${dx} ${dy}`, L.detail, LEAF.crack);
+  }
+  s += ink(`M${x - 30} ${y + 7}Q${x} ${y + 26} ${x + 30} ${y + 4}`, L.fine, LEAF.crack, 0.6);
   return s;
 }
+
+/** The stub of stem at its base, its cut end pale. */
+function stem(): string {
+  const base = at(180, edgeR(180));
+  const d = smooth([[base[0] + 8, base[1] - 7], [base[0] - 10, base[1] - 6], [base[0] - 26, base[1] - 2], [base[0] - 26, base[1] + 7], [base[0] - 10, base[1] + 7], [base[0] + 8, base[1] + 7]], 0.5);
+  let s = comic(d, LEAF.stem, { line: L.small, rim: [2, -2], glint: [-1, 1] });
+  s += comic(ellipsePath(base[0] - 26, base[1] + 2.5, 3.4, 5.6), LEAF.stemCut, { line: L.detail });
+  return s;
+}
+
+/** The whole edge, for the outer contour and the card's bounds. */
+const OUTLINE = arc(CRACKS[0], CRACKS[0] + 360, edgeR);
 
 function leaf(): string {
-  let s = '';
-  const edge = smooth(OUTLINE, 0.6);
-  let plates = '';
-  for (const [pts, color] of PLATES) {
-    const d = poly(pts);
-    // Each plate a little darker at its rims, so the plates read as slabs.
-    plates += flat(d, color) + clipped(d, line(d, 9, LEAF.plateShade, 0.2));
-  }
-  // A glint along the upper plates, where the light falls.
-  plates += line(smooth([[96, 30], [110, 22], [128, 19], [142, 23]], 1, false), 2.2, '#ffffff', 0.35);
-  plates += line(smooth([[196, 74], [214, 90], [232, 106]], 1, false), 2, '#ffffff', 0.3);
-  s += flat(edge, LEAF.upperLeft) + clipped(edge, plates);
-  for (const crack of [C_TOP_LEFT, C_TOP_RIGHT, C_UPPER_RIGHT, C_RIGHT, C_LOWER_RIGHT, C_BOTTOM, C_LEFT]) {
-    s += line(smooth(crack, 0.9, false), W.crack);
-  }
-  s += eye();
-  s += line(edge, W.outline);
-  s += inked(smooth(BASE, 0.8), LEAF.stem, W.crack);
-  s += inked(ellipsePath(10.5, 93, 2.2, 4.2), LEAF.stemCut, 2);
-  return s;
+  let s = stem();
+  for (let k = 0; k < CRACKS.length - 1; k++) s += plate(k);
+  for (const d of CRACKS.slice(0, -1)) s += ink(poly(crack(d), false), L.small, LEAF.crack);
+  s += ink(poly(OUTLINE), L.body, LEAF.edge);
+  return s + eye();
 }
 
 /** A point as the turn moves it. */
 function turned([x, y]: Pt): Pt {
   const a = (TURN * Math.PI) / 180;
-  const [dx, dy] = [x - PIVOT[0], y - PIVOT[1]];
-  return [PIVOT[0] + dx * Math.cos(a) - dy * Math.sin(a), PIVOT[1] + dx * Math.sin(a) + dy * Math.cos(a)];
+  const [dx, dy] = [x - E[0], y - E[1]];
+  return [E[0] + dx * Math.cos(a) - dy * Math.sin(a), E[1] + dx * Math.sin(a) + dy * Math.cos(a)];
 }
 
 /** The eye-leaf, lying on the floor: its pivot is the middle of where it rests. */
 export function eyeLeaf(): PartArt {
-  const pts = [...OUTLINE, ...BASE].map(turned);
-  const xs = pts.map((p) => p[0]);
-  const ys = pts.map((p) => p[1]);
-  const pad = 6;
+  const stemTip = at(180, edgeR(180));
+  const pts = [...OUTLINE, [stemTip[0] - 30, stemTip[1] - 4] as Pt, [stemTip[0] - 30, stemTip[1] + 9] as Pt].map(turned);
+  const xs = pts.map((q) => q[0]);
+  const ys = pts.map((q) => q[1]);
+  const pad = 8;
   const [x0, y0] = [Math.min(...xs) - pad, Math.min(...ys) - pad];
   const [x1, floor] = [Math.max(...xs) + pad, Math.max(...ys)];
   // Its shadow on the boards, under where it rests.
-  const shadow = flat(ellipsePath((x0 + x1) / 2 + 10, floor - 3, (x1 - x0) * 0.4, 7), LEAF.shadow, 0.16);
-  const body = `<g transform="scale(${SIZE}) translate(${n(-x0)} ${n(-y0)})">${shadow}<g transform="rotate(${TURN} ${PIVOT[0]} ${PIVOT[1]})">${leaf()}</g></g>`;
+  const shadow = `<path d="${ellipsePath((x0 + x1) / 2 + 10, floor - 3, (x1 - x0) * 0.4, 7)}" fill="${LEAF.shadow}" opacity="0.16"/>`;
+  const body = `<g transform="scale(${SIZE}) translate(${-x0} ${-y0})">${shadow}<g transform="rotate(${TURN} ${E[0]} ${E[1]})">${leaf()}</g></g>`;
   const w = Math.ceil((x1 - x0) * SIZE);
   const h = Math.ceil((floor - y0 + 4) * SIZE);
   return { key: 'p1.eyeleaf', w, h, px: Math.round(w / 2), py: Math.round((floor - y0) * SIZE), body, scale: 1 };
