@@ -3,7 +3,8 @@ import { ROOMS } from '../../src/content/data/rooms';
 import { STAGE_BOX } from '../../src/content/rooms/r01Stage';
 import { frontSpec } from '../../src/render/2.5d/front';
 import { boxFrame, boxTheme, roomStage } from '../../src/render/2.5d/themes';
-import { bandZ, offAxis, phaserScreen, pinAt, placeScrolled, projectToPlane, restCentre, scrollDepth, viewRect, type CamState } from '../../src/render/2.5d/depth';
+import { bandZ, leanReach, leanZ, offAxis, phaserScreen, pinAt, placeScrolled, projectToPlane, restCentre, RIG_DZ, RIG_GAP, RIG_PARTS, scrollDepth, viewRect, type CamState } from '../../src/render/2.5d/depth';
+import { allRigs } from '../../src/content/art/manifest';
 
 // The diorama must look exactly like the flat game from the middle of the
 // view: layers at the depth their scroll factor implies, pinned things where
@@ -104,6 +105,40 @@ describe('diorama geometry', () => {
     const b = screenOf(still, p.x, p.y, p.z);
     expect(a[0] - b[0]).toBeCloseTo(4, 6);
     expect(a[1] - b[1]).toBeCloseTo(-3, 6);
+  });
+
+  it('stands each figure as one thin cut-out, a whole figure apart from the next', () => {
+    // Every rig fits in its thickness.
+    for (const r of allRigs()) expect(r.joints.filter((j) => j.part).length).toBeLessThanOrEqual(RIG_PARTS);
+    // A rider (one band step above his horse) is in front of all of it, the
+    // player in front of every figure of the actors' band.
+    expect(RIG_GAP).toBeLessThan(bandZ(31) - bandZ(30));
+    expect(RIG_GAP * 8).toBeLessThan(bandZ(40) - bandZ(30));
+    // Seen from the eye, a figure's near and far limbs meet the floor within a tenth of a pixel.
+    const [, yNear] = projectToPlane(0, 700, RIG_GAP, 640, 360 - 0.34 * 720, D);
+    const [, yFar] = projectToPlane(0, 700, 0, 640, 360 - 0.34 * 720, D);
+    expect(Math.abs(yNear - yFar)).toBeLessThan(0.1);
+    // Still far apart for the depth buffer at the actors' plane (24 bits, near plane D/5).
+    const near = D * 0.2;
+    const step = (Math.pow(2, -24) * D * D) / near;
+    expect(RIG_DZ / 2).toBeGreaterThan(4 * step);
+  });
+
+  it('keeps a leaning prop on its side of the actors\' plane', () => {
+    // A bush 220 px wide, anchored at its middle, turned either way.
+    for (const yaw of [-0.08, -0.03, 0.03, 0.08]) {
+      const r = leanReach(400, 620, 510, yaw);
+      expect(r.front).toBeCloseTo(110 * Math.abs(Math.sin(yaw)), 6);
+      expect(r.back).toBeCloseTo(110 * Math.abs(Math.sin(yaw)), 6);
+      // Behind the actors: its nearest edge stays where its band puts it.
+      for (const z of [-5, -2.5, -60]) expect(leanZ(z, r) + r.front).toBeCloseTo(z, 6);
+      // In front of them: its farthest edge does.
+      expect(leanZ(34, r) - r.back).toBeCloseTo(34, 6);
+    }
+    // Anchored at one end, a card turns only one way from it.
+    const one = leanReach(500, 700, 500, 0.05);
+    expect(one.front).toBe(0);
+    expect(one.back).toBeGreaterThan(0);
   });
 
   it('stages chapter I as the first painting\'s box: pink, no back wall of its own, two stage lamps', () => {

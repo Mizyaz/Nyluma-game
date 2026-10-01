@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import * as THREE from 'three';
 import { DEPTH } from '../../engine/constants';
-import { affine, boxedZ, depthScale, itrs, mul, scrollDepth, type Affine } from './depth';
+import { affine, boxedZ, depthScale, itrs, leanReach, leanZ, mul, RIG_DZ, RIG_GAP, scrollDepth, type Affine } from './depth';
 import { EDGE_TINT, cardMaterial, quadGeometry, setCardAlpha, setQuadUV, type CardMaterial } from './cards';
 import { stage as hooks, type LiftOpts } from './hooks';
 import type { TextureCache } from './textures';
@@ -262,6 +262,8 @@ export class Mirror {
   private frameNo = 0;
   /** Card textures for Graphics snapshots (not in Phaser's texture manager). */
   private readonly own = new Map<Node, THREE.Texture>();
+  /** This frame's depth of each figure (a rig) on the actors' planes. */
+  private readonly figureZ = new Map<GO, number>();
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -345,6 +347,11 @@ export class Mirror {
     let tie = 0;
     const order = new Map<GO, number>();
     const onPlane = new Map<number, number>();
+    // Each figure stands at least a whole figure's thickness in front of the
+    // figure drawn before it (of its own band or the one below, as a rider
+    // over his horse), so two figures never interleave their parts.
+    this.figureZ.clear();
+    let lastFigure = -Infinity;
     for (const go of list) {
       const d = (go as unknown as { depth: number }).depth;
       if (d === lastDepth) tie++;
@@ -352,9 +359,16 @@ export class Mirror {
         tie = 0;
         lastDepth = d;
       }
-      if (!this.lifted.has(go)) continue;
-      const sf = (go as unknown as { scrollFactorX: number }).scrollFactorX;
-      if (sf === 1) order.set(go, tie);
+      const l = this.lifted.get(go);
+      if (!l) continue;
+      const o = go as unknown as { scrollFactorX: number; scrollFactorY: number };
+      const sf = o.scrollFactorX;
+      if (sf === 1 && o.scrollFactorY === 1 && l.opts.rig) {
+        const z = Math.max(l.opts.z ?? boxedZ(d, f.back), lastFigure + RIG_GAP);
+        this.figureZ.set(go, z);
+        lastFigure = z;
+        order.set(go, 0);
+      } else if (sf === 1) order.set(go, tie);
       else {
         const n = onPlane.get(sf) ?? 0;
         onPlane.set(sf, n + 1);
@@ -413,7 +427,7 @@ export class Mirror {
       P.e = 0;
       P.f = 0;
     } else if (sfx === 1 && sfy === 1) {
-      z = (o.z ?? boxedZ(go.depth, f.back)) + tie * 0.01;
+      z = this.figureZ.get(go) ?? (o.z ?? boxedZ(go.depth, f.back)) + tie * 0.01;
       P.a = 1;
       P.b = 0;
       P.c = 0;
@@ -466,7 +480,8 @@ export class Mirror {
     // Far layers and screen-pinned backdrops are not lit.
     const lit = o.lit ?? (Math.abs(z) < f.litDepth && !(sfx === 0 && sfy === 0));
     const rig = !!o.rig;
-    const dz = o.dz ?? (rig ? 0.7 : 0.3);
+    // A figure's parts stand only a hair apart: it reads as one cut-out.
+    const dz = o.dz ?? (rig ? RIG_DZ : 0.3);
     const decal = o.as === 'decal';
     const terrain = o.as === 'terrain';
     // Paper edges: thin on figures, none on planes (a wall's things are glued to it).
@@ -475,8 +490,14 @@ export class Mirror {
     const cast = o.cast ?? (lit && !decal && !terrain && thick > 0);
     // Sway: things hung from their top swing gently about it.
     const sway = o.sway ? swayAngle(f.t, go.x ?? 0, f.calm) : 0;
-    // A lean about the upright through its anchor (world x of the object).
+    // A lean about the upright through its anchor (world x of the object),
+    // kept to its own side of the actors' plane: a leaning bush or tree
+    // never reaches through the figures standing before it.
     const yaw = o.lean ? leanAngle(go.x ?? 0, go.y ?? 0) : 0;
+    if (yaw !== 0) {
+      const b = (go as unknown as { getBounds?: () => Phaser.Geom.Rectangle }).getBounds?.();
+      if (b) z = leanZ(z, leanReach(P.a * b.x + P.e, P.a * b.right + P.e, P.a * (go.x ?? 0) + P.e, yaw));
+    }
     // Terrain art is cut just below the solid's top line: the slab's own top
     // (and its rim) replaces the painted top face and its contour. Painted
     // parts of the box the real box replaces are cut off the same way.

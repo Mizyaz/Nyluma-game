@@ -178,6 +178,44 @@ export function bandZ(depth: number): number {
   return BANDS[BANDS.length - 1]![1];
 }
 
+/**
+ * Depth between the parts of a cut-out figure (a rig), in their draw order:
+ * enough for the depth buffer to keep that order, so little that a whole
+ * figure (some thirty parts) stays thinner than the gap between two
+ * figures' bands (a rider over his horse stands 0.15 in front of it). The
+ * figure then reads as one cut-out: its near and far limbs line up with the
+ * floor alike, it casts one shadow, and another figure or a prop is either
+ * in front of all of it or behind all of it, never between its parts.
+ */
+export const RIG_DZ = 0.004;
+
+/** The most parts a figure has (a humanoid with its face, hair and props has some twenty). */
+export const RIG_PARTS = 32;
+
+/** Least depth between two figures, in their draw order: a whole figure's thickness. */
+export const RIG_GAP = RIG_DZ * RIG_PARTS;
+
+/**
+ * How far a card spanning x0..x1, turned by `yaw` about the upright through
+ * `ax` (its depth goes as z - (x - ax) sin yaw), reaches toward the viewer
+ * (front) and away from the viewer (back).
+ */
+export function leanReach(x0: number, x1: number, ax: number, yaw: number): { front: number; back: number } {
+  const s = Math.sin(yaw);
+  const a = -(x0 - ax) * s;
+  const b = -(x1 - ax) * s;
+  return { front: Math.max(0, a, b), back: Math.max(0, -a, -b) };
+}
+
+/**
+ * Depth of a leaning card that stands at band depth `z`: moved back (or, in
+ * front of the actors, forward) by its reach, so that its turned edge keeps
+ * to its own side of the actors' plane and never cuts through a figure.
+ */
+export function leanZ(z: number, reach: { front: number; back: number }): number {
+  return z <= 0 ? z - reach.front : z + reach.back;
+}
+
 /** 2D affine matrix (Phaser's TransformMatrix layout): x' = a x + c y + e, y' = b x + d y + f. */
 export interface Affine {
   a: number;
