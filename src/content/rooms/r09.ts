@@ -1,7 +1,7 @@
 import type { RoomDef } from '../data/roomTypes';
 
-// Chapter IV — sparrow clearing by the river. One floor from end to end: a
-// stone slab lies across the river.
+// Chapter IV — sparrow clearing by the river. One floor from end to end:
+// a row of flat stones crosses the river, level with both banks.
 export const R09: RoomDef = {
   id: 'r09',
   chapter: 4,
@@ -19,9 +19,10 @@ export const R09: RoomDef = {
   ],
   solids: [
     { x: 0, y: 900, w: 1300, h: 200, style: 'moss' },
-    // The river's bed, and the slab across it, level with both banks.
+    // The river's bed, and flat stones across it, level with both banks;
+    // the gaps between them are narrower than Gorti's stance, so he walks.
     { x: 1300, y: 960, w: 400, h: 140, style: 'stone' },
-    { id: 'slab', x: 1290, y: 900, w: 420, h: 28, style: 'stone' },
+    ...[1300, 1404, 1508, 1612].map((x) => ({ x, y: 900, w: 88, h: 24, style: 'stone' as const, oneWay: true })),
     { x: 1700, y: 900, w: 1500, h: 200, style: 'moss' },
   ],
   memories: [{ id: 'm7', x: 2300, y: 900 }],
@@ -31,8 +32,7 @@ export const R09: RoomDef = {
   ],
   exits: [],
   props: [
-    // Under the slab, the river runs on.
-    { key: 'prop.river', x: 1500, y: 962, depth: -4 },
+    { key: 'prop.river', x: 1500, y: 962, depth: 14 },
     { key: 'prop.tree', x: 520, y: 902, depth: -40, scale: 1.1 },
     { key: 'prop.tree', x: 1150, y: 902, depth: -40, flipX: true },
     { key: 'prop.tree', x: 2280, y: 902, depth: -40, scale: 1.3 },

@@ -22,8 +22,10 @@ function opened(r: RoomDef): SolidDef[] {
 function walk(r: RoomDef): { y: number; lo: number; hi: number } {
   const solids = opened(r);
   const y = r.checkpoints[0]!.y;
+  // Standing anywhere some of his hull rests on the floor line (a gap
+  // narrower than the hull, e.g. between stepping stones, is walked over).
   const floorAt = (x: number): boolean =>
-    solids.some((s) => s.y === y && x >= s.x && x <= s.x + s.w) ||
+    solids.some((s) => s.y === y && s.x < x + HULL_W / 2 && s.x + s.w > x - HULL_W / 2) ||
     // The ride's chasms fill with flower bridges as the horse comes near.
     (r.id === 'r07' && RIDE_CHASMS.some(([a, b]) => x >= a && x <= b));
   const blocked = (x: number): boolean => solids.some((s) => !s.oneWay && s.x < x + HULL_W / 2 && s.x + s.w > x - HULL_W / 2 && s.y < y - 1 && s.y + s.h > y - HULL_H);
