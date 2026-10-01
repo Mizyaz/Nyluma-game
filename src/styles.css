@@ -1861,6 +1861,48 @@ a {
   height: 42%;
 }
 
+/* Sliding up or down from the pad walks in depth: small marks show it. */
+.tc-pad .depth {
+  position: absolute;
+  left: 50%;
+  width: calc(30px * var(--tk, 1));
+  height: calc(24px * var(--tk, 1));
+  margin-left: calc(-15px * var(--tk, 1));
+  border: var(--lw) solid var(--line);
+  background: var(--grain), rgba(251, 246, 234, 0.8);
+  box-shadow: 1px 2px 0 var(--shade);
+  color: var(--ink);
+  border-radius: 10px 8px 11px 7px / 8px 11px 7px 10px;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.tc-pad .depth.up {
+  top: calc(-16px * var(--tk, 1));
+}
+
+.tc-pad .depth.down {
+  bottom: calc(-16px * var(--tk, 1));
+}
+
+.tc-pad .depth svg {
+  width: 62%;
+  height: 62%;
+}
+
+.tc-pad .depth.up svg {
+  rotate: 90deg;
+}
+
+.tc-pad .depth.down svg {
+  rotate: -90deg;
+}
+
+.tc-pad .depth.held {
+  background: var(--pencil), var(--pastel-mint);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dialogue,
   .dialogue .next,

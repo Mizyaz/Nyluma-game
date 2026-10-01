@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { app } from '../../../engine/App';
 import { DEPTH } from '../../../engine/constants';
 import { HUE_STEPS } from '../fxArt';
+import { planesOf } from '../../../paper/planes';
 
 // Colour bursts. `burst()` sheds crystals in random colours around a point
 // (the Rezonans moves). The bombardment comes by itself now and then: the
@@ -87,7 +88,9 @@ export class ColorBursts {
 
   /** A handful of crystals in random colours flying out from a point. */
   burst(x: number, y: number, n: number): void {
-    this.sparks.emitParticleAt(x, y, this.reduced ? Math.ceil(n / 2) : n);
+    // The sparks stay in the actors' plane: from there they fly out where they were sent off.
+    const at = planesOf(this.scene)?.toMain(x, y) ?? { x, y };
+    this.sparks.emitParticleAt(at.x, at.y, this.reduced ? Math.ceil(n / 2) : n);
   }
 
   /** Starts a bombardment now. */

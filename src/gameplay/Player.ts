@@ -39,6 +39,11 @@ function approach(v: number, target: number, step: number): number {
   return v;
 }
 
+/** Walking in depth: this much of his walking speed (the eye sees depth foreshortened). */
+const DEPTH_SPEED = 0.8;
+/** How fast he steps back onto the actors' plane for a root reach (world px per second). */
+const DEPTH_HOME = 420;
+
 /** The room of the active run (where the player is). */
 function currentRoom(): RoomId {
   return app.quest?.progress.room ?? 'r01';
@@ -123,6 +128,14 @@ export class Player {
   canJump = true;
   speedScale = 1;
   private head: SkyOut = 'none';
+  /**
+   * How far before (+) or behind (−) the actors' plane he walks (world px),
+   * how fast, and between which depths (the room sets them from its box).
+   * The world stays flat: physics, scripts and triggers see x and y only.
+   */
+  z = 0;
+  vz = 0;
+  depthRange = { min: -200, max: 70 };
 
   constructor(scene: Phaser.Scene, x: number, feetY: number, kind: PlayerKind, form: FormId) {
     this.scene = scene;
@@ -151,12 +164,20 @@ export class Player {
     return { x: this.zone.x + this.facing * 4, y: this.zone.y - 12 };
   }
 
+  /** What shows of him in the world (his figure and the root he reaches with). */
+  get parts(): Phaser.GameObjects.GameObject[] {
+    return [this.rig.container, this.rootLine];
+  }
+
   get controllable(): boolean {
     return this.state === 'normal';
   }
 
   teleport(x: number, feetY: number, facing?: 1 | -1): void {
     this.body.reset(x, feetY - HULL_H / 2);
+    // A cut: he stands on the actors' plane again.
+    this.z = 0;
+    this.vz = 0;
     if (facing) this.setFacing(facing);
     this.onGround = false;
     this.airTime = 0;
@@ -219,10 +240,13 @@ export class Player {
 
   // ------------------------------------------------------------ fixed step
 
-  fixed(dt: number, input: { axis: number; jumpPressed: boolean; jumpHeld: boolean }): void {
+  fixed(dt: number, input: { axis: number; jumpPressed: boolean; jumpHeld: boolean; depth?: number; floor?: boolean }): void {
     const b = this.body;
     if (this.interactT > 0) this.interactT -= dt;
     if (this.state === 'reach') {
+      // A root reaches for a ledge of the actors' plane: he goes with it.
+      this.vz = 0;
+      this.z = approach(this.z, 0, DEPTH_HOME * dt);
       this.stepReach(dt);
       return;
     }
@@ -257,6 +281,7 @@ export class Player {
     if (axis !== 0 && Math.sign(b.velocity.x) === -axis) accel = Math.max(accel, t.decel);
     b.velocity.x = approach(b.velocity.x, target, accel * dt);
     if (axis !== 0) this.setFacing(axis > 0 ? 1 : -1);
+    this.stepDepth(dt, canMove ? (input.depth ?? 0) : 0, input.floor ?? true);
 
     if (this.canJump && this.jumpBuffer > 0 && this.coyote > 0 && t.jumpVel > 0) {
       b.velocity.y = -t.jumpVel;
@@ -294,6 +319,33 @@ export class Player {
       }
     } else if (vx < 5 || axis !== 0) this.skidding = false;
     this.lastVx = vx;
+  }
+
+  /**
+   * Walking toward the viewer (want > 0) or away (want < 0), over the room's
+   * floor: it spans every depth of the box. Anything else he stands on (a
+   * whale's back, a ledge) stands in the actors' plane, so there he walks
+   * back onto it. In the air he keeps going as he left the ground.
+   */
+  private stepDepth(dt: number, want: number, floor: boolean): void {
+    const t = this.tuning;
+    const speed = t.speed * DEPTH_SPEED * this.speedScale;
+    const home = this.onGround && !floor && this.z !== 0;
+    const target = home ? -Math.sign(this.z) * speed : want * speed;
+    const steer = home || want !== 0;
+    const accel = this.onGround ? (steer ? t.accel : t.decel) : steer ? t.airAccel : t.airDecel;
+    this.vz = approach(this.vz, target, accel * dt);
+    let z = this.z + this.vz * dt;
+    if (home && Math.sign(z) !== Math.sign(this.z)) {
+      z = 0;
+      this.vz = 0;
+    }
+    const { min, max } = this.depthRange;
+    if (z < min || z > max) {
+      z = Math.min(max, Math.max(min, z));
+      this.vz = 0;
+    }
+    this.z = z;
   }
 
   /**
@@ -512,7 +564,9 @@ export class Player {
     this.sq += this.sqV * dt;
     this.rig.squashY = this.sq;
     this.rig.squashX = 1 + (1 - this.sq) * 0.85;
-    const speed = Math.abs(b.velocity.x) / Math.max(1, this.tuning.speed);
+    // Over the ground, whichever way: across the room or in depth.
+    const ground = Math.hypot(b.velocity.x, this.vz);
+    const speed = ground / Math.max(1, this.tuning.speed);
     let anim = 'idle';
     const prm: PoseParams = {};
     // Momentary emotion (brows) fading over its duration.
@@ -558,15 +612,15 @@ export class Player {
       else if (vy < -140) anim = 'rise';
       else if (vy < 150) anim = 'apex';
       else anim = 'fall';
-    } else if (this.landT > 0 && !(Math.abs(b.velocity.x) > 60 && this.landDur - this.landT > 0.08)) {
+    } else if (this.landT > 0 && !(ground > 60 && this.landDur - this.landT > 0.08)) {
       anim = 'land';
       prm.k = 1 - this.landT / this.landDur;
       prm.impact = this.landImpact;
-    } else if (Math.abs(b.velocity.x) > 12) {
+    } else if (ground > 12) {
       anim = this.pushing ? 'push' : 'walk';
       // One walk cycle per this much ground, so a planted foot stays put.
       const strideLen = cycleOf(this.rig.rig.id, profileOf(this.rig.rig.id));
-      this.walkPhase += (Math.abs(b.velocity.x) * dtMs) / 1000 / strideLen * Math.PI * 2;
+      this.walkPhase += (ground * dtMs) / 1000 / strideLen * Math.PI * 2;
       prm.phase = this.walkPhase;
       prm.speed = speed;
       // A footfall each time a foot reaches the front of its swing.

@@ -213,6 +213,12 @@ export class InputSystem {
     return (dir('right') ? 1 : 0) - (dir('left') ? 1 : 0);
   }
 
+  /** Depth direction: up walks away from the viewer (−1), down toward them (+1). */
+  axisY(): number {
+    const dir = (a: Action): boolean => this.held(a) || this.taps.has(a);
+    return (dir('down') ? 1 : 0) - (dir('up') ? 1 : 0);
+  }
+
   /** Source-level API shared by keyboard and touch controls. */
   sourceDown(id: string, actions: readonly Action[]): void {
     const prev = this.sources.get(id);

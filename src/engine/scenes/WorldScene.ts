@@ -31,6 +31,7 @@ import { FaceDialogue } from '../cinematics/FaceDialogue';
 import { ROMAN } from '../../ui/Menus';
 import type { AmbienceId } from '../systems/AudioSystem';
 import type { SkyScene } from './SkyScene';
+import type { PlaneCamera } from '../../paper/planes';
 import { SkyLamps } from './SkyLamps';
 import type { SkyJson, SkyOut } from '../content/types';
 import { breakFlag } from '../content/compile';
@@ -41,6 +42,10 @@ import { SMASH } from '../../render/2d/rig/actionPoses';
 const KAHKAHA_S = 0.75;
 /** How long the kahkaha pose holds Gorti (s). */
 const KAHKAHA_POSE_S = 1.6;
+/** How far short of the back wall and of the torn front Gorti may walk in depth (world px). */
+const DEPTH_ROOM = 100;
+/** What his moves make draws just before him when he stands at its depth (his own plane leads by 0.25). */
+const FX_LEAD = 0.2;
 
 /** Every part's artwork by key (what the press prints from). */
 let partsByKey: Map<string, PartArt> | null = null;
@@ -104,7 +109,7 @@ export class WorldScene extends Phaser.Scene {
   /** Read-only facts scripts publish for the e2e probe (horse, encounter). */
   probeExtra: Record<string, unknown> = {};
   /** This physics step's gameplay input (scripts that drive their own actor read it). */
-  stepInput = { axis: 0, jumpPressed: false, jumpHeld: false };
+  stepInput = { axis: 0, jumpPressed: false, jumpHeld: false, depth: 0, floor: true };
   /** Self-contained things to inspect (paintings…), besides the room's interacts. */
   private features: Interactable[] = [];
   gallery: PaintingGallery | null = null;
@@ -115,6 +120,15 @@ export class WorldScene extends Phaser.Scene {
   /** Gorti's own light, and the Sun's and the Moon's lamps in the room. */
   private glow: PlayerGlow | null = null;
   private skyLamps: SkyLamps | null = null;
+  /**
+   * Off the actors' plane Gorti stands on a plane that walks with him; what
+   * his Rezonans makes stands on another, left where he made it.
+   */
+  private hisPlane: PlaneCamera | null = null;
+  private hisFx: PlaneCamera | null = null;
+  /** Where his figure stands now, and where his last move was made (null: in the actors' plane). */
+  private standsOn: PlaneCamera | null = null;
+  private fxOn: PlaneCamera | null = null;
 
   constructor() {
     super('world');
@@ -193,6 +207,10 @@ export class WorldScene extends Phaser.Scene {
     quest.setForm(form);
     const kind = this.def.player === 'horse' ? 'gorti' : this.def.player;
     this.player = new Player(this, cp.x, cp.y, kind, form);
+    // He walks in depth over the floor, from well before the back wall to
+    // short of the torn front.
+    const box = this.paper.spec;
+    this.player.depthRange = { min: Math.min(0, box.back + DEPTH_ROOM), max: Math.max(0, box.front - DEPTH_ROOM) };
     // Gorti's screen face glows and lights what is near him; the Sun and the
     // Moon light the room from where they show.
     const dlg = app.ui.dialogue;
@@ -299,29 +317,30 @@ export class WorldScene extends Phaser.Scene {
     app.audio.music(this.def.music);
     app.audio.setAmbience(AMBIENCE[this.def.theme] ?? 'none');
 
-    this.events.on('player-land', (x: number, y: number, v: number) => {
+    // What his feet throw up comes from where he walks (in depth too).
+    this.events.on('player-land', (x: number, y: number, v: number) => this.atHim(() => {
       if (v > 560) this.comic.pop(x, y - 36, pick(WORDS.land), 'land');
       if (v > 500) this.shake(0.003, 90);
       this.dust(x, y, 6);
-      if (v > 260) this.steps?.land(x, y, Math.min(1, (v - 260) / 600));
-    });
-    this.events.on('player-jump', (x: number, y: number) => {
+      if (v > 260) this.steps?.land(...this.onMain(x, y), Math.min(1, (v - 260) / 600));
+    }));
+    this.events.on('player-jump', (x: number, y: number) => this.atHim(() => {
       this.comic.pop(x - this.player.facing * 30, y - 70, pick(WORDS.jump), 'jump');
       this.dust(x, y, 4);
-      this.steps?.step(x, y);
-    });
-    this.events.on('player-step', (x: number, y: number) => {
+      this.steps?.step(...this.onMain(x, y));
+    }));
+    this.events.on('player-step', (x: number, y: number) => this.atHim(() => {
       // Every footfall lands: a puff of dust and a small jolt of the view.
       this.dust(x, y, 3);
       const heavy = this.player.form === 'human' || this.player.kind !== 'gorti';
       this.shake(heavy ? 0.0016 : 0.0011, 70);
-      this.steps?.step(x, y);
+      this.steps?.step(...this.onMain(x, y));
       if (Math.random() < 0.4) app.audio.sfx('sprout', { vol: 0.6 });
-    });
-    this.events.on('player-skid', (x: number, y: number) => {
+    }));
+    this.events.on('player-skid', (x: number, y: number) => this.atHim(() => {
       this.dust(x, y, 7);
       this.shake(0.0014, 90);
-    });
+    }));
 
     const sky = skyOf(this.def.id);
     this.scene.launch('sky', { sky });
@@ -359,8 +378,12 @@ export class WorldScene extends Phaser.Scene {
     // With jumping off a press is still consumed (so it never lingers), then dropped.
     const jumpPressed = gameplay && i.consume('jump') && JUMPING;
     const jumpHeld = JUMPING && gameplay && i.held('jump');
+    // Up and down walk in depth, over the room's floor only.
+    const depth = gameplay ? i.axisY() : 0;
+    const under = this.room.groundBelow(p.x, p.feetY);
+    const floor = under !== null && Math.abs(under - this.paper.spec.floor) < 3;
 
-    this.stepInput = { axis, jumpPressed, jumpHeld };
+    this.stepInput = { axis, jumpPressed, jumpHeld, depth, floor };
     if (p.state !== 'hidden') p.fixed(dt, this.stepInput);
 
     // Contextual actions
@@ -493,7 +516,10 @@ export class WorldScene extends Phaser.Scene {
 
   /** Rezonans: the move that fits Gorti's form and the story so far. */
   private firePulse(): void {
-    this.moves.use();
+    // Away from the actors' plane, what the move makes stands where he is.
+    const p = this.player;
+    this.fxOn = Math.abs(p.z) < 0.5 ? null : this.paper.planes.move((this.hisFx ??= this.paper.planes.free(p.z, FX_LEAD)), p.z);
+    this.atFx(() => this.moves.use());
     const c = this.player.chest();
     this.script.onPulse?.(c.x, c.y, PULSE_RADIUS);
   }
@@ -739,10 +765,11 @@ export class WorldScene extends Phaser.Scene {
     const dlg = app.ui.dialogue;
     if (dlg.isOpen) this.player.emote(dlg.speaker === NAMES.gorti ? (dlg.typing ? 'talk' : 'worry') : 'listen', 260);
     this.player.visual(dt);
+    this.standDepth();
     this.room.animateMarkers(time);
     this.narrative.tick(dt);
     this.script.onUpdate?.(dt, time);
-    const eye = this.paper.lens.project(this.player.x, this.player.feetY - 80, 0);
+    const eye = this.paper.lens.project(this.player.x, this.player.feetY - 80, this.player.z);
     this.sky?.lookAtScreen(eye.x, eye.y);
     this.updateCamera(dt);
     this.skyLamps?.update();
@@ -750,7 +777,7 @@ export class WorldScene extends Phaser.Scene {
     this.room.stream(this.cameras.main.scrollX);
     this.bursts.update(dt);
     this.gallery?.update(dt);
-    this.moves.update(dt);
+    this.atFx(() => this.moves.update(dt));
     this.updateHud(time);
   }
 
@@ -761,7 +788,32 @@ export class WorldScene extends Phaser.Scene {
     const ground = this.room.groundBelow(p.x, p.feetY);
     if (ground === null) return null;
     const k = Math.max(0, 1 - Math.max(0, ground - p.feetY) / 320);
-    return { x: p.x, z: 0, r: 34 * (0.55 + 0.45 * k), a: 0.9 * k };
+    return { x: p.x, z: p.z, r: 34 * (0.55 + 0.45 * k), a: 0.9 * k };
+  }
+
+  /**
+   * Gorti's depth: off the actors' plane his figure, his glow and his root
+   * stand on a plane of their own that walks with him.
+   */
+  private standDepth(): void {
+    const p = this.player;
+    const planes = this.paper.planes;
+    const off = Math.abs(p.z) >= 0.5;
+    const cam = off ? planes.move((this.hisPlane ??= planes.free(p.z)), p.z) : null;
+    if (cam === this.standsOn) return;
+    this.standsOn = cam;
+    for (const o of p.parts) planes.placeOn(o, cam ?? planes.main);
+    if (this.glow) planes.placeOn(this.glow.bloom, cam ?? planes.main);
+  }
+
+  /** Runs fn, standing what it makes (and throws) at Gorti's depth, as he is now. */
+  private atHim<T>(fn: () => T): T {
+    return this.standsOn ? this.paper.planes.within(this.standsOn, fn) : fn();
+  }
+
+  /** Runs fn, standing what it makes (and throws) where his last move was made. */
+  private atFx<T>(fn: () => T): T {
+    return this.fxOn ? this.paper.planes.within(this.fxOn, fn) : fn();
   }
 
   private updateCamera(dt: number): void {
@@ -866,7 +918,14 @@ export class WorldScene extends Phaser.Scene {
     const theme = this.def.theme;
     const col = theme === 'office' ? 0xb8ab92 : theme === 'mech' ? 0x727a8c : 0x8a7f99;
     this.particles.setParticleTint(col);
-    this.particles.emitParticleAt(x, y - 4, n);
+    const [px, py] = this.onMain(x, y - 4);
+    this.particles.emitParticleAt(px, py, n);
+  }
+
+  /** A point where things are being made (see `atHim`), as the point of the actors' plane that shows there. */
+  private onMain(x: number, y: number): [number, number] {
+    const p = this.paper.planes.toMain(x, y);
+    return [p.x, p.y];
   }
 
   shake(intensity: number, ms: number): void {

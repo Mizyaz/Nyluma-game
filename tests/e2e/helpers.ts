@@ -20,6 +20,8 @@ export interface ProbeState {
     kind: string;
     focus: number;
     facing: number;
+    /** Depth: before (+) or behind (−) the actors' plane, world px. */
+    z: number;
   } | null;
   paused: boolean;
   busy: boolean;

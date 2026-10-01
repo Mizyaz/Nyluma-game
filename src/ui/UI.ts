@@ -133,10 +133,10 @@ export class UI {
       if (slot && view.width > 0) return Math.round(((slot.win.cx - view.x) / view.width) * 100) / 100;
     }
     if (who === NAMES.gorti && scenes.isActive('world')) {
-      // Through the paper stage's eye: where he stands on the actors' plane.
-      const world = scenes.getScene('world') as unknown as { player?: { x: number }; paper?: { lens: { w: number; project(x: number, y: number, z: number): { x: number } } } };
+      // Through the paper stage's eye: where he stands (in depth too).
+      const world = scenes.getScene('world') as unknown as { player?: { x: number; z: number }; paper?: { lens: { w: number; project(x: number, y: number, z: number): { x: number } } } };
       const lens = world.paper?.lens;
-      if (world.player && lens && lens.w > 0) return Math.round((lens.project(world.player.x, 0, 0).x / lens.w) * 100) / 100;
+      if (world.player && lens && lens.w > 0) return Math.round((lens.project(world.player.x, 0, world.player.z).x / lens.w) * 100) / 100;
     }
     return null;
   }

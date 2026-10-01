@@ -26,6 +26,8 @@ const HEADS: Record<SkyOut, Look> = {
 const MECH: Look = { color: 0x8fe6ff, intensity: 1, radius: 460, bloom: 120, bloomA: 0.35 };
 const COWARD: Look = { color: 0xffc27a, intensity: 1, radius: 460, flicker: 0.25, bloom: 110, bloomA: 0.5 };
 /** The colour each Rezonans move flashes in. */
+/** How far before his face the light hangs (world px). */
+const LIGHT_Z = 30;
 const MOVE_COLOR: Record<string, number> = { bloom: 0xffb0e4, laugh: 0xffd27a, spark: 0xa6f0ff };
 const ACTING = new Set(['laugh', 'kahkaha']);
 
@@ -41,7 +43,7 @@ export interface GlowCues {
 export class PlayerGlow {
   readonly light: PaperLight;
   /** The glow about the face (light itself: the room's lights leave it as it is). */
-  private readonly bloom: Phaser.GameObjects.Image;
+  readonly bloom: Phaser.GameObjects.Image;
   private t = 0;
   private k = 1;
   private flash = 0;
@@ -55,7 +57,7 @@ export class PlayerGlow {
     private readonly cues: GlowCues,
   ) {
     const pl = player;
-    this.light = lighting.add({ x: 0, y: 0, z: 30, ...SCREEN, cast: false, follow: () => (pl.rig.container.visible ? this.source() : null) });
+    this.light = lighting.add({ x: 0, y: 0, z: LIGHT_Z, ...SCREEN, cast: false, follow: () => (pl.rig.container.visible ? this.source() : null) });
     lightTextures(scene.textures);
     this.bloom = scene.add.image(0, 0, 'fx.halo').setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.player - 0.5).setVisible(false);
     lighting.leave(this.bloom);
@@ -93,6 +95,8 @@ export class PlayerGlow {
     this.flash = Math.max(0, this.flash - dt * 2.2);
     const f = this.flash;
     const l = this.light;
+    // Just before his face, wherever in depth he walks.
+    l.z = pl.z + LIGHT_Z;
     l.intensity = look.intensity * this.k * (1 + 1.4 * f);
     l.radius = look.radius * (0.92 + 0.08 * this.k + 0.35 * f);
     l.color = f > 0 ? mixColor(look.color, this.flashColor, f * 1.5) : look.color;

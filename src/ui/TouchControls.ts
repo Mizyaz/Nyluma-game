@@ -12,7 +12,8 @@ export interface TouchAvail {
 }
 
 /**
- * On-screen controls: a two-way pad on the left, jump + action on the right,
+ * On-screen controls: a pad on the left (its halves walk left and right;
+ * sliding the thumb up or down walks away or toward the viewer), jump + action on the right,
  * and contextual focus/form/song buttons. Every pointer is tracked by id with
  * pointer capture, so a sliding or cancelled touch never leaves a key held.
  */
@@ -20,6 +21,8 @@ export class TouchControls {
   private root: HTMLElement;
   private pad: HTMLElement;
   private halves: HTMLElement[];
+  /** The marks above and below the pad: sliding there walks in depth. */
+  private depthMarks: HTMLElement[];
   private btns = new Map<string, HTMLElement>();
   private mode: TouchMode = 'auto';
   private sawTouch = false;
@@ -29,7 +32,8 @@ export class TouchControls {
   constructor(root: HTMLElement) {
     this.root = root;
     this.halves = [h('div', { class: 'half', html: ICONS.left }), h('div', { class: 'half', html: ICONS.right })];
-    this.pad = h('div', { class: 'tc-pad', 'aria-label': 'Yön' }, ...this.halves);
+    this.depthMarks = [h('div', { class: 'depth up', html: ICONS.left }), h('div', { class: 'depth down', html: ICONS.left })];
+    this.pad = h('div', { class: 'tc-pad', 'aria-label': 'Yön' }, ...this.halves, ...this.depthMarks);
     this.root.append(this.pad);
     this.bindPad();
     this.makeBtn('jump', ['jump'], ICONS.jump, 'Zıpla', 92);
@@ -49,34 +53,45 @@ export class TouchControls {
   }
 
   private bindPad(): void {
-    const pointers = new Map<number, Action | null>();
+    const pointers = new Map<number, Action[]>();
     const id = (pid: number): string => `touch:pad:${pid}`;
-    const which = (e: PointerEvent): Action | null => {
+    const which = (e: PointerEvent): Action[] => {
       const r = this.pad.getBoundingClientRect();
-      if (e.clientY < r.top - 60 || e.clientY > r.bottom + 60) return null;
-      return e.clientX < r.left + r.width / 2 ? 'left' : 'right';
+      if (e.clientY < r.top - 90 || e.clientY > r.bottom + 90) return [];
+      const out: Action[] = [];
+      // A narrow strip between the halves walks straight in depth.
+      const dx = e.clientX - (r.left + r.width / 2);
+      if (Math.abs(dx) > r.width * 0.05) out.push(dx < 0 ? 'left' : 'right');
+      // Up or down from the pad's middle: away from or toward the viewer.
+      const dy = e.clientY - (r.top + r.height / 2);
+      if (dy < -r.height * 0.3) out.push('up');
+      else if (dy > r.height * 0.3) out.push('down');
+      return out;
     };
+    const same = (a: readonly Action[], b: readonly Action[] | undefined): boolean => !!b && a.length === b.length && a.every((x, i) => x === b[i]);
     const update = (): void => {
-      const held = new Set([...pointers.values()]);
+      const held = new Set([...pointers.values()].flat());
       this.halves[0]!.classList.toggle('held', held.has('left'));
       this.halves[1]!.classList.toggle('held', held.has('right'));
+      this.depthMarks[0]!.classList.toggle('held', held.has('up'));
+      this.depthMarks[1]!.classList.toggle('held', held.has('down'));
+    };
+    const press = (pid: number, a: Action[]): void => {
+      pointers.set(pid, a);
+      if (a.length) app.input.sourceDown(id(pid), a);
+      else app.input.sourceUp(id(pid));
+      update();
     };
     this.pad.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       this.pad.setPointerCapture(e.pointerId);
-      const a = which(e);
-      pointers.set(e.pointerId, a);
-      if (a) app.input.sourceDown(id(e.pointerId), [a]);
-      update();
+      press(e.pointerId, which(e));
     });
     this.pad.addEventListener('pointermove', (e) => {
       if (!pointers.has(e.pointerId)) return;
       const a = which(e);
-      if (a === pointers.get(e.pointerId)) return;
-      pointers.set(e.pointerId, a);
-      if (a) app.input.sourceDown(id(e.pointerId), [a]);
-      else app.input.sourceUp(id(e.pointerId));
-      update();
+      if (same(a, pointers.get(e.pointerId))) return;
+      press(e.pointerId, a);
     });
     const end = (e: PointerEvent): void => {
       if (!pointers.has(e.pointerId)) return;

@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { app } from '../../engine/App';
 import { DEPTH } from '../../engine/constants';
 import { frameRef, hasFrame } from '../../render/2d/TextureFactory';
+import { planesOf, type Planes } from '../../paper/planes';
 
 // Lightweight visual actors: the whale memory, the sparrow, pooled birds and
 // fish, and raccoon onlookers. None of them owns a physics body.
@@ -131,12 +132,15 @@ export class CreaturePool {
   private items: Mote[] = [];
   private next = 0;
 
+  private readonly planes: Planes | null;
+
   constructor(
     scene: Phaser.Scene,
     private kind: 'bird' | 'fish',
     size: number,
     depth: number = DEPTH.actors,
   ) {
+    this.planes = planesOf(scene);
     const variants = ['a', 'b', 'c'];
     for (let i = 0; i < size; i++) {
       const v = variants[i % 3]!;
@@ -161,7 +165,9 @@ export class CreaturePool {
   spawn(x: number, y: number, vx: number, vy: number, life = 2.2): void {
     const m = this.items[this.next]!;
     this.next = (this.next + 1) % this.items.length;
-    m.c.setPosition(x, y).setVisible(true).setAlpha(1).setScale(vx >= 0 ? 1 : -1, 1);
+    // The pool stays in the actors' plane: from there it shows where it was sent off.
+    const at = this.planes?.toMain(x, y) ?? { x, y };
+    m.c.setPosition(at.x, at.y).setVisible(true).setAlpha(1).setScale(vx >= 0 ? 1 : -1, 1);
     m.vx = vx;
     m.vy = vy;
     m.life = life;

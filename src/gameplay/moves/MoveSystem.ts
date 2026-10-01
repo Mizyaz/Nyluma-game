@@ -91,7 +91,9 @@ export class MoveSystem {
   }
 
   private birds(): CreaturePool {
-    this.birdPool ??= new CreaturePool(this.world, 'bird', 16, DEPTH.actors - 2);
+    // Kept in the actors' plane, wherever the first flower opened (spawn finds the depth).
+    const planes = this.world.paper.planes;
+    this.birdPool ??= planes.within(planes.main, () => new CreaturePool(this.world, 'bird', 16, DEPTH.actors - 2));
     return this.birdPool;
   }
 }

@@ -29,6 +29,7 @@ export function installProbe(): void {
               kind: world.player.kind,
               focus: world.player.focus.value,
               facing: world.player.facing,
+              z: world.player.z,
             }
           : null,
         paused: active ? world.paused : false,

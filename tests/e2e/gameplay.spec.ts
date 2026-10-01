@@ -68,6 +68,39 @@ test.describe('gameplay', () => {
     expect(errors).toEqual([]);
   });
 
+  test('walks away from the viewer and back toward them over the floor', async ({ page }) => {
+    const errors = watchErrors(page);
+    await freshPage(page);
+    await startNewGame(page, GAME);
+    const bot = new Bot(page);
+    await bot.settle();
+    const s0 = await probe(page);
+    expect(s0.player!.z).toBe(0);
+    await hold(page, 'KeyW', 500);
+    const s1 = await probe(page);
+    expect(s1.player!.z).toBeLessThan(-40);
+    // The world stays flat: on the floor, where he was across the room.
+    expect(s1.player!.onGround).toBe(true);
+    expect(Math.abs(s1.player!.y - 660)).toBeLessThan(4);
+    expect(Math.abs(s1.player!.x - s0.player!.x)).toBeLessThan(2);
+    // Held on, he stops short of the back wall (the box's back is at −300).
+    await hold(page, 'ArrowUp', 2500);
+    const s2 = await probe(page);
+    expect(s2.player!.z).toBeLessThan(s1.player!.z);
+    expect(s2.player!.z).toBeGreaterThanOrEqual(-200);
+    // Down brings him forward past the actors' plane, short of the torn front (170).
+    await hold(page, 'KeyS', 3500);
+    const s3 = await probe(page);
+    expect(s3.player!.z).toBeGreaterThan(20);
+    expect(s3.player!.z).toBeLessThanOrEqual(70);
+    // Across the room he walks at that depth.
+    await hold(page, 'KeyD', 500);
+    const s4 = await probe(page);
+    expect(s4.player!.x).toBeGreaterThan(s3.player!.x + 40);
+    expect(s4.player!.z).toBeCloseTo(s3.player!.z, 0);
+    expect(errors).toEqual([]);
+  });
+
   test('pauses, resumes and drops held keys when the window loses focus', async ({ page }) => {
     await freshPage(page);
     await startNewGame(page, GAME);
@@ -315,6 +348,14 @@ test.describe('touch', () => {
     // Slide the movement finger to the left half: direction flips.
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ ...right, x: pad!.x + pad!.width * 0.2 }] });
     await waitState(page, (s) => s.player!.vx < -50, 3000, 'moving left');
+    // Slid up over the pad's middle he walks away from the viewer; slid down, toward them.
+    const z0 = (await probe(page)).player!.z;
+    const mid0 = pad!.x + pad!.width / 2;
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ ...right, x: mid0, y: pad!.y - 12 }] });
+    await waitState(page, (s) => s.player!.z < z0 - 30 && Math.abs(s.player!.vx) < 5, 3000, 'walking away');
+    const z1 = (await probe(page)).player!.z;
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ ...right, x: mid0, y: pad!.y + pad!.height + 12 }] });
+    await waitState(page, (s) => s.player!.z > z1 + 30, 3000, 'walking toward the viewer');
     // The system cancels the touch: nothing stays held.
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
     await waitState(page, (s) => s.heldSources === 0, 3000, 'released');

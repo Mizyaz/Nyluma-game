@@ -22,6 +22,10 @@ export class PlaneCamera extends Phaser.Cameras.Scene2D.Camera {
   order = 0;
   /** The shape it is cut to (see `Planes.clip`). */
   clipShape: Phaser.GameObjects.Graphics | null = null;
+  /** A free camera draws this far after the plane at its depth (see `Planes.free`). */
+  lead = 0;
+  /** It carries a figure walking in depth (lit to stay readable: `Lighting.apply`). */
+  figure = false;
 
   constructor(x: number, y: number, width: number, height: number) {
     super(x, y, width, height);
@@ -37,6 +41,8 @@ type GO = Phaser.GameObjects.GameObject & Partial<Phaser.GameObjects.Components.
 
 /** Planes are kept a whole world px apart. */
 const key = (z: number): number => Math.round(z);
+/** A free camera draws this far after the plane at its depth. */
+const FREE = 0.25;
 
 export class Planes {
   private readonly scene: Phaser.Scene;
@@ -49,6 +55,8 @@ export class Planes {
   /** The actors' plane (the scene's main camera). */
   readonly main: PlaneCamera;
   private dirty = true;
+  /** Where `within` is standing new things just now. */
+  private scope: PlaneCamera | null = null;
 
   constructor(scene: Phaser.Scene, lens: Lens) {
     this.scene = scene;
@@ -78,6 +86,75 @@ export class Planes {
     const cam = this.add(z, z, !Number.isFinite(z));
     if (Number.isFinite(z)) this.byZ.set(z, cam);
     return cam;
+  }
+
+  /**
+   * A camera whose depth moves (a figure walking toward or away from the
+   * viewer, and what it makes), outside the plane table: `move` sets its
+   * depth. It draws `lead` after the plane at its depth, so the figure
+   * stands before what is there.
+   */
+  free(z: number, lead = FREE): PlaneCamera {
+    const cam = this.add(z, z + lead, false);
+    cam.lead = lead;
+    cam.figure = true;
+    return cam;
+  }
+
+  /** Moves a free camera to depth z (it returns the camera). */
+  move(cam: PlaneCamera, z: number): PlaneCamera {
+    if (cam.z === z) return cam;
+    cam.z = z;
+    const order = z + cam.lead;
+    // Re-sorted only when it passes another camera.
+    const list = this.scene.cameras.cameras as PlaneCamera[];
+    const i = list.indexOf(cam);
+    const before = list[i - 1];
+    const after = list[i + 1];
+    cam.order = order;
+    if ((before && before.order > order) || (after && after.order < order)) this.sortCameras();
+    return cam;
+  }
+
+  /**
+   * Runs `fn`, and stands on `cam` whatever it adds to the scene (so what a
+   * figure makes away from the actors' plane stands at its depth). Nested
+   * calls: the innermost wins.
+   */
+  within<T>(cam: PlaneCamera, fn: () => T): T {
+    const made: GO[] = [];
+    const seen = (o: GO): void => {
+      made.push(o);
+    };
+    const events = this.scene.events;
+    const outer = this.scope;
+    this.scope = cam;
+    events.on(Phaser.Scenes.Events.ADDED_TO_SCENE, seen);
+    try {
+      return fn();
+    } finally {
+      events.off(Phaser.Scenes.Events.ADDED_TO_SCENE, seen);
+      this.scope = outer;
+      for (const o of made) {
+        // Placed by an inner call, put in a container or gone since: left as they are.
+        if (this.placed.has(o) || o.parentContainer || o.displayList !== this.scene.children) continue;
+        const fixed = o.scrollFactorX === 0 && o.scrollFactorY === 0;
+        this.placeOn(o, fixed ? this.screen : cam);
+      }
+    }
+  }
+
+  /**
+   * A point of the plane `within` is standing things on, as the point of the
+   * actors' plane that shows in the same place: for the effects that keep
+   * their pieces there and reuse them (dust, sparks, birds), so what they
+   * throw still comes from where it was made.
+   */
+  toMain(x: number, y: number): { x: number; y: number } {
+    const cam = this.scope;
+    if (!cam || cam.screen || Math.abs(cam.z) < 0.5) return { x, y };
+    const p = this.lens.project(x, y, cam.z);
+    return this.lens.unproject(p.x, p.y, 0);
   }
 
   /** A camera drawn between the planes at an exact depth, in screen space, outside the plane table (the box's shaders use these). */
@@ -197,4 +274,9 @@ export class Planes {
       this.placeOn(o, fixed ? this.screen : this.main);
     }
   }
+}
+
+/** The planes of a scene the paper engine stages (null: a flat scene). */
+export function planesOf(scene: Phaser.Scene): Planes | null {
+  return (scene as { paper?: { planes?: Planes } }).paper?.planes ?? null;
 }

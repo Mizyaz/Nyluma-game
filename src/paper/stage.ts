@@ -261,7 +261,7 @@ export class PaperStage {
     for (const o of this.scene.children.list) {
       const cam = this.planes.cameraOf(o);
       if (!cam || cam.screen) continue;
-      l.apply(o, cam.z);
+      l.apply(o, cam.z, cam.figure);
     }
   }
 

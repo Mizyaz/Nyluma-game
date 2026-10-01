@@ -99,6 +99,8 @@ export function mixColor(a: number, b: number, t: number): number {
 const r8 = (c: number): number => ((c >> 16) & 255) / 255;
 const g8 = (c: number): number => ((c >> 8) & 255) / 255;
 const b8 = (c: number): number => (c & 255) / 255;
+/** How much of the silhouettes' darkening a figure walking in depth takes (see `apply`). */
+const FIGURE_FRONT = 0.3;
 const smooth = (a: number, b: number, x: number): number => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
@@ -251,13 +253,13 @@ export class Lighting {
   }
 
   /** The tint pair (a + (b - a) * colour) for a point of a card at depth z. */
-  private tintAt(x: number, y: number, z: number, out: { a: number; b: number }): void {
+  private tintAt(x: number, y: number, z: number, out: { a: number; b: number }, figure: boolean): void {
     const m = this.mood;
     const L = this.rgb;
     this.light(x, y, z, L);
-    // Fog behind, silhouettes in front.
+    // Fog behind, silhouettes in front (a figure walking there only darkens a little: it stays readable).
     const f = z < 0 ? m.fog.amount * smooth(m.fog.near, m.fog.far, -z) : 0;
-    const s = z > 0 ? m.front.amount * smooth(m.front.from, m.front.to, z) : 0;
+    const s = z > 0 ? m.front.amount * smooth(m.front.from, m.front.to, z) * (figure ? FIGURE_FRONT : 1) : 0;
     const fr = r8(m.fog.color) * f;
     const fg = g8(m.fog.color) * f;
     const fb = b8(m.fog.color) * f;
@@ -280,12 +282,13 @@ export class Lighting {
   /**
    * Lights an object standing at depth z (and, for a container, all that
    * is in it). Additive glows are light themselves and are left alone, as
-   * is anything the game has tinted itself.
+   * is anything the game has tinted itself. A figure walking in depth (and
+   * what it makes there) keeps readable before the actors' plane.
    */
-  apply(obj: Phaser.GameObjects.GameObject, z: number): void {
+  apply(obj: Phaser.GameObjects.GameObject, z: number, figure = false): void {
     if (obj instanceof Phaser.GameObjects.Container) {
       if (!obj.visible) return;
-      for (const child of obj.list) this.apply(child, z);
+      for (const child of obj.list) this.apply(child, z, figure);
       return;
     }
     const o = obj as Tintable;
@@ -315,7 +318,7 @@ export class Lighting {
       [x0, y0 + h],
       [x0 + w, y0 + h],
     ];
-    corners.forEach(([lx, ly], i) => this.tintAt(m.getX(lx, ly), m.getY(lx, ly), z, this.c[i]!));
+    corners.forEach(([lx, ly], i) => this.tintAt(m.getX(lx, ly), m.getY(lx, ly), z, this.c[i]!, figure));
     const [tl, tr, bl, br] = this.c as [{ a: number; b: number }, { a: number; b: number }, { a: number; b: number }, { a: number; b: number }];
     // Flipped art keeps its corners' light where they are in the world.
     const fx = (o as unknown as { flipX?: boolean }).flipX;
