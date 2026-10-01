@@ -151,15 +151,7 @@ Conventions:
   that never throws his own shadow. It breathes, and swells when he talks, sings or laughs. Each
   Rezonans move flashes it in that move's colour. The amca shines with his head, and the coward
   with his torch.
-- Gorti as a child (`src/content/characters/gortiChild.ts`) is drawn after the big figure of
-  painting 1: a cracked bark box for a head round a lilac screen, a broad green body with bark
-  plates, thorned bark forearms, knotted bark legs. His face is the screen's pattern: violet
-  blocks in a pink maze. The top row's outer blocks are his eyes and the bottom middle one his
-  mouth; each feeling is a different shape of those blocks (sad droops them, shut sinks them to
-  bars, grit zigzags the mouth), never a smile. The rig has two extra joints for it
-  (`face.screen`: the glowing glass with the blocks that stay; `face.bezel`: the frame drawn
-  over the marks), and its profile's `screen` flag keeps the marks near their size.
-- The eye-leaf on r01's floor (`src/content/art/p1EyeLeaf.ts`) is the leaf he holds in the
+- The eye-leaf on r01's floor (`src/content/art/p1EyeLeaf.ts`) is the leaf Gorti holds in the
   painting, drawn to his measure, not the toys'.
 - `src/ui/LoadingView.ts` is the loading screen. It uses the same faces as inline SVG (`skyFaceSvg`), and a crystal cluster grows with the progress.
 

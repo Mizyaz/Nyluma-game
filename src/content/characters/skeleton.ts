@@ -36,20 +36,7 @@ export interface HumanoidDims {
    * lidded eyes close on their 'shut' shape (default); screen and lens eyes
    * squash to a line.
    */
-  face?: {
-    eye: string;
-    mouth: string;
-    mouthAt: Pt;
-    blink?: 'shut' | 'squash';
-    glow?: boolean;
-    /**
-     * A screen face: the lit glass under the eyes and mouth (`screen`, a part
-     * at the head joint, glowing with them) and the frame round it drawn over
-     * them (`bezel`), so the marks never show past the glass as they move.
-     */
-    screen?: string;
-    bezel?: string;
-  };
+  face?: { eye: string; mouth: string; mouthAt: Pt; blink?: 'shut' | 'squash'; glow?: boolean };
   /** The front of the belly in the torso frame (where the hands hold it when he laughs). */
   belly?: Pt;
   /** Foot shape: sole depth below the ankle, heel and ball x (defaults 6, -5, 8). */
@@ -96,8 +83,6 @@ export function humanoidRig(id: string, prefix: string, d: HumanoidDims, withWat
   if (d.browFar && d.eye) {
     j.push({ id: 'browF', parent: 'head', x: d.eye[0] + d.browFar.dx, y: d.eye[1] - d.browFar.up, part: d.browFar.part, z: 66 });
   }
-  if (d.face?.screen) j.push({ id: 'screen', parent: 'head', x: 0, y: 0, part: d.face.screen, z: 62 });
-  if (d.face?.bezel) j.push({ id: 'bezel', parent: 'head', x: 0, y: 0, part: d.face.bezel, z: 67 });
   if (d.face && d.eye) {
     j.push({ id: 'eyeN', parent: 'head', x: d.eye[0], y: d.eye[1], part: `${d.face.eye}.eye`, z: 64 });
     j.push({ id: 'mouth', parent: 'head', x: d.face.mouthAt[0], y: d.face.mouthAt[1], part: `${d.face.mouth}.mouth`, z: 63 });
@@ -124,7 +109,6 @@ export function humanoidRig(id: string, prefix: string, d: HumanoidDims, withWat
     heel: d.foot?.heel ?? -5,
     ball: d.foot?.ball ?? 8,
     blink: d.face?.blink ?? 'shut',
-    screen: !!d.face?.screen,
   });
   return {
     id,
@@ -137,6 +121,6 @@ export function humanoidRig(id: string, prefix: string, d: HumanoidDims, withWat
       ankleL: { joint: 'shinL', x: 0, y: d.shin - 4 },
     },
     animations: [...HUMANOID_ANIMS],
-    ...(d.face?.glow ? { glowing: ['eyeN', 'browN', 'mouth', ...(d.face.screen ? ['screen'] : [])] } : {}),
+    ...(d.face?.glow ? { glowing: ['eyeN', 'browN', 'mouth'] } : {}),
   };
 }

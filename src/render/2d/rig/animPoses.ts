@@ -565,15 +565,10 @@ function applyFace(p: PoseOut, f: Face, prm: PoseParams, prof: RigProfile | unde
   // screen and lens eyes squash to a line.
   const lids = prof?.blink === 'shut' && blink > 0.55;
   p.frames = { ...(p.frames ?? {}), eyeN: lids ? 'shut' : f.eye, mouth: f.mouth };
-  // On a screen the marks keep near their size: their shapes carry the feeling.
-  const k = (v: number, lo: number, hi: number): number => (prof?.screen ? Math.min(hi, Math.max(lo, v)) : v);
-  const ex = k(f.ex, 0.85, 1.12);
-  const ey = k(f.ey, 0.55, 1.12);
-  const ms = k(f.ms, 0.8, 1.12);
   p.scales = {
     ...(p.scales ?? {}),
-    eyeN: lids ? { x: ex, y: 1 } : { x: ex, y: Math.max(0.08, ey * (1 - 0.9 * blink)) },
-    mouth: { x: ms, y: ms },
+    eyeN: lids ? { x: f.ex, y: 1 } : { x: f.ex, y: Math.max(0.08, f.ey * (1 - 0.9 * blink)) },
+    mouth: { x: f.ms, y: f.ms },
   };
 }
 
