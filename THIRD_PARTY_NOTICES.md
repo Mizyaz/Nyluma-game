@@ -3,9 +3,10 @@
 The shipped game (`dist/`) bundles the following third-party software. All
 artwork, animation, sound effects and the generated piano music are original
 to this project and generated from code (SVG illustrations authored in
-`src/render/2d/`, Web Audio synthesis in `src/engine/systems/AudioSystem.ts` and
-`src/music/`); no third-party images, fonts or audio files are included. Text
-uses the player's system fonts.
+`src/render/2d/` and `src/content/`, Web Audio synthesis in
+`src/engine/systems/AudioSystem.ts` and `src/music/`); the paintings shown in
+the game are the author's own. No third-party images, fonts or audio files
+are included. Text uses the player's system fonts.
 
 Recorded music added to the music library (`music/tracks/`) ships with its
 license note in `music/licenses/` (copied to `dist/music/licenses/`) and is
@@ -14,13 +15,13 @@ an allowed license or without its note. The library is currently empty.
 
 ## Bundled at runtime
 
-### Phaser 3.90.0 — MIT License
+### Phaser 4.2.1 — MIT License
 https://phaser.io — https://github.com/phaserjs/phaser
 
 ```
 The MIT License (MIT)
 
-Copyright (c) 2024 Richard Davey, Phaser Studio Inc.
+Copyright (c) 2026 Richard Davey, Phaser Studio Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
@@ -67,7 +68,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### Components included inside the Phaser 3.90.0 bundle
+### Components included inside the Phaser 4.2.1 bundle
 
 Phaser's ES module build (`phaser/dist/phaser.esm.js`) contains code from
 the following projects, each under its own license as stated in the Phaser
@@ -79,10 +80,12 @@ source tree:
 | earcut | Polygon triangulation | ISC | 2016, Mapbox |
 | rbush (fork) | Spatial index (`Phaser.Structs.RTree`) | MIT | Vladimir Agafonkin |
 | simplify-js (port) | Polygon simplification | BSD-2-Clause | 2017, Vladimir Agafonkin |
-| AudioContext-MonkeyPatch | Web Audio polyfill | Apache-2.0 | 2013 Chris Wilson |
 | javascript-algorithms (snippet) | Topological sort in Matter.js | MIT | Minko Gechev |
 | PhysicsEditor parser | Matter body loader | MIT | 2018 CodeAndWeb GmbH |
 | Median | Math helper | MIT | 2021 RoboWhale |
+| psrdnoise (GLSL) | Noise in shader effects | MIT | 2021 Stefan Gustavson and Ian McEwan |
+| SVG path conversion (phrogz.net, in Matter.js) | Matter SVG loader | phrogz.net reuse license | Gavin Kistner |
+| Convexity test (paulbourke.net, in Matter.js) | Matter vertices | Use permitted | Paul Bourke |
 
 Matter.js (MIT):
 
@@ -153,41 +156,8 @@ TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF TH
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-AudioContext-MonkeyPatch is licensed under the Apache License, Version 2.0
-(http://www.apache.org/licenses/LICENSE-2.0); it is distributed on an "AS IS"
-basis, without warranties or conditions of any kind. The remaining MIT
-components carry the same MIT permission notice as reproduced above with their
-respective copyright lines.
-
-### three.js 0.186.1 — MIT License
-https://threejs.org — https://github.com/mrdoob/three.js
-
-Draws the game's 3D paper diorama (`dist/assets/three-*.js` and the stage's
-own chunk), including its post-processing full-screen pass helper.
-
-```
-The MIT License
-
-Copyright © 2010-2026 three.js authors
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-```
+The remaining MIT components carry the same MIT permission notice as
+reproduced above with their respective copyright lines.
 
 ## Development only (not shipped in `dist/`)
 
@@ -195,10 +165,11 @@ THE SOFTWARE.
 | --- | --- | --- |
 | vite | 7.3.6 | MIT |
 | typescript | 5.9.3 | Apache-2.0 |
-| vitest | 4.0.18 | MIT |
+| vitest | 4.1.11 | MIT |
 | @playwright/test | 1.56.1 | Apache-2.0 |
 | @types/node | 22.20.4 | MIT |
-| @types/three | 0.186.0 | MIT |
+| tsx | 4.23.15 | MIT |
+| zod | 4.6.5 | MIT |
 
 Their full license texts are included in the respective packages under
 `node_modules/` after `npm ci`.
