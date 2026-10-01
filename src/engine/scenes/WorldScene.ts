@@ -169,7 +169,7 @@ export class WorldScene extends Phaser.Scene {
 
     // The room's paper box, its eye and its planes (before anything uses the camera).
     const st = this.staged;
-    this.paper = new PaperStage(this, st.box, st.framing, this.press!, actorScale(), st.zoom);
+    this.paper = new PaperStage(this, st.box, st.framing, this.press!, actorScale(), st.zoom, st.mood);
     const press = this.press!;
     this.cleanups.push(() => press.destroy());
     this.press = null;
@@ -188,6 +188,9 @@ export class WorldScene extends Phaser.Scene {
     quest.setForm(form);
     const kind = this.def.player === 'horse' ? 'gorti' : this.def.player;
     this.player = new Player(this, cp.x, cp.y, kind, form);
+    // Gorti's screen face glows: a soft pink light goes with him.
+    const pl = this.player;
+    this.paper.lighting.add({ x: 0, y: 0, z: 40, color: 0xff86d6, radius: 320, intensity: 0.8, follow: () => (pl.rig.container.visible ? { x: pl.x + pl.facing * 10, y: pl.feetY - 108 } : null) });
     this.player.setFacing(cp.facing ?? 1);
     this.physics.add.collider(this.player.zone, this.room.group);
 

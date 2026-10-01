@@ -137,6 +137,11 @@ export class Planes {
     return obj;
   }
 
+  /** The camera an object was placed on. */
+  cameraOf(obj: object): PlaneCamera | undefined {
+    return this.placed.get(obj);
+  }
+
   /** The depth an object was placed at (0 when it never was). */
   zOf(obj: object): number {
     const cam = this.placed.get(obj);

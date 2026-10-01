@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { Lens } from './lens';
+import { DAY, MAX_LIGHTS, type Mood } from './light';
 
 // The paper box every room is staged in, drawn in true perspective by two
 // shaders that cast a ray through each device pixel:
@@ -79,6 +80,8 @@ uniform vec3 uEye;
 uniform vec4 uBox;
 uniform vec4 uDepth;
 uniform vec4 uPaper;
+// Light everywhere (rgb, already times its level) and how far light wraps round the paper (a).
+uniform vec4 uAmb;
 
 float hash12(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -150,6 +153,37 @@ uniform float uGaps;
 uniform vec4 uShadow[${MAX_SHADOWS}];
 uniform float uShadows;
 uniform float uInkW;
+// Lamps: position and reach; colour times strength.
+uniform vec4 uLightPos[${MAX_LIGHTS}];
+uniform vec4 uLightCol[${MAX_LIGHTS}];
+uniform float uLights;
+// Air behind the actors' plane: colour, amount; from, to (world px back).
+uniform vec4 uFog;
+uniform vec2 uFogRange;
+uniform vec4 uNear;
+uniform vec2 uNearRange;
+
+// The light on the paper at p, whose surface faces n (the same model as the cards').
+vec3 lightAt(vec3 p, vec3 n) {
+  vec3 c = uAmb.rgb;
+  for (int i = 0; i < ${MAX_LIGHTS}; i++) {
+    if (float(i) >= uLights) break;
+    vec3 l = uLightPos[i].xyz - p;
+    float d2 = dot(l, l);
+    float q = d2 / (uLightPos[i].w * uLightPos[i].w);
+    if (q >= 1.0) continue;
+    float att = (1.0 - q) * (1.0 - q);
+    float ndl = dot(n, l) * inversesqrt(d2 + 1e-6);
+    c += uLightCol[i].rgb * att * max(0.0, (ndl + uAmb.a) / (1.0 + uAmb.a));
+  }
+  return min(c, vec3(1.0));
+}
+
+vec3 fogged(vec3 col, float z) {
+  // Air behind the actors' plane; in front of it the floor sinks into the dark.
+  col = mix(col, uNear.rgb, uNear.a * smoothstep(uNearRange.x, uNearRange.y, z));
+  return mix(col, uFog.rgb, uFog.a * smoothstep(uFogRange.x, uFogRange.y, -z));
+}
 
 float segDist(vec2 p, vec4 s) {
   vec2 a = s.xy;
@@ -173,18 +207,21 @@ void main() {
   float tf = uEye.z - front;
   vec2 fp = uEye.xy + d.xy * tf;
   vec3 col;
+  // The depth of what this pixel shows (for the air).
+  float pz = front;
   bool inside = fp.x > x0 && fp.x < x1 && fp.y > top;
   if (fp.y > flo && inside) {
     // Below the floor line at the front: the floor's paper, edge-on.
-    col = paper(uEdge, vec2(fp.x, fp.y * 3.0), f / tf);
+    col = paper(uEdge, vec2(fp.x, fp.y * 3.0), f / tf) * lightAt(vec3(fp, front), vec3(0.0, 0.0, 1.0));
   } else if (!inside) {
     // Over the box: the lid's top when the eye is above it, else the world beyond.
     float tl = d.y > 0.0 ? (top - uEye.y) / d.y : -1.0;
     vec3 lp = uEye + d * tl;
     if (uEye.y < top && tl > 0.0 && lp.z > back && lp.z < front && lp.x > x0 && lp.x < x1) {
-      col = paper(uLid, lp.xz, f / tl);
+      col = paper(uLid, lp.xz, f / tl) * lightAt(lp, vec3(0.0, -1.0, 0.0));
+      pz = lp.z;
     } else {
-      gl_FragColor = vec4(uOutside, 1.0);
+      gl_FragColor = vec4(fogged(uOutside * min(vec3(1.0), uAmb.rgb + 0.15), back), 1.0);
       return;
     }
   } else {
@@ -195,16 +232,21 @@ void main() {
     float t = min(tb, min(ts, ty));
     vec3 p = uEye + d * t;
     float k = f / t;
+    pz = p.z;
+    vec3 n;
     // Soft shade where walls meet (world px to the nearest corner).
     float ao;
     if (t == tb) {
       col = paper(uBack, p.xy, k);
+      n = vec3(0.0, 0.0, 1.0);
       ao = min(min(p.x - x0, x1 - p.x), min(flo - p.y, p.y - top));
     } else if (t == ts) {
       col = paper(uSide, p.zy, k);
+      n = vec3(d.x > 0.0 ? -1.0 : 1.0, 0.0, 0.0);
       ao = min(p.z - back, min(flo - p.y, p.y - top));
     } else if (d.y > 0.0) {
       col = paper(uFloor, p.xz, k);
+      n = vec3(0.0, -1.0, 0.0);
       ao = min(p.z - back, min(p.x - x0, x1 - p.x));
       // Gaps in the floor: dark, deeper toward the back.
       for (int i = 0; i < ${MAX_GAPS}; i++) {
@@ -227,16 +269,17 @@ void main() {
       col *= 1.0 - 0.28 * sh;
     } else {
       col = paper(uCeil, p.xz, k);
+      n = vec3(0.0, 1.0, 0.0);
       ao = min(p.z - back, min(p.x - x0, x1 - p.x));
     }
-    col *= 0.86 + 0.14 * smoothstep(0.0, 70.0, ao);
+    col *= (0.86 + 0.14 * smoothstep(0.0, 70.0, ao)) * lightAt(p, n);
   }
   // The box's corners, inked.
   float w = uInkW;
   float m = 0.0;
   for (int i = 0; i < 8; i++) m = max(m, ink(segDist(q, uSeg[i]), w));
   col = mix(col, uInk, m);
-  gl_FragColor = vec4(col, 1.0);
+  gl_FragColor = vec4(fogged(col, pz), 1.0);
 }
 `;
 
@@ -248,6 +291,8 @@ uniform vec4 uTear;
 uniform vec4 uTear2;
 uniform float uInkW;
 uniform float uBottom;
+// Darkness at the picture's edges.
+uniform float uVig;
 
 // How far a point on the front face is inside the torn hole (world px;
 // positive inside the hole).
@@ -282,13 +327,25 @@ void main() {
   float ex = min(p.x - uBox.x, uBox.y - p.x);
   float ey = min(p.y - uBox.z, uBottom - p.y);
   float edge = min(ex, ey);
-  if (edge < -uInkW / k) discard;
+  // The vignette, over the room and the box alike (an ellipse of the screen's own shape).
+  vec2 sv = (q / uView - 0.5) * 2.0;
+  float vig = uVig * smoothstep(0.55, 1.5, length(sv));
+  if (vig < 0.002 && edge < -uInkW / k) discard;
+  if (edge < -uInkW / k) {
+    gl_FragColor = vec4(0.0, 0.0, 0.0, vig);
+    return;
+  }
   float h = hole(p) * k;
   // In the hole: see through (with the ink of the tear at its rim).
   float w = uInkW;
   float rim = ink(abs(h), w);
-  if (h > w) discard;
-  vec3 col = paper(uOuter, p, k);
+  if (h > w) {
+    if (vig < 0.002) discard;
+    gl_FragColor = vec4(0.0, 0.0, 0.0, vig);
+    return;
+  }
+  // The stage's frame takes the room's light, a little.
+  vec3 col = paper(uOuter, p, k) * min(vec3(1.0), uAmb.rgb + 0.3);
   // The white core of the torn paper, a few px wide and uneven.
   float coreW = (2.5 + 3.5 * noise(p * 0.05 + 9.0)) * k;
   col = mix(col, uCore, (1.0 - smoothstep(coreW - 0.8, coreW + 0.8, -h)));
@@ -296,7 +353,9 @@ void main() {
   // The box's own outline.
   col = mix(col, uInk, ink(abs(edge * k), w * 1.2));
   float a = (h > 0.0 ? rim : 1.0) * (edge < 0.0 ? ink(abs(edge * k), w * 1.2) : 1.0);
-  gl_FragColor = vec4(col * a, a);
+  // Premultiplied: the paper over what shows through, all under the vignette.
+  col *= 1.0 - vig;
+  gl_FragColor = vec4(col * a, a + vig * (1.0 - a));
 }
 `;
 
@@ -318,6 +377,11 @@ export class PaperBox {
   inkWidth = 4;
   /** The lens of the last update (the shaders read it when they draw). */
   private lens = new Lens();
+  /** The room's air and lamps (set by the stage each frame). */
+  mood: Mood = DAY;
+  readonly lightPos = new Float32Array(MAX_LIGHTS * 4);
+  readonly lightCol = new Float32Array(MAX_LIGHTS * 4);
+  lightCount = 0;
 
   constructor(
     scene: Phaser.Scene,
@@ -348,6 +412,9 @@ export class PaperBox {
       set('uPaper', [paperU.grain, paperU.hatch, paperU.spacing, (t.seed % 97) * 0.37]);
       set('uInk', rgb(c.ink));
       set('uInkW', this.inkWidth);
+      const m = this.mood;
+      const a = rgb(m.ambientColor);
+      set('uAmb', [a[0] * m.ambient, a[1] * m.ambient, a[2] * m.ambient, m.wrap]);
     };
     const gaps = (spec.gaps ?? []).slice(0, MAX_GAPS);
     gaps.forEach(([a, b], i) => this.gap.set([a, b, 0, 0], i * 4));
@@ -372,6 +439,16 @@ export class PaperBox {
             set('uGaps', gaps.length);
             set('uShadow[0]', this.shadows);
             set('uShadows', this.shadowCount);
+            set('uLightPos[0]', this.lightPos);
+            set('uLightCol[0]', this.lightCol);
+            set('uLights', this.lightCount);
+            const fog = this.mood.fog;
+            set('uFog', [...rgb(fog.color), fog.amount]);
+            set('uFogRange', [fog.near, fog.far]);
+            // The floor before the actors darkens less than a card standing there: the play stays readable.
+            const near = this.mood.front;
+            set('uNear', [...rgb(near.color), near.amount * 0.75]);
+            set('uNearRange', [near.from, near.to * 1.2]);
           },
         },
         0,
@@ -392,6 +469,7 @@ export class PaperBox {
             set('uTear', [t.top, t.bottom, t.left, t.right]);
             set('uTear2', [t.wander, t.jag, (t.seed % 101) * 1.37, 0]);
             set('uBottom', spec.bottom);
+            set('uVig', this.mood.vignette);
           },
         },
         0,

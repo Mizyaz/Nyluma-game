@@ -27,7 +27,7 @@ import type { SkyOut } from '../content/types';
 import { WhalePlatforms } from '../../gameplay/whales/WhalePlatforms';
 import { isWhalePlatform } from '../../gameplay/whales/whalePlan';
 import type { PaperStage } from '../../paper';
-import { isBoxFloor, propZ, type RoomStaging } from '../../content/stage';
+import { isBoxFloor, propLight, propZ, type RoomStaging } from '../../content/stage';
 
 export interface SolidRt {
   def: SolidDef;
@@ -329,6 +329,12 @@ export class RoomRuntime {
       if (p.angle) img.setAngle(p.angle);
       // A card at its depth, printed for it.
       this.paper.card(img, p.key, propZ(p), p.scale ?? 1);
+      const light = propLight(p.key);
+      if (light) {
+        const z = propZ(p) + 30;
+        // At the prop's middle, while it shows.
+        this.paper.lighting.add({ ...light, x: 0, y: 0, z, follow: () => (img.active && img.visible ? { x: img.getCenter().x, y: img.getCenter().y } : null) });
+      }
       if (this.standsOnFloor(p)) {
         const r = (frameRef(p.key).w * (p.scale ?? 1)) / 2;
         this.paper.addShadow({ shadow: () => (img.visible && img.alpha > 0.5 ? { x: img.x, z: propZ(p), r: Math.min(220, r * 0.85), a: 0.55 } : null) });

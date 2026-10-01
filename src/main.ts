@@ -1,6 +1,7 @@
 import './styles.css';
 import * as Phaser from 'phaser';
 import { Screen } from './paper/screen';
+import { patchPhaser } from './paper/fixes';
 import { app } from './engine/App';
 import { gameConfig } from './engine/config';
 import { InputSystem } from './engine/systems/InputSystem';
@@ -28,6 +29,7 @@ function boot(): void {
   document.getElementById('app')?.addEventListener('contextmenu', (e) => e.preventDefault());
 
   const parent = document.getElementById('game')!;
+  patchPhaser();
   app.game = new Phaser.Game(gameConfig(parent, params.has('canvas')));
   // The canvas follows its box at device resolution.
   new Screen(app.game, parent);

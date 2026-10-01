@@ -146,7 +146,8 @@ export class RigView {
       img.setOrigin(f.px / f.w, f.py / f.h);
       img.setScale(1 / f.scale);
       if (j.additive) img.setBlendMode(Phaser.BlendModes.ADD);
-      // Marks on a screen face glow: the diorama does not shade them.
+      // Marks on a screen face glow: the stage's light does not shade them.
+      if (this.rig.glowing?.includes(j.id)) (this.scene as { paper?: PaperStage }).paper?.lighting.leave(img);
       this.images.set(j.id, img);
     }
     this.applyOrder();

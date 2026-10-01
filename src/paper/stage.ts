@@ -3,6 +3,8 @@ import { Lens, type Framing } from './lens';
 import { Planes, type PlaneCamera } from './planes';
 import { MAX_SHADOWS, PaperBox, type BoxSpec } from './box';
 import type { Press } from './press';
+import { Lighting, WHIMSICAL, type Mood } from './light';
+import { RoomAir } from './air';
 
 // A room on the paper stage: the box, the eye that looks into it, one camera
 // per depth, and the cards standing in it. The world scene keeps its world:
@@ -18,6 +20,10 @@ export class PaperStage {
   readonly lens = new Lens();
   readonly planes: Planes;
   readonly box: PaperBox;
+  /** The room's air and lamps (light.ts). */
+  readonly lighting: Lighting;
+  /** Motes in the air (air.ts), when the mood has them. */
+  readonly air: RoomAir | null;
   /** Draws the inside of the box (behind everything), and its torn front (before the box's inside planes). */
   private readonly insideCam: PlaneCamera;
   private readonly frontCam: PlaneCamera;
@@ -45,13 +51,16 @@ export class PaperStage {
     readonly actorScale: number,
     /** The room's own zoom (a wide room shows more; its prints are made for it). */
     readonly baseZoom = 1,
+    mood: Mood = WHIMSICAL,
   ) {
+    this.lighting = new Lighting(mood);
     this.planes = new Planes(scene, this.lens);
     this.box = new PaperBox(scene, spec);
     this.insideCam = this.planes.layer(Number.NEGATIVE_INFINITY);
     this.frontCam = this.planes.layer(spec.front + 0.5);
     this.planes.placeOn(this.box.inside, this.insideCam);
     this.planes.placeOn(this.box.frontFace, this.frontCam);
+    this.air = mood.air ? new RoomAir(scene, this.planes, spec, mood.air) : null;
     this.frame(0);
     scene.events.on(Phaser.Scenes.Events.PRE_RENDER, this.preRender, this);
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
@@ -162,9 +171,23 @@ export class PaperStage {
       lens.cy += (Math.random() * 2 - 1) * k;
     }
     this.planes.update();
+    this.light(dt);
     this.writeShadows();
     this.box.inkWidth = Math.max(2, Math.round(this.lens.scale(0) * 1.7));
     this.box.update(lens);
+  }
+
+  /** The lamps for the box's shader, and every card and figure part lit where it stands. */
+  private light(dt: number): void {
+    const l = this.lighting;
+    l.update(dt, { x: this.lens.eye.x, floor: this.spec.floor });
+    this.box.mood = l.mood;
+    this.box.lightCount = l.shaderLights(this.box.lightPos, this.box.lightCol);
+    for (const o of this.scene.children.list) {
+      const cam = this.planes.cameraOf(o);
+      if (!cam || cam.screen) continue;
+      l.apply(o, cam.z);
+    }
   }
 
   private writeShadows(): void {
