@@ -1,5 +1,5 @@
-import { ellipsePath, limb, Rng, smooth, taper, type Pt } from '../../render/2d/svg';
-import { darkOf, DETAIL, flat, INK, LINE, lineFor, PASTEL, SHADE } from '../../render/2d/style';
+import { ellipsePath, Rng, smooth, taper, type Pt } from '../../render/2d/svg';
+import { darkOf, DETAIL, LINE, lightOf, lineFor, PASTEL, SHADE } from '../../render/2d/style';
 import type { PartArt } from '../../render/2d/rig/rigTypes';
 import { almondEye, browPart, bushyBrow, eyeSet, mouthSet, paintedMouth } from './face';
 import { comic, comicLimb, fold, ink, label, leaf, part, path, roundPoly, stitches, tr } from './kit';
@@ -90,15 +90,33 @@ export const HUMAN_BALD_DIMS: HumanoidDims = {
 function moonHead(): PartArt {
   return part('gorti.human.head', { x0: -22, y0: -68, x1: 16, y1: 4 }, (ox, oy) => {
     const o = (pts: Pt[]): Pt[] => tr(pts, ox, oy);
+    const P = (x: number, y: number): string => `${ox + x} ${oy + y}`;
     // A thick crescent opening to the front: back curve, a sharp top horn,
     // the face on the inner curve, a round chin.
     const crescent: Pt[] = [[12, -65], [3, -56], [-1, -47], [-1, -39], [3, -34], [4.5, -30], [1.5, -27], [2, -22], [5, -18], [8, -12], [11, -6], [8, -1], [0, 1], [-9, -1], [-16, -8], [-20, -20], [-20, -34], [-16, -47], [-7, -58]];
-    const tears =
-      flat(`M${ox - 6} ${oy - 25}q-2.4 3.4 0 4.6q2.4 -1.2 0 -4.6Z`, SIVAS.tear, { stroke: DETAIL }) +
-      flat(`M${ox - 8.5} ${oy - 18}q-2.6 3.6 0 5q2.6 -1.4 0 -5Z`, SIVAS.tear, { stroke: DETAIL }) +
-      flat(`M${ox - 4.5} ${oy - 13}q-2 2.8 0 3.9q2 -1.1 0 -3.9Z`, SIVAS.tear, { stroke: DETAIL });
-    const craters = ink(ellipsePath(ox - 13, oy - 42, 2.2, 1.6), DETAIL * 0.8, SIVAS.moonDeep) + ink(ellipsePath(ox - 15, oy - 12, 1.6, 1.2), DETAIL * 0.8, SIVAS.moonDeep) + ink(path(o([[-12, -52], [-7, -55]])), DETAIL * 0.8, SIVAS.moonDeep);
-    return flat(path(o(crescent)) + 'Z', SIVAS.moon, { over: craters + tears });
+    // Tears: shiny drops with a gleam.
+    const tear = (x: number, y: number, k: number): string =>
+      comic(`M${P(x, y)}q${-2.4 * k} ${3.4 * k} 0 ${4.6 * k}q${2.4 * k} ${-1.2 * k} 0 ${-4.6 * k}Z`, SIVAS.tear, {
+        line: LINE.detail,
+        rim: [0.9 * k, -0.6 * k],
+        light: ellipsePath(ox + x - 0.6 * k, oy + y + 2.9 * k, 0.55 * k, 0.8 * k),
+        lightFill: '#f4fcff',
+      });
+    // Craters: a dent with its lower lip lit and its inside in shade.
+    const crater = (x: number, y: number, rx: number, ry: number): string =>
+      `<path d="${ellipsePath(ox + x, oy + y, rx, ry)}" fill="${darkOf(SIVAS.moon, 0.14)}"/>` +
+      ink(`M${P(x - rx, y)}A${rx} ${ry} 0 0 0 ${P(x + rx, y)}`, LINE.fine * 1.2, lightOf(SIVAS.moon, 0.5)) +
+      ink(`M${P(x - rx, y)}A${rx} ${ry} 0 0 1 ${P(x + rx, y)}`, LINE.fine * 1.3, darkOf(SIVAS.moon, 0.45));
+    const craters = crater(-13, -42, 2.6, 1.9) + crater(-15, -12, 1.9, 1.4) + crater(-9.5, -27, 1.5, 1.1) + crater(-4, -53, 1.4, 1);
+    return comic(path(o(crescent)) + 'Z', SIVAS.moon, {
+      line: LINE.body,
+      rim: [3.4, -1.8],
+      hatch: 2.4,
+      glint: [-1, 1.3],
+      light: `M${P(9.6, -62)}Q${P(3.6, -56)} ${P(1.2, -48)}Q${P(3.4, -55.6)} ${P(9.6, -62)}Z`,
+      over: craters + fold(path(o([[-12, -52], [-7, -55]])), darkOf(SIVAS.moon, 0.35), LINE.fine),
+      top: tear(-6, -25, 1) + tear(-8.5, -18, 1.08) + tear(-4.5, -13, 0.85),
+    });
   });
 }
 
@@ -118,14 +136,20 @@ function sunHead(): PartArt {
     const cy = oy - 28;
     const r = 20;
     const rng = new Rng(88);
+    // Spiky rays, each folded along its middle: the half turned from the
+    // light a shade deeper.
     let rays = '';
     const n = 15;
+    const rayLine = lineFor(SIVAS.ray);
+    const rayDeep = darkOf(SIVAS.ray, 0.16);
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2 + 0.1;
       const L = r + 8 + rng.range(-1.5, 2.5);
       const w = 0.2;
       const p = (ang: number, rad: number): string => `${cx + Math.cos(ang) * rad} ${cy + Math.sin(ang) * rad}`;
-      rays += flat(`M${p(a - w, r - 2)}L${p(a, L)}L${p(a + w, r - 2)}Z`, SIVAS.ray, { stroke: DETAIL });
+      rays += `<path d="M${p(a - w, r - 2)}L${p(a, L)}L${p(a + w, r - 2)}Z" fill="${SIVAS.ray}"/>`;
+      rays += `<path d="M${p(a, r - 2)}L${p(a, L)}L${p(a + w, r - 2)}Z" fill="${rayDeep}"/>`;
+      rays += `<path d="M${p(a - w, r - 2)}L${p(a, L)}L${p(a + w, r - 2)}" fill="none" stroke="${rayLine}" stroke-width="${LINE.small}" stroke-linejoin="round"/>`;
     }
     let dots = '';
     for (let i = 0; i < 10; i++) {
@@ -135,17 +159,27 @@ function sunHead(): PartArt {
       const y = cy + Math.sin(a) * d;
       // Keep the freckles off the eyes and the mouth.
       if (y > cy - 7 && y < cy + 14 && x > cx - 6) continue;
-      dots += `<circle cx="${x}" cy="${y}" r="0.9" fill="${SIVAS.freckle}"/>`;
+      dots += `<circle cx="${x}" cy="${y}" r="0.95" fill="${SIVAS.freckle}"/>`;
     }
     const face =
       dots +
-      ink(`M${cx + 7} ${cy - 1}l2.6 5.2l-2.8 1`, DETAIL) +
-      ink(`M${cx - 13} ${cy + 5}q2 1.5 4 0`, DETAIL * 0.8, SIVAS.freckle) +
+      ink(`M${cx + 7} ${cy - 1}l2.6 5.2l-2.8 1`, LINE.detail, lineFor(SIVAS.sun)) +
+      fold(`M${cx - 13} ${cy + 5}q2 1.5 4 0`, SIVAS.freckle, LINE.fine) +
       ink(`M${cx - 6} ${cy - 8}q2 -1.4 5 -1.1`, 1.6, '#c7743f');
-    // A short neck under the disc.
-    let s = flat(limb([ox, oy + 4], [ox + 1, oy - 10], 10, 10, 0), SIVAS.body, {});
+    // A short neck under the disc, in its shadow.
+    let s = comicLimb([ox, oy + 4], [ox + 1, oy - 10], 10, 10, SIVAS.body, { bulge: 0, line: LINE.small, shade: `M${ox - 8} ${oy - 12}H${ox + 8}V${oy - 5}Q${ox} ${oy - 2} ${ox - 8} ${oy - 5}Z` });
     s += rays;
-    s += flat(ellipsePath(cx, cy, r, r), SIVAS.sun, { over: face });
+    s += comic(ellipsePath(cx, cy, r, r), SIVAS.sun, {
+      line: LINE.body,
+      tone: SHADE.warm,
+      rim: [4.2, -2.6],
+      hatch: 2.4,
+      hatchColor: SHADE.hatchWarm,
+      glint: [-1.2, 1.5],
+      light: `M${cx - 2} ${cy - 17.2}Q${cx + 8} ${cy - 16.4} ${cx + 13.6} ${cy - 9.6}Q${cx + 7} ${cy - 13.6} ${cx - 2} ${cy - 17.2}Z`,
+      lightFill: '#fff3dc',
+      over: face,
+    });
     return s;
   });
 }
@@ -336,31 +370,50 @@ const HUMAN_BODY: Pt[] = [[-17, 7], [-25, -5], [-31, -22], [-32, -40], [-26, -54
 function torso(): PartArt {
   return part('gorti.human.torso', { x0: -35, y0: -66, x1: 27, y1: 11 }, (ox, oy) => {
     const o = (pts: Pt[]): Pt[] => tr(pts, ox, oy);
+    const P = (x: number, y: number): string => `${ox + x} ${oy + y}`;
+    const crease = darkOf(SIVAS.body, 0.3);
+    // Patches and the little labels on the back sit under the shading.
     const inner =
-      flat(jagged(ox - 18, oy - 1, 13, 9, 3, 13), SIVAS.mauve, { stroke: DETAIL }) +
-      flat(jagged(ox + 9, oy - 53, 9, 7, 4, 9), SIVAS.mauve, { stroke: DETAIL }) +
-      flat(roundPoly(o([[6, -22], [16, -23], [17, -13], [7, -12]]), 2), SIVAS.sage, { stroke: DETAIL, over: stitches(o([[6.5, -17.5], [16.5, -18]]), 3, 1.4) });
-    const over =
-      // Seams, the little labels on the back, a sprig of leaves.
-      stitches(o([[16, -47], [19, -33], [19, -26]]), 4, 1.8) +
-      ink(path(o([[-25, -16], [-18, -12], [-12, -14]])), DETAIL, SIVAS.bodyLine) +
-      ink(path(o([[-8, -58], [-4, -52]])), DETAIL, SIVAS.bodyLine) +
+      comic(jagged(ox - 18, oy - 1, 13, 9, 3, 13), SIVAS.mauve, { line: LINE.detail, glint: [-0.6, 0.8] }) +
+      comic(jagged(ox + 9, oy - 53, 9, 7, 4, 9), SIVAS.mauve, { line: LINE.detail, glint: [-0.6, 0.8] }) +
+      comic(roundPoly(o([[6, -22], [16, -23], [17, -13], [7, -12]]), 2), SIVAS.sage, { line: LINE.detail, glint: [-0.6, 0.7], over: stitches(o([[6.5, -17.5], [16.5, -18]]), 3, 1.4, darkOf(SIVAS.sage, 0.5)) }) +
       label(ox - 31, oy - 47, 13, 7, '#f2a7b5', 11, -14) +
       label(ox - 29, oy - 38.5, 12, 6.5, PASTEL.butter, 12, -6) +
-      label(ox - 28, oy - 29.5, 12, 7, PASTEL.mint, 13, 5) +
-      ink(path(o([[-2, -26], [0, -36], [-1, -46]])), DETAIL) +
+      label(ox - 28, oy - 29.5, 12, 7, PASTEL.mint, 13, 5);
+    // Cloth folds: under the chest, the belly's roll, the back.
+    const folds =
+      fold(`M${P(9, -33)}q5 1.5 9.5 -0.6`, crease, LINE.detail) +
+      fold(`M${P(12, -7)}q4.6 -1.2 7.6 -5.4`, crease, LINE.detail) +
+      fold(`M${P(14.5, -3.2)}q2.4 -0.6 3.4 -2.4`, crease, LINE.fine) +
+      fold(`M${P(-25, -16)}q7 4 13 2`, crease, LINE.detail) +
+      fold(`M${P(-8, -58)}q2.6 3 4 6`, crease, LINE.detail) +
+      fold(`M${P(-22, -50)}q3 -1 6 0.4`, crease, LINE.fine);
+    // The sprig of leaves on the chest.
+    const sprig =
+      ink(path(o([[-2, -26], [0, -36], [-1, -46]])), LINE.detail, darkOf(PASTEL.leaf, 0.5)) +
       leaf(tr([[-1, -44]], ox, oy)[0]!, -2.3, 10, PASTEL.leaf) +
       leaf(tr([[0, -36]], ox, oy)[0]!, -0.5, 9, PASTEL.leaf) +
       leaf(tr([[-0.5, -29]], ox, oy)[0]!, -2.7, 8, PASTEL.leaf);
-    return flat(path(o(HUMAN_BODY)) + 'Z', SIVAS.body, { inner, over });
+    return comic(path(o(HUMAN_BODY)) + 'Z', SIVAS.body, {
+      line: LINE.body,
+      inner,
+      // Round and heavy: the back and the underside of the belly in shade.
+      rim: [7.5, -3.4],
+      hatch: 2.6,
+      shade: `M${P(-20, 2)}Q${P(0, 8)} ${P(18, 1)}L${P(20, 12)}L${P(-20, 12)}Z`,
+      glint: [-1.6, 1.8],
+      light: `M${P(15.5, -50)}Q${P(21, -42)} ${P(21.4, -30)}Q${P(18.4, -40)} ${P(15.5, -50)}Z`,
+      over: folds + stitches(o([[16, -47], [19, -33], [19, -26]]), 4, 1.8, darkOf(SIVAS.body, 0.55)) + sprig,
+    });
   });
 }
 
 function upperArm(): PartArt {
   return part('gorti.human.arm', { x0: -9, y0: -6, x1: 9, y1: 28 }, (ox, oy) =>
-    flat(limb([ox, oy], [ox, oy + 23], 14, 11, 0.7), SIVAS.body, {
-      inner: flat(jagged(ox + 1, oy + 6, 6.5, 5.5, 21, 8), SIVAS.mauve, { stroke: DETAIL }),
-      over: ink(`M${ox - 4} ${oy + 16}q4 2 8 0`, DETAIL, SIVAS.bodyLine),
+    comicLimb([ox, oy], [ox, oy + 23], 14, 11, SIVAS.body, {
+      bulge: 0.7,
+      inner: comic(jagged(ox + 1, oy + 6, 6.5, 5.5, 21, 8), SIVAS.mauve, { line: LINE.detail }),
+      over: fold(`M${ox - 4} ${oy + 16}q4 2 8 0`, darkOf(SIVAS.body, 0.3)) + fold(`M${ox + 1} ${oy + 20}q2.4 0.6 4 -0.6`, darkOf(SIVAS.body, 0.3), LINE.fine),
     }),
   { far: true });
 }
@@ -369,16 +422,22 @@ function upperArm(): PartArt {
 function forearm(suit = false): PartArt {
   return part(suit ? 'gorti.suit.fore' : 'gorti.human.fore', { x0: -9, y0: -5, x1: 10, y1: 33 }, (ox, oy) => {
     const o = (pts: Pt[]): Pt[] => tr(pts, ox, oy);
+    const handLine = darkOf(SIVAS.hand, 0.5);
     let s = '';
     // The hand: a green mitten with a thumb and a pointing finger.
-    s += flat(path(o([[-4, 18], [4, 18], [6.5, 23], [6, 29.5], [3.8, 30], [2.5, 26], [0, 29.5], [-3.5, 28], [-5, 23]])) + 'Z', SIVAS.hand, { stroke: DETAIL * 1.2, over: ink(`M${ox + 2.5} ${oy + 26}l-1 -3M${ox - 1} ${oy + 27.5}l-0.3 -3`, DETAIL * 0.8) });
-    s += flat(taper(o([[4, 21], [7, 23], [8.5, 26]]), 3.4, 2.2), SIVAS.hand, { stroke: DETAIL });
+    s += comic(path(o([[-4, 18], [4, 18], [6.5, 23], [6, 29.5], [3.8, 30], [2.5, 26], [0, 29.5], [-3.5, 28], [-5, 23]])) + 'Z', SIVAS.hand, {
+      line: LINE.small,
+      rim: [2, -0.8],
+      glint: [-0.6, 0.6],
+      over: fold(`M${ox + 2.5} ${oy + 26}l-1 -3M${ox - 1} ${oy + 27.5}l-0.3 -3`, handLine, LINE.fine * 1.2),
+    });
+    s += comic(taper(o([[4, 21], [7, 23], [8.5, 26]]), 3.4, 2.2), SIVAS.hand, { line: LINE.detail * 1.1, rim: [0.8, -0.5] });
     if (suit) {
-      s += flat(limb([ox, oy], [ox, oy + 18], 10.5, 9.5, 0.3), SIVAS.suit, { over: ink(`M${ox - 3} ${oy + 8}q2 2 5 0`, DETAIL, SIVAS.suitDeep) });
-      s += flat(roundPoly(o([[-5, 15], [5, 15], [5, 20], [-5, 20]]), 1.2), SIVAS.shirt, { stroke: DETAIL });
+      s += comicLimb([ox, oy], [ox, oy + 18], 10.5, 9.5, SIVAS.suit, { bulge: 0.3, over: fold(`M${ox - 3} ${oy + 8}q2 2 5 0M${ox - 2.6} ${oy + 11.6}q1.6 1.2 3.6 0.2`, darkOf(SIVAS.suit, 0.3), LINE.fine * 1.2) });
+      s += comic(roundPoly(o([[-5, 15], [5, 15], [5, 20], [-5, 20]]), 1.2), SIVAS.shirt, { line: LINE.detail, rim: [1.2, -0.6] });
     } else {
-      const stripes = [9, 13, 17].map((y) => flat(`M${ox - 6} ${oy + y}H${ox + 6}V${oy + y + 2.2}H${ox - 6}Z`, SIVAS.stripe, { stroke: 0.9 })).join('');
-      s += flat(limb([ox, oy], [ox, oy + 19], 10, 9, 0.3), SIVAS.body, { inner: stripes });
+      const stripes = [9, 13, 17].map((y) => `<path d="M${ox - 6} ${oy + y}H${ox + 6}V${oy + y + 2.2}H${ox - 6}Z" fill="${SIVAS.stripe}"/>` + ink(`M${ox - 6} ${oy + y}H${ox + 6}M${ox - 6} ${oy + y + 2.2}H${ox + 6}`, LINE.fine, darkOf(SIVAS.stripe, 0.4))).join('');
+      s += comicLimb([ox, oy], [ox, oy + 19], 10, 9, SIVAS.body, { bulge: 0.3, inner: stripes, over: fold(`M${ox - 3.4} ${oy + 4}q2.4 1.4 5.2 0`, darkOf(SIVAS.body, 0.3), LINE.fine * 1.2) });
     }
     return s;
   }, { far: true });
@@ -387,30 +446,51 @@ function forearm(suit = false): PartArt {
 function thigh(suit = false): PartArt {
   return part(suit ? 'gorti.suit.thigh' : 'gorti.human.thigh', { x0: -9, y0: -5, x1: 9, y1: 24 }, (ox, oy) =>
     suit
-      ? flat(limb([ox, oy], [ox, oy + 19], 15, 12, 0.7), SIVAS.suit, { over: ink(`M${ox + 2} ${oy + 5}q-3 6 1 11`, DETAIL, SIVAS.suitDeep) })
-      : flat(limb([ox, oy], [ox, oy + 19], 16, 12.5, 0.8), SIVAS.leg, { inner: flat(jagged(ox - 2, oy + 8, 5.5, 5, 31, 8), SIVAS.sage, { stroke: DETAIL }), over: stitches([[ox + 4, oy + 2], [ox + 5, oy + 14]], 3.4, 1.6) }),
+      ? comicLimb([ox, oy], [ox, oy + 19], 15, 12, SIVAS.suit, { bulge: 0.7, over: fold(`M${ox + 2} ${oy + 5}q-3 6 1 11M${ox - 3} ${oy + 15}q3 2 6 0.6`, darkOf(SIVAS.suit, 0.32)) })
+      : comicLimb([ox, oy], [ox, oy + 19], 16, 12.5, SIVAS.leg, {
+          bulge: 0.8,
+          inner: comic(jagged(ox - 2, oy + 8, 5.5, 5, 31, 8), SIVAS.sage, { line: LINE.detail }),
+          over: stitches([[ox + 4, oy + 2], [ox + 5, oy + 14]], 3.4, 1.6, darkOf(SIVAS.leg, 0.55)) + fold(`M${ox - 4} ${oy + 17}q3.6 1.6 7.4 -0.2`, darkOf(SIVAS.leg, 0.35), LINE.fine * 1.2),
+        }),
   { far: true });
 }
 
 function shin(suit = false): PartArt {
   return part(suit ? 'gorti.suit.shin' : 'gorti.human.shin', { x0: -9, y0: -4, x1: 9, y1: 24 }, (ox, oy) => {
-    if (suit) return flat(limb([ox, oy], [ox, oy + 20], 12, 11, 0.3), SIVAS.suit, { over: ink(`M${ox - 5} ${oy + 17}H${ox + 5}`, DETAIL, SIVAS.suitDeep) });
+    if (suit) return comicLimb([ox, oy], [ox, oy + 20], 12, 11, SIVAS.suit, { bulge: 0.3, over: fold(`M${ox - 5} ${oy + 17}H${ox + 5}M${ox - 3} ${oy + 4}q2.4 1.6 5 0.4`, darkOf(SIVAS.suit, 0.32)) });
     // A jagged cuff over the shin, like the painting's flowered hems.
     const cuff = `M${ox - 7} ${oy + 3}L${ox - 5} ${oy + 10}L${ox - 3} ${oy + 5}L${ox - 1} ${oy + 11}L${ox + 1.5} ${oy + 5}L${ox + 3.5} ${oy + 10.5}L${ox + 5.5} ${oy + 4.5}L${ox + 7.5} ${oy + 9}L${ox + 7} ${oy - 1}L${ox - 7} ${oy - 1}Z`;
-    return flat(limb([ox, oy], [ox, oy + 20], 12, 10.5, 0.3), SIVAS.leg, { over: ink(`M${ox - 3} ${oy + 14}l3 1.5`, DETAIL * 0.8) }) + flat(cuff, SIVAS.mauveDeep, { stroke: DETAIL });
+    return (
+      comicLimb([ox, oy], [ox, oy + 20], 12, 10.5, SIVAS.leg, { bulge: 0.3, over: fold(`M${ox - 3} ${oy + 14}l3 1.5`, darkOf(SIVAS.leg, 0.4), LINE.fine * 1.2) }) +
+      comic(cuff, SIVAS.mauveDeep, { line: LINE.detail * 1.2, rim: [2.2, -0.6], glint: [-0.5, 0.6] })
+    );
   }, { far: true });
 }
 
 /** Pale claw-foot (pivot at the ankle, sole at +6). */
 function foot(): PartArt {
   return part('gorti.human.foot', { x0: -9, y0: -5, x1: 17, y1: 8 }, (ox, oy) =>
-    flat(`M${ox - 7} ${oy - 2}Q${ox - 1} ${oy - 5} ${ox + 5} ${oy - 1}L${ox + 16} ${oy + 3}L${ox + 11} ${oy + 3.5}L${ox + 13} ${oy + 6}L${ox + 7} ${oy + 5}L${ox + 6} ${oy + 6.5}L${ox - 7} ${oy + 6.5}Z`, SIVAS.foot, { stroke: DETAIL * 1.3, over: ink(`M${ox - 2} ${oy + 1}q2 1 4 0`, DETAIL * 0.8, SIVAS.bodyLine) }),
+    comic(`M${ox - 7} ${oy - 2}Q${ox - 1} ${oy - 5} ${ox + 5} ${oy - 1}L${ox + 16} ${oy + 3}L${ox + 11} ${oy + 3.5}L${ox + 13} ${oy + 6}L${ox + 7} ${oy + 5}L${ox + 6} ${oy + 6.5}L${ox - 7} ${oy + 6.5}Z`, SIVAS.foot, {
+      line: LINE.small,
+      rim: [0.6, -2],
+      glint: [-0.4, 0.9],
+      over: fold(`M${ox - 2} ${oy + 1}q2 1 4 0M${ox + 8.6} ${oy + 3.2}l-1.6 1.4`, darkOf(SIVAS.foot, 0.35), LINE.fine * 1.2),
+    }),
   { far: true });
 }
 
 function shoe(): PartArt {
   return part('gorti.suit.foot', { x0: -9, y0: -5, x1: 17, y1: 8 }, (ox, oy) =>
-    flat(roundPoly(tr([[-6, -3], [4, -3], [8, 0], [15, 2], [15.5, 6.5], [-7, 6.5]], ox, oy), [2, 2, 3, 3, 1.5, 1.5]), SIVAS.shoe, { stroke: DETAIL * 1.3, over: ink(`M${ox - 6} ${oy + 4.8}H${ox + 15}`, DETAIL * 0.8, '#8a8494') }),
+    comic(roundPoly(tr([[-6, -3], [4, -3], [8, 0], [15, 2], [15.5, 6.5], [-7, 6.5]], ox, oy), [2, 2, 3, 3, 1.5, 1.5]), SIVAS.shoe, {
+      line: LINE.small,
+      ink: '#2f2a35',
+      rim: [0.6, -1.6],
+      tone: SHADE.deep,
+      // A polished toe cap.
+      light: `M${ox + 7} ${oy + 0.6}Q${ox + 12} ${oy + 1.4} ${ox + 14} ${oy + 3}Q${ox + 11} ${oy + 2.4} ${ox + 7} ${oy + 0.6}Z`,
+      lightFill: '#9a93a3',
+      over: fold(`M${ox - 6} ${oy + 4.8}H${ox + 15}`, '#8a8494', LINE.fine * 1.2) + fold(`M${ox + 1} ${oy - 2.6}q1.4 1.6 3.4 1.8`, '#8a8494', LINE.fine),
+    }),
   { far: true });
 }
 
@@ -419,26 +499,44 @@ function shoe(): PartArt {
 function suitTorso(): PartArt {
   return part('gorti.suit.torso', { x0: -35, y0: -66, x1: 27, y1: 11 }, (ox, oy) => {
     const o = (pts: Pt[]): Pt[] => tr(pts, ox, oy);
+    const P = (x: number, y: number): string => `${ox + x} ${oy + y}`;
+    const deep = darkOf(SIVAS.suit, 0.32);
     const shirt =
-      flat(`M${ox + 1} ${oy - 61}L${ox + 16} ${oy - 56}L${ox + 10} ${oy - 38}Z`, SIVAS.shirt, { stroke: DETAIL * 1.1 }) +
-      flat(`M${ox + 7} ${oy - 57}L${ox + 11} ${oy - 56}L${ox + 11.5} ${oy - 44}L${ox + 9.5} ${oy - 39}L${ox + 7.5} ${oy - 44}Z`, SIVAS.tie, { stroke: DETAIL });
+      comic(`M${ox + 1} ${oy - 61}L${ox + 16} ${oy - 56}L${ox + 10} ${oy - 38}Z`, SIVAS.shirt, { line: LINE.detail * 1.1, rim: [1.4, -0.4] }) +
+      comic(`M${ox + 7} ${oy - 57}L${ox + 11} ${oy - 56}L${ox + 11.5} ${oy - 44}L${ox + 9.5} ${oy - 39}L${ox + 7.5} ${oy - 44}Z`, SIVAS.tie, { line: LINE.detail, glint: [-0.5, 0.4] });
+    const lapels =
+      comic(`M${ox + 1} ${oy - 61}L${ox + 10} ${oy - 38}L${ox + 3} ${oy - 45}L${ox - 1} ${oy - 58}Z`, SIVAS.suitDeep, { line: LINE.detail * 1.1, glint: [-0.4, 0.4] }) +
+      comic(`M${ox + 16} ${oy - 56}L${ox + 10} ${oy - 38}L${ox + 17} ${oy - 46}L${ox + 19} ${oy - 53}Z`, SIVAS.suitDeep, { line: LINE.detail * 1.1, glint: [-0.4, 0.4] });
+    // The worn coat's creases: pulled across the belly, bunched at the back.
+    const folds =
+      fold(`M${P(-24, -32)}q7 3 13 1`, deep) +
+      fold(`M${P(-24, -12)}q7 2 13 0`, deep) +
+      fold(`M${P(-27, -22)}q4 1 7 0`, deep, LINE.fine) +
+      fold(`M${P(2, -30)}q5 4 11 3`, deep, LINE.fine * 1.2) +
+      fold(`M${P(4, -18)}q5 3 10 2`, deep, LINE.fine * 1.2) +
+      fold(`M${P(-6, 2)}q4 -3 3 -8`, deep, LINE.fine * 1.2);
     const over =
       shirt +
-      flat(`M${ox + 1} ${oy - 61}L${ox + 10} ${oy - 38}L${ox + 3} ${oy - 45}L${ox - 1} ${oy - 58}Z`, SIVAS.suitDeep, { stroke: DETAIL * 1.1 }) + // lapels
-      flat(`M${ox + 16} ${oy - 56}L${ox + 10} ${oy - 38}L${ox + 17} ${oy - 46}L${ox + 19} ${oy - 53}Z`, SIVAS.suitDeep, { stroke: DETAIL * 1.1 }) +
-      ink(path(o([[10, -38], [13, -22], [15, -8], [15, 6]])), DETAIL * 1.2) + // front edge
-      `<circle cx="${ox + 12.5}" cy="${oy - 26}" r="1.3" fill="${INK}"/><circle cx="${ox + 14}" cy="${oy - 14}" r="1.3" fill="${INK}"/>` +
-      ink(path(o([[-24, -32], [-17, -29], [-11, -31]])), DETAIL, SIVAS.suitDeep) +
-      ink(path(o([[-24, -12], [-17, -10], [-11, -12]])), DETAIL, SIVAS.suitDeep) +
+      lapels +
+      folds +
+      ink(path(o([[10, -38], [13, -22], [15, -8], [15, 6]])), LINE.detail * 1.2, darkOf(SIVAS.suit, 0.6)) + // front edge
+      `<circle cx="${ox + 12.5}" cy="${oy - 26}" r="1.3" fill="${SIVAS.tie}"/><circle cx="${ox + 14}" cy="${oy - 14}" r="1.3" fill="${SIVAS.tie}"/>` +
       // A name tag: the one label left.
       label(ox + 15, oy - 36, 8, 5, PASTEL.cream, 17, 8);
-    return flat(path(o(HUMAN_BODY)) + 'Z', SIVAS.suit, { over });
+    return comic(path(o(HUMAN_BODY)) + 'Z', SIVAS.suit, {
+      line: LINE.body,
+      rim: [7.5, -3.4],
+      hatch: 2.6,
+      tone: SHADE.deep,
+      glint: [-1.4, 1.6],
+      over,
+    });
   });
 }
 
 function suitArm(): PartArt {
   return part('gorti.suit.arm', { x0: -9, y0: -6, x1: 9, y1: 28 }, (ox, oy) =>
-    flat(limb([ox, oy], [ox, oy + 23], 14, 11, 0.7), SIVAS.suit, { over: ink(`M${ox - 4} ${oy + 14}q4 2 8 0`, DETAIL, SIVAS.suitDeep) }),
+    comicLimb([ox, oy], [ox, oy + 23], 14, 11, SIVAS.suit, { bulge: 0.7, over: fold(`M${ox - 4} ${oy + 14}q4 2 8 0M${ox - 3} ${oy + 19}q3 1.4 6 0.2`, darkOf(SIVAS.suit, 0.32)) }),
   { far: true });
 }
 

@@ -1,8 +1,8 @@
-import { ellipsePath, limb, taper, type Pt } from '../../render/2d/svg';
-import { DETAIL, flat, INK, PASTEL } from '../../render/2d/style';
+import { ellipsePath, taper, type Pt } from '../../render/2d/svg';
+import { darkOf, DETAIL, flat, INK, LINE, lightOf, PASTEL } from '../../render/2d/style';
 import type { PartArt } from '../../render/2d/rig/rigTypes';
 import { eyeSet, mouthSet, browPart, withoutSmile } from './face';
-import { fillOnly, ink, leaf, part, path, roundPoly, stitches, tr } from './kit';
+import { cflat, comic, comicLimb, fillOnly, fold, ink, leaf, part, path, roundPoly, stitches, tr } from './kit';
 import { humanoidRig, type HumanoidDims } from './skeleton';
 
 // Gorti as a youth (painting 3, "Late to Work", the centre figure): a
@@ -74,21 +74,30 @@ function head(): PartArt {
   return part('gorti.youth.head', { x0: -24, y0: -60, x1: 28, y1: 3 }, (ox, oy) => {
     const o = (pts: Pt[]): Pt[] => tr(pts, ox, oy);
     const block: Pt[] = [[-21, -52], [-14, -57], [20, -57], [26, -51], [27, -26], [24, -10], [17, -3], [-9, -2], [-19, -8], [-22, -26]];
+    const crack = darkOf(YOUTH.head, 0.55);
     const inner =
       fillOnly(`M${ox - 30} ${oy - 62}L${ox - 13} ${oy - 62}Q${ox - 15} ${oy - 30} ${ox - 12} ${oy + 3}L${ox - 30} ${oy + 3}Z`, YOUTH.headSide) +
-      ink(`M${ox - 13} ${oy - 56}Q${ox - 15} ${oy - 30} ${ox - 12} ${oy - 3}`, DETAIL) +
+      ink(`M${ox - 13} ${oy - 56}Q${ox - 15} ${oy - 30} ${ox - 12} ${oy - 3}`, LINE.detail, crack) +
       // The painting's cracks and panel lines: jaw lines from the mouth, bricks on the cheek.
-      ink(path(o([[1, -15], [0, -9], [1, -3]])), DETAIL) +
-      ink(path(o([[19, -15], [20, -9], [18, -4]])), DETAIL) +
-      ink(`M${ox - 11} ${oy - 21}h5M${ox - 9} ${oy - 16}h5M${ox - 11} ${oy - 11}h4M${ox + 22} ${oy - 22}h3`, DETAIL * 0.9) +
-      ink(path(o([[16, -57], [14, -52], [17, -48]])), DETAIL * 0.9) +
-      ink(path(o([[-6, -57], [-5, -53]])), DETAIL * 0.9) +
+      ink(path(o([[1, -15], [0, -9], [1, -3]])), LINE.detail, crack) +
+      ink(path(o([[19, -15], [20, -9], [18, -4]])), LINE.detail, crack) +
+      ink(`M${ox - 11} ${oy - 21}h5M${ox - 9} ${oy - 16}h5M${ox - 11} ${oy - 11}h4M${ox + 22} ${oy - 22}h3`, LINE.detail * 0.9, crack) +
+      ink(path(o([[16, -57], [14, -52], [17, -48]])), LINE.detail * 0.9, crack) +
+      ink(path(o([[-6, -57], [-5, -53]])), LINE.detail * 0.9, crack) +
       // Nose: a small wedge between the eyes.
-      ink(path(o([[6, -30], [8, -24], [5, -23]])), DETAIL);
-    let s = flat(roundPoly(o(block), [5, 6, 6, 5, 6, 7, 6, 6, 6, 5]), YOUTH.head, { inner });
+      ink(path(o([[6, -30], [8, -24], [5, -23]])), LINE.detail, crack);
+    let s = comic(roundPoly(o(block), [5, 6, 6, 5, 6, 7, 6, 6, 6, 5]), YOUTH.head, {
+      line: LINE.body,
+      inner,
+      rim: [3.6, -2.6],
+      hatch: 2.4,
+      glint: [-1.3, 1.4],
+      // Light catching the block's top edge.
+      light: `M${ox - 12} ${oy - 56.2}L${ox + 19} ${oy - 56.2}Q${ox + 23} ${oy - 55.6} ${ox + 25} ${oy - 52.4}Q${ox + 21} ${oy - 54.2} ${ox + 17} ${oy - 54}L${ox - 11} ${oy - 54}Z`,
+    });
     for (const f of FRAMES) {
-      s += flat(roundPoly(o(hexFrame(f.cx, f.cy, f.w + 5, f.h + 4.5)), 1.5), YOUTH.frame, { stroke: DETAIL * 1.2 });
-      s += flat(roundPoly(o(hexFrame(f.cx, f.cy, f.w, f.h)), 1), YOUTH.socket, { stroke: DETAIL });
+      s += comic(roundPoly(o(hexFrame(f.cx, f.cy, f.w + 5, f.h + 4.5)), 1.5), YOUTH.frame, { line: LINE.small, rim: [1.4, -1], glint: [-0.6, 0.6] });
+      s += comic(roundPoly(o(hexFrame(f.cx, f.cy, f.w, f.h)), 1), YOUTH.socket, { line: LINE.detail, ink: '#2e1729' });
     }
     return s;
   });
@@ -127,10 +136,10 @@ function tendril(t: (typeof TENDRILS)[number]): PartArt {
   const box = { x0: Math.min(...xs) - 10, y0: Math.min(...ys) - 12, x1: Math.max(...xs) + 10, y1: Math.max(...ys) + 6 };
   return part(`gorti.youth.${t.id}`, box, (ox, oy) => {
     const q = tr(pts, ox, oy);
-    let s = flat(taper(q, t.w, 1.6), t.color, { stroke: DETAIL * 1.2, over: ink(path(q.slice(1, -1)), DETAIL * 0.7, '#8b6d7e') });
+    let s = comic(taper(q, t.w, 1.6), t.color, { line: LINE.small, rim: [t.w * 0.28, -t.w * 0.12], glint: [-t.w * 0.08, t.w * 0.1], lightFill: lightOf(t.color, 0.4), over: ink(path(q.slice(1, -1)), LINE.fine, lightOf(t.color, 0.25)) });
     if (t.band) {
       const m = q[Math.floor(q.length / 2)]!;
-      s += `<circle cx="${m[0]}" cy="${m[1]}" r="${t.w * 0.42}" fill="${YOUTH.tendrilPink}" stroke="${INK}" stroke-width="${DETAIL}"/>`;
+      s += comic(ellipsePath(m[0], m[1], t.w * 0.42, t.w * 0.42), YOUTH.tendrilPink, { line: LINE.detail, rim: [t.w * 0.14, -t.w * 0.1], glint: [-0.5, 0.5] });
     }
     const tip = q[q.length - 1]!;
     if (t.bird) {
@@ -138,7 +147,7 @@ function tendril(t: (typeof TENDRILS)[number]): PartArt {
       const body = t.bird === 'green' ? PASTEL.leaf : PASTEL.lilac;
       const bx = tip[0];
       const by = tip[1] - 4;
-      s += flat(`M${bx - 5} ${by + 1}Q${bx - 3} ${by - 5} ${bx + 3} ${by - 3}Q${bx + 6} ${by - 1} ${bx + 3} ${by + 3}Q${bx - 1} ${by + 4} ${bx - 5} ${by + 1}Z`, body, { stroke: DETAIL });
+      s += comic(`M${bx - 5} ${by + 1}Q${bx - 3} ${by - 5} ${bx + 3} ${by - 3}Q${bx + 6} ${by - 1} ${bx + 3} ${by + 3}Q${bx - 1} ${by + 4} ${bx - 5} ${by + 1}Z`, body, { line: LINE.detail, rim: [1, -1.2], glint: [-0.5, 0.6] });
       s += flat(`M${bx + 0.5} ${by + 0.5}Q${bx + 3.5} ${by} ${bx + 3} ${by + 2.5}Q${bx + 1} ${by + 3} ${bx + 0.5} ${by + 0.5}Z`, PASTEL.pink, { stroke: 0.8 });
       s += flat(`M${bx + 4.5} ${by - 2.5}l3 0.6l-2.6 1.2Z`, PASTEL.butter, { stroke: 0.8 });
       s += `<circle cx="${bx + 2.4}" cy="${by - 2.2}" r="0.7" fill="${INK}"/>`;
@@ -159,13 +168,13 @@ function torso(): PartArt {
     const colX = [-10, -4.5, 1, 6.5];
     colX.forEach((x, i) => {
       const c = i % 2 === 0 ? YOUTH.yellow : YOUTH.pink;
-      cols += flat(`M${ox + x} ${oy - 1}V${oy - 17}L${ox + x + 1.8} ${oy - 19.5}L${ox + x + 3} ${oy - 17}L${ox + x + 4.2} ${oy - 19.5}L${ox + x + 5.5} ${oy - 17}V${oy - 1}Z`, c, { stroke: DETAIL });
+      cols += comic(`M${ox + x} ${oy - 1}V${oy - 17}L${ox + x + 1.8} ${oy - 19.5}L${ox + x + 3} ${oy - 17}L${ox + x + 4.2} ${oy - 19.5}L${ox + x + 5.5} ${oy - 17}V${oy - 1}Z`, c, { line: LINE.detail, glint: [-0.5, 0.6] });
     });
     // The eye emblem on the chest.
     const ex = ox + 3;
     const ey = oy - 31;
     const emblem =
-      flat(`M${ex - 6} ${ey}Q${ex} ${ey - 5.5} ${ex + 6} ${ey}Q${ex} ${ey + 5} ${ex - 6} ${ey}Z`, '#fbf6ee', { stroke: DETAIL, inner: `<circle cx="${ex + 0.5}" cy="${ey}" r="2.4" fill="#6fb2d8"/><circle cx="${ex + 0.5}" cy="${ey}" r="1.1" fill="${INK}"/>` }) +
+      comic(`M${ex - 6} ${ey}Q${ex} ${ey - 5.5} ${ex + 6} ${ey}Q${ex} ${ey + 5} ${ex - 6} ${ey}Z`, '#fbf6ee', { line: LINE.detail, inner: `<circle cx="${ex + 0.5}" cy="${ey}" r="2.4" fill="#6fb2d8"/><circle cx="${ex + 0.5}" cy="${ey}" r="1.1" fill="${INK}"/>` }) +
       ink(`M${ex - 5} ${ey - 3}l-1.5 -2M${ex - 2} ${ey - 4.2}l-0.6 -2.4M${ex + 1.5} ${ey - 4.4}l0.3 -2.4M${ex + 5} ${ey - 3}l1.6 -2M${ex - 3} ${ey + 3.8}l-0.8 2M${ex + 3} ${ey + 3.8}l0.8 2`, DETAIL * 0.85);
     const plates =
       ink(path(o([[-15, -23], [0, -22], [16, -24]])), DETAIL) +
@@ -173,7 +182,17 @@ function torso(): PartArt {
       fillOnly(`M${ox - 20} ${oy + 1}H${ox + 20}V${oy + 9}H${ox - 20}Z`, YOUTH.armourDark) +
       ink(`M${ox - 20} ${oy + 1}H${ox + 20}`, DETAIL) +
       `<rect x="${ox + 1}" y="${oy + 1.5}" width="5" height="4" rx="1" fill="${YOUTH.yellow}" stroke="${INK}" stroke-width="0.9"/>`;
-    let s = flat(roundPoly(o(armour), 5), YOUTH.armour, { inner: plates, over: cols + emblem });
+    // Painted metal: the back in shade, a bright streak down the front.
+    let s = comic(roundPoly(o(armour), 5), YOUTH.armour, {
+      line: LINE.body,
+      inner: plates + cols,
+      rim: [5, -2.4],
+      hatch: 2.4,
+      glint: [-1.2, 1.3],
+      light: `M${ox + 11.4} ${oy - 38}Q${ox + 13.6} ${oy - 30} ${ox + 12.6} ${oy - 20}L${ox + 11} ${oy - 20.4}Q${ox + 12} ${oy - 29} ${ox + 10.2} ${oy - 37.4}Z`,
+      lightFill: '#f3f2f6',
+      over: emblem,
+    });
     // The leafy collar (a ruff of yellow-green leaves under the head).
     const neck: Pt = [ox + 3, oy - 44];
     const ruff: [number, number, string][] = [[-2.95, 22, YOUTH.collarDeep], [-0.2, 21, YOUTH.collarDeep], [-2.6, 20, YOUTH.collar], [-0.55, 20, YOUTH.collar], [-2.25, 16, YOUTH.collar], [-0.9, 16, YOUTH.collar]];
@@ -184,47 +203,53 @@ function torso(): PartArt {
 
 function upperArm(): PartArt {
   return part('gorti.youth.arm', { x0: -8, y0: -7, x1: 8, y1: 27 }, (ox, oy) =>
-    flat(limb([ox, oy], [ox, oy + 22], 9.5, 8, 0.4), YOUTH.limb, { over: stitches([[ox + 1, oy + 7], [ox + 1.5, oy + 18]], 3.6, 1.8) }) +
-    flat(roundPoly([[ox - 7, oy - 5], [ox + 7, oy - 5], [ox + 6.5, oy + 7], [ox - 6.5, oy + 7]], 3), YOUTH.blue, { stroke: DETAIL * 1.2, over: ink(`M${ox - 6} ${oy + 1}H${ox + 6}`, DETAIL * 0.8) }) +
-    flat(roundPoly([[ox - 5, oy + 15], [ox + 5, oy + 15], [ox + 5, oy + 20], [ox - 5, oy + 20]], 1.5), YOUTH.yellow, { stroke: DETAIL }),
+    comicLimb([ox, oy], [ox, oy + 22], 9.5, 8, YOUTH.limb, { bulge: 0.4, over: stitches([[ox + 1, oy + 7], [ox + 1.5, oy + 18]], 3.6, 1.8, darkOf(YOUTH.limb, 0.55)) }) +
+    cflat(roundPoly([[ox - 7, oy - 5], [ox + 7, oy - 5], [ox + 6.5, oy + 7], [ox - 6.5, oy + 7]], 3), YOUTH.blue, { over: fold(`M${ox - 6} ${oy + 1}H${ox + 6}`, darkOf(YOUTH.blue, 0.4), LINE.fine * 1.2) }) +
+    cflat(roundPoly([[ox - 5, oy + 15], [ox + 5, oy + 15], [ox + 5, oy + 20], [ox - 5, oy + 20]], 1.5), YOUTH.yellow),
   { far: true });
 }
 
 function forearm(): PartArt {
   return part('gorti.youth.fore', { x0: -9, y0: -5, x1: 10, y1: 32 }, (ox, oy) => {
-    let s = flat(limb([ox, oy], [ox, oy + 20], 8.2, 7, 0.3), YOUTH.limb, { over: stitches([[ox - 0.5, oy + 3], [ox, oy + 12]], 3.4, 1.7) });
+    let s = comicLimb([ox, oy], [ox, oy + 20], 8.2, 7, YOUTH.limb, { bulge: 0.3, over: stitches([[ox - 0.5, oy + 3], [ox, oy + 12]], 3.4, 1.7, darkOf(YOUTH.limb, 0.55)) });
     // The watch on the wrist.
-    s += flat(`M${ox - 4.6} ${oy + 13}H${ox + 4.6}V${oy + 17.5}H${ox - 4.6}Z`, '#5a4e56', { stroke: DETAIL });
-    s += flat(ellipsePath(ox + 1.5, oy + 15.2, 3.6, 3.6), '#f7eddc', { stroke: DETAIL, over: ink(`M${ox + 1.5} ${oy + 15.2}v-2.2M${ox + 1.5} ${oy + 15.2}l1.6 0.8`, 0.8) });
+    s += cflat(`M${ox - 4.6} ${oy + 13}H${ox + 4.6}V${oy + 17.5}H${ox - 4.6}Z`, '#5a4e56', { depth: 0 });
+    s += comic(ellipsePath(ox + 1.5, oy + 15.2, 3.6, 3.6), '#f7eddc', { line: LINE.detail, ink: '#5a4e56', rim: [1, -0.8], light: `M${ox - 0.6} ${oy + 13.4}q1.2 -0.9 2.6 -0.6q-1.4 0.3 -2 1.4Z`, lightFill: '#ffffff', over: ink(`M${ox + 1.5} ${oy + 15.2}v-2.2M${ox + 1.5} ${oy + 15.2}l1.6 0.8`, 0.8) });
     // A mechanical hand: a palm block and blocky fingers.
-    s += flat(roundPoly([[ox - 1.5, oy + 21], [ox + 3.2, oy + 22], [ox + 5.8, oy + 27.5], [ox + 3.5, oy + 29]], 1.2), YOUTH.limb, { stroke: DETAIL });
-    s += flat(roundPoly([[ox - 4.5, oy + 19.5], [ox + 4, oy + 19.5], [ox + 4, oy + 25], [ox - 4.5, oy + 25]], 1.8), YOUTH.limb, { stroke: DETAIL * 1.1 });
-    for (const x of [-3.5, -0.8, 1.9]) s += flat(roundPoly([[ox + x, oy + 24.5], [ox + x + 2.3, oy + 24.5], [ox + x + 2.1, oy + 30.5], [ox + x + 0.2, oy + 30.5]], 0.9), YOUTH.limb, { stroke: DETAIL * 0.9 });
+    s += cflat(roundPoly([[ox - 1.5, oy + 21], [ox + 3.2, oy + 22], [ox + 5.8, oy + 27.5], [ox + 3.5, oy + 29]], 1.2), YOUTH.limb);
+    s += cflat(roundPoly([[ox - 4.5, oy + 19.5], [ox + 4, oy + 19.5], [ox + 4, oy + 25], [ox - 4.5, oy + 25]], 1.8), YOUTH.limb);
+    for (const x of [-3.5, -0.8, 1.9]) s += cflat(roundPoly([[ox + x, oy + 24.5], [ox + x + 2.3, oy + 24.5], [ox + x + 2.1, oy + 30.5], [ox + x + 0.2, oy + 30.5]], 0.9), YOUTH.limb, { depth: 0 });
     return s;
   }, { far: true });
 }
 
 function thigh(): PartArt {
   return part('gorti.youth.thigh', { x0: -8, y0: -5, x1: 8, y1: 27 }, (ox, oy) =>
-    flat(limb([ox, oy], [ox, oy + 23], 12.5, 10, 0.5), YOUTH.limb, {
-      over:
-        stitches([[ox - 2, oy + 3], [ox - 2.5, oy + 13]], 3.6, 1.8) +
-        flat(roundPoly([[ox - 5.5, oy + 16], [ox + 5.5, oy + 15.5], [ox + 5, oy + 24], [ox - 5, oy + 24]], 2), YOUTH.pink, { stroke: DETAIL, over: ink(`M${ox - 3} ${oy + 18}l2 2M${ox + 1} ${oy + 18}l2 2`, DETAIL * 0.8) }),
+    comicLimb([ox, oy], [ox, oy + 23], 12.5, 10, YOUTH.limb, {
+      bulge: 0.5,
+      inner: cflat(roundPoly([[ox - 5.5, oy + 16], [ox + 5.5, oy + 15.5], [ox + 5, oy + 24], [ox - 5, oy + 24]], 2), YOUTH.pink, { depth: 0, over: fold(`M${ox - 3} ${oy + 18}l2 2M${ox + 1} ${oy + 18}l2 2`, darkOf(YOUTH.pink, 0.45), LINE.fine * 1.2) }),
+      over: stitches([[ox - 2, oy + 3], [ox - 2.5, oy + 13]], 3.6, 1.8, darkOf(YOUTH.limb, 0.55)),
     }),
   { far: true });
 }
 
 function shin(): PartArt {
   return part('gorti.youth.shin', { x0: -7, y0: -4, x1: 7, y1: 26 }, (ox, oy) =>
-    flat(limb([ox, oy], [ox, oy + 23], 10, 8, 0.2), YOUTH.limb, { over: ink(`M${ox - 5} ${oy + 9}H${ox + 5}`, DETAIL) + stitches([[ox + 1.5, oy + 11], [ox + 1.5, oy + 20]], 3.2, 1.6) }),
+    comicLimb([ox, oy], [ox, oy + 23], 10, 8, YOUTH.limb, { bulge: 0.2, over: fold(`M${ox - 5} ${oy + 9}H${ox + 5}`, darkOf(YOUTH.limb, 0.5)) + stitches([[ox + 1.5, oy + 11], [ox + 1.5, oy + 20]], 3.2, 1.6, darkOf(YOUTH.limb, 0.55)) }),
   { far: true });
 }
 
 /** A chunky boot (pivot at the ankle, sole at +6). */
 function foot(): PartArt {
   return part('gorti.youth.foot', { x0: -8, y0: -5, x1: 16, y1: 8 }, (ox, oy) =>
-    flat(roundPoly(tr([[-6, -3], [3, -3], [7, 0], [14, 1.5], [15, 6], [-7, 6]], ox, oy), [2, 2, 3, 3, 1.5, 1.5]), YOUTH.boot, {
-      over: fillOnly(`M${ox - 8} ${oy + 3.8}H${ox + 16}V${oy + 7}H${ox - 8}Z`, YOUTH.pink) + ink(`M${ox - 7} ${oy + 3.8}H${ox + 15}`, DETAIL) + ink(`M${ox + 4} ${oy - 1}l-2 3`, DETAIL * 0.9),
+    comic(roundPoly(tr([[-6, -3], [3, -3], [7, 0], [14, 1.5], [15, 6], [-7, 6]], ox, oy), [2, 2, 3, 3, 1.5, 1.5]), YOUTH.boot, {
+      line: LINE.small,
+      // The pink sole under the shading, a shine on the toe cap.
+      inner: fillOnly(`M${ox - 8} ${oy + 3.8}H${ox + 16}V${oy + 7}H${ox - 8}Z`, YOUTH.pink),
+      rim: [0.8, -1.6],
+      light: `M${ox + 6} ${oy + 0.4}Q${ox + 10.6} ${oy + 1} ${ox + 13} ${oy + 2.6}Q${ox + 9.6} ${oy + 2.2} ${ox + 6} ${oy + 0.4}Z`,
+      lightFill: lightOf(YOUTH.boot, 0.45),
+      over: ink(`M${ox - 7} ${oy + 3.8}H${ox + 15}`, LINE.detail, darkOf(YOUTH.boot, 0.5)) + fold(`M${ox + 4} ${oy - 1}l-2 3`, darkOf(YOUTH.boot, 0.5), LINE.fine * 1.3),
     }),
   { far: true });
 }

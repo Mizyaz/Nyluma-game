@@ -1,5 +1,5 @@
 import { limb, nextId, Rng, smooth, taper, type Pt } from '../../render/2d/svg';
-import { DETAIL, flat, INK, LINE, lightOf, lineFor, OUTLINE, SHADE } from '../../render/2d/style';
+import { darkOf, DETAIL, flat, INK, LINE, lightOf, lineFor, lineW, OUTLINE, SHADE } from '../../render/2d/style';
 import type { PartArt } from '../../render/2d/rig/rigTypes';
 
 // Drawing kit for the characters in the author's manner (the four
@@ -87,11 +87,9 @@ export function barkLines(a: Pt, b: Pt, w: number, seed: number, o: { n?: number
   return s;
 }
 
-/** A tapered root limb segment with bark lines. */
+/** A tapered root limb segment with bark lines (shaded in the comic manner). */
 export function rootSeg(a: Pt, b: Pt, wa: number, wb: number, fill: string, seed: number, o: { bulge?: number; lines?: number; over?: string } = {}): string {
-  return flat(limb(a, b, wa, wb, o.bulge ?? 0.4), fill, {
-    over: barkLines(a, b, (wa + wb) / 2, seed, { n: o.lines ?? 3 }) + (o.over ?? ''),
-  });
+  return comicRoot(a, b, wa, wb, fill, seed, o);
 }
 
 /**
@@ -196,7 +194,7 @@ export function claws(base: Pt, ang: number, spread: number, lens: readonly numb
     const bend = a + curl;
     const mid: Pt = [base[0] + c * L * 0.55, base[1] + sn * L * 0.55];
     const tip: Pt = [mid[0] + Math.cos(bend) * L * 0.45, mid[1] + Math.sin(bend) * L * 0.45];
-    s += flat(taper([base, mid, tip], w0, 0.5), fill, { stroke: DETAIL * 1.2 });
+    s += comic(taper([base, mid, tip], w0, 0.5), fill, { line: LINE.small * 0.9, rim: [w0 * 0.3, -w0 * 0.1], glint: [-w0 * 0.12, w0 * 0.12] });
   }
   return s;
 }
@@ -240,27 +238,78 @@ export function neon(d: string, w: number, c: { glow: string; mid: string; core:
 
 const r2 = (n: number): string => (Math.round(n * 100) / 100).toString();
 
-/** Rough bounds of an absolute path (its points and control points). */
+/**
+ * Bounds of an absolute path (its points and control points; an arc's
+ * circle). Null for relative paths.
+ */
 function bounds(d: string): { x0: number; y0: number; x1: number; y1: number } | null {
-  if (/[a-z]/.test(d.replace(/e-?\d/g, ''))) return null;
-  const n = d.match(/-?\d*\.?\d+(?:e-?\d+)?/g);
-  if (!n || n.length < 2) return null;
+  const toks = d.match(/[A-Za-z]|-?(?:\d+\.?\d*|\.\d+)(?:e-?\d+)?/g);
+  if (!toks) return null;
   let x0 = Infinity;
   let y0 = Infinity;
   let x1 = -Infinity;
   let y1 = -Infinity;
-  for (let i = 0; i + 1 < n.length; i += 2) {
-    const x = Number(n[i]);
-    const y = Number(n[i + 1]);
+  const add = (x: number, y: number): void => {
     x0 = Math.min(x0, x);
     x1 = Math.max(x1, x);
     y0 = Math.min(y0, y);
     y1 = Math.max(y1, y);
+  };
+  let i = 0;
+  const num = (): number => Number(toks[i++]);
+  let cmd = '';
+  let cx = 0;
+  let cy = 0;
+  while (i < toks.length) {
+    if (/[A-Za-z]/.test(toks[i]!)) {
+      cmd = toks[i++]!;
+      if (cmd === 'Z') continue;
+    } else if (cmd === 'Z' || cmd === '') return null;
+    if (i >= toks.length) break;
+    switch (cmd) {
+      case 'M':
+      case 'L':
+      case 'T':
+        cx = num();
+        cy = num();
+        add(cx, cy);
+        break;
+      case 'H':
+        cx = num();
+        add(cx, cy);
+        break;
+      case 'V':
+        cy = num();
+        add(cx, cy);
+        break;
+      case 'C':
+      case 'S':
+      case 'Q':
+        for (let k = cmd === 'C' ? 3 : 2; k > 0; k--) {
+          cx = num();
+          cy = num();
+          add(cx, cy);
+        }
+        break;
+      case 'A': {
+        const r = Math.max(num(), num());
+        i += 3;
+        add(cx - r, cy - r);
+        add(cx + r, cy + r);
+        cx = num();
+        cy = num();
+        add(cx - r, cy - r);
+        add(cx + r, cy + r);
+        break;
+      }
+      default:
+        return null;
+    }
   }
-  return { x0, y0, x1, y1 };
+  return Number.isFinite(x0 + y0 + x1 + y1) && x0 <= x1 ? { x0, y0, x1, y1 } : null;
 }
 
-/** Parallel hatch lines over a box (the comic shadow texture). */
+/** Parallel hatch lines over a box, clipped to it (the comic shadow texture). */
 export function hatchLines(b: { x0: number; y0: number; x1: number; y1: number }, gap: number, color: string, w: number = LINE.fine * 0.8, ang = -0.95): string {
   const c = Math.cos(ang);
   const s = Math.sin(ang);
@@ -269,12 +318,21 @@ export function hatchLines(b: { x0: number; y0: number; x1: number; y1: number }
   const R = Math.hypot(b.x1 - b.x0, b.y1 - b.y0) / 2 + 2;
   let d = '';
   for (let k = -R; k <= R; k += gap) {
-    // Lines along (c, s), offset k along the normal (-s, c).
+    // Lines along (c, s), offset k along the normal (-s, c), cut to the box.
     const ox = cx - s * k;
     const oy = cy + c * k;
-    d += `M${r2(ox - c * R)} ${r2(oy - s * R)}L${r2(ox + c * R)} ${r2(oy + s * R)}`;
+    let t0 = -R;
+    let t1 = R;
+    for (const [p, q] of [[-c, ox - b.x0], [c, b.x1 - ox], [-s, oy - b.y0], [s, b.y1 - oy]] as const) {
+      if (Math.abs(p) < 1e-9) {
+        if (q < 0) t1 = t0;
+      } else if (p < 0) t0 = Math.max(t0, q / p);
+      else t1 = Math.min(t1, q / p);
+    }
+    if (t1 - t0 < 0.3) continue;
+    d += `M${r2(ox + c * t0)} ${r2(oy + s * t0)}L${r2(ox + c * t1)} ${r2(oy + s * t1)}`;
   }
-  return `<path d="${d}" fill="none" style="stroke:${color}" stroke-width="${w}" stroke-linecap="round"/>`;
+  return d ? `<path d="${d}" fill="none" style="stroke:${color}" stroke-width="${w}" stroke-linecap="round"/>` : '';
 }
 
 export interface ComicOpts {
@@ -320,7 +378,9 @@ export function comic(d: string, fill: string, o: ComicOpts = {}): string {
   const id = nextId('m');
   const line = o.line ?? LINE.limb;
   const tone = o.tone ?? SHADE.cool;
-  let s = `<g><path d="${d}" fill="${fill}"/><clipPath id="c${id}"><path d="${d}"/></clipPath><g clip-path="url(#c${id})">`;
+  // The fill goes inside the clipped group: the group is isolated, and the
+  // multiplied shadows must darken the fill and the patches under them.
+  let s = `<g><clipPath id="c${id}"><path d="${d}"/></clipPath><g clip-path="url(#c${id})"><path d="${d}" fill="${fill}"/>`;
   s += o.inner ?? '';
   let shade = '';
   if (o.rim) {
@@ -352,6 +412,37 @@ export function comicLimb(a: Pt, b: Pt, wa: number, wb: number, fill: string, o:
   const w = (wa + wb) / 2;
   const { bulge, ...rest } = o;
   return comic(limb(a, b, wa, wb, bulge ?? 0.4), fill, { rim: [w * 0.34, -w * 0.12], glint: [-w * 0.1, w * 0.1], hatch: w > 9 ? 2.3 : 0, ...rest });
+}
+
+/**
+ * `flat` in the comic manner, shading sized to the shape: a cel shadow
+ * along its back and underside (hatched when the shape is big), a glint
+ * along its front and top, and a contour whose weight follows its size, in
+ * the fill's own dark tone. `depth` scales the shadow (0: contour only).
+ */
+export function cflat(d: string, fill: string, o: ComicOpts & { depth?: number; stroke?: number } = {}): string {
+  const b = bounds(d);
+  const w = b ? b.x1 - b.x0 : 10;
+  const h = b ? b.y1 - b.y0 : 10;
+  const sz = Math.min(w, h);
+  const k = o.depth ?? 1;
+  const { depth: _d, stroke, ...rest } = o;
+  const shaded = sz * k >= 4.5;
+  return comic(d, fill, {
+    line: stroke !== undefined ? Math.max(stroke, lineW(Math.max(w, h)) * 0.8) : lineW(Math.max(w, h)),
+    ...(shaded ? { rim: [Math.min(7.5, sz * 0.24 * k), -Math.min(3, sz * 0.08 * k)] as [number, number], glint: [-Math.max(0.5, Math.min(1.6, sz * 0.06)), Math.max(0.5, Math.min(1.8, sz * 0.07))] as [number, number] } : {}),
+    hatch: shaded && sz * k > 13 ? 2.4 : 0,
+    ...rest,
+  });
+}
+
+/** A root limb in the comic manner: shaded, with bark grooves in its own dark tone. */
+export function comicRoot(a: Pt, b: Pt, wa: number, wb: number, fill: string, seed: number, o: { bulge?: number; lines?: number; over?: string; inner?: string } = {}): string {
+  return comicLimb(a, b, wa, wb, fill, {
+    bulge: o.bulge ?? 0.4,
+    inner: o.inner,
+    over: barkLines(a, b, (wa + wb) / 2, seed, { n: o.lines ?? 3, color: darkOf(fill, 0.5) }) + (o.over ?? ''),
+  });
 }
 
 /** Ink in a shape's own darker colour (folds, creases, seams). */

@@ -99,11 +99,11 @@ export function lineW(size: number): number {
 
 /** Multiply tones of the cel shadows (a cool violet shade; a warm one for skin). */
 export const SHADE = {
-  cool: '#cdbfe0',
-  deep: '#b3a2cf',
-  warm: '#ebc0b6',
-  hatch: '#9e8bbd',
-  hatchWarm: '#cf9486',
+  cool: '#d6cfe1',
+  deep: '#c3bad3',
+  warm: '#e4c6cc',
+  hatch: '#a89cba',
+  hatchWarm: '#c99ca2',
 } as const;
 
 function mixHex(a: string, b: string, t: number): string {
