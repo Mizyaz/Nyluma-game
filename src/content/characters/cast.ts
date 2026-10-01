@@ -6,7 +6,7 @@ import { RIG_COWARD, RIG_MECH } from './forms';
 import { RIG_GORTI_CHILD } from './gortiChild';
 import { RIG_GORTI_WARRIOR } from './gortiWarrior';
 import { RIG_GORTI_YOUTH } from './gortiYouth';
-import { RIG_GORTI_HUMAN, RIG_GORTI_HUMAN_SUN, RIG_GORTI_SUIT } from './sivasli';
+import { RIG_GORTI_HUMAN, RIG_GORTI_HUMAN_BALD, RIG_GORTI_HUMAN_SUN, RIG_GORTI_SUIT } from './sivasli';
 
 // Who can stand in a room and talk (a room file's `npcs[].who`, and the
 // `who` of its lines). Speakers without a body (the Sun, the Moons, the
@@ -27,6 +27,7 @@ export const CAST: Record<string, CastMember> = {
   suit: { name: 'Takım Elbiseli', rig: RIG_GORTI_SUIT, pose: humanoid },
   moonMan: { name: 'Ay Başlı', rig: RIG_GORTI_HUMAN, pose: humanoid },
   sunMan: { name: 'Güneş Başlı', rig: RIG_GORTI_HUMAN_SUN, pose: humanoid },
+  baldMan: { name: 'Sivaslı Amca', rig: RIG_GORTI_HUMAN_BALD, pose: humanoid },
   child: { name: 'Küçük Gorti', rig: RIG_GORTI_CHILD, pose: humanoid },
   youth: { name: 'Genç Gorti', rig: RIG_GORTI_YOUTH, pose: humanoid },
   warrior: { name: 'Savaşçı Gorti', rig: RIG_GORTI_WARRIOR, pose: humanoid },

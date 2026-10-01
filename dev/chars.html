@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Character sheet</title>
+<style>
+html,body{margin:0;background:#e9e2d6;color:#3b3245;font:12px/1.3 sans-serif}
+#sheet{display:flex;flex-direction:column;gap:6px;padding:8px}
+.row{display:flex;flex-wrap:wrap;gap:4px;align-items:flex-start}
+.row>div.label{writing-mode:vertical-rl;transform:rotate(180deg);font-weight:bold;padding:2px}
+figure{margin:0;text-align:center}
+figcaption{font-size:11px;opacity:.8}
+canvas{display:block;background:var(--bg,#efe8dc);border-radius:3px}
+</style>
+</head>
+<body>
+<div id="sheet"></div>
+<script type="module" src="/src/dev/charSheet.ts"></script>
+</body>
+</html>

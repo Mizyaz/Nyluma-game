@@ -1,4 +1,9 @@
 import type { Angles } from './fk';
+import { HA, haPulse, kahkahaPose, laughEnv, laughPose, smashPhase, smashPose, SMASH } from './actionPoses';
+import { GAITS, gaitPose, standPose } from './gaitPoses';
+import { clamp01, cycleOf, profileOf, rigProfile, type RigProfile } from './poseKit';
+
+export { registerRig, rigProfile, type RigProfile } from './poseKit';
 
 // Procedural pose library for the humanoid cutout rigs. A pose is a set of
 // local joint angles (radians) plus joint offsets. Limbs hang down at 0; a
@@ -48,7 +53,7 @@ export interface PoseParams {
   lie?: number;
 }
 
-export type Emote = 'surprise' | 'pain' | 'joy' | 'anger' | 'talk' | 'listen' | 'relief' | 'worry' | 'effort' | 'shout';
+export type Emote = 'surprise' | 'pain' | 'joy' | 'anger' | 'talk' | 'listen' | 'relief' | 'worry' | 'effort' | 'shout' | 'laugh';
 
 /** Brow state: raise (px, negative = up), knit (rad, + = angry, - = sad), asym (px on the near brow). */
 interface BrowSet {
@@ -68,7 +73,10 @@ const EMOTES: Record<Emote, (t: number) => BrowSet> = {
   worry: (t) => ({ raise: -1.5, knit: -0.55 + 0.05 * S(t * 6), asym: 0.8 }),
   effort: (t) => ({ raise: 2, knit: 0.55 + 0.05 * S(t * 20), asym: 0 }),
   shout: (t) => ({ raise: 2.4, knit: 0.8 + 0.06 * S(t * 26), asym: 0 }),
+  // Brows up and apart, hopping with every "ha".
+  laugh: (t) => ({ raise: -4.2 - 1.6 * Math.abs(S(t * HA)), knit: -0.34, asym: -0.8 }),
 };
+
 
 /** What the brows do during each animation: big, readable reactions. */
 function browsFor(anim: string, t: number, prm: PoseParams, st: HumanoidStyle): BrowSet {
@@ -104,6 +112,22 @@ function browsFor(anim: string, t: number, prm: PoseParams, st: HumanoidStyle): 
     case 'stomp':
       b = t < 0.26 ? { raise: 1.5, knit: 0.55, asym: 0 } : { raise: 2.8, knit: 0.75, asym: 0 };
       break;
+    case 'laugh':
+    case 'kahkaha': {
+      const e = laughEnv(t, prm);
+      const big = anim === 'kahkaha' ? 1.3 : 1;
+      const l = EMOTES.laugh(anim === 'kahkaha' ? t * 0.9 : t);
+      b = { raise: l.raise * big * e, knit: l.knit * e, asym: l.asym * e };
+      break;
+    }
+    case 'smash': {
+      // Frowning hard on the wind-up, fierce on the blow, easing after.
+      const u = prm.k ?? t / SMASH.dur;
+      const ph = smashPhase(clamp01(u));
+      const fade = ph === 'recover' ? 1 - clamp01((u - 0.68) / 0.3) : 1;
+      b = ph === 'wind' ? { raise: 2.2, knit: 0.72, asym: -1.2 } : { raise: 3 * fade, knit: 0.9 * fade, asym: 0 };
+      break;
+    }
     case 'walk':
       b = { raise: 0, knit: st === 'suit' ? -0.3 : 0.1, asym: 0 };
       break;
@@ -208,10 +232,13 @@ function applyBrows(p: PoseOut, b: BrowSet, st: HumanoidStyle): void {
   const lean = st === 'root' ? 1.35 : st === 'mech' ? 0.95 : 1.15;
   p.angles.browN = b.knit * lean;
   p.offsets.browN = { x: b.knit * 1.4, y: (b.raise + b.asym * 0.6) * lift };
+  // The far brow of a three-quarter face mirrors the knit (its inner end is
+  // on the other side of the nose) and rises a little less.
+  p.angles.browF = -b.knit * lean * 0.85;
+  p.offsets.browF = { x: -b.knit * 0.8, y: (b.raise - b.asym * 0.3) * lift * 0.85 };
 }
 
 const S = Math.sin;
-const C = Math.cos;
 const easeOut = (x: number): number => 1 - (1 - x) * (1 - x);
 const smooth01 = (e0: number, e1: number, x: number): number => {
   const u = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
@@ -408,6 +435,37 @@ function faceFor(anim: string, t: number, prm: PoseParams, st: HumanoidStyle, id
       f.ey = 0.55;
       f.mouth = 'grit';
       break;
+    case 'laugh':
+    case 'kahkaha': {
+      // Eyes squeezed into happy arcs; the mouth wide open, opening wider
+      // with each "ha".
+      const e = laughEnv(t, prm);
+      const pulse = anim === 'kahkaha' ? haPulse(t, HA * 0.9) : haPulse(t);
+      f.eye = e > 0.2 ? 'happy' : '';
+      f.mouth = e > 0.35 ? 'laugh' : e > 0.1 ? 'grin' : '';
+      f.ms = anim === 'kahkaha' ? 0.95 + 0.3 * pulse : 0.82 + 0.24 * pulse;
+      break;
+    }
+    case 'smash': {
+      const u = clamp01(prm.k ?? t / SMASH.dur);
+      const ph = smashPhase(u);
+      if (ph === 'wind') {
+        f.ey = 0.6;
+        f.mouth = 'grit';
+      } else if (ph === 'strike' || u < 0.6) {
+        // The shout of the blow.
+        f.ey = 0.7;
+        f.mouth = 'open';
+        f.ms = 1.45;
+      } else if (ph === 'impact') {
+        f.eye = 'shut';
+        f.mouth = 'grit';
+      } else {
+        f.ey = 0.85;
+        f.mouth = u < 0.8 ? 'grit' : '';
+      }
+      break;
+    }
     case 'torchUp':
       f.ey = 1.1;
       f.mouth = 'open';
@@ -489,21 +547,32 @@ function faceFor(anim: string, t: number, prm: PoseParams, st: HumanoidStyle, id
         f.mouth = 'open';
         f.ms = 1.55 + 0.12 * S(t * 28);
         break;
+      case 'laugh':
+        // Eyes squeezed into happy arcs, the mouth wide open with each "ha".
+        f.eye = 'happy';
+        f.mouth = 'laugh';
+        f.ms = 0.82 + 0.26 * Math.abs(S(t * HA));
+        break;
     }
   }
   return f;
 }
 
-function applyFace(p: PoseOut, f: Face, prm: PoseParams): void {
+function applyFace(p: PoseOut, f: Face, prm: PoseParams, prof: RigProfile | undefined): void {
   const open = f.eye === '' || f.eye === 'sad';
   const blink = open ? Math.min(1, Math.max(0, prm.blink ?? 0)) : 0;
-  p.frames = { ...(p.frames ?? {}), eyeN: f.eye, mouth: f.mouth };
+  // Eyes with lids close on their 'shut' shape once a blink is half way;
+  // screen and lens eyes squash to a line.
+  const lids = prof?.blink === 'shut' && blink > 0.55;
+  p.frames = { ...(p.frames ?? {}), eyeN: lids ? 'shut' : f.eye, mouth: f.mouth };
   p.scales = {
     ...(p.scales ?? {}),
-    eyeN: { x: f.ex, y: Math.max(0.08, f.ey * (1 - 0.9 * blink)) },
+    eyeN: lids ? { x: f.ex, y: 1 } : { x: f.ex, y: Math.max(0.08, f.ey * (1 - 0.9 * blink)) },
     mouth: { x: f.ms, y: f.ms },
   };
 }
+
+
 
 function base(): PoseOut {
   return { angles: {}, offsets: {} };
@@ -517,23 +586,19 @@ export function styleOf(rigId: string): HumanoidStyle {
   return 'root';
 }
 
+/** Each build's stance: knees, torso and head (the walk and run are in gaitPoses' GAITS). */
 interface StyleK {
-  stride: number;
-  knee: number;
-  arm: number;
-  bob: number;
-  lean: number;
   kneeBase: number;
   torsoBase: number;
   headBase: number;
 }
 
 const STYLE: Record<HumanoidStyle, StyleK> = {
-  root: { stride: 0.66, knee: 1.1, arm: 0.7, bob: 4.4, lean: 0.13, kneeBase: 0.06, torsoBase: 0.02, headBase: 0 },
-  human: { stride: 0.46, knee: 0.85, arm: 0.45, bob: 2.6, lean: 0.07, kneeBase: 0.09, torsoBase: -0.03, headBase: 0.05 },
-  coward: { stride: 0.38, knee: 0.8, arm: 0.1, bob: 1.5, lean: 0.1, kneeBase: 0.55, torsoBase: 0.16, headBase: 0.18 },
-  mech: { stride: 0.5, knee: 0.9, arm: 0.3, bob: 1.2, lean: 0.04, kneeBase: 0.12, torsoBase: 0, headBase: 0 },
-  suit: { stride: 0.3, knee: 0.6, arm: 0.12, bob: 1.2, lean: 0.05, kneeBase: 0.1, torsoBase: 0.2, headBase: 0.28 },
+  root: { kneeBase: 0.06, torsoBase: 0.02, headBase: 0 },
+  human: { kneeBase: 0.09, torsoBase: -0.03, headBase: 0.05 },
+  coward: { kneeBase: 0.55, torsoBase: 0.16, headBase: 0.18 },
+  mech: { kneeBase: 0.12, torsoBase: 0, headBase: 0 },
+  suit: { kneeBase: 0.1, torsoBase: 0.2, headBase: 0.28 },
 };
 
 function stanceBase(p: PoseOut, st: HumanoidStyle, t: number): void {
@@ -585,6 +650,11 @@ export function humanoidPose(rigId: string, anim: string, t: number, prm: PosePa
       a.armL = (a.armL ?? 0) + 0.04 * b;
       if (st === 'root') a.head = (a.head ?? 0) + 0.02 * S(t * 0.7);
       if (st === 'suit') p.offsets.torso = { x: 0, y: -0.3 * b };
+      // Feet planted, the weight shifting slowly from leg to leg; the
+      // upper body leans a little against it.
+      const shift = standPose(p, profileOf(rigId), t, p.offsets.hips?.y ?? 0, st === 'mech' ? 0.25 : st === 'suit' ? 1.3 : 1);
+      a.torso = (a.torso ?? 0) - 0.014 * shift;
+      a.head = (a.head ?? 0) + 0.01 * shift;
       const act = idleAction(prm.idleT ?? 0, st);
       if (act) applyIdle(p, act, t, st);
       break;
@@ -613,44 +683,35 @@ export function humanoidPose(rigId: string, anim: string, t: number, prm: PosePa
     case 'run':
     case 'push': {
       const ph = prm.phase ?? t * 8;
-      const sp = Math.min(1, Math.max(0.25, prm.speed ?? 1));
-      const stride = k.stride * (0.55 + 0.45 * sp);
-      const legR = -stride * S(ph);
-      const legL = stride * S(ph);
-      const kneeR = k.kneeBase + k.knee * Math.pow(Math.max(0, C(ph)), 1.4) * sp;
-      const kneeL = k.kneeBase + k.knee * Math.pow(Math.max(0, -C(ph)), 1.4) * sp;
-      a.legR = legR - k.kneeBase * 0.5;
-      a.legL = legL - k.kneeBase * 0.5;
-      a.shinR = kneeR;
-      a.shinL = kneeL;
-      a.footR = -(a.legR + a.shinR) * 0.85 + (S(ph) < 0 ? -0.25 * -S(ph) : 0);
-      a.footL = -(a.legL + a.shinL) * 0.85 + (S(ph) > 0 ? -0.25 * S(ph) : 0);
-      const bob = k.bob * (0.5 + 0.5 * sp);
-      p.offsets.hips = { x: 0, y: k.kneeBase * 10 + bob * (0.5 - 0.5 * C(2 * ph)) };
-      a.torso = k.torsoBase + k.lean * sp;
-      a.head = k.headBase - a.torso * 0.5 + 0.03 * S(2 * ph);
-      if (st !== 'coward') {
-        const lag = 0.35;
-        a.armR = k.arm * sp * S(ph - lag) + 0.05;
-        a.armL = -k.arm * sp * S(ph - lag) + 0.1;
-        a.foreR = -0.25 - 0.2 * sp * Math.max(0, -S(ph - lag));
-        a.foreL = -0.25 - 0.2 * sp * Math.max(0, S(ph - lag));
-      }
-      if (st === 'human') {
-        // Settling shoulders/belly after each step.
-        p.offsets.torso = { x: 0, y: 1.1 * Math.max(0, S(2 * ph + 0.6)) };
-      }
-      if (st === 'mech') {
-        a.armR = 0.18 * S(Math.round(ph * 2) / 2);
-        a.armL = -0.18 * S(Math.round(ph * 2) / 2);
-      }
-      if (st === 'suit') {
-        a.foreR = -0.08 + 0.035 * S(t * 31);
-        a.foreL = -0.06 + 0.035 * S(t * 27 + 1);
-      }
+      const sp = anim === 'run' ? 1 : clamp01(prm.speed ?? 1);
+      const prof = profileOf(rigId);
+      const drop = p.offsets.hips?.y ?? 0;
       if (anim === 'push') {
+        // Leaning into the load, arms braced against it, digging in.
         a.torso = 0.5;
         a.head = -0.25;
+      }
+      const g = gaitPose(p, prof, GAITS[st], cycleOf(rigId, prof), ph, anim === 'push' ? Math.min(sp, 0.3) : sp, drop, st !== 'coward' && anim !== 'push');
+      if (st === 'human') {
+        // The belly and shoulders settle a beat after each step.
+        p.offsets.torso = { x: 0, y: 1.3 * g.settle * (0.4 + 0.6 * sp) };
+      }
+      if (st === 'mech') {
+        // Servo arms: they tick between positions.
+        const q = Math.round(Math.cos(ph) * 3) / 3;
+        a.armR = 0.2 * q;
+        a.armL = -0.2 * q;
+      }
+      if (st === 'suit') {
+        a.foreR = (a.foreR ?? 0) + 0.02 * S(t * 31);
+        a.foreL = (a.foreL ?? 0) + 0.02 * S(t * 27 + 1);
+      }
+      if (st === 'coward') {
+        // The torch bobs with the steps.
+        a.armR = (a.armR ?? 0) + 0.05 * g.low;
+        a.armL = (a.armL ?? 0) + 0.05 * g.low;
+      }
+      if (anim === 'push') {
         a.armR = -1.35;
         a.foreR = -0.25;
         a.armL = -1.25;
@@ -658,6 +719,15 @@ export function humanoidPose(rigId: string, anim: string, t: number, prm: PosePa
       }
       break;
     }
+    case 'laugh':
+      laughPose(p, profileOf(rigId), t, prm, st === 'coward');
+      break;
+    case 'kahkaha':
+      kahkahaPose(p, profileOf(rigId), t, prm);
+      break;
+    case 'smash':
+      smashPose(p, profileOf(rigId), t, prm);
+      break;
     case 'crouch': {
       // The instant before leaving the ground (snapped at take-off, then the
       // joints spring open into 'takeoff').
@@ -1069,7 +1139,7 @@ export function humanoidPose(rigId: string, anim: string, t: number, prm: PosePa
     p.offsets.eyeN = { x: e.x, y: e.y + prm.look * 2.4 };
   }
   const idle = anim === 'idle' ? idleAction(prm.idleT ?? 0, st) : null;
-  applyFace(p, faceFor(anim, t, prm, st, idle), prm);
+  applyFace(p, faceFor(anim, t, prm, st, idle), prm, rigProfile(rigId));
   applyBrows(p, browsFor(anim, t, prm, st), st);
   return p;
 }

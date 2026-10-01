@@ -74,3 +74,51 @@ export interface FlatOpts {
 export function flat(d: string, fill: string, o: FlatOpts = {}): string {
   return cel(d, { fill, stroke: o.stroke ?? OUTLINE, ink: o.ink ?? INK, inner: o.inner, over: o.over, opacity: o.opacity, sx: 0, sy: 0 });
 }
+
+// ------------------------------------------------------------ comic inking
+
+/**
+ * The characters' comic line weights (logical px; parts rasterize at 2×).
+ * Adaptive: the silhouette of a big shape carries the heaviest line, limbs
+ * a lighter one, small pieces lighter still, inner drawing (folds, seams)
+ * and texture the finest. All of them are drawn opaque, in a dark tone of
+ * the colour they bound, never as faint or flat black strokes.
+ */
+export const LINE = {
+  body: 1.95,
+  limb: 1.6,
+  small: 1.3,
+  detail: 0.95,
+  fine: 0.68,
+} as const;
+
+/** Contour width for a shape whose larger extent is `size` logical px. */
+export function lineW(size: number): number {
+  return Math.max(0.8, Math.min(LINE.body, 0.85 + 0.42 * Math.log2(Math.max(1, size) / 6)));
+}
+
+/** Multiply tones of the cel shadows (a cool violet shade; a warm one for skin). */
+export const SHADE = {
+  cool: '#d6cfe1',
+  deep: '#c3bad3',
+  warm: '#e4c6cc',
+  hatch: '#a89cba',
+  hatchWarm: '#c99ca2',
+} as const;
+
+function mixHex(a: string, b: string, t: number): string {
+  const pa = parseInt(a.slice(1), 16);
+  const pb = parseInt(b.slice(1), 16);
+  const ch = (s: number): number => Math.round(((pa >> s) & 255) * (1 - t) + ((pb >> s) & 255) * t);
+  return `#${((ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).padStart(6, '0')}`;
+}
+
+/** A highlight tone of a fill: toward warm paper white. */
+export function lightOf(fill: string, k = 0.55): string {
+  return /^#[0-9a-fA-F]{6}$/.test(fill) ? mixHex(fill, '#fffcf4', k) : fill;
+}
+
+/** A darker, cooler tone of a fill (inner lines drawn in the shape's own colour). */
+export function darkOf(fill: string, k = 0.35): string {
+  return /^#[0-9a-fA-F]{6}$/.test(fill) ? mixHex(fill, '#4a3b5c', k) : fill;
+}

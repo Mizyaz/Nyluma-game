@@ -54,4 +54,6 @@ export interface RigDef {
   attach: Record<string, { joint: string; x: number; y: number }>;
   /** Animation names this rig's animator implements. */
   animations: string[];
+  /** Joints whose art glows (a screen face): the diorama does not shade them. */
+  glowing?: string[];
 }

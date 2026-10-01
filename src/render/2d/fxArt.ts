@@ -205,12 +205,14 @@ export function makeFxTextures(tex: Phaser.Textures.TextureManager): void {
       t?.add(`s${i}`, 0, i * cell, cell, cell, cell);
     }
   }
-  // Soft contact shadow (2.5D grounding).
+  // Soft contact shadow (2.5D grounding): an ellipse filling the canvas,
+  // dark in its middle (the gradient is drawn round, then squashed, so its
+  // centre is the canvas's middle in the round space: 64, 64).
   {
     const [c, x] = artCanvas(128, 40);
-    const g = x.createRadialGradient(64, 20, 0, 64, 20, 64);
-    g.addColorStop(0, 'rgba(29,27,30,0.42)');
-    g.addColorStop(0.55, 'rgba(29,27,30,0.2)');
+    const g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+    g.addColorStop(0, 'rgba(29,27,30,0.5)');
+    g.addColorStop(0.45, 'rgba(29,27,30,0.3)');
     g.addColorStop(1, 'rgba(29,27,30,0)');
     x.setTransform(1, 0, 0, 40 / 128, 0, 0);
     x.fillStyle = g;
