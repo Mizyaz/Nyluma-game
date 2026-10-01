@@ -1,8 +1,9 @@
 import { expect, type Page } from '@playwright/test';
+import { PORTS } from './ports';
 
-export const ROOT = 'http://localhost:4173/';
-export const SUBPATH = 'http://localhost:4174/kristaller-dunyasi/';
-export const E2E = 'http://localhost:4175/';
+export const ROOT = `http://localhost:${PORTS.root}/`;
+export const SUBPATH = `http://localhost:${PORTS.sub}/kristaller-dunyasi/`;
+export const E2E = `http://localhost:${PORTS.e2e}/`;
 
 export interface ProbeState {
   scenes: string[];
