@@ -5,8 +5,8 @@ export const VIEW_H = 720;
 /** Jumping is off: the story rooms are walked on one floor; the jump key does nothing and the touch Zıpla button stays hidden. */
 export const JUMPING = false;
 
-// Movement envelope (world units / seconds). Tuned by playtesting; every
-// compulsory jump in the rooms stays well inside these numbers.
+// Movement envelope (world units / seconds), tuned by playtesting. The jump
+// numbers only matter while JUMPING is on (no room needs a jump).
 export const GRAVITY = 1400;
 export const MAX_FALL = 920;
 

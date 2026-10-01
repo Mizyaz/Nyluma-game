@@ -65,7 +65,10 @@ test.describe('experience', () => {
 
   test('Rezonans: a flower opens and a bird flies out of it, then everything clears', async ({ page }) => {
     const errors = watchErrors(page);
-    await jump(page, { room: 'r01' });
+    const bot = await jump(page, { room: 'r01' });
+    // The room starts under the painting; between the bed and the toy whale
+    // nothing asks to be looked at, so E is a Rezonans move.
+    await bot.walkTo(525, 8);
     const s0 = await probe(page);
     expect(s0.prompts).toEqual([]);
     expect(s0.moves).toMatchObject({ count: 0, ready: true, next: 'bloom' });
