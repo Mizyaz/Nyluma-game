@@ -13,6 +13,8 @@ import { addArt } from './helpers';
 // opens too; beyond it the form anchors into Gorti's legs and wakes him.
 const KEY_TARGET = 135;
 const KEY_STEP = 15;
+/** The hidden lock, on the near side of the second wall (room data: x 1845). */
+const LOCK = { x: 1825, y: 700 };
 
 export function r11(w: WorldScene): RoomScript {
   let keyGhost: Phaser.GameObjects.Image | null = null;
@@ -141,7 +143,7 @@ export function r11(w: WorldScene): RoomScript {
       keyOutline?.setAngle(KEY_TARGET).setVisible(!w.quest.has('r11.m1'));
       keyGhost = addArt(w, 'prop.keyoutline', 1035, 560, DEPTH.props + 5);
       keyGhost?.setTint(hex(P.crystalTealLight)).setAlpha(0.8).setVisible(false);
-      lockImg = addArt(w, 'prop.lock', 1880, 700, DEPTH.props + 4);
+      lockImg = addArt(w, 'prop.lock', LOCK.x, LOCK.y, DEPTH.props + 4);
       lockImg?.setAlpha(0).setVisible(!w.quest.has('r11.m2'));
       beam = w.add.graphics().setDepth(DEPTH.fx - 2);
       legs = addArt(w, 'giant.legs', 2640, 822, DEPTH.backProps + 6);
@@ -162,7 +164,7 @@ export function r11(w: WorldScene): RoomScript {
       if (looking) {
         const eye = w.player.rig.attachPoint('eye');
         beam?.fillStyle(hex(P.vein), 0.18 + 0.05 * Math.sin(time / 80));
-        beam?.fillTriangle(eye.x, eye.y, 1890, 650, 1890, 760);
+        beam?.fillTriangle(eye.x, eye.y, LOCK.x + 10, LOCK.y - 50, LOCK.x + 10, LOCK.y + 60);
       }
       if (legs) legs.setY(822 + Math.sin(time / 900) * 2);
     },
