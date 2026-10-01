@@ -88,6 +88,14 @@ export const DAY: Mood = {
 /** The most lights the box's shader takes. */
 export const MAX_LIGHTS = 8;
 
+/** Colour `a` turned toward `b` by t (0 … 1), channel by channel. */
+export function mixColor(a: number, b: number, t: number): number {
+  if (t <= 0) return a;
+  const k = Math.min(1, t);
+  const ch = (s: number): number => Math.round(((a >> s) & 255) + (((b >> s) & 255) - ((a >> s) & 255)) * k);
+  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
+}
+
 const r8 = (c: number): number => ((c >> 16) & 255) / 255;
 const g8 = (c: number): number => ((c >> 8) & 255) / 255;
 const b8 = (c: number): number => (c & 255) / 255;

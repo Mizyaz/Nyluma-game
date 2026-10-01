@@ -25,11 +25,13 @@ import type { ExtraInteract, RoomScript } from '../../content/scripts/types';
 import type { Interactable } from '../world/Interactable';
 import { PaintingGallery } from '../world/PaintingGallery';
 import { MoveSystem } from '../../gameplay/moves/MoveSystem';
+import { PlayerGlow } from '../../gameplay/PlayerGlow';
 import { ComicWords, WORDS, pick } from '../../render/2d/fx/comicWords';
 import { FaceDialogue } from '../cinematics/FaceDialogue';
 import { ROMAN } from '../../ui/Menus';
 import type { AmbienceId } from '../systems/AudioSystem';
 import type { SkyScene } from './SkyScene';
+import { SkyLamps } from './SkyLamps';
 import type { SkyJson, SkyOut } from '../content/types';
 import { breakFlag } from '../content/compile';
 import { shatter } from '../../render/2d/fx/shatter';
@@ -110,6 +112,9 @@ export class WorldScene extends Phaser.Scene {
   comic!: ComicWords;
   /** The Rezonans button's moves (flowers and birds, the earth, crystals). */
   moves!: MoveSystem;
+  /** Gorti's own light, and the Sun's and the Moon's lamps in the room. */
+  private glow: PlayerGlow | null = null;
+  private skyLamps: SkyLamps | null = null;
 
   constructor() {
     super('world');
@@ -188,9 +193,22 @@ export class WorldScene extends Phaser.Scene {
     quest.setForm(form);
     const kind = this.def.player === 'horse' ? 'gorti' : this.def.player;
     this.player = new Player(this, cp.x, cp.y, kind, form);
-    // Gorti's screen face glows: a soft pink light goes with him.
-    const pl = this.player;
-    this.paper.lighting.add({ x: 0, y: 0, z: 40, color: 0xff86d6, radius: 320, intensity: 0.8, cast: false, follow: () => (pl.rig.container.visible ? { x: pl.x + pl.facing * 10, y: pl.feetY - 108 } : null) });
+    // Gorti's screen face glows and lights what is near him; the Sun and the
+    // Moon light the room from where they show.
+    const dlg = app.ui.dialogue;
+    const glow = new PlayerGlow(this, this.player, this.paper.lighting, {
+      head: () => this.skyOut,
+      talking: () => dlg.isOpen && dlg.speaker === NAMES.gorti && dlg.typing,
+      moves: () => this.moves,
+    });
+    const lamps = new SkyLamps(this.paper, () => this.sky);
+    this.glow = glow;
+    this.skyLamps = lamps;
+    this.cleanups.push(() => {
+      glow.destroy();
+      lamps.destroy();
+      this.glow = this.skyLamps = null;
+    });
     this.player.setFacing(cp.facing ?? 1);
     this.physics.add.collider(this.player.zone, this.room.group);
 
@@ -727,6 +745,8 @@ export class WorldScene extends Phaser.Scene {
     const eye = this.paper.lens.project(this.player.x, this.player.feetY - 80, 0);
     this.sky?.lookAtScreen(eye.x, eye.y);
     this.updateCamera(dt);
+    this.skyLamps?.update();
+    this.glow?.update(dt / 1000);
     this.room.stream(this.cameras.main.scrollX);
     this.bursts.update(dt);
     this.gallery?.update(dt);

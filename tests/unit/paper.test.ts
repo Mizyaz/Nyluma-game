@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('phaser', () => ({ GameObjects: { Components: { TransformMatrix: class {} } } }));
 
 import { Lens, type Framing } from '../../src/paper/lens';
-import { Lighting, WHIMSICAL, type Mood } from '../../src/paper/light';
+import { Lighting, WHIMSICAL, mixColor, type Mood } from '../../src/paper/light';
 
 const FRAMING: Framing = { span: 480, dist: 900, height: 230, feet: 0.82 };
 const FLOOR = 600;
@@ -63,8 +63,9 @@ describe('paper lens', () => {
   });
 });
 
+const eye = { x: 1000, floor: FLOOR };
+
 describe('paper lamps', () => {
-  const eye = { x: 1000, floor: FLOOR };
   const plain: Mood = { ...WHIMSICAL, key: undefined };
 
   it('throws a figure’s shadow from the key light, which leads the eye', () => {
@@ -100,5 +101,29 @@ describe('paper lamps', () => {
     const out = { x: 0, y: 0, z: 0, k: 1 };
     lit.casterAt(5000, FLOOR - 60, 0, out);
     expect(out.k).toBe(0);
+  });
+});
+
+describe('light colours', () => {
+  it('turns one colour toward another channel by channel, and no further', () => {
+    expect(mixColor(0x000000, 0xffffff, 0)).toBe(0x000000);
+    expect(mixColor(0x000000, 0xff8040, 0.5)).toBe(0x804020);
+    expect(mixColor(0x102030, 0xffffff, 1)).toBe(0xffffff);
+    expect(mixColor(0x102030, 0xffffff, 3)).toBe(0xffffff);
+  });
+
+  it('lets a follower hide its lamp and move it each frame', () => {
+    const lit = new Lighting({ ...WHIMSICAL, key: undefined });
+    let at: { x: number; y: number } | null = null;
+    lit.add({ x: 0, y: 0, z: 300, color: 0xffcf7a, intensity: 1, radius: 1800, follow: () => at });
+    const out = { x: 0, y: 0, z: 0, k: 0 };
+    lit.update(1 / 60, eye);
+    lit.casterAt(1000, FLOOR - 60, 0, out);
+    expect(out.k).toBe(0);
+    at = { x: 1200, y: 300 };
+    lit.update(1 / 60, eye);
+    lit.casterAt(1000, FLOOR - 60, 0, out);
+    expect(out.k).toBeGreaterThan(0);
+    expect([out.x, out.y, out.z]).toEqual([1200, 300, 300]);
   });
 });

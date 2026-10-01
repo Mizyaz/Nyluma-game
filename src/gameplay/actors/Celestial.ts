@@ -192,6 +192,24 @@ export class Face {
     this.talking = ms / 1000;
   }
 
+  /**
+   * How brightly the face shines just now (about 1), for the light it
+   * throws into the room: it breathes, swells through a laugh or a word,
+   * dims for a cough and a blink, and the Sun shines with its rays. Slow
+   * waves only (a whole room's light must never flash fast).
+   */
+  get glow(): number {
+    const sun = this.kind === 'sun';
+    let k = 1 + (sun ? 0.07 : 0.05) * Math.sin(this.t * (sun ? 1.3 : 0.8));
+    if (this.laughing) k *= 1 + 0.1 * Math.sin(this.t * 9);
+    if (this.talking > 0) k *= 1 + 0.08 * Math.sin(this.t * 7);
+    if (this.coughT > 0) k *= 1 - 0.3 * Math.sin((this.coughT / 0.9) * Math.PI);
+    const blink = this.blinkT > 0 ? Math.sin((this.blinkT / 0.28) * Math.PI) : 0;
+    k *= 1 - 0.2 * Math.max(blink, this.lidDrop);
+    if (sun) k *= 0.45 + 0.55 * Math.min(1, this.rayLevel);
+    return k;
+  }
+
   /** Dims the face toward the night's lilac (0: as drawn), for the one that is not out. */
   dim(k: number): void {
     if (k === this.dimmed) return;

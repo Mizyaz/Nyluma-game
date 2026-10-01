@@ -101,6 +101,17 @@ Conventions:
 
 - `src/content/characters/sky.ts` draws both faces in bold ink (`#2b2228`): socket, iris (it follows the gaze), heavy lid, and a shut eye for the blink.
 - `src/gameplay/actors/Celestial.ts` animates them (18 rays). `SkyScene.ts` places them and dims the one that is not shining.
+- They are light sources. `SkyScene` draws each face's halo and soft beams into the room
+  (`src/render/2d/fx/lightArt.ts`). `src/engine/scenes/SkyLamps.ts` hangs a lamp for each
+  before the torn front, on the eye's ray through its face, so the light comes from where the
+  face shows. The one that is out lights the room and throws the shadows (the kahkaha swings
+  them), and the room's air warms under the Sun and turns cold blue under the Moon. Their
+  strength follows the face (`Face.glow`: breath, blink, laugh, talk). Only slow waves: a whole
+  room's light must never flash fast.
+- Gorti's own light is `src/gameplay/PlayerGlow.ts`: a bloom about his screen face and a lamp
+  that never throws his own shadow. It breathes, and swells when he talks, sings or laughs. Each
+  Rezonans move flashes it in that move's colour. The amca shines with his head, and the coward
+  with his torch.
 - `src/ui/LoadingView.ts` is the loading screen. It uses the same faces as inline SVG (`skyFaceSvg`), and a crystal cluster grows with the progress.
 
 ## Other pending work
