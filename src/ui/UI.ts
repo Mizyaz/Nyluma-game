@@ -45,6 +45,9 @@ export class UI {
     window.addEventListener('orientationchange', sync);
     game.events.once('ready', () => {
       game.scale.on('resize', sync);
+      // The canvas box can still settle after the window's last resize event
+      // (the portrait band is laid out by CSS): follow the canvas itself too.
+      if (typeof ResizeObserver !== 'undefined') new ResizeObserver(sync).observe(game.canvas);
       sync();
     });
     game.events.on('prestep', () => app.input.beginFrame());
