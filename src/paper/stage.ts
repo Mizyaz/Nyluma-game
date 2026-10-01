@@ -115,8 +115,13 @@ export class PaperStage {
     this.shadowed.delete(s);
   }
 
-  /** A figure throws its shadow from the room's lamps onto the floor. */
-  castShadow(c: Caster): CastShadow {
+  /**
+   * A figure throws its shadow from the room's lamps onto the floor (WebGL
+   * only: the Canvas renderer neither lights the room nor fills a texture
+   * with one colour, so there it would be a pale copy of the figure).
+   */
+  castShadow(c: Caster): CastShadow | null {
+    if (this.scene.game.renderer.type !== Phaser.WEBGL) return null;
     const s = new CastShadow(this, c);
     this.casters.add(s);
     return s;
