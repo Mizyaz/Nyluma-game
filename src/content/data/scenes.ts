@@ -17,7 +17,7 @@ export interface SceneEntry {
   chapter: number;
   room: RoomId;
   checkpoint: string;
-  /** "r05 · Hatırlanan Bir Hayatın Ağırlığı — Tepe (Ulu Ay)" */
+  /** "r05 · Hatırlanan Bir Hayatın Ağırlığı — Ulu Ay" */
   label: string;
   flags?: readonly string[];
   form?: string;
@@ -28,17 +28,17 @@ const CHECKPOINT_NAMES: Record<string, string> = {
   start: 'Başlangıç',
   door: 'Kapı',
   node: 'Düğüm',
-  climb: 'Tırmanış',
-  upper: 'Üst kat',
-  top: 'Tepe',
+  climb: 'Balinalar',
+  upper: 'Kök kapı',
+  top: 'Tünel ağzı',
   pool: 'Havuz',
   focus: 'Odak',
   tree: 'Ağaç (Ay ve Güneş)',
   canopy: 'Ağacın tacı',
   after: 'Sonrası',
-  elevated: 'Yükselti',
+  elevated: 'Taşlar',
   gate: 'Geçit',
-  hill: 'Tepe (Ulu Ay)',
+  hill: 'Ulu Ay',
   knots: 'Düğümler',
   k1: 'Düğüm 1',
   k2: 'Düğüm 2',
@@ -58,7 +58,7 @@ const CHECKPOINT_NAMES: Record<string, string> = {
 
 /** Story facts a checkpoint needs so its room does not replay what came before. */
 const SETUP: Record<string, { flags?: readonly string[]; form?: string }> = {
-  // On the whale spiral the tree has bloomed (the spiral is its bloom).
+  // At the foot of the bloomed tree: the way up the whale spiral starts there.
   r03_canopy: { flags: ['r03.moon', 'r03.sun', 'r03.star', 'r03.bloom'] },
   r06_knots: { flags: ['r06.shout'], form: 'root' },
   r12_room: { flags: ['r12.intercut', 'r12.door'] },

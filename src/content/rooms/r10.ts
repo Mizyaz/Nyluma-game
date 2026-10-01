@@ -1,6 +1,8 @@
 import type { RoomDef } from '../data/roomTypes';
 
-// Chapter IV — the inner dormitory: torch and reversed memories.
+// Chapter IV — the inner dormitory: torch and reversed memories. One floor:
+// its two gaps close as the beds slide into bridges (the stations' story)
+// before Gorti gets there.
 export const R10: RoomDef = {
   id: 'r10',
   chapter: 4,
@@ -22,9 +24,6 @@ export const R10: RoomDef = {
     { x: 2100, y: 820, w: 1100, h: 180, style: 'floor' },
     { id: 'bridge1', x: 990, y: 820, w: 220, h: 26, style: 'bed', grow: true, when: 'r10.s1' },
     { id: 'bridge2', x: 1890, y: 820, w: 220, h: 26, style: 'bed', grow: true, when: 'r10.s2' },
-    { x: 290, y: 752, w: 170, h: 20, style: 'bed', oneWay: true, hidden: true },
-    { x: 1390, y: 752, w: 170, h: 20, style: 'bed', oneWay: true, hidden: true },
-    { x: 2290, y: 752, w: 170, h: 20, style: 'bed', oneWay: true, hidden: true },
   ],
   exits: [],
   props: [

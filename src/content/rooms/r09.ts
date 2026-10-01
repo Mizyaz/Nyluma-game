@@ -1,6 +1,7 @@
 import type { RoomDef } from '../data/roomTypes';
 
-// Chapter IV — sparrow clearing by the river.
+// Chapter IV — sparrow clearing by the river. One floor from end to end: a
+// stone slab lies across the river.
 export const R09: RoomDef = {
   id: 'r09',
   chapter: 4,
@@ -18,10 +19,9 @@ export const R09: RoomDef = {
   ],
   solids: [
     { x: 0, y: 900, w: 1300, h: 200, style: 'moss' },
+    // The river's bed, and the slab across it, level with both banks.
     { x: 1300, y: 960, w: 400, h: 140, style: 'stone' },
-    // Stepping stones across the river (wading through its bed works too).
-    { x: 1360, y: 880, w: 80, h: 24, style: 'stone', oneWay: true },
-    { x: 1530, y: 872, w: 80, h: 24, style: 'stone', oneWay: true },
+    { id: 'slab', x: 1290, y: 900, w: 420, h: 28, style: 'stone' },
     { x: 1700, y: 900, w: 1500, h: 200, style: 'moss' },
   ],
   memories: [{ id: 'm7', x: 2300, y: 900 }],
@@ -31,7 +31,8 @@ export const R09: RoomDef = {
   ],
   exits: [],
   props: [
-    { key: 'prop.river', x: 1500, y: 962, depth: 14 },
+    // Under the slab, the river runs on.
+    { key: 'prop.river', x: 1500, y: 962, depth: -4 },
     { key: 'prop.tree', x: 520, y: 902, depth: -40, scale: 1.1 },
     { key: 'prop.tree', x: 1150, y: 902, depth: -40, flipX: true },
     { key: 'prop.tree', x: 2280, y: 902, depth: -40, scale: 1.3 },
