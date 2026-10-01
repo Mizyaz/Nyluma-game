@@ -1,17 +1,20 @@
 import { h } from './dom';
-import { FLAT, bendOf, hoverPose, layStripsAt, liftPose, pointAt, reach, screenX, shadeAt, turnPose, type Pose, type StripPlace } from './pageCurl';
+import { ACROSS, ALONG, PERSPECTIVE, across, bend, flat, hoverCurl, liftCurl, litAt, shadowDrift, turnCurl, type Bent, type Curl, type Lit, type Sheet } from './pageCurl';
 
 // A page of the storybook turning over, in real 3D: the frame just shown is
-// cut into vertical strips of paper, and CSS places each strip in
-// perspective along the curve of the page (pageCurl.ts), with its printed
-// face, its back (paper, the print showing faintly through, hatched in its
-// shadow), a glint along the curl and the paper's thickness at the free
-// edge. Every motion is a Web Animation on transform and opacity only, so
-// the browser's compositor runs it smoothly even while the next room is
-// being built on the main thread.
+// the page. Picked up by its free edge, its foot first, it leaves the book
+// over a tight roll and stands up toward the viewer, and is turned over and
+// away past the spine (pageCurl.ts). It is drawn on one canvas every frame:
+// the page still lying, then the paper beyond the fold in thin bands from
+// the fold out, each in its own perspective and light and each laid a
+// little over the last, so the paper shows no seam. The print bends into the
+// roll; the back is a warmer, darker paper with the print showing faintly
+// through, mirrored; the roll is lit from the upper right, dark in its
+// crease and hatched in its shade; and the lifted paper throws a soft
+// shadow on whatever lies beneath it.
 
+const clamp01 = (v: number): number => Math.min(1, Math.max(0, v));
 const r2 = (n: number): string => (Math.round(n * 100) / 100).toString();
-const deg = (a: number): string => r2((a * 180) / Math.PI);
 
 /**
  * Plays the transition's animations. Normally they run on the document's
@@ -24,6 +27,7 @@ export class Clock {
   private now = 0;
   private list: { a: Animation; at: number }[] = [];
   private timers: { at: number; fn: () => void }[] = [];
+  private frames: ((t: number) => void)[] = [];
 
   constructor() {
     this.manual = !!(window as unknown as { __kdManualClock?: boolean }).__kdManualClock;
@@ -49,6 +53,14 @@ export class Clock {
     this.timers.push({ at: this.now + s, fn });
   }
 
+  /** Calls `fn` with the controller's time on every tick from now on; the call returned stops it. */
+  each(fn: (t: number) => void): () => void {
+    this.frames.push(fn);
+    return () => {
+      this.frames = this.frames.filter((f) => f !== fn);
+    };
+  }
+
   tick(t: number): void {
     this.now = t;
     if (this.timers.length) {
@@ -58,6 +70,7 @@ export class Clock {
         for (const e of due) e.fn();
       }
     }
+    for (const f of this.frames.slice()) f(t);
     if (!this.manual) return;
     for (const e of this.list) {
       if (e.a.playState === 'idle') continue;
@@ -81,6 +94,7 @@ export class Clock {
     for (const e of this.list) e.a.cancel();
     this.list = [];
     this.timers = [];
+    this.frames = [];
   }
 }
 
@@ -92,52 +106,155 @@ export interface Rect {
   h: number;
 }
 
-interface StripEl {
-  el: HTMLElement;
-  sh: HTMLElement;
-  gl: HTMLElement;
-  bsh: HTMLElement;
-  bgl: HTMLElement;
-}
-
-/** The shadows' own width (CSS px): they are drawn this wide and scaled. */
-const SHADOW_W = 200;
-
-/** Strips in a page: about one every 26 CSS px, within bounds. */
-function stripCount(w: number): number {
-  return Math.max(16, Math.min(44, Math.round(w / 26)));
-}
-
-/** Perspective of the book, as a multiple of its width (smaller: stronger). */
-const PERSPECTIVE = 1.5;
-
-/** The phases' keyframe counts (more: smoother curves between samples). */
-const SAMPLES = { lift: 18, hover: 20, turn: 44 } as const;
 /** One breath of the held curl (s). */
-const HOVER_S = 2 * Math.PI / 5.2;
+const HOVER_S = (2 * Math.PI) / 5.2;
+/** The paper: its back (warmer and darker than the print's white), a blank page, its cut edge, and its outline in its own darker tone. */
+const PAPER = { back: '#dfc8a1', plain: '#f6eedd', edge: 'rgba(255, 250, 238, 0.95)', line: 'rgba(132, 106, 76, 0.85)' } as const;
+/** The game's plum shadow tone, and the pale of paper turned to the light (rgb). */
+const SHADOW = '58, 42, 74';
+const PALE = '255, 249, 236';
+/** The roll is drawn in bands this many radians wide… */
+const ARC_STEP = 0.12;
+/** …and the straight paper beyond it in bands each rising about this many px (perspective changes along it). */
+const RISE_STEP = 9;
+/** How far each band reaches back over the last (CSS px on screen), so no seam shows. */
+const OVERLAP = 1.6;
+
+type P2 = [number, number];
+/** An affine map, as a canvas transform: x' = a·x + c·y + e, y' = b·x + d·y + f. */
+type Mat = [number, number, number, number, number, number];
+
+/** A band of the paper beyond the fold. */
+interface Band {
+  /** Its ends, along the paper from the fold (px). */
+  d0: number;
+  d1: number;
+  b0: Bent;
+  b1: Bent;
+  /** Its print toward the viewer (else its back). */
+  front: boolean;
+  /** Its height at its middle (px). */
+  z: number;
+  /** The page's frame → the page's frame as seen (in perspective). */
+  m: Mat;
+  /** Its outline in the page's frame, reaching back a little over the last band (for its paper)… */
+  poly: P2[];
+  /** …and exactly (for its light and shade). */
+  exact: P2[];
+}
+
+/** The part of the page between two lines across it (`lo` ≤ s ≤ `hi`, s along ACROSS), as a polygon. */
+function bandOf(sh: Sheet, lo: number, hi: number): P2[] {
+  let poly: P2[] = [
+    [0, 0],
+    [sh.w, 0],
+    [sh.w, sh.h],
+    [0, sh.h],
+  ];
+  if (lo > -Infinity) poly = clipHalf(poly, lo, 1);
+  if (hi < Infinity && poly.length) poly = clipHalf(poly, hi, -1);
+  return poly;
+}
+
+/** Keeps the side of a polygon where sign·(s − v) ≥ 0. */
+function clipHalf(poly: P2[], v: number, sign: 1 | -1): P2[] {
+  const out: P2[] = [];
+  const val = (p: P2): number => sign * (p[0] * ACROSS.x + p[1] * ACROSS.y - v);
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i]!;
+    const b = poly[(i + 1) % poly.length]!;
+    const va = val(a);
+    const vb = val(b);
+    if (va >= 0) out.push(a);
+    if (va >= 0 !== vb >= 0) {
+      const t = va / (va - vb);
+      out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+    }
+  }
+  return out.length >= 3 ? out : [];
+}
+
+const apply = (m: Mat, p: P2): P2 => [m[0] * p[0] + m[2] * p[1] + m[4], m[1] * p[0] + m[3] * p[1] + m[5]];
+const compose = (a: Mat, b: Mat): Mat => [
+  a[0] * b[0] + a[2] * b[1],
+  a[1] * b[0] + a[3] * b[1],
+  a[0] * b[2] + a[2] * b[3],
+  a[1] * b[2] + a[3] * b[3],
+  a[0] * b[4] + a[2] * b[5] + a[4],
+  a[1] * b[4] + a[3] * b[5] + a[5],
+];
+
+/** Paper's grain: a small tile of soft flecks, laid over the paper's back. */
+let grainTile: HTMLCanvasElement | null = null;
+function grain(): HTMLCanvasElement {
+  if (grainTile) return grainTile;
+  const c = document.createElement('canvas');
+  c.width = c.height = 96;
+  const g = c.getContext('2d');
+  if (g) {
+    let seed = 7;
+    const rnd = (): number => {
+      seed = (seed * 16807) % 2147483647;
+      return seed / 2147483647;
+    };
+    for (let i = 0; i < 900; i++) {
+      const dark = rnd() < 0.55;
+      g.fillStyle = dark ? `rgba(120, 96, 70, ${(0.05 + rnd() * 0.08).toFixed(3)})` : `rgba(255, 252, 244, ${(0.12 + rnd() * 0.2).toFixed(3)})`;
+      g.fillRect(rnd() * 96, rnd() * 96, 0.6 + rnd() * 1.6, 0.5 + rnd() * 0.8);
+    }
+  }
+  grainTile = c;
+  return c;
+}
+
+/** Light hatching for the paper's shade, in its shadow tone (lines about 59° and 5px apart, as everywhere in the game). */
+let hatchTile: HTMLCanvasElement | null = null;
+function hatch(): HTMLCanvasElement {
+  if (hatchTile) return hatchTile;
+  const c = document.createElement('canvas');
+  c.width = 6;
+  c.height = 10;
+  const g = c.getContext('2d');
+  if (g) {
+    g.strokeStyle = `rgba(${SHADOW}, 0.9)`;
+    g.lineWidth = 0.9;
+    // From corner to corner, so the lines run on from tile to tile.
+    for (const dx of [-6, 0, 6]) {
+      g.beginPath();
+      g.moveTo(dx, 10);
+      g.lineTo(dx + 6, 0);
+      g.stroke();
+    }
+  }
+  hatchTile = c;
+  return c;
+}
+
+type Phase = { kind: 'still' } | { kind: 'lift'; at: number; dur: number } | { kind: 'turn'; at: number; dur: number; from: Curl };
 
 export class Leaf {
-  readonly el: HTMLElement;
-  private readonly leaf: HTMLElement;
-  private readonly strips: StripEl[] = [];
-  private readonly edge: HTMLElement;
-  private readonly shadow: HTMLElement;
-  /** The roll's outline, inked where it turns away out of sight. */
-  private readonly ink: HTMLElement;
-  /** The shadow the rolled-over part throws on the page beneath, beyond its free edge. */
-  private readonly tipShadow: HTMLElement;
-  private readonly n: number;
-  /** Where the strips are cut, px from the spine (n + 1 of them, 0 to the page's width). */
-  private readonly bounds: number[] = [];
-  private readonly persp: number;
-  private hover: Animation | null = null;
+  readonly el: HTMLCanvasElement;
+  private readonly g: CanvasRenderingContext2D | null;
+  private readonly sheet: Sheet;
+  private readonly dpr: number;
+  /** The page's frame → the layer (CSS px). */
+  private readonly toLayer: Mat;
+  /** The eye: over the page's middle, PERSPECTIVE widths away. */
+  private readonly eye: { s: number; t: number; d: number };
+  private readonly print: CanvasPattern | null;
+  private readonly ghost: CanvasPattern | null;
+  private readonly grain: CanvasPattern | null;
+  private readonly hatch: CanvasPattern | null;
+  /** A picture that cannot be laid on as a pattern (old browsers): it is shown lying as it is. */
+  private fallback: HTMLCanvasElement | null = null;
+  private phase: Phase = { kind: 'still' };
+  private stop: (() => void) | null = null;
   private live: Animation[] = [];
-  private tmp: StripPlace[] = [];
 
   /**
    * A page over `rect` printed with `source` (null: plain paper); `dir`: the
    * way its free edge points (1: right, the page turns over to the left).
-   * `flat`: it will only fade (one piece, nothing to bend).
+   * `still`: it will only fade.
    */
   constructor(
     private readonly clock: Clock,
@@ -145,211 +262,62 @@ export class Leaf {
     readonly rect: Rect,
     source: HTMLCanvasElement | null,
     readonly dir: 1 | -1,
-    flat = false,
+    still = false,
   ) {
-    const { w, h: ht } = rect;
-    this.n = flat ? 1 : stripCount(w);
-    this.persp = w * PERSPECTIVE;
-    this.el = h('div', { class: 'pt-book' });
-    this.el.style.cssText = `left:${r2(rect.x)}px;top:${r2(rect.y)}px;width:${r2(w)}px;height:${r2(ht)}px;perspective:${r2(this.persp)}px`;
-    this.shadow = h('i', { class: dir > 0 ? 'pt-gs' : 'pt-gs flip' });
-    this.tipShadow = h('i', { class: dir > 0 ? 'pt-gs flip' : 'pt-gs' });
-    // It hangs from the spine and turns with the page (see run).
-    this.tipShadow.style.cssText = dir > 0 ? 'transform-origin:0 0 0' : `left:${r2(w - SHADOW_W)}px;transform-origin:100% 0 0`;
-    this.leaf = h('div', { class: 'pt-leaf' });
-    this.ink = h('i', { class: 'pt-ink' });
-    this.el.append(this.shadow, this.leaf, this.ink);
-    // On the page itself, just over it (the 3D order puts it under what lies on top).
-    this.leaf.append(this.tipShadow);
-    // Cut at whole pixels of the print, so the page shows it exactly while it lies flat.
-    const sw = source ? source.width : Math.max(1, Math.round(w));
-    const kx = w / sw;
-    const cuts: number[] = [];
-    for (let i = 0; i <= this.n; i++) cuts.push(Math.round((i * sw) / this.n));
-    for (const c of cuts) this.bounds.push(c * kx);
+    this.sheet = { w: Math.max(1, rect.w), h: Math.max(1, rect.h) };
+    const box = parent.getBoundingClientRect();
+    const lw = Math.max(1, Math.round(box.width || rect.x + rect.w));
+    const lh = Math.max(1, Math.round(box.height || rect.y + rect.h));
+    this.dpr = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+    this.el = h('canvas', { class: 'pt-leaf' });
+    this.el.width = Math.round(lw * this.dpr);
+    this.el.height = Math.round(lh * this.dpr);
+    this.el.style.cssText = `width:${lw}px;height:${lh}px`;
+    this.g = this.el.getContext('2d');
+    const { w, h: ht } = this.sheet;
+    this.toLayer = [dir, 0, 0, 1, rect.x + (dir > 0 ? 0 : w), rect.y];
+    const mid: P2 = [w / 2, ht / 2];
+    this.eye = { s: mid[0] * ACROSS.x + mid[1] * ACROSS.y, t: mid[0] * ALONG.x + mid[1] * ALONG.y, d: w * PERSPECTIVE };
+    const g = this.g;
+    // The print, laid on the page's frame (mirrored with it when the page turns the other way).
+    const fit = (p: CanvasPattern | null, cw: number, chh: number): CanvasPattern | null => {
+      if (!p) return null;
+      if (typeof p.setTransform !== 'function') return null;
+      p.setTransform(new DOMMatrix(dir > 0 ? [w / cw, 0, 0, ht / chh, 0, 0] : [-w / cw, 0, 0, ht / chh, w, 0]));
+      return p;
+    };
+    this.print = g && source ? fit(g.createPattern(source, 'no-repeat'), source.width, source.height) : null;
     const ghost = source ? shrink(source, 0.25) : null;
-    for (let i = 0; i < this.n; i++) {
-      // Columns of the print under strip i (one more toward the free edge: no seams).
-      const x0 = dir > 0 ? cuts[i]! : Math.max(0, sw - cuts[i + 1]! - 1);
-      const x1 = dir > 0 ? Math.min(sw, cuts[i + 1]! + 1) : sw - cuts[i]!;
-      const strip = h('div', { class: 'pt-strip' });
-      strip.style.cssText = `left:${r2(x0 * kx)}px;width:${r2((x1 - x0) * kx)}px;height:${r2(ht)}px;transform-origin:${dir > 0 ? '0' : '100%'} 50% 0`;
-      const front = h('div', { class: 'pt-face pt-front' });
-      if (source) front.append(slice(source, x0, x1));
-      else front.classList.add('pt-plain');
-      const sh = h('i', { class: 'pt-sh' });
-      const gl = h('i', { class: 'pt-gl' });
-      front.append(sh, gl);
-      const back = h('div', { class: 'pt-face pt-back' });
-      if (ghost) {
-        const g = ghost.width / sw;
-        const g0 = Math.floor(x0 * g);
-        const gc = slice(ghost, g0, Math.min(ghost.width, Math.max(g0 + 1, Math.ceil(x1 * g))));
-        gc.className = 'pt-ghost';
-        back.append(gc);
-      }
-      const bsh = h('i', { class: 'pt-sh' });
-      const bgl = h('i', { class: 'pt-gl' });
-      back.append(bsh, bgl);
-      // The paper's cut edge along the free side, seen once the page is over.
-      if (i === this.n - 1) back.append(h('i', { class: dir > 0 ? 'pt-rim' : 'pt-rim r' }));
-      strip.append(front, back);
-      this.leaf.append(strip);
-      this.strips.push({ el: strip, sh, gl, bsh, bgl });
-    }
-    // The paper's thickness along the free edge.
-    this.edge = h('i', { class: 'pt-edge' });
-    this.edge.style.height = `${r2(ht)}px`;
-    this.edge.style.width = `${r2(this.thickness)}px`;
-    this.leaf.append(this.edge);
-    this.place(FLAT);
+    this.ghost = g && ghost ? fit(g.createPattern(ghost, 'no-repeat'), ghost.width, ghost.height) : null;
+    this.grain = g ? g.createPattern(grain(), 'repeat') : null;
+    this.hatch = g ? g.createPattern(hatch(), 'repeat') : null;
+    // A picture that cannot be laid on as a pattern is shown as it is.
+    if (source && !this.print && g) this.fallback = source;
     parent.append(this.el);
+    this.render(flat(this.sheet));
+    if (!still) this.stop = clock.each((t) => this.render(this.curlAt(t)));
   }
 
-  private lay(p: Pose): StripPlace[] {
-    return layStripsAt(p, this.bounds, this.rect.w, this.tmp);
-  }
-
-  /** Pose → each strip's transform (for keyframes). */
-  private transforms(p: Pose): string[] {
-    const places = this.lay(p);
-    const out: string[] = [];
-    for (let i = 0; i < this.n; i++) {
-      const s = places[i]!;
-      // From where the strip's spine-side edge lies flat to where the pose puts it.
-      const dx = s.x - this.bounds[i]!;
-      out.push(`translate3d(${r2(this.dir * dx)}px,0px,${r2(s.z)}px) rotateY(${deg(-this.dir * s.a)}deg)`);
+  /** The pose at the controller's time `t`. */
+  private curlAt(t: number): Curl {
+    const p = this.phase;
+    if (p.kind === 'lift') {
+      const held = t - p.at - p.dur;
+      return held < 0 ? liftCurl((t - p.at) / p.dur, this.sheet) : hoverCurl(held % HOVER_S, this.sheet);
     }
-    return out;
-  }
-
-  /** The thickness edge at the free end, standing across the paper. */
-  private edgeTransform(p: Pose): string {
-    const places = this.lay(p);
-    const last = places[this.n - 1]!;
-    // The tip: the last strip's far end.
-    const seg = this.rect.w - this.bounds[this.n - 1]!;
-    const tx = last.x + Math.cos(last.a) * seg;
-    const tz = last.z + Math.sin(last.a) * seg;
-    // Across the paper (along its normal), centred on the tip: the element
-    // lies at the book's left edge and turns about its own middle.
-    const bx = this.dir > 0 ? tx : this.rect.w - tx;
-    return `translate3d(${r2(bx - this.thickness / 2)}px,0px,${r2(tz)}px) rotateY(${deg(-this.dir * (last.a + Math.PI / 2))}deg)`;
-  }
-
-  private get thickness(): number {
-    return Math.max(3, this.rect.w / 300);
-  }
-
-  /** Shows a pose at once (no animation). */
-  place(p: Pose): void {
-    const t = this.transforms(p);
-    this.strips.forEach((s, i) => {
-      s.el.style.transform = t[i]!;
-    });
-    this.edge.style.transform = this.edgeTransform(p);
-  }
-
-  /** Animates a run of poses: transforms, light, the paper's edge and the shadows it throws. */
-  private run(pose: (u: number) => Pose, samples: number, ms: number, o: { delay?: number; iterations?: number } = {}): Animation[] {
-    const frames: Keyframe[][] = this.strips.map(() => []);
-    const shades: Keyframe[][] = this.strips.map(() => []);
-    const glints: Keyframe[][] = this.strips.map(() => []);
-    const backs: Keyframe[][] = this.strips.map(() => []);
-    const backGlints: Keyframe[][] = this.strips.map(() => []);
-    const edge: Keyframe[] = [];
-    const ground: Keyframe[] = [];
-    const outline: Keyframe[] = [];
-    const tip: Keyframe[] = [];
-    const w = this.rect.w;
-    const dir = this.dir;
-    for (let k = 0; k <= samples; k++) {
-      const u = k / samples;
-      const p = pose(u);
-      const t = this.transforms(p);
-      const places = this.tmp;
-      // A sheen only on the roll itself: paper is matte, its flat parts never flash.
-      const bend = bendOf(p, w);
-      for (let i = 0; i < this.n; i++) {
-        frames[i]!.push({ transform: t[i]!, offset: u });
-        const s = shadeAt(places[i]!.a, dir);
-        const mid = (this.bounds[i]! + this.bounds[i + 1]!) / 2;
-        const onRoll = bend.l > 0 && mid > bend.b - 4 && mid < bend.b + bend.l + 4 ? 1 : 0.2;
-        shades[i]!.push({ opacity: r2(s.front), offset: u });
-        glints[i]!.push({ opacity: r2(s.glint * onRoll), offset: u });
-        backs[i]!.push({ opacity: r2(s.back), offset: u });
-        backGlints[i]!.push({ opacity: r2(s.backGlint * onRoll), offset: u });
-      }
-      edge.push({ transform: this.edgeTransform(p), offset: u });
-      // On the page beneath, just beyond the page's reach: softer and wider the higher it rises.
-      const r = reach(p, w, w, this.persp, dir);
-      const lift = Math.min(1, r.top / (w * 0.25));
-      const width = 16 + w * 0.03 + r.top * 0.5;
-      const x = dir > 0 ? Math.min(w, r.edge) : Math.max(0, r.edge) - width;
-      // Lifted away over the spine, it no longer shades the page beneath.
-      const gone = Math.min(1, Math.max(0, (p.a0 - 1) / 0.7));
-      const a = p.a0 > 2.9 ? 0 : (0.9 - 0.3 * lift) * Math.min(1, r.top / 8) * (1 - gone);
-      ground.push({ transform: `translate3d(${r2(x)}px,0px,0px) scaleX(${r2(width / SHADOW_W)})`, opacity: r2(Math.max(0, a)), offset: u });
-      // The roll's outline, in the paper's own darker tone, as tall as it shows (nearer, taller).
-      const inked = r.top > 2 ? Math.min(1, (r.top - 2) / 10) * (1 - gone) : 0;
-      const tall = this.persp / Math.max(1, this.persp - r.top * 0.5);
-      outline.push({ transform: `translate3d(${r2(r.edge - 1)}px,0px,0px) scaleY(${tall.toFixed(3)})`, opacity: r2(inked), offset: u });
-      // The rolled-over part's free edge, over the page: its shadow falls on
-      // the part still lying there, toward the spine (the light is from the
-      // upper right), softer the higher the edge. Laid in the page's own
-      // frame: from the spine, tilted with it.
-      const q = pointAt(p, w, w);
-      const ca = Math.cos(p.a0);
-      const sa = Math.sin(p.a0);
-      const above = q.z * ca - q.x * sa;
-      // Where the edge shows over the page (in perspective), a little toward the spine.
-      const sx = screenX(q.x, q.z, w, this.persp, dir);
-      const along = dir > 0 ? sx : w - sx;
-      const tw = 12 + above * 0.9;
-      const se = along - above * 0.04;
-      const flatTo = bend.b;
-      const ta = above > 2 && se > 0 && along < flatTo + 8 ? Math.min(0.75, above / 36) : 0;
-      tip.push({ transform: `rotateY(${deg(-dir * p.a0)}deg) translate3d(${r2(dir * (se - tw))}px,0px,1px) scaleX(${r2(Math.max(0.01, tw / SHADOW_W))})`, opacity: r2(ta), offset: u });
-    }
-    const anims: Animation[] = [];
-    const opt = { duration: ms, delay: o.delay ?? 0, iterations: o.iterations ?? 1, fill: (o.iterations ? 'none' : 'both') as FillMode };
-    this.strips.forEach((s, i) => {
-      anims.push(this.clock.play(s.el, frames[i]!, opt));
-      anims.push(this.clock.play(s.sh, shades[i]!, opt));
-      anims.push(this.clock.play(s.gl, glints[i]!, opt));
-      anims.push(this.clock.play(s.bsh, backs[i]!, opt));
-      anims.push(this.clock.play(s.bgl, backGlints[i]!, opt));
-    });
-    anims.push(this.clock.play(this.edge, edge, opt));
-    anims.push(this.clock.play(this.shadow, ground, opt));
-    anims.push(this.clock.play(this.ink, outline, opt));
-    anims.push(this.clock.play(this.tipShadow, tip, opt));
-    return anims;
+    if (p.kind === 'turn') return turnCurl((t - p.at) / p.dur, this.sheet, p.from);
+    return flat(this.sheet);
   }
 
   /** The free edge is picked up and curls over; then it is held, breathing, until `turn`. */
   lift(ms: number): void {
-    this.live.push(...this.run(liftPose, SAMPLES.lift, ms));
-    const loop = this.run((u) => hoverPose(u * HOVER_S), SAMPLES.hover, HOVER_S * 1000, { delay: ms, iterations: Infinity });
-    this.hover = loop[0] ?? null;
-    this.live.push(...loop);
-  }
-
-  /** The held pose right now (where the breathing curl is). */
-  private heldPose(): Pose {
-    if (!this.hover) return liftPose(1);
-    const t = this.clock.timeOf(this.hover);
-    const lift = Number(this.hover.effect?.getTiming().delay ?? 0);
-    if (t < lift) return liftPose(Math.max(0, t) / Math.max(1, lift));
-    return hoverPose(((t - lift) / 1000) % HOVER_S);
+    this.phase = { kind: 'lift', at: this.clock.t, dur: Math.max(0.001, ms / 1000) };
   }
 
   /** Turns the page over and away. */
   turn(ms: number): void {
-    const from = this.heldPose();
-    for (const a of this.live) this.clock.forget(a);
-    this.live = this.run((u) => turnPose(u, from), SAMPLES.turn, ms);
-    this.hover = null;
+    const from = this.curlAt(this.clock.t);
+    this.phase = { kind: 'turn', at: this.clock.t, dur: Math.max(0.001, ms / 1000), from };
   }
 
   /** Reduced motion: the page only fades away. */
@@ -358,19 +326,411 @@ export class Leaf {
   }
 
   destroy(): void {
+    this.stop?.();
+    this.stop = null;
     for (const a of this.live) this.clock.forget(a);
     this.live = [];
     this.el.remove();
   }
-}
 
-/** A copy of columns [x0, x1) of a canvas. */
-function slice(src: HTMLCanvasElement, x0: number, x1: number): HTMLCanvasElement {
-  const c = document.createElement('canvas');
-  c.width = Math.max(1, x1 - x0);
-  c.height = src.height;
-  c.getContext('2d')?.drawImage(src, x0, 0, c.width, src.height, 0, 0, c.width, src.height);
-  return c;
+  // ------------------------------------------------------------ drawing
+
+  /** Draws the page in pose `c`. */
+  private render(c: Curl): void {
+    const g = this.g;
+    if (!g) return;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, this.el.width, this.el.height);
+    if (this.fallback) {
+      // Nothing can bend: the picture lies as it is.
+      const r = this.rect;
+      g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      g.drawImage(this.fallback, r.x, r.y, r.w, r.h);
+      return;
+    }
+    const sh = this.sheet;
+    // The page still lying, up to the fold.
+    this.frame(this.toLayer);
+    const lying = bandOf(sh, -Infinity, c.f);
+    if (lying.length) {
+      this.path(lying);
+      this.paper(true);
+    }
+    const past = across(sh) - c.f;
+    if (past <= 0.5) return;
+    const bands = this.bands(c, past);
+    this.beneath(c, bands);
+    // Each band's paper reaches back over the last band's edge, so no seam
+    // shows; its light and shade go on exactly where it lies, each laid on
+    // once the next band's paper is down (else they would be laid twice
+    // along every edge).
+    let last: Band | null = null;
+    for (const b of bands) {
+      this.base(b);
+      if (last) this.light(c, last);
+      last = b;
+    }
+    if (last) this.light(c, last);
+    this.outline(c, bands);
+  }
+
+  /** Sets the canvas to draw in a frame mapped to the layer by `m` (CSS px). */
+  private frame(m: Mat): void {
+    const k = this.dpr;
+    this.g!.setTransform(m[0] * k, m[1] * k, m[2] * k, m[3] * k, m[4] * k, m[5] * k);
+  }
+
+  private path(poly: readonly P2[]): void {
+    const g = this.g!;
+    g.beginPath();
+    g.moveTo(poly[0]![0], poly[0]![1]);
+    for (let i = 1; i < poly.length; i++) g.lineTo(poly[i]![0], poly[i]![1]);
+    g.closePath();
+  }
+
+  /** Fills the current path with the paper: its print (or a blank page), or its back. */
+  private paper(front: boolean): void {
+    const g = this.g!;
+    g.globalAlpha = 1;
+    if (front) {
+      g.fillStyle = this.print ?? PAPER.plain;
+      g.fill();
+      if (!this.print && this.grain) {
+        g.fillStyle = this.grain;
+        g.fill();
+      }
+      return;
+    }
+    g.fillStyle = PAPER.back;
+    g.fill();
+    if (this.ghost) {
+      // The print showing through, faintly, mirrored (the band's own map mirrors it).
+      g.globalAlpha = 0.17;
+      g.fillStyle = this.ghost;
+      g.fill();
+    }
+    if (this.grain) {
+      g.globalAlpha = 0.8;
+      g.fillStyle = this.grain;
+      g.fill();
+    }
+    g.globalAlpha = 1;
+  }
+
+  /** The perspective at height z. */
+  private k(z: number): number {
+    return this.eye.d / Math.max(1, this.eye.d - Math.min(z, this.eye.d * 0.8));
+  }
+
+  /** How far across a line of paper at (s across, z up) shows. */
+  private seen(s: number, z: number): number {
+    return this.eye.s + (s - this.eye.s) * this.k(z);
+  }
+
+  /** The paper beyond the fold, cut in bands from the fold out (each nearer the eye than the last). */
+  private bands(c: Curl, past: number): Band[] {
+    const arcEnd = Math.min(Math.max(0, c.phi) * c.r, past);
+    const cuts: number[] = [0];
+    const nArc = Math.max(1, Math.ceil(arcEnd / c.r / ARC_STEP));
+    for (let i = 1; i <= nArc; i++) cuts.push((arcEnd * i) / nArc);
+    if (past > arcEnd + 0.25) {
+      const len = past - arcEnd;
+      const n = Math.max(1, Math.min(48, Math.ceil((len * Math.abs(Math.sin(c.phi))) / RISE_STEP)));
+      for (let i = 1; i <= n; i++) cuts.push(arcEnd + (len * i) / n);
+    }
+    const out: Band[] = [];
+    const A = ACROSS;
+    const L = ALONG;
+    let b0 = bend(c, 0);
+    for (let i = 0; i + 1 < cuts.length; i++) {
+      const d0 = cuts[i]!;
+      const d1 = cuts[i + 1]!;
+      const b1 = bend(c, d1);
+      const s0 = c.f + d0;
+      const s1 = c.f + d1;
+      // Across: exact at both ends; along: the perspective at its middle.
+      const x0 = this.seen(c.f + b0.s, b0.z);
+      const x1 = this.seen(c.f + b1.s, b1.z);
+      const gx = (x1 - x0) / Math.max(1e-6, s1 - s0);
+      const z = (b0.z + b1.z) / 2;
+      const km = this.k(z);
+      const lin: Mat = [gx * A.x * A.x + km * L.x * L.x, gx * A.x * A.y + km * L.x * L.y, gx * A.y * A.x + km * L.y * L.x, gx * A.y * A.y + km * L.y * L.y, 0, 0];
+      const ta = x0 - gx * s0;
+      const tl = this.eye.t * (1 - km);
+      const m: Mat = [lin[0], lin[1], lin[2], lin[3], ta * A.x + tl * L.x, ta * A.y + tl * L.y];
+      // Which side the eye sees: the paper's printed side faces up the roll.
+      const a = (b0.a + b1.a) / 2;
+      const sm = c.f + (b0.s + b1.s) / 2;
+      const front = -Math.sin(a) * (this.eye.s - sm) + Math.cos(a) * (this.eye.d - z) > 0;
+      // Reaching back over the last band, a little on screen.
+      const back = OVERLAP / Math.max(0.08, Math.abs(gx));
+      const poly = bandOf(this.sheet, s0 - (i === 0 ? 0.5 : back), s1);
+      const exact = bandOf(this.sheet, s0 - (i === 0 ? 0.5 : 0), s1);
+      if (poly.length) out.push({ d0, d1, b0, b1, front, z, m, poly, exact });
+      b0 = b1;
+    }
+    return out;
+  }
+
+  /** The shadows the lifted paper throws on what lies beneath it: soft, falling away from the light, darkest where the roll meets the page. */
+  private beneath(c: Curl, bands: Band[]): void {
+    const g = this.g!;
+    const r = this.rect;
+    const rise = clamp01(c.phi / 0.9);
+    if (rise <= 0) return;
+    const drift = shadowDrift();
+    const k = this.dpr;
+    g.save();
+    // Only on the page.
+    g.setTransform(k, 0, 0, k, 0, 0);
+    g.beginPath();
+    g.rect(r.x, r.y, r.w, r.h);
+    g.clip();
+    // The paper's own shape, laid on the page beneath and blurred (the shape
+    // itself drawn far off, only its shadow brought back).
+    const far = 40000;
+    g.beginPath();
+    let zMax = 0;
+    for (const b of bands) {
+      zMax = Math.max(zMax, b.z);
+      const lift = Math.min(b.z, 240) * 0.1;
+      const m = compose(this.toLayer, b.m);
+      const pts = b.poly.map((p) => {
+        const q = apply(m, p);
+        return [q[0] + drift.x * lift - far, q[1] + drift.y * lift] as P2;
+      });
+      // All the same way round, so they add up to one shape.
+      let area = 0;
+      for (let i = 0; i < pts.length; i++) {
+        const p = pts[i]!;
+        const q = pts[(i + 1) % pts.length]!;
+        area += p[0] * q[1] - q[0] * p[1];
+      }
+      if (area < 0) pts.reverse();
+      g.moveTo(pts[0]![0], pts[0]![1]);
+      for (let i = 1; i < pts.length; i++) g.lineTo(pts[i]![0], pts[i]![1]);
+      g.closePath();
+    }
+    g.shadowColor = `rgba(${SHADOW}, ${r2(0.34 * rise)})`;
+    g.shadowBlur = (4 + Math.min(12, zMax * 0.03)) * k;
+    g.shadowOffsetX = far * k;
+    g.shadowOffsetY = 0;
+    g.fillStyle = '#000';
+    g.fill();
+    g.restore();
+    // The roll's own shadow on what it has uncovered: a thin dark line where
+    // it meets the paper, and a soft shade beyond.
+    const sil = this.silhouette(c, bands);
+    if (sil !== null) {
+      const wide = c.r * 1.6 + 12;
+      const zone = bandOf(this.sheet, sil - 0.5, sil + wide);
+      if (zone.length) {
+        this.frame(this.toLayer);
+        const grd = g.createLinearGradient(sil * ACROSS.x, sil * ACROSS.y, (sil + wide) * ACROSS.x, (sil + wide) * ACROSS.y);
+        const stops: [number, number][] = [
+          [0, 0.5],
+          [Math.min(0.2, 2.5 / wide), 0.26],
+          [0.35, 0.13],
+          [0.65, 0.04],
+          [1, 0],
+        ];
+        for (const [at, a] of stops) grd.addColorStop(at, `rgba(${SHADOW}, ${r2(a * rise)})`);
+        this.path(zone);
+        g.fillStyle = grd;
+        g.fill();
+      }
+    }
+    // The crease: the page darkens into the fold under the roll.
+    const w = c.r * 1.1 + 4;
+    const crease = bandOf(this.sheet, c.f - w, c.f);
+    if (crease.length) {
+      this.frame(this.toLayer);
+      const grd = g.createLinearGradient((c.f - w) * ACROSS.x, (c.f - w) * ACROSS.y, c.f * ACROSS.x, c.f * ACROSS.y);
+      grd.addColorStop(0, `rgba(${SHADOW}, 0)`);
+      grd.addColorStop(1, `rgba(${SHADOW}, ${r2(0.4 * rise)})`);
+      this.path(crease);
+      g.fillStyle = grd;
+      g.fill();
+    }
+  }
+
+  /** How far out the lifted paper reaches, as seen (across, in the page's frame). */
+  private silhouette(c: Curl, bands: Band[]): number | null {
+    let best = -Infinity;
+    for (const b of bands) best = Math.max(best, this.seen(c.f + b.b0.s, b.b0.z), this.seen(c.f + b.b1.s, b.b1.z));
+    return best > -Infinity ? best : null;
+  }
+
+  /**
+   * How a band's end is lit: the crease darkens the print where it leaves the
+   * page; the back darkens toward the roll's underside. Where the roll faces
+   * the light it is bright, with a sheen; the flat of the sheet keeps the
+   * back's own darker tone (paper is matte: only a breath of the light and
+   * the sheen are on it).
+   */
+  private lit(b: Bent, front: boolean, roll: boolean): Lit {
+    const l = litAt(b.a, front, this.dir);
+    if (front) {
+      const crease = 0.45 * clamp01(1 - b.a / 0.7) * clamp01(b.a / 0.08);
+      l.dark = 1 - (1 - l.dark) * (1 - crease);
+    } else {
+      const under = 0.6 * (1 - clamp01((b.a - Math.PI / 2) / 1.1)) ** 1.6;
+      l.dark = 1 - (1 - l.dark) * (1 - under);
+    }
+    if (roll) {
+      l.sheen *= 0.9;
+    } else {
+      l.sheen *= 0.12;
+      if (!front) l.pale *= 0.3;
+    }
+    return l;
+  }
+
+  /** Lays a band's paper: its print, or its back. */
+  private base(b: Band): void {
+    this.frame(compose(this.toLayer, b.m));
+    this.path(b.poly);
+    this.paper(b.front);
+  }
+
+  /** Lays a band's light and shade on it. */
+  private light(c: Curl, b: Band): void {
+    const g = this.g!;
+    if (!b.exact.length) return;
+    this.frame(compose(this.toLayer, b.m));
+    this.path(b.exact);
+    const arc = c.phi * c.r + 0.5;
+    const l0 = this.lit(b.b0, b.front, b.d0 <= arc);
+    const l1 = this.lit(b.b1, b.front, b.d1 <= arc);
+    const s0 = c.f + b.d0;
+    const s1 = c.f + b.d1;
+    const across = (c0: string, c1: string): CanvasGradient | string => {
+      if (c0 === c1) return c0;
+      const grd = g.createLinearGradient(s0 * ACROSS.x, s0 * ACROSS.y, s1 * ACROSS.x, s1 * ACROSS.y);
+      grd.addColorStop(0, c0);
+      grd.addColorStop(1, c1);
+      return grd;
+    };
+    // Shade: the game's plum, a little hatched where it is deep; or the pale of paper turned to the light.
+    const tone = (l: Lit): string =>
+      l.dark > 0.004 ? `rgba(${SHADOW}, ${r2(0.42 * l.dark ** 0.8)})` : `rgba(${PALE}, ${r2(0.42 * l.pale)})`;
+    const t0 = tone(l0);
+    const t1 = tone(l1);
+    if (l0.dark > 0.004 || l1.dark > 0.004 || l0.pale > 0.004 || l1.pale > 0.004) {
+      g.fillStyle = across(t0, t1);
+      g.fill();
+    }
+    const deep = Math.max(l0.dark, l1.dark);
+    if (this.hatch && deep > 0.3) {
+      g.globalAlpha = Math.min(0.28, (deep - 0.3) * 0.6);
+      g.fillStyle = this.hatch;
+      g.fill();
+      g.globalAlpha = 1;
+    }
+    // The sheen riding the roll.
+    if (l0.sheen > 0.01 || l1.sheen > 0.01) {
+      g.fillStyle = across(`rgba(${PALE}, ${r2(l0.sheen)})`, `rgba(${PALE}, ${r2(l1.sheen)})`);
+      g.fill();
+    }
+  }
+
+  /** Where a point of the page shows now (layer px). */
+  private shown(c: Curl, x: number, y: number): P2 {
+    const s = x * ACROSS.x + y * ACROSS.y;
+    const t = x * ALONG.x + y * ALONG.y;
+    let sa = s;
+    let z = 0;
+    if (s > c.f) {
+      const b = bend(c, s - c.f);
+      sa = c.f + b.s;
+      z = b.z;
+    }
+    const k = this.k(z);
+    const ss = this.eye.s + (sa - this.eye.s) * k;
+    const tt = this.eye.t + (t - this.eye.t) * k;
+    return apply(this.toLayer, [ss * ACROSS.x + tt * ALONG.x, ss * ACROSS.y + tt * ALONG.y]);
+  }
+
+  /** The lifted paper's edges: a pale cut edge inked in the paper's darker tone; and the roll's outline where it turns out of sight. */
+  private outline(c: Curl, bands: Band[]): void {
+    const g = this.g!;
+    const { w, h: ht } = this.sheet;
+    const k = this.dpr;
+    g.setTransform(k, 0, 0, k, 0, 0);
+    // Where the bands are cut, as places across the page: the edges are drawn through them.
+    const cuts = [c.f, ...bands.map((b) => c.f + b.d1)];
+    const lines: P2[][] = [];
+    const run = (pt: (s: number) => P2 | null): void => {
+      const pts: P2[] = [];
+      for (const s of cuts) {
+        const p = pt(s);
+        if (p) pts.push(this.shown(c, p[0], p[1]));
+      }
+      if (pts.length > 1) lines.push(pts);
+    };
+    // The top edge, the foot and the spine's side where they are lifted (s = x·cos + y·sin).
+    run((s) => (s >= c.f && s <= w * ACROSS.x ? [s / ACROSS.x, 0] : null));
+    run((s) => (s >= Math.max(c.f, ht * ACROSS.y) ? [Math.min(w, (s - ht * ACROSS.y) / ACROSS.x), ht] : null));
+    run((s) => (s >= c.f && s <= ht * ACROSS.y && s >= 0 ? [0, s / ACROSS.y] : null));
+    // The free edge, top to foot.
+    const free: P2[] = [];
+    for (let i = 0; i <= 16; i++) {
+      const y = (ht * i) / 16;
+      if (w * ACROSS.x + y * ACROSS.y > c.f) free.push(this.shown(c, w, y));
+    }
+    if (free.length > 1) lines.push(free);
+    g.lineJoin = 'round';
+    g.lineCap = 'round';
+    for (const [width, style] of [
+      [2.6, PAPER.edge],
+      [1.25, PAPER.line],
+    ] as const) {
+      g.lineWidth = width;
+      g.strokeStyle = style;
+      for (const pts of lines) {
+        g.beginPath();
+        g.moveTo(pts[0]![0], pts[0]![1]);
+        for (let i = 1; i < pts.length; i++) g.lineTo(pts[i]![0], pts[i]![1]);
+        g.stroke();
+      }
+    }
+    // The roll's outline: where, seen from the eye, the paper turns out of sight over it.
+    let best = -Infinity;
+    let at = -1;
+    for (const b of bands) {
+      if (b.d1 > c.phi * c.r + 1e-6) break;
+      const x = this.seen(c.f + b.b1.s, b.b1.z);
+      if (x > best) {
+        best = x;
+        at = c.f + b.d1;
+      }
+    }
+    if (at < 0 || c.phi < 0.35) return;
+    const seg = bandOf(this.sheet, at - 0.01, at + 0.01);
+    if (!seg.length) return;
+    // The ends of the line across the page at `at`: where it meets the page's edges.
+    let lo: P2 = seg[0]!;
+    let hi: P2 = seg[0]!;
+    for (const p of seg) {
+      const t = p[0] * ALONG.x + p[1] * ALONG.y;
+      if (t < lo[0] * ALONG.x + lo[1] * ALONG.y) lo = p;
+      if (t > hi[0] * ALONG.x + hi[1] * ALONG.y) hi = p;
+    }
+    const p0 = this.shown(c, lo[0], lo[1]);
+    const p1 = this.shown(c, hi[0], hi[1]);
+    g.strokeStyle = `rgba(${SHADOW}, 0.28)`;
+    g.lineWidth = 3;
+    g.beginPath();
+    g.moveTo(p0[0] + this.dir * 1.6, p0[1]);
+    g.lineTo(p1[0] + this.dir * 1.6, p1[1]);
+    g.stroke();
+    g.strokeStyle = PAPER.line;
+    g.lineWidth = 1.2;
+    g.beginPath();
+    g.moveTo(p0[0], p0[1]);
+    g.lineTo(p1[0], p1[1]);
+    g.stroke();
+  }
 }
 
 /** A smaller copy of a canvas. */

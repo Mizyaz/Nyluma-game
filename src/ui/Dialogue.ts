@@ -35,8 +35,10 @@ export class Dialogue {
   private wordsShown = 0;
   /** Called as each word starts to appear (a voice sound per word). */
   onWord: ((word: string, index: number, line: Line) => void) | null = null;
+  /** Lines asked for while a chapter page is up: they wait for it to open. */
+  private waiting: { lines: Line[]; resolve: () => void; watch: MutationObserver } | null = null;
 
-  constructor(stage: HTMLElement) {
+  constructor(private readonly stage: HTMLElement) {
     this.nameEl = h('div', { class: 'name' });
     this.textEl = h('div', { class: 'text' });
     this.portraitEl = h('div', { class: 'portrait hidden' });
@@ -93,6 +95,9 @@ export class Dialogue {
   }
 
   open(lines: Line[]): Promise<void> {
+    // While a chapter page is up (WarpScene) the room behind it cannot be
+    // seen yet: what is said there waits until the page opens.
+    if (this.stage.classList.contains('pt-chapter')) return this.later(lines);
     if (this.open_) this.finish();
     this.lines = lines.filter((l) => l.text.length > 0);
     this.idx = 0;
@@ -105,6 +110,29 @@ export class Dialogue {
     return new Promise((res) => {
       this.resolve = res;
     });
+  }
+
+  private later(lines: Line[]): Promise<void> {
+    this.drop();
+    return new Promise((resolve) => {
+      const watch = new MutationObserver(() => {
+        if (this.stage.classList.contains('pt-chapter')) return;
+        const w = this.waiting;
+        this.drop(false);
+        if (w) void this.open(w.lines).then(w.resolve);
+      });
+      watch.observe(this.stage, { attributes: true, attributeFilter: ['class'] });
+      this.waiting = { lines, resolve, watch };
+    });
+  }
+
+  /** Forgets lines still waiting for a chapter page to open (`settle`: as if they had been read). */
+  private drop(settle = true): void {
+    const w = this.waiting;
+    if (!w) return;
+    this.waiting = null;
+    w.watch.disconnect();
+    if (settle) w.resolve();
   }
 
   private showLine(): void {
@@ -155,6 +183,7 @@ export class Dialogue {
 
   /** Closes immediately (cutscene skip). */
   finish(): void {
+    this.drop();
     if (!this.open_) return;
     this.open_ = false;
     this.downAt = 0;

@@ -1074,7 +1074,8 @@ export class WorldScene extends Phaser.Scene {
     app.input.releaseAll();
     app.ui.doc.close();
     FaceDialogue.end(this);
-    if (app.ui.dialogue.isOpen) app.ui.dialogue.finish();
+    // Closes what is said, and forgets lines still waiting for a chapter page to open.
+    app.ui.dialogue.finish();
     app.ui.hud.setSkip(null);
     app.ui.hud.clearCaption();
     this.events.off('player-land');
