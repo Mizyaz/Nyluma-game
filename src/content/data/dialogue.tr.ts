@@ -109,7 +109,7 @@ export const DIALOGUE: Record<string, Line[]> = {
     { text: 'Dokunmaya bir türlü cesaret edemiyor.' },
   ],
   eyeleaf: [
-    { text: 'Yerde mor bir yaprak. Bütün çatlakları ortadaki göze varıyor.' },
+    { text: 'Yerde bir yarık açılmış. İçinden bir göz bakıyor; bütün çatlaklar ona varıyor.' },
     { text: 'Göz kırpmıyor. Gorti nereye gitse ardından bakıyor.' },
   ],
   picture: [

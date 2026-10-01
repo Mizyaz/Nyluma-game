@@ -6,6 +6,7 @@ import type { Press } from './press';
 import { Lighting, WHIMSICAL, type Mood } from './light';
 import { RoomAir } from './air';
 import { CastShadow, type Caster } from './castShadow';
+import type { PopUp } from './popUp';
 
 // A room on the paper stage: the box, the eye that looks into it, one camera
 // per depth, and the cards standing in it. The world scene keeps its world:
@@ -40,6 +41,8 @@ export class PaperStage {
   /** Vertical framing shift (device px) for a scripted look, eased. */
   private shiftY = 0;
   zoom = 1;
+  /** While the room arrives through a page turn: its cards standing up (null once all stand). */
+  popUp: PopUp | null = null;
   private shakeT = 0;
   private shakeK = 0;
   private shakeDur = 1;
@@ -244,6 +247,11 @@ export class PaperStage {
       lens.cy += (Math.random() * 2 - 1) * k;
     }
     this.planes.update();
+    if (this.popUp) {
+      // A room arriving as a pop-up: its cards stand up (popUp.ts).
+      this.popUp.apply(this.scene.cameras.cameras as PlaneCamera[], lens, s.floor);
+      if (this.popUp.done) this.popUp = null;
+    }
     this.light(dt);
     for (const c of this.casters) c.update();
     this.hangShadows();

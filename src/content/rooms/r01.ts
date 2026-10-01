@@ -1,5 +1,6 @@
 import type { RoomDef } from '../data/roomTypes';
 import { BOX, ON_WALL, PLANE, STAGE_BOX, inWide } from './r01Stage';
+import { FLOOR_EYE_ORIGIN } from '../art/p1FloorEye';
 
 // Chapter I — the 14th Room, as the first painting shows it: a pink box
 // papered inside with a torn cream sheet, in a pale world of cracked stone.
@@ -15,6 +16,10 @@ const onWall = (x: number, y: number): { x: number; y: number; scroll: number } 
   const scrollX = Math.min(1133, Math.max(-213, x + 90 - 640));
   return { x: x - (1 - PLANE.wall) * scrollX, y: y - (1 - PLANE.wall) * 180, scroll: PLANE.wall };
 };
+
+/** Where the slit eye lies on the floor: across the room, and in depth (a little behind Gorti's path). */
+export const EYE_X = 1935;
+const EYE_Z = -36;
 
 /** How much larger than the other things on the wall the two pictures hang. */
 const PICTURES = 1.8;
@@ -62,7 +67,7 @@ export const R01: RoomDef = {
     { id: 'picture', x: 1255, y: 660, r: 120, prompt: 'İncele' },
     { id: 'window', x: 1580, y: 640, r: 100, prompt: 'İncele' },
     { id: 'bed', x: 430, y: 660, r: 70, prompt: 'İncele' },
-    { id: 'eyeleaf', x: 1935, y: 660, r: 60, prompt: 'İncele' },
+    { id: 'eyeleaf', x: EYE_X, y: 660, r: 60, prompt: 'İncele' },
   ],
   exits: [{ id: 'tunnel', x: 2150, y: 440, w: 50, h: 220, to: 'r02' }],
   props: [
@@ -89,8 +94,14 @@ export const R01: RoomDef = {
     { key: 'p1.starfolk', x: 1010, y: 662, depth: -15 },
     { key: 'p1.shade', x: 1165, y: 662, depth: -10 },
     { key: 'p1.flower', x: 1468, y: 662, depth: -15 },
-    // The eye-leaf the big Gorti holds out in the painting, lying on the boards.
-    { key: 'p1.eyeleaf', x: 1935, y: 664, depth: 5 },
+    // The slit eye in the floor, as in the painting beside the big Gorti's
+    // hand: the slit's depth, the iris (its pupil narrow, and wide when he
+    // comes near: scripts/r01.ts moves both after him), the floor broken round
+    // it with the heavy lid. All four lie at one depth, one over another.
+    { key: 'p1.flooreye.under', x: EYE_X, y: BOX.floor, ...FLOOR_EYE_ORIGIN, depth: 4.6, z: EYE_Z },
+    { key: 'p1.flooreye.iris', x: EYE_X, y: BOX.floor, ...FLOOR_EYE_ORIGIN, depth: 4.7, z: EYE_Z },
+    { key: 'p1.flooreye.iris.wide', x: EYE_X, y: BOX.floor, ...FLOOR_EYE_ORIGIN, depth: 4.8, z: EYE_Z, alpha: 0 },
+    { key: 'p1.flooreye', x: EYE_X, y: BOX.floor, ...FLOOR_EYE_ORIGIN, depth: 5, z: EYE_Z },
     // Charms hanging from the bottom of the box, in front of it.
     { key: 'p1.charm.tag', ...charm(150) },
     { key: 'p1.charm.banner', ...charm(360), ox: 40 / 214 },

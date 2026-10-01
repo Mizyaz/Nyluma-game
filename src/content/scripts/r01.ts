@@ -7,6 +7,8 @@ import { P1 } from '../art/painting1';
 import { CAPTIONS, DIALOGUE } from '../data/dialogue.tr';
 import { PAINTINGS } from '../data/paintings';
 import { WIDE } from '../rooms/r01Stage';
+import { EYE_X } from '../rooms/r01';
+import { FloorEyeWatch } from './floorEye';
 import type { CinemaScene } from '../../engine/scenes/CinemaScene';
 import type { WorldScene } from '../../engine/scenes/WorldScene';
 import { StoneFrame } from '../../render/2d/fx/stoneFrame';
@@ -61,6 +63,8 @@ export function r01(w: WorldScene): RoomScript {
   let shadeHome = 0;
   let shadeHidden = false;
   let shadeAwayMs = 0;
+  /** The slit eye in the floor, watching him. */
+  let eye: FloorEyeWatch | null = null;
 
   const inspect = (id: string): void => {
     w.player.lock(true, 'interact');
@@ -382,10 +386,12 @@ export function r01(w: WorldScene): RoomScript {
       if (w.quest.set('r01.intro')) goToSleep();
       else frame.show(true, 0);
       idleLife();
+      eye = new FloorEyeWatch(w, EYE_X);
     },
     onUpdate(dtMs) {
       frame?.update();
       updateShade(dtMs);
+      eye?.update(dtMs);
     },
     onFixed(dt) {
       if (sleeping && !waking) {
@@ -411,6 +417,7 @@ export function r01(w: WorldScene): RoomScript {
       openBounds(false);
       frame?.destroy();
       frame = null;
+      eye = null;
     },
   };
 }

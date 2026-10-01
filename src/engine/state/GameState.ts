@@ -25,6 +25,17 @@ export function chapterOf(room: RoomId): number {
   return roomDef(room).chapter;
 }
 
+/**
+ * Whether going to `to` at checkpoint `cp` turns onto its chapter's page:
+ * the chapter changes on the way, or its first room is entered at its start
+ * before that page has been shown (the `chapterCard:N` flag).
+ */
+export function opensChapter(from: RoomId | null, to: RoomId, cp: string, flags: { has(flag: string): boolean }): boolean {
+  const def = roomDef(to);
+  if (from !== null && roomDef(from).chapter !== def.chapter) return true;
+  return CHAPTER_START[def.chapter] === to && def.checkpoints[0]?.id === cp && !flags.has(`chapterCard:${def.chapter}`);
+}
+
 export function roomIndex(room: RoomId): number {
   return ROOM_IDS.indexOf(room);
 }

@@ -151,15 +151,53 @@ Conventions:
   that never throws his own shadow. It breathes, and swells when he talks, sings or laughs. Each
   Rezonans move flashes it in that move's colour. The amca shines with his head, and the coward
   with his torch.
-- The eye-leaf on r01's floor (`src/content/art/p1EyeLeaf.ts`) is the leaf Gorti holds in the
-  painting, drawn to his measure, not the toys', in the same comic manner as the tree: a leaf
-  blade (`BLADE`) cut into seven plates by cracks that run from the eye's hollow to the edge.
+- The slit eye in r01's floor (`src/content/art/p1FloorEye.ts`) is the painting's broken floor
+  with an eye looking out of it, drawn lying down in the floor's perspective (`K`): a lilac crust
+  broken into eight plates round a slit, each pushed a little apart so the dark under it shows,
+  the far ones' inner faces come down as a heavy lid, and the cracks run on into the boards. It
+  is four cards at one depth and one pivot (`FLOOR_EYE_ORIGIN`): the slit's depth with the white,
+  the iris twice (pupil narrow and wide) and the broken floor on top, so the lids cut the iris
+  wherever it looks. `src/content/scripts/floorEye.ts` (`FloorEyeWatch`) makes it follow Gorti
+  (up at him when he is over it, its pupil widening as he comes near). It never blinks.
+  `FLOOR_EYE_LOOK` is how far the iris can move.
 - The rose tree in r01 (`src/content/art/p1Tree.ts`) is drawn in the game's comic manner with
   the characters' kit (`comic`), not traced: each object of the painting is its own shape (the
   trunk, the crystal, the roses at the branch tips, the birds coming out of them, the roots, the
   mist). It is drawn in the painting's measure and scaled down, so its contours and hatching use
   their own widths (`L`, `HATCH`) rather than the kit's defaults.
 - `src/ui/LoadingView.ts` is the loading screen. It uses the same faces as inline SVG (`skyFaceSvg`), and a crystal cluster grows with the progress.
+
+### Transitions: the game as a pop-up book
+
+- `WorldScene.goToRoom` launches `WarpScene` with `{chapter, dir, glow, onPeak}`. `onPeak`
+  still restarts the world exactly once, behind the page, and passes it an `Arrival` handshake
+  (`WorldData.arrive`). The world freezes play (input context `none`) until the turn says it is
+  over. A room asked for meanwhile waits for it (`pendingRoom`).
+- Between rooms, `src/ui/PageTurn.ts` grabs the last frame and cuts it into vertical strips of
+  paper. CSS places the strips in 3D along a curling page; the geometry is in `pageCurl.ts`,
+  which is tested. Every motion is a Web Animation on transform and opacity, so the compositor
+  runs it while the next room is built. The turn goes forward from right to left, and back the
+  other way.
+- Under the page the next room's cards stand up from lying flat, far to near, with a spring
+  (`src/paper/popUp.ts`): each plane's camera is squashed upright about its floor line.
+- Gorti's screen glow flies over the turn into his screen (`PageBits.ts`).
+- Between chapters the page turns onto a chapter page (`src/ui/ChapterPage.ts`, art in
+  `src/content/art/chapterArt.ts`):
+  - a torn sheet taped onto the chapter's endpaper;
+  - "BÖLÜM", with the numeral painted on by a brush;
+  - the title from `CHAPTER_TITLES`, letter by letter;
+  - a small moving pop-up picture.
+- The chapter page opens like a gatefold onto the first room. The HUD's chapter card
+  (`areaTitle`) is shown only when no chapter page was. `opensChapter` (GameState) decides
+  when a page is due: new game, chapter select, a save at a chapter start and the ending's
+  replay come in through it too.
+- Reduced motion: a cross-fade through paper (through the chapter page between chapters).
+- No frame could be grabbed: paper is wiped in instead.
+- Everything ends within 8 s whatever happens.
+- To hold a transition on screen in dev, open `/dev/transitions.html`
+  (`?mode=room|chapter&ch=1..6&dir=-1&reduced=1&portrait=1`).
+- `CrystalWarp` in `crystalFx.ts` is no longer used by the transitions. The rooms' background
+  tunnels still use the shared gem-tunnel code.
 
 ## Other pending work
 

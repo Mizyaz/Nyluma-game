@@ -67,6 +67,10 @@ export function installProbe(): void {
           : null,
       };
     },
+    /** The game itself (frame-by-frame harnesses step its loop). */
+    game(): typeof app.game {
+      return app.game;
+    },
     /** The world scene, for inspection from a test or the console. */
     world(): WorldScene | null {
       return app.game.scene.isActive('world') ? (app.game.scene.getScene('world') as WorldScene) : null;

@@ -5,7 +5,7 @@ import { mix } from '../../render/2d/palette';
 import { lineFor } from '../../render/2d/style';
 import { ellipsePath, hashSeed, mixed, nextId, poly, Rng, rrect, smooth, taper, type Pt } from '../../render/2d/svg';
 import { applyGrain } from '../../render/2d/TextureFactory';
-import { eyeLeaf } from './p1EyeLeaf';
+import { floorEyeParts } from './p1FloorEye';
 import { crystalTree } from './p1Tree';
 import { portrait, sign } from './p1Pictures';
 
@@ -707,7 +707,7 @@ function charms(): PartArt[] {
 export function painting1Parts(): PartArt[] {
   return [
     cube(), arm(), lamp(), crystalTree(), gift(), starfolk(), flower(), rootling(), shade(), bang(),
-    portrait(), sign(), eyeLeaf(), marks(), bed(), whaleToy(), ...charms(),
+    portrait(), sign(), ...floorEyeParts(), marks(), bed(), whaleToy(), ...charms(),
   ];
 }
 
