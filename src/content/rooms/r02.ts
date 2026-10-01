@@ -32,7 +32,7 @@ export const R02: RoomDef = {
     { x: 1480, y: 60, w: 120, h: 790, style: 'soil' },
     { id: 'roots', x: 1480, y: 850, w: 50, h: 250, style: 'none', unless: 'r02.song' },
     // The whales the song raises, one above the other toward the tunnel
-    // mouth: scenery, swimming over Gorti's head.
+    // mouth: scenery, floating behind Gorti as he walks on under them.
     {
       id: 'w1',
       x: 880,

@@ -23,11 +23,12 @@ export const R04: RoomDef = {
   solids: [
     { x: 0, y: 900, w: 3450, h: 200, style: 'moss' },
     // Carried in on the first wind: it glides past overhead and settles in
-    // the air ahead, nose to the east (scenery: it bears no weight).
+    // the air ahead, nose to the east, clear of Gorti's head in either form
+    // (scenery: it bears no weight).
     {
       id: 'windWhale',
       x: 1410,
-      y: 700,
+      y: 640,
       w: 190,
       h: 24,
       style: 'root',
