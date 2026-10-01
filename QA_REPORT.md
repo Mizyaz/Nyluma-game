@@ -5,7 +5,7 @@ listeler. Ölçümler aşağıdaki test ortamında alınmıştır; gerçek cihaz
 performansını temsil etmez. İlk bölüm bu sürümün kontrolleridir. Sonraki
 bölümlerdeki sonuçlar önceki sürümlerin oyun kodu içindir.
 
-## Bu sürüm: 1. tablonun resimleri, göz-yaprak, tablodaki Gorti
+## Bu sürüm: 1. tablonun resimleri, göz-yaprak, Gorti'nin TV yüzü geri döndü
 
 Bu sürümde eklenenler:
 
@@ -18,16 +18,22 @@ Bu sürümde eklenenler:
 - göz-yaprak: tabloda büyük Gorti'nin tuttuğu yedi plakalı mor yaprak,
   ortasında göz. Odanın zemininde yatıyor ve incelenebiliyor (`r01.eyeleaf`).
   Boyutu Gorti'ye göre ayarlandı;
-- Gorti tablodaki gibi yeniden çizildi: kabuk kutu kafa, kalın çerçeveli
-  lila ekran, geniş yeşil gövde, kabuk plakalar, dikenli kabuk ön kollar,
-  kabuk bacaklar, kök parmaklar. Yüzü ekrandaki pembe desendir; duygular
-  desenin bloklarıyla gösterilir (göz blokları üzgünken eğilir, kırpınca
-  çizgiye iner; ağız blokları açılır, dişlenir, kemerlenir, gülerken üst
-  üste biner). Gorti hâlâ gülümsemez. Ekran ve çerçeve ayrı eklemlerdir
-  (`screen`, `bezel`); ekranlı yüzlerde desen bloklarının büyüme ölçeği
-  sınırlıdır.
+- Gorti tablodaki gibi yeniden çizilmişti (kabuk kutu kafa, desen yüz,
+  geniş gövde). Tabloyu fazla birebir kopyaladığı için `f48c624` ile geri
+  alındı: eski televizyon yüzü (pembe ızgaralı ekran, neon gözler ve ağız)
+  ve eski gövde geri geldi. Göz-yaprağın yeni boyutu kaldı.
 
-Kontroller `0fd2f05` üzerinde koşuldu:
+Geri alma (`f48c624`) üzerinde koşulan kontroller:
+
+| Kontrol | Sonuç |
+| --- | --- |
+| `npm run typecheck` | Hatasız |
+| `npx vitest run` | 17 dosya, 150 test geçti |
+| `npm run kd -- check` | Hatasız: 6 bölüm, 4 oda dosyası, 12 TS oda |
+| Hedefli tarayıcı testleri (r01 yürüme ve İncele, göz-yaprak dahil; dokunmatik; yüz sahnesi) | 3 geçti, 1,5 dk |
+
+Aşağıdaki kontroller desen yüzlü Gorti ile `0fd2f05` üzerinde koşuldu;
+geri alınan Gorti dışındaki her şey için geçerlidir.
 
 | Kontrol | Sonuç |
 | --- | --- |
