@@ -55,7 +55,7 @@ export interface Mood {
 export const WHIMSICAL: Mood = {
   ambient: 0.46,
   ambientColor: 0xa69cd4,
-  fog: { color: 0x3e3560, amount: 0.46, near: 30, far: 300 },
+  fog: { color: 0x3e3560, amount: 0.3, near: 30, far: 300 },
   front: { color: 0x211a30, amount: 0.92, from: 20, to: 100 },
   vignette: 0.55,
   wrap: 0.5,

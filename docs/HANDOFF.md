@@ -81,7 +81,7 @@ not have to re-discover it by reading the codebase.
 | `screen.ts` | `Screen`: the canvas at device pixels (`?dpr=`), and `fitScene` for the flat 1280 × 720 scenes. |
 | `clip.ts` | Clip shapes (WebGL only). |
 | `fixes.ts` | `patchPhaser()`, called in `main.ts` before the game is made. Phaser 4.2.1 compares the tint mode with `==` on a normalized attribute, so MULTIPLY_TWO never matches without the rounding patch. |
-| `stage.ts` | `PaperStage`: the room. `card()`, `addShadow()`, `castShadow()`, the eye following Gorti, shake and zoom. Each frame runs the lights, then the cast shadows, then the contact shadows. |
+| `stage.ts` | `PaperStage`: the room. `card()`, `addShadow()`, `castShadow()`, `hang()` (a card hung on the back wall throws its shadow on it, away from the lamp that lights it most), the eye following Gorti, shake and zoom. Each frame runs the lights, then the cast and hung shadows, then the contact shadows. |
 
 Conventions:
 
@@ -90,6 +90,16 @@ Conventions:
 - Cards always face the viewer. Never tilt the eye.
 - The Canvas renderer (`?canvas=1`, used by the gameplay tests) has no box shader, no lamps and no cast shadows: `castShadow()` returns null there.
 - Crystals and glows are lights with `cast: false`: they light what is near, but throw no shadows.
+- Things hung on the back wall stand 4 px off it (`back + 4`) and throw their shadow on it
+  (`RoomRuntime` calls `hang()` for props within 40 px of the back). Room 1's pictures use
+  `ON_WALL` (r01Stage.ts), and paintings on walls hang there too (`Painting`). Both are drawn
+  larger by as much as the wall is farther than where they stood before, so they show as large.
+- The fog thickens toward the back wall but stays light there (whimsical: 0.3), so what is on
+  the wall reads.
+- The cave walls (`stoneWall` in `render/2d/painters/backgrounds.ts`) are finished stone by stone:
+  a shaded rim and a pale lip, pores, cracks with twigs, chipped corners, dark mortar. A cave
+  wall also gets moss, fossils (ammonite, shell, leaf, fish), crystal sprouts and drips. Any
+  wall can get chalk doodles (star, spiral, sun, moon, tallies, flower, a little Gorti).
 
 ### Characters as paper puppets (`src/render/2d/rig/RigView.ts`)
 

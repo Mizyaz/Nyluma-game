@@ -1,5 +1,5 @@
 import type { RoomDef } from '../data/roomTypes';
-import { BOX, PLANE, STAGE_BOX, inWide } from './r01Stage';
+import { BOX, ON_WALL, PLANE, STAGE_BOX, inWide } from './r01Stage';
 
 // Chapter I — the 14th Room, as the first painting shows it: a pink box
 // papered inside with a torn cream sheet, in a pale world of cracked stone.
@@ -71,11 +71,11 @@ export const R01: RoomDef = {
     // before the box's front).
     { key: 'p1.lamp', x: 80, y: 330, ox: 0.5, oy: 0.5, depth: -100, z: STAGE_BOX.lampZ },
     { key: 'p1.lamp', x: 2120, y: 330, ox: 0.5, oy: 0.5, flipX: true, depth: -100, z: STAGE_BOX.lampZ },
-    // On the back wall: the fourteen notches, the green creature's
+    // Hung on the back wall: the fourteen notches, the green creature's
     // portrait, and the window (the painting's blue crystal sign).
-    { key: 'p1.marks', ...onWall(1085, 470), oy: 0.5, depth: -120 },
-    { key: 'p1.picture', ...onWall(1245, 470), oy: 0.5, depth: -120 },
-    { key: 'p1.window', ...onWall(1441, 465), oy: 0.566, depth: -120 },
+    { key: 'p1.marks', ...onWall(1085, 470), oy: 0.5, depth: -120, ...ON_WALL },
+    { key: 'p1.picture', ...onWall(1245, 470), oy: 0.5, depth: -120, ...ON_WALL },
+    { key: 'p1.window', ...onWall(1441, 465), oy: 0.566, depth: -120, ...ON_WALL },
     // Inside the box, along the floor.
     { key: 'p1.rootling', x: 185, y: 662, depth: -30 },
     { key: 'p1.bed', x: 430, y: 662, depth: -20 },

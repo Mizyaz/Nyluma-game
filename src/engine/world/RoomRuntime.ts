@@ -335,6 +335,8 @@ export class RoomRuntime {
         // At the prop's middle, while it shows.
         this.paper.lighting.add({ ...light, x: 0, y: 0, z, follow: () => (img.active && img.visible ? { x: img.getCenter().x, y: img.getCenter().y } : null) });
       }
+      // Hung on the back wall: it throws its shadow on the wall.
+      if (propZ(p) <= this.staged.box.back + 40 && !this.standsOnFloor(p)) this.paper.hang(img, propZ(p), 6);
       if (this.standsOnFloor(p)) {
         const r = (frameRef(p.key).w * (p.scale ?? 1)) / 2;
         this.paper.addShadow({ shadow: () => (img.visible && img.alpha > 0.5 ? { x: img.x, z: propZ(p), r: Math.min(220, r * 0.85), a: 0.55 } : null) });

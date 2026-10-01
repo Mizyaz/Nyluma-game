@@ -14,6 +14,8 @@ const GOLD = 0xc9a45a;
 const INK = 0x483637;
 /** Height of the easel's ledge above the floor. */
 const EASEL_LEDGE = 64;
+/** Depth of a painting on its easel on the paper stage (a hung one is on the back wall). */
+const EASEL_Z = -80;
 
 /**
  * A framed painting in the world: on a wall (nail and wire) or on an easel
@@ -51,8 +53,14 @@ export class Painting implements Interactable {
     this.y = floorY;
     this.lookAt = { x: cx, y: cy };
     this.root = scene.add.container(cx, cy).setDepth(place.mount === 'wall' ? -45 : -9);
-    // On the paper stage: a framed card in the room's back band, as props of its depth stand.
-    (scene as { paper?: PaperStage }).paper?.planes.put(this.root, -80);
+    // On the paper stage: hung on the box's back wall, or on its easel in the
+    // room's back band. On the wall it is drawn larger by as much as the wall
+    // is farther than the easel's band, so it shows as large as it is meant to.
+    const paper = (scene as { paper?: PaperStage }).paper;
+    const z = paper && place.mount === 'wall' ? paper.spec.back + 4 : EASEL_Z;
+    const k = paper ? (paper.framing.dist - z) / (paper.framing.dist - EASEL_Z) : 1;
+    this.root.setScale(k);
+    paper?.planes.put(this.root, z);
     if (place.mount === 'wall') this.buildWall();
     else this.buildEasel(floorY - cy);
     this.buildFrame();
@@ -69,12 +77,14 @@ export class Painting implements Interactable {
       // A soft crystal light above the frame.
       const g = frameRef('fx.glow');
       this.glow = scene.add
-        .image(cx, cy - this.ch / 2 - 18, g.atlas, g.frame)
+        .image(cx, cy - (this.ch / 2 + 18) * k, g.atlas, g.frame)
         .setBlendMode(Phaser.BlendModes.ADD)
         .setTint(0xf3e0b8)
-        .setScale(1.1, 0.7)
+        .setScale(1.1 * k, 0.7 * k)
         .setAlpha(0.22)
         .setDepth(this.root.depth + 1);
+      paper?.planes.put(this.glow, z);
+      paper?.lighting.leave(this.glow);
     }
   }
 

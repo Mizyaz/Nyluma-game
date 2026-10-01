@@ -314,8 +314,20 @@ function pine(ctx: Ctx, x: number, baseY: number, hgt: number, fill: string, pen
  * A stone wall like the paintings' borders: irregular grey slabs parted by
  * black crack lines. Rows of slabs with rounded corners.
  */
-function stoneWall(ctx: Ctx, w: number, h: number, rng: Rng, fills: readonly string[], pen: Pen, size = 1): void {
+/**
+ * A wall of rounded stones in the naive manner, finished: each stone lit from
+ * the top left (a pale lip, a shaded rim below), speckled, often cracked,
+ * now and then chipped, in dark mortar. A cave's wall also lives: moss on
+ * some tops, a fossil print, a crystal sprouting from a crack, a drip
+ * under it. And here and there a chalk doodle someone left: stars, moons,
+ * suns, spirals, tallies, a flower, a little square-headed Gorti.
+ */
+function stoneWall(ctx: Ctx, w: number, h: number, rng: Rng, fills: readonly string[], pen: Pen, size = 1, cave = true): void {
   const rowH = 78 * size;
+  ctx.fillStyle = mix(fills[0]!, INK, 0.3);
+  ctx.fillRect(0, 0, w, h);
+  // What hangs below a stone or sprouts from its foot goes over the next row: drawn last.
+  const after: (() => void)[] = [];
   let y = -rng.range(10, 40);
   while (y < h + 10) {
     const rh = rowH * rng.range(0.75, 1.2);
@@ -334,12 +346,360 @@ function stoneWall(ctx: Ctx, w: number, h: number, rng: Rng, fills: readonly str
         [x + g, y + rh - g + j() * 0.5],
         [x + g + j() * 0.6, y + rh * 0.5],
       ];
-      trace(ctx, pts);
-      fillInk(ctx, rng.pick(fills), pen);
+      stone(ctx, pts, { x: x + sw / 2, y: y + rh / 2, r: Math.min(sw, rh) / 2 }, rng.pick(fills), rng, pen, size, cave, after);
       x += sw;
     }
     y += rh;
   }
+  for (const f of after) f();
+}
+
+/** One stone of the wall (`at`: its middle and half its smaller side). */
+function stone(ctx: Ctx, pts: readonly Pt[], at: { x: number; y: number; r: number }, fill: string, rng: Rng, pen: Pen, s: number, cave: boolean, after: (() => void)[]): void {
+  const base = mix(fill, rng.next() < 0.5 ? '#ffffff' : INK, rng.range(0, 0.06));
+  const deep = mix(base, INK, 0.5);
+  ctx.save();
+  trace(ctx, pts);
+  ctx.fillStyle = mix(base, INK, 0.24);
+  ctx.fill();
+  ctx.clip();
+  // The lit face, nudged up and left: a shaded rim stays below and right.
+  ctx.translate(-3 * s, -3.4 * s);
+  trace(ctx, pts);
+  ctx.fillStyle = base;
+  ctx.fill();
+  ctx.translate(3 * s, 3.4 * s);
+  // A pale lip along the top edge.
+  ctx.beginPath();
+  ctx.moveTo(pts[7]![0] + 2 * s, pts[7]![1]);
+  for (const k of [0, 1, 2]) ctx.lineTo(pts[k]![0], pts[k]![1] + 2 * s);
+  ctx.globalAlpha = 0.9;
+  ctx.strokeStyle = mix(base, '#ffffff', 0.55);
+  ctx.lineWidth = 3 * s;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+  // Pores and grit.
+  const n = rng.int(3, 8);
+  for (let i = 0; i < n; i++) {
+    ctx.globalAlpha = rng.range(0.3, 0.6);
+    ctx.fillStyle = i % 3 ? deep : mix(base, '#ffffff', 0.55);
+    ctx.beginPath();
+    ctx.arc(at.x + rng.range(-1.3, 1.3) * at.r, at.y + rng.range(-0.8, 0.8) * at.r, rng.range(0.7, 1.7) * s, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  const roll = rng.next();
+  if (cave && roll < 0.07) fossil(ctx, at, deep, rng, s);
+  else if (roll < 0.15) chalk(ctx, at, rng, s);
+  ctx.restore();
+  trace(ctx, pts);
+  ink(ctx, pen);
+  // A crack from an edge, inward; sometimes a drip under it, or a crystal from it.
+  if (rng.next() < 0.45) {
+    const k = rng.int(0, 7);
+    const from = pts[k]!;
+    const end = crack(ctx, from, Math.atan2(at.y - from[1], at.x - from[0]) + rng.range(-0.5, 0.5), at.r * rng.range(0.6, 1.1), rng, pen, s);
+    if (k >= 4 && k <= 6) {
+      const r = rng.next();
+      if (cave && r < 0.22) after.push(() => crystalSprout(ctx, from[0], from[1], rng.range(0.7, 1.1) * s, rng.pick(CRYSTAL_FILLS), pen));
+      else if (r < 0.5) {
+        const len = rng.range(24, 70) * s;
+        const dx = from[0];
+        after.push(() => drip(ctx, dx, from[1], len, deep, s));
+      }
+    } else if (cave && rng.next() < 0.08) after.push(() => crystalSprout(ctx, end[0], end[1], rng.range(0.5, 0.8) * s, rng.pick(CRYSTAL_FILLS), pen));
+  }
+  // A chipped corner.
+  if (rng.next() < 0.14) {
+    const c = pts[rng.pick([0, 2, 4, 6])]!;
+    const d = rng.range(5, 9) * s;
+    const sx = c[0] < at.x ? 1 : -1;
+    const sy = c[1] < at.y ? 1 : -1;
+    ctx.beginPath();
+    ctx.moveTo(c[0] - sx * 2, c[1] - sy * 2);
+    ctx.lineTo(c[0] + sx * d, c[1] - sy * 1);
+    ctx.lineTo(c[0] + sx * d * 0.45, c[1] + sy * d * 0.5);
+    ctx.lineTo(c[0] - sx * 1, c[1] + sy * d);
+    ctx.closePath();
+    ctx.fillStyle = mix(base, INK, 0.22);
+    ctx.fill();
+    ink(ctx, { a: pen.a * 0.8, w: pen.w * 0.8 });
+  }
+  // A clump of moss on the top edge, a few strands hanging off it.
+  if (cave && rng.next() < 0.18) after.push(() => moss(ctx, pts, rng, pen, s));
+}
+
+/** Moss on a stone's top edge: a clump, fullest in its middle, with strands hanging. */
+function moss(ctx: Ctx, pts: readonly Pt[], rng: Rng, pen: Pen, s: number): void {
+  const a = pts[rng.pick([7, 0, 1])]!;
+  const b = pts[[0, 1, 2][[7, 0, 1].indexOf(pts.indexOf(a))]!]!;
+  const t0 = rng.range(0.2, 0.8);
+  const cx = a[0] + (b[0] - a[0]) * t0;
+  const cy = a[1] + (b[1] - a[1]) * t0;
+  const span = Math.hypot(b[0] - a[0], b[1] - a[1]) * rng.range(0.35, 0.6);
+  const greens = ['#a9ec7e', '#8ddc62', '#bff59a'];
+  const n = rng.int(7, 11);
+  // Fine green strands first, so the clump covers their tops.
+  ctx.beginPath();
+  for (let i = 0; i < 3; i++) {
+    const x = cx + rng.range(-0.35, 0.35) * span;
+    const len = rng.range(6, 14) * s;
+    ctx.moveTo(x, cy);
+    ctx.quadraticCurveTo(x + rng.range(-3, 3) * s, cy + len * 0.6, x + rng.range(-1.5, 1.5) * s, cy + len);
+  }
+  ctx.globalAlpha = 0.75;
+  ctx.strokeStyle = '#6fae5c';
+  ctx.lineWidth = 1.1 * s;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  for (let i = 0; i < n; i++) {
+    const u = rng.range(-1, 1);
+    const r = (6.5 - 3.8 * Math.abs(u)) * s * rng.range(0.85, 1.15);
+    ctx.beginPath();
+    ctx.arc(cx + u * span * 0.5, cy + rng.range(-1.5, 2.5) * s - r * 0.35, r, 0, Math.PI * 2);
+    fillInk(ctx, rng.pick(greens), { a: pen.a * 0.8, w: pen.w * 0.8 });
+  }
+  for (let i = 0; i < n; i++) {
+    ctx.beginPath();
+    ctx.arc(cx + rng.range(-0.5, 0.5) * span, cy + rng.range(-5, 1) * s, rng.range(0.8, 1.3) * s, 0, Math.PI * 2);
+    ctx.fillStyle = i % 2 ? '#eaffd8' : '#5f9a52';
+    ctx.fill();
+  }
+}
+
+/** A thin crack, zigzagging, with a twig off it; where it ends. */
+function crack(ctx: Ctx, from: Pt, ang: number, len: number, rng: Rng, pen: Pen, s: number): Pt {
+  const n = rng.int(3, 4);
+  let [x, y] = from;
+  let a = ang;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  for (let i = 0; i < n; i++) {
+    a += rng.range(-0.55, 0.55);
+    x += (Math.cos(a) * len) / n;
+    y += (Math.sin(a) * len) / n;
+    ctx.lineTo(x, y);
+    if (i === 1 && rng.next() < 0.6) {
+      const b = a + (rng.next() < 0.5 ? 0.9 : -0.9);
+      ctx.lineTo(x + Math.cos(b) * len * 0.22, y + Math.sin(b) * len * 0.22);
+      ctx.moveTo(x, y);
+    }
+  }
+  ink(ctx, { a: Math.min(1, pen.a * 1.8), w: 1.4 * s });
+  return [x, y];
+}
+
+/** A stain run down from a stone's foot, fading. */
+function drip(ctx: Ctx, x: number, y: number, len: number, color: string, s: number): void {
+  const g = ctx.createLinearGradient(0, y, 0, y + len);
+  g.addColorStop(0, color);
+  g.addColorStop(1, color + '00');
+  ctx.globalAlpha = 0.35;
+  ctx.strokeStyle = g;
+  ctx.lineWidth = 3.4 * s;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.quadraticCurveTo(x + 1.5 * s, y + len * 0.5, x - 0.5 * s, y + len);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+/** Two or three small crystals growing out of the wall at a point, down and out. */
+function crystalSprout(ctx: Ctx, x: number, y: number, s: number, fill: string, pen: Pen): void {
+  const shards: [number, number, number][] = [[-0.5, 1, 15], [0.25, 0.75, 11], [-1.2, 0.6, 9]];
+  for (const [a0, k, len] of shards) {
+    const a = Math.PI / 2 + a0;
+    const L = len * k * s * 1.6;
+    const wd = 3.6 * s * (0.7 + k * 0.4);
+    const ux = Math.cos(a);
+    const uy = Math.sin(a);
+    const nx = -uy;
+    const ny = ux;
+    const pts: Pt[] = [
+      [x + nx * wd * 0.6, y + ny * wd * 0.6],
+      [x + ux * L * 0.7 + nx * wd, y + uy * L * 0.7 + ny * wd],
+      [x + ux * L, y + uy * L],
+      [x + ux * L * 0.7 - nx * wd, y + uy * L * 0.7 - ny * wd],
+      [x - nx * wd * 0.6, y - ny * wd * 0.6],
+    ];
+    ctx.beginPath();
+    pts.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
+    ctx.closePath();
+    fillInk(ctx, fill, { a: Math.min(1, pen.a * 1.5), w: 1.2 * s });
+    ctx.beginPath();
+    ctx.moveTo(x + ux * L * 0.15 + nx * wd * 0.25, y + uy * L * 0.15 + ny * wd * 0.25);
+    ctx.lineTo(x + ux * L * 0.8 + nx * wd * 0.3, y + uy * L * 0.8 + ny * wd * 0.3);
+    ctx.globalAlpha = 0.7;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.1 * s;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+}
+
+/** A fossil pressed in the stone: an ammonite, a shell, a leaf or a little fish's bones. */
+function fossil(ctx: Ctx, at: { x: number; y: number; r: number }, color: string, rng: Rng, s: number): void {
+  const R = at.r * rng.range(0.5, 0.7);
+  const { x, y } = at;
+  ctx.save();
+  ctx.translate(x + rng.range(-0.3, 0.3) * at.r, y);
+  ctx.rotate(rng.range(-0.6, 0.6));
+  ctx.strokeStyle = color;
+  ctx.globalAlpha = 0.9;
+  ctx.lineWidth = 1.5 * s;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  const kind = rng.int(0, 3);
+  if (kind === 0) {
+    // Ammonite: a spiral, ribbed.
+    const turns = 2.4;
+    const steps = 60;
+    for (let i = 0; i <= steps; i++) {
+      const t = (i / steps) * turns * Math.PI * 2;
+      const r = R * (0.08 + (0.92 * i) / steps);
+      const px = Math.cos(t) * r;
+      const py = Math.sin(t) * r;
+      if (i) ctx.lineTo(px, py);
+      else ctx.moveTo(px, py);
+    }
+    for (let i = 14; i <= steps; i += 3) {
+      const t = (i / steps) * turns * Math.PI * 2;
+      const r1 = R * (0.08 + (0.92 * i) / steps);
+      const r0 = R * (0.08 + (0.92 * Math.max(0, i - steps / turns)) / steps);
+      ctx.moveTo(Math.cos(t) * r0, Math.sin(t) * r0);
+      ctx.lineTo(Math.cos(t) * r1, Math.sin(t) * r1);
+    }
+  } else if (kind === 1) {
+    // A shell: a fan of ribs over a hinge.
+    for (let i = 0; i <= 6; i++) {
+      const a = Math.PI * (1.15 + (0.7 * i) / 6);
+      ctx.moveTo(0, R * 0.55);
+      ctx.lineTo(Math.cos(a) * R, R * 0.55 + Math.sin(a) * R);
+    }
+    ctx.moveTo(Math.cos(Math.PI * 1.15) * R, R * 0.55 + Math.sin(Math.PI * 1.15) * R);
+    for (let i = 1; i <= 12; i++) {
+      const a = Math.PI * (1.15 + (0.7 * i) / 12);
+      const rr = R * (i % 2 ? 1.06 : 1);
+      ctx.lineTo(Math.cos(a) * rr, R * 0.55 + Math.sin(a) * rr);
+    }
+    ctx.moveTo(-R * 0.22, R * 0.55);
+    ctx.lineTo(R * 0.22, R * 0.55);
+  } else if (kind === 2) {
+    // A leaf's print: its outline, the midrib, the veins.
+    ctx.moveTo(-R, 0);
+    ctx.quadraticCurveTo(0, -R * 0.75, R, 0);
+    ctx.quadraticCurveTo(0, R * 0.75, -R, 0);
+    ctx.moveTo(-R * 1.25, R * 0.08);
+    ctx.lineTo(R * 0.95, 0);
+    for (let i = 1; i <= 4; i++) {
+      const vx = -R + (i / 5) * 2 * R;
+      ctx.moveTo(vx, 0);
+      ctx.lineTo(vx + R * 0.28, -R * 0.36 * Math.sin((i / 5) * Math.PI));
+      ctx.moveTo(vx, 0);
+      ctx.lineTo(vx + R * 0.28, R * 0.36 * Math.sin((i / 5) * Math.PI));
+    }
+  } else {
+    // A little fish: head, spine, ribs, tail.
+    ctx.moveTo(-R * 0.55, 0);
+    ctx.arc(-R * 0.75, 0, R * 0.2, 0, Math.PI * 2);
+    ctx.moveTo(-R * 0.55, 0);
+    ctx.lineTo(R * 0.7, 0);
+    for (let i = 1; i <= 6; i++) {
+      const rx = -R * 0.45 + (i / 7) * R * 1.1;
+      const rr = R * 0.32 * Math.sin((i / 7) * Math.PI + 0.3);
+      ctx.moveTo(rx - R * 0.06, -rr);
+      ctx.quadraticCurveTo(rx + R * 0.05, 0, rx - R * 0.06, rr);
+    }
+    ctx.moveTo(R * 0.7, 0);
+    ctx.lineTo(R, -R * 0.25);
+    ctx.moveTo(R * 0.7, 0);
+    ctx.lineTo(R, R * 0.25);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** A chalk doodle on a stone, in pale, rubbed lines. */
+function chalk(ctx: Ctx, at: { x: number; y: number; r: number }, rng: Rng, s: number): void {
+  const R = at.r * rng.range(0.45, 0.65);
+  ctx.save();
+  ctx.translate(at.x + rng.range(-0.4, 0.4) * at.r, at.y + rng.range(-0.15, 0.15) * at.r);
+  ctx.rotate(rng.range(-0.25, 0.25));
+  ctx.strokeStyle = '#fdfbff';
+  ctx.globalAlpha = 0.85;
+  ctx.lineWidth = 2.1 * s;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  const kind = rng.int(0, 6);
+  if (kind === 0) {
+    // A star.
+    for (let i = 0; i <= 5; i++) {
+      const a = -Math.PI / 2 + (i * 4 * Math.PI) / 5;
+      if (i) ctx.lineTo(Math.cos(a) * R, Math.sin(a) * R);
+      else ctx.moveTo(Math.cos(a) * R, Math.sin(a) * R);
+    }
+  } else if (kind === 1) {
+    // A spiral.
+    for (let i = 0; i <= 40; i++) {
+      const t = (i / 40) * Math.PI * 5;
+      const r = (R * i) / 40;
+      if (i) ctx.lineTo(Math.cos(t) * r, Math.sin(t) * r);
+      else ctx.moveTo(0, 0);
+    }
+  } else if (kind === 2) {
+    // A sun.
+    ctx.arc(0, 0, R * 0.42, 0, Math.PI * 2);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      ctx.moveTo(Math.cos(a) * R * 0.6, Math.sin(a) * R * 0.6);
+      ctx.lineTo(Math.cos(a) * R, Math.sin(a) * R);
+    }
+  } else if (kind === 3) {
+    // A crescent moon with a sleepy eye.
+    ctx.arc(0, 0, R * 0.8, Math.PI * 0.35, Math.PI * 1.65);
+    ctx.quadraticCurveTo(-R * 0.1, 0, Math.cos(Math.PI * 0.35) * R * 0.8, Math.sin(Math.PI * 0.35) * R * 0.8);
+    ctx.moveTo(-R * 0.48, -R * 0.08);
+    ctx.quadraticCurveTo(-R * 0.36, R * 0.04, -R * 0.24, -R * 0.08);
+  } else if (kind === 4) {
+    // Tallies: four and one across.
+    for (let i = 0; i < 4; i++) {
+      ctx.moveTo(-R * 0.6 + i * R * 0.36, -R * 0.6);
+      ctx.lineTo(-R * 0.66 + i * R * 0.36, R * 0.6);
+    }
+    ctx.moveTo(-R * 0.85, R * 0.4);
+    ctx.lineTo(R * 0.75, -R * 0.35);
+  } else if (kind === 5) {
+    // A flower.
+    ctx.arc(0, -R * 0.35, R * 0.16, 0, Math.PI * 2);
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      const px = Math.cos(a) * R * 0.38;
+      const py = -R * 0.35 + Math.sin(a) * R * 0.38;
+      ctx.moveTo(px + R * 0.17, py);
+      ctx.arc(px, py, R * 0.17, 0, Math.PI * 2);
+    }
+    ctx.moveTo(0, -R * 0.15);
+    ctx.quadraticCurveTo(R * 0.1, R * 0.4, 0, R);
+  } else {
+    // Gorti, as a child draws him: a square head with two square eyes, a stick body.
+    ctx.rect(-R * 0.4, -R, R * 0.8, R * 0.7);
+    ctx.rect(-R * 0.22, -R * 0.78, R * 0.12, R * 0.14);
+    ctx.rect(R * 0.1, -R * 0.78, R * 0.12, R * 0.14);
+    ctx.moveTo(0, -R * 0.3);
+    ctx.lineTo(0, R * 0.45);
+    ctx.moveTo(-R * 0.45, -R * 0.05);
+    ctx.lineTo(R * 0.45, -R * 0.12);
+    ctx.moveTo(0, R * 0.45);
+    ctx.lineTo(-R * 0.3, R);
+    ctx.moveTo(0, R * 0.45);
+    ctx.lineTo(R * 0.3, R);
+  }
+  ctx.stroke();
+  ctx.restore();
 }
 
 /** Mauve roots hanging from the top: tapered, outlined, a few rootlets. */
@@ -780,7 +1140,7 @@ const THEMES: Record<ThemeId, ThemeDef> = {
         res: 0.5,
         draw: (ctx, { w, h }, rng) => {
           field(ctx, w, h, '#b8b7bf');
-          stoneWall(ctx, w, h, rng, ['#bebdc5', '#b5b4bc', '#c4c3ca'], FAR, 1.6);
+          stoneWall(ctx, w, h, rng, ['#bebdc5', '#b5b4bc', '#c4c3ca'], FAR, 1.6, false);
           for (let i = 0; i < w / 220; i++) {
             const x = rng.range(0, w);
             const y = rng.range(0, h);

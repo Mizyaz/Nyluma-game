@@ -30,6 +30,9 @@ export class PaperStage {
   private readonly frontCam: PlaneCamera;
   private readonly shadowed = new Set<Shadowed>();
   private readonly casters = new Set<CastShadow>();
+  /** Cards hung on the back wall, and the shadows they throw on it. */
+  private hung: { img: Phaser.GameObjects.Image; sh: Phaser.GameObjects.Image; z: number; gap: number }[] = [];
+  private readonly hungLamp = { x: 0, y: 0, z: 0, k: 0 };
   /** The point the eye follows (world x), and a scripted look (null: follow). */
   private target: { x: number; y: number } | null = null;
   private look: { x: number; y: number } | null = null;
@@ -133,6 +136,57 @@ export class PaperStage {
   }
 
   /**
+   * A card hung on the back wall, `gap` world px off it, throws its shape on
+   * the wall from the lamp that lights it most: a dark copy behind it, moved
+   * away from the lamp (the nearer the lamp, the more) and as dark as the
+   * lamp is strong. WebGL only, as the lamps are.
+   */
+  hang(img: Phaser.GameObjects.Image, z: number, gap = 8): void {
+    if (this.scene.game.renderer.type !== Phaser.WEBGL) return;
+    const sh = this.scene.add.image(img.x, img.y, img.texture.key, img.frame.name).setDepth(img.depth - 0.5).setVisible(false);
+    this.lighting.leave(sh);
+    this.planes.put(sh, z);
+    this.hung.push({ img, sh, z, gap });
+  }
+
+  private hangShadows(): void {
+    const L = this.hungLamp;
+    const mood = this.lighting.mood;
+    const fog = mood.fog;
+    this.hung = this.hung.filter((h) => h.img.active || (h.sh.destroy(), false));
+    for (const { img, sh, z, gap } of this.hung) {
+      const c = img.getCenter();
+      if (img.visible && img.alpha > 0.02) this.lighting.casterAt(c.x, c.y, z, L);
+      else L.k = 0;
+      if (L.k < 0.02) {
+        sh.setVisible(false);
+        continue;
+      }
+      if (sh.texture !== img.texture || sh.frame !== img.frame) sh.setTexture(img.texture.key, img.frame.name);
+      // Where the lamp's rays past the card meet the wall, and how much bigger it shows there.
+      const t = gap / Math.max(40, L.z - z);
+      let dx = (c.x - L.x) * t;
+      let dy = (c.y - L.y) * t;
+      const m = Math.hypot(dx, dy);
+      if (m > gap * 2) {
+        dx *= (gap * 2) / m;
+        dy *= (gap * 2) / m;
+      }
+      // The air before the back wall pales it, as it does the figures' shadows there.
+      const f = Math.min(1, Math.max(0, (-z - fog.near) / (fog.far - fog.near)));
+      const air = 1 - 0.5 * fog.amount * f * f * (3 - 2 * f);
+      sh.setVisible(true)
+        .setPosition(img.x + dx, img.y + dy)
+        .setOrigin(img.originX, img.originY)
+        .setScale(img.scaleX * (1 + t), img.scaleY * (1 + t))
+        .setFlipX(img.flipX)
+        .setRotation(img.rotation)
+        .setTint(mood.front.color)
+        .setAlpha(0.3 * (L.k / (L.k + 0.12)) * air * img.alpha);
+    }
+  }
+
+  /**
    * Stands an image at depth z as a card printed for that depth: its texture
    * is swapped for the press's print of `key` once it is made (the art was
    * printed before the room started, so normally at once).
@@ -192,6 +246,7 @@ export class PaperStage {
     this.planes.update();
     this.light(dt);
     for (const c of this.casters) c.update();
+    this.hangShadows();
     this.writeShadows();
     this.box.inkWidth = Math.max(2, Math.round(this.lens.scale(0) * 1.7));
     this.box.update(lens);
@@ -227,6 +282,7 @@ export class PaperStage {
     this.scene.events.off(Phaser.Scenes.Events.PRE_RENDER, this.preRender, this);
     this.shadowed.clear();
     this.casters.clear();
+    this.hung = [];
     this.box.destroy();
   }
 }

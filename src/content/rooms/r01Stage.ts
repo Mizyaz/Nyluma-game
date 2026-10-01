@@ -78,3 +78,11 @@ export const STAGE_BOX = {
   /** Gorti waking in his bed, close up (zoom 3.8): the box front keeps it open. */
   closeUp: { x: 170, y: 470, w: 420, h: 200 },
 } as const;
+
+/**
+ * Pictures hung on the box's back wall (at −300 on the paper stage; they
+ * hang 4 px off it), drawn larger by as much as the wall is farther than the
+ * depth they used to stand at in the box (−140; the eye is 900 before the
+ * actors' plane), so they show as large as they did.
+ */
+export const ON_WALL = { z: -296, scale: (900 + 296) / (900 + 140) } as const;
