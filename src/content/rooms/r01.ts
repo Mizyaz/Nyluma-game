@@ -62,7 +62,7 @@ export const R01: RoomDef = {
     { id: 'picture', x: 1255, y: 660, r: 120, prompt: 'İncele' },
     { id: 'window', x: 1580, y: 640, r: 100, prompt: 'İncele' },
     { id: 'bed', x: 430, y: 660, r: 70, prompt: 'İncele' },
-    { id: 'eyeleaf', x: 1935, y: 660, r: 70, prompt: 'İncele' },
+    { id: 'eyeleaf', x: 1935, y: 660, r: 60, prompt: 'İncele' },
   ],
   exits: [{ id: 'tunnel', x: 2150, y: 440, w: 50, h: 220, to: 'r02' }],
   props: [

@@ -8,8 +8,9 @@ import { INK, clipped, flat, inked, line, n } from './p1Ink';
 // 14th Room's floor, turned a little to rest on its lower edge.
 //
 // Drawn by hand in the painting's own measure (the leaf about 265 across),
-// then shrunk to sit beside the room's other things as it does in the
-// painting (a little wider than the gift).
+// then shrunk to Gorti's measure rather than the toys' (in the painting he
+// holds it in one hand); a little larger than that, about three quarters of
+// his height across, so that it still reads lying on the floor.
 
 /** The leaf's colours (chosen by eye). */
 const LEAF = {
@@ -32,7 +33,7 @@ const LEAF = {
 } as const;
 
 /** How much smaller than the painting's measure it is drawn. */
-const SIZE = 0.66;
+const SIZE = 0.36;
 /** How far it is turned (degrees, anticlockwise) to rest on its lower edge, and about where. */
 const TURN = -8;
 const PIVOT: Pt = [150, 175];

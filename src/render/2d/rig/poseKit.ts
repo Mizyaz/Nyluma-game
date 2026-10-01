@@ -49,6 +49,11 @@ export interface RigProfile {
   ball?: number;
   /** How the eyes blink: lids close ('shut') or the eye squashes to a line. */
   blink?: 'shut' | 'squash';
+  /**
+   * A screen face: its marks are shapes on the glass, so a feeling changes
+   * their shapes more than their size, and they never grow past the glass.
+   */
+  screen?: boolean;
   /** Distance travelled per walk cycle (two steps), if not the usual (see cycleOf). */
   cycle?: number;
 }
