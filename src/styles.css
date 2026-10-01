@@ -1750,6 +1750,7 @@ a {
 .ld-z.on > .ld-card {
   transform: none;
   opacity: 1;
+  transition-delay: var(--w, 0s);
 }
 
 /* Hanging things are let down on their threads. */
@@ -1767,29 +1768,19 @@ a {
 }
 
 /* The box behind the frame, painted inside as the night sky with its glow
-   low down, as the backdrop is; darker toward the frame. The right wall is
-   in shade (the light comes from the upper right). */
+   low down, as the backdrop is. */
 .ld-wall,
 .ld-ceil {
   position: absolute;
-  --dots:
+  background:
     radial-gradient(circle, rgba(246, 231, 166, 0.8) 0 calc(1.3 * var(--u)), transparent calc(1.9 * var(--u))) 0 0 / calc(61 * var(--u)) calc(47 * var(--u)),
-    radial-gradient(circle, rgba(248, 198, 220, 0.6) 0 calc(1 * var(--u)), transparent calc(1.6 * var(--u))) calc(23 * var(--u)) calc(19 * var(--u)) / calc(83 * var(--u)) calc(59 * var(--u));
-  background:
-    var(--dots),
-    linear-gradient(90deg, rgba(18, 10, 32, 0.5), rgba(18, 10, 32, 0) 45%),
-    linear-gradient(#2e2454, #3b2a5c 55%, #6b5690);
-}
-
-.ld-wall.ld-wr {
-  background:
-    var(--dots),
-    linear-gradient(270deg, rgba(18, 10, 32, 0.6), rgba(18, 10, 32, 0.15) 45%),
+    radial-gradient(circle, rgba(248, 198, 220, 0.6) 0 calc(1 * var(--u)), transparent calc(1.6 * var(--u))) calc(23 * var(--u)) calc(19 * var(--u)) / calc(83 * var(--u)) calc(59 * var(--u)),
     linear-gradient(#2e2454, #3b2a5c 55%, #6b5690);
 }
 
 .ld-ceil {
-  background: var(--dots), linear-gradient(180deg, #3e3060, #2a2045 70%);
+  background-color: #2a2045;
+  background-image: none;
 }
 
 .ld-bob {
@@ -1797,11 +1788,6 @@ a {
   inset: 0;
   transform-origin: 50% 0;
   animation: ld-bob 3.8s ease-in-out var(--d) infinite alternate;
-}
-
-.ld-face svg,
-.ld-blink svg {
-  overflow: visible;
 }
 
 .ld-blink {
@@ -1820,6 +1806,10 @@ a {
   animation: ld-swim 34s linear -12s infinite;
 }
 
+.ld-whale svg {
+  animation: ld-bob 1.9s ease-in-out infinite alternate;
+}
+
 /* Crystals sprout, stretching past their height, and their tips sparkle. */
 .ld-cr {
   transform-origin: 50% 100%;
@@ -1833,8 +1823,11 @@ a {
 .ld-cr.on {
   transform: none;
   opacity: 1;
+  transition-delay: var(--w, 0s);
 }
 
+.ld-face svg,
+.ld-blink svg,
 .ld-cr svg,
 .ld-spark svg {
   overflow: visible;
@@ -1845,7 +1838,7 @@ a {
 }
 
 .ld-cr.on + .ld-spark {
-  animation: ld-spark 0.9s ease-out 0.25s both;
+  animation: ld-spark 0.9s ease-out calc(var(--w, 0s) + 0.25s) both;
 }
 
 /* Footlights light up one by one. */
@@ -1860,6 +1853,14 @@ a {
 
 .ld-lamp.on i {
   opacity: 1;
+  transition-delay: var(--w, 0s);
+}
+
+/* Mist low over the far hills. */
+.ld-haze {
+  position: absolute;
+  inset: 30% 0 0;
+  background: linear-gradient(rgba(196, 184, 232, 0), rgba(196, 184, 232, 0.38));
 }
 
 /* Fireflies wander over the hills, glowing and dimming. */
@@ -1869,7 +1870,7 @@ a {
   height: calc(18 * var(--u));
   margin: calc(-9 * var(--u));
   border-radius: 50%;
-  background: radial-gradient(closest-side, #fffbe0 0 18%, rgba(240, 250, 160, 0.6) 34%, rgba(240, 250, 160, 0.16) 62%, transparent);
+  background: radial-gradient(closest-side, #fffbe0 18%, rgba(240, 250, 160, 0.4) 36%, transparent);
   animation:
     ld-fly 9s ease-in-out var(--d) infinite alternate,
     ld-glow 1.9s ease-in-out var(--d) infinite alternate;
@@ -2124,6 +2125,7 @@ a {
 .ld-still .ld-rig2,
 .ld-still .ld-bob,
 .ld-still .ld-whale,
+.ld-still .ld-whale svg,
 .ld-still .ld-gorti,
 .ld-still .ld-ban,
 .ld-still .ld-cf,
@@ -2133,13 +2135,6 @@ a {
   animation: none;
 }
 
-/* The ta-da holds still: the confetti shows where it would fly, then fades. */
-.ld-still.ld-tada .ld-cf {
-  translate: calc(var(--x) * var(--u)) calc(var(--y) * var(--u));
-  rotate: var(--r);
-  animation: ld-show 2.4s var(--d) both;
-}
-
 .ld-still .ld-card:not(.ld-sh),
 .ld-still .ld-cr,
 .ld-still .ld-drape,
@@ -2147,7 +2142,7 @@ a {
 .ld-still.done .ld-rig {
   transform: none;
   scale: none;
-  transition: opacity 0.6s ease;
+  transition: opacity 0.6s ease var(--w, 0s);
 }
 
 @keyframes ld-sway-y {
@@ -2228,18 +2223,6 @@ a {
 }
 
 @keyframes ld-swim {
-  from {
-    translate: 0 0;
-  }
-  25% {
-    translate: calc(var(--run) * 0.25 * var(--u)) calc(-5 * var(--u));
-  }
-  50% {
-    translate: calc(var(--run) * 0.5 * var(--u)) 0;
-  }
-  75% {
-    translate: calc(var(--run) * 0.75 * var(--u)) calc(-5 * var(--u));
-  }
   to {
     translate: calc(var(--run) * var(--u)) 0;
   }
@@ -2309,17 +2292,6 @@ a {
     translate: calc(var(--x) * 1.18 * var(--u)) calc((var(--y) + var(--f)) * var(--u));
     rotate: 1 0.5 0 var(--r);
     scale: 0.9;
-  }
-}
-
-@keyframes ld-show {
-  0%,
-  100% {
-    opacity: 0;
-  }
-  20%,
-  70% {
-    opacity: 1;
   }
 }
 

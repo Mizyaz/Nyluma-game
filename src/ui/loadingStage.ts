@@ -37,10 +37,6 @@ const L = { body: 3.4, small: 2.5, detail: 1.7, fine: 1.15 } as const;
 
 const C = {
   thread: '#eadcc0',
-  far: '#8a7bb2',
-  farBack: '#74679f',
-  mid: '#8dbea9',
-  mid2: '#a9cba2',
   moss: '#a9cb8f',
   grass: '#9cc47a',
   grassLight: '#c3dc8c',
@@ -53,7 +49,6 @@ const C = {
   velvet: '#eca7c8',
   board: '#d8c09e',
   pink: '#f0b2cf',
-  aqua: '#bfdcd8',
   peri: '#a3b0e2',
   apricot: '#f4b27c',
 } as const;
@@ -103,11 +98,7 @@ class Geo {
     this.F3 = this.oy + ((this.F - this.oy) * (P - FLOOR[0])) / P;
   }
 
-  /** The opening: its left edge and width. */
-  get x0(): number {
-    return this.pw;
-  }
-
+  /** The opening's width (its left edge is at `pw`). */
   get ow(): number {
     return this.W - 2 * this.pw;
   }
@@ -122,10 +113,20 @@ class Geo {
     return this.oy + ((this.F3 - this.oy) * P) / (P - z);
   }
 
-  /** The box's left wall stands at screen x = BOX_IN on the frame; where it shows at depth z (cards reach a little past it). */
-  edge(z: number): number {
+  /** Where the box's left wall (it stands at x = BOX_IN on the frame) shows at depth z. */
+  wall(z: number): number {
     const cx = this.W / 2;
-    return cx - ((cx - BOX_IN) * (P - Z.frame)) / (P - z) - 24;
+    return cx - ((cx - BOX_IN) * (P - Z.frame)) / (P - z);
+  }
+
+  /**
+   * Where a card at depth z ends on the left: a little past the wall, into
+   * it, but never so far that the stage's turn (10° at most) could show its
+   * end beyond the frame.
+   */
+  edge(z: number): number {
+    const w = this.wall(z);
+    return Math.min(w - 2, Math.max(w - 24, (Z.frame - z) * 0.18));
   }
 
   /** A card's box spanning the box from wall to wall at depth z, from y up `h` units. */
@@ -364,7 +365,9 @@ function whale(g: Geo): string {
   wh += comic('M-32 0C-40 -4 -46 -12 -50 -10C-48 -4 -46 0 -46 3C-49 6 -50 12 -47 13C-43 10 -38 5 -32 4Z', '#8f9ed6', { line: L.detail, rim: [2, -1] });
   wh += comic(body, C.peri, { line: L.small, rim: [5, -3], glint: [-1.4, 1.6], hatch: 3.6, hatchWidth: 0.8, over: fill('M-24 6C-10 12 12 13 26 6C22 12 10 14 2 14C-10 14 -20 11 -24 6Z', lightOf(C.peri, 0.5)) + ink('M-12 8C-4 10 6 10 14 8M-8 11C0 12 6 12 12 11', 0.8, darkOf(C.peri, 0.4)) + fill(ellipsePath(20, -4, 1.9, 1.9), darkOf(C.peri, 0.65)) });
   wh += ink('M24 -16q-3 -6 -8 -7M24 -16q2 -7 7 -8M24 -16l0 -8', 1.4, '#d8eef6');
-  const fish = `<div class="ld-whale" style="left:0;top:${pc(y - b[1] - 30, b[3])};width:${pc(100, b[2])};height:${pc(60, b[3])};--run:${Math.round(b[2] - 100)}">${svg([-55, -30, 100, 60], wh)}</div>`;
+  // It comes out of the left wall and swims into the right one.
+  const w0 = g.wall(Z.whale) - b[0];
+  const fish = `<div class="ld-whale" style="left:${pc(w0 - 100, b[2])};top:${pc(y - b[1] - 30, b[3])};width:${pc(100, b[2])};height:${pc(60, b[3])};--run:${Math.round(b[2] - w0 * 2 + 100)}">${svg([-55, -30, 100, 60], wh)}</div>`;
   return piece(Z.whale, 0.24, card(g, b, svg(b, wire) + fish));
 }
 
@@ -391,7 +394,8 @@ function farHills(g: Geo): string {
   s += comic(polyD([[hx - 10, hy], [hx - 10, hy - 15], [hx + 10, hy - 15], [hx + 10, hy]]), '#ddd3ea', { line: L.fine, rim: [3, 0] });
   s += comic(polyD([[hx - 14, hy - 14], [hx, hy - 28], [hx + 14, hy - 14]]), '#a083ba', { line: L.fine, glint: [-1, 1] });
   s += fill(ellipsePath(hx + 1, hy - 8, 11, 11), '#ff9ad6', 0.28) + fill(polyD([[hx - 3, hy - 11], [hx + 4, hy - 11], [hx + 4, hy - 4], [hx - 3, hy - 4]]), '#ffc8e8');
-  return piece(Z.far, 0.28, shadow(g, b, `<path d="${front}"/>`, 50) + card(g, b, svg(b, s)));
+  // The mist lies low over them: far things are hazier.
+  return piece(Z.far, 0.28, shadow(g, b, `<path d="${front}"/>`, 50) + card(g, b, svg(b, s) + '<i class="ld-haze"></i>'));
 }
 
 /** Rolling moonlit hills, teal and periwinkle, with crystal outcrops, tufts and flowers; three crystals sprout on them. */
@@ -568,14 +572,14 @@ function lip(g: Geo, eye: Pt): string {
   let s = '';
   // Curling roots at both corners.
   for (const sx of [-1, 1]) {
-    const x0 = sx < 0 ? g.x0 - 20 : g.x(1) + 20;
+    const x0 = sx < 0 ? g.pw - 20 : g.x(1) + 20;
     const pts: Pt[] = [[x0, base + 4], [x0 - sx * 40, base - 40], [x0 - sx * 76, base - 72], [x0 - sx * 112, base - 70], [x0 - sx * 122, base - 54], [x0 - sx * 110, base - 44]];
     s += comic(taper(pts, 22, 4), C.root, { line: L.small, rim: [5, -3], glint: [-1.4, 1.4], hatch: 3.6, hatchWidth: 0.8, over: ink(smooth(pts.slice(0, 4), 1, false), L.fine, darkOf(C.root, 0.45)) });
   }
   // A ribbon of grass along the front, low in the middle.
   const grass: Pt[] = [];
   for (let x = b[0]; x <= b[0] + b[2] + 1; x += 13) {
-    const f = (x - g.x0) / g.ow;
+    const f = (x - g.pw) / g.ow;
     const edge = Math.max(0, Math.abs(f - 0.5) - 0.28) * 140;
     grass.push([x, base - 16 - edge - (grass.length % 2 ? 0 : 9) - rng.range(0, 6)]);
   }
@@ -803,7 +807,7 @@ function box(g: Geo): string {
   return (
     turn([xl, g.F3, w, fd], '50% 0', 'rotateX(-90deg)', 'ld-floor', svg([xl, 0, w, fd], s), FLOOR[0]) +
     turn([xl, yc, D, hW], '0 50%', 'rotateY(90deg)', 'ld-wall') +
-    turn([g.W - xl - D, yc, D, hW], '100% 50%', 'rotateY(-90deg)', 'ld-wall ld-wr') +
+    turn([g.W - xl - D, yc, D, hW], '100% 50%', 'rotateY(-90deg)', 'ld-wall') +
     turn([xl, yc, w, D], '50% 0', 'rotateX(-90deg)', 'ld-ceil')
   );
 }

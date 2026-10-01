@@ -12,8 +12,10 @@ import { buildStage, STAGE_SIZE, type StageKind } from './loadingStage';
 //
 // Cheap to run: everything moves by CSS transforms and opacity on the
 // compositor; the only script loop eases the pointer parallax and stops
-// when it settles. Reduced motion: no sway, parallax or bobbing, and the
-// pieces simply fade in.
+// when it settles. The pieces wait their turns by transition delays, not
+// timers, so the ripple plays on while the game keeps the page busy.
+// Reduced motion: no sway, parallax or bobbing, and the pieces simply fade
+// in.
 
 /** Time between two pieces coming up (ms), so a jump in progress plays as a ripple. */
 const BEAT = 85;
@@ -29,7 +31,9 @@ export class LoadingView {
   private pieces: { at: number; el: HTMLElement }[] = [];
   private up = 0;
   private due = 0;
-  private beat = 0;
+  /** When the next piece may come up (ms, performance.now()). */
+  private slot = 0;
+  private readonly glances = new Set<number>();
   private glancing = 0;
   private first: string | null = null;
   private pct = -1;
@@ -46,7 +50,7 @@ export class LoadingView {
   private ty = 0;
   private lx = 0;
   private ly = 0;
-  private resize: ResizeObserver | null = null;
+  private readonly resize: ResizeObserver;
   private closed = false;
 
   constructor(parent: HTMLElement) {
@@ -57,10 +61,8 @@ export class LoadingView {
     this.el = h('div', { class: `loading${this.still ? ' ld-still' : ''}`, role: 'status', 'aria-live': 'polite' }, this.box, h('p', { class: 'ld-strip' }, this.label, this.count));
     parent.append(this.el);
     this.fit();
-    if (typeof ResizeObserver !== 'undefined') {
-      this.resize = new ResizeObserver(() => this.fit());
-      this.resize.observe(this.el);
-    } else window.addEventListener('resize', this.fit);
+    this.resize = new ResizeObserver(() => this.fit());
+    this.resize.observe(this.el);
     if (!this.still) {
       window.addEventListener('pointermove', this.point, { passive: true });
       window.addEventListener('pointerdown', this.point, { passive: true });
@@ -98,7 +100,7 @@ export class LoadingView {
       for (const d of this.drapes) d.style.setProperty('--k', gather);
     }
     while (this.due < this.pieces.length && this.pieces[this.due]!.at <= p) this.due++;
-    this.next();
+    this.bringUp();
     if (p >= 1) this.el.classList.add('ld-tada');
   }
 
@@ -109,11 +111,10 @@ export class LoadingView {
     // Whatever was still waiting comes up at once.
     for (const { el } of this.pieces.slice(this.up)) el.classList.add('on');
     this.up = this.pieces.length;
-    window.clearTimeout(this.beat);
+    for (const t of this.glances) window.clearTimeout(t);
     window.clearTimeout(this.glancing);
     cancelAnimationFrame(this.raf);
-    this.resize?.disconnect();
-    window.removeEventListener('resize', this.fit);
+    this.resize.disconnect();
     window.removeEventListener('pointermove', this.point);
     window.removeEventListener('pointerdown', this.point);
     window.removeEventListener('pointerup', this.release);
@@ -122,19 +123,33 @@ export class LoadingView {
     window.setTimeout(() => this.el.remove(), 450);
   }
 
-  /** Brings up the next piece the progress has reached, then waits a beat (half a beat when it lags behind). */
-  private next(): void {
-    if (this.beat || this.up >= this.due) return;
-    const { el } = this.pieces[this.up++]!;
-    el.classList.add('on');
-    if (el.dataset.g) this.glance(el.dataset.g);
-    this.beat = window.setTimeout(
-      () => {
-        this.beat = 0;
-        this.next();
-      },
-      this.pct >= 100 || this.due - this.up > 5 ? BEAT / 2 : BEAT,
-    );
+  /**
+   * Brings up the pieces the progress has reached, a beat apart (half a beat
+   * when many wait): each waits its turn by its own transition delay (--w).
+   */
+  private bringUp(): void {
+    const now = performance.now();
+    const beat = this.pct >= 100 || this.due - this.up > 8 ? BEAT / 2 : BEAT;
+    for (; this.up < this.due; this.up++) {
+      const { el } = this.pieces[this.up]!;
+      const wait = Math.max(0, this.slot - now);
+      this.slot = now + wait + beat;
+      if (wait) {
+        const w = `${Math.round(wait)}ms`;
+        el.style.setProperty('--w', w);
+        // A crystal's sparkle stands beside it.
+        if (el.classList.contains('ld-cr')) (el.nextElementSibling as HTMLElement | null)?.style.setProperty('--w', w);
+      }
+      el.classList.add('on');
+      const at = el.dataset.g;
+      if (at) {
+        const t = window.setTimeout(() => {
+          this.glances.delete(t);
+          this.glance(at);
+        }, wait);
+        this.glances.add(t);
+      }
+    }
   }
 
   /** Gorti turns his head and eyes toward a crystal that just sprouted. */
