@@ -1,71 +1,110 @@
 import * as Phaser from 'phaser';
 import { app } from '../App';
-import { VIEW_H, VIEW_W } from '../constants';
-import { CrystalWarp, type WarpLook } from '../../render/2d/fx/crystalFx';
-import { GemArt } from '../../render/2d/fx/gemArt';
-import { addStaticCanvas, artCanvas } from '../../render/2d/TextureFactory';
-import { fitScene } from '../../paper/screen';
+import { h } from '../../ui/dom';
+import { Clock, Leaf, type Rect } from '../../ui/PageTurn';
+import { ChapterPage } from '../../ui/ChapterPage';
+import { Motes, Spark } from '../../ui/PageBits';
+import { RISE } from '../../paper/popUp';
+
+// Between rooms the game is a pop-up book. The picture just shown becomes a
+// real page: it is picked up by its free edge, curls over and is turned
+// away in perspective, and under it the next room's cards stand up from the
+// paper, the far ones first. Between chapters the page turns onto a chapter
+// page (its numeral painted, its title and a little picture popping up),
+// which then opens down the middle like a gatefold onto the chapter's first
+// room. Gorti's screen glow leaves the old page and flies to him in the new
+// one. The swap happens at once behind the page (`onPeak`), and the room is
+// made while the page is lifted, so nothing half-made is ever seen.
+//
+// Less motion asked for: the page only fades to paper and the paper to the
+// room (through the chapter page between chapters); nothing turns or pops.
+// No picture could be taken: paper is wiped over the screen instead, and the
+// rest goes on as usual. Nothing waits forever: the whole thing ends within
+// a few seconds whatever happens.
+
+/** The handshake between the page turn and the room it brings (`WorldData.arrive`). */
+export interface Arrival {
+  /** The chapter whose page was shown (null: none). */
+  readonly chapter: number | null;
+  /** The world has been made (set by the world). */
+  made: boolean;
+  /** Frames the world has run since (counted by the world). */
+  frames: number;
+  /** Where Gorti's screen glows now, canvas px, when he shows (set by the world). */
+  face: (() => { x: number; y: number } | null) | null;
+  /** The light has reached his screen: it flares (set by the world). */
+  glow: ((k: number) => void) | null;
+  /** The cards may stand up now (set by the turn). */
+  rise: boolean;
+  /** The turn is over: play may begin (set by the turn). */
+  over: boolean;
+}
 
 export interface WarpData {
-  /** Called once, at the opaque peak: swap rooms/scenes here. */
-  onPeak: () => void;
-  /** 1 = chapter change (long, dense); smaller = room change. */
-  strength?: number;
-  look?: WarpLook;
+  /** Called once, when the old picture can no longer be seen: swap rooms or scenes here, passing `arrival` on to the world. */
+  onPeak: (arrival: Arrival) => void;
+  /** A chapter page between (the chapter's number), else a page turn. */
+  chapter?: number | null;
+  /** 1: forward (the page turns from right to left), -1: back. */
+  dir?: 1 | -1;
+  /** Where Gorti's screen glows in the picture being left, canvas px (null: he does not show). */
+  glow?: { x: number; y: number } | null;
 }
 
-const DEFAULT_LOOK: WarpLook = { count: 60, alpha: 1, speed: 0.3, colors: [0x548cd6, 0x53bfaf, 0xef9a47, 0x9459d8] };
-const PAPER = 0xf2ecf6;
-/** The tunnel's depth around its lit far end: plum, as the night of the first painting. */
-const PLUM = '#3b2f57';
-const NIGHT = '#211a30';
-/** Shortest fade: nothing on screen changes faster than this (seconds). */
-const MIN_FADE = 0.34;
-/** Gems per frame of the full-screen tunnel. */
-const PER_FRAME = 16;
-/** Levels the tunnel is pulled back into the distance when it starts and ends. */
-const RECEDE = 3;
-/** On-screen size of the face at the end of the tunnel. */
-const FACE_PX = VIEW_H * 0.62;
+/** Timings (s). */
+export const TURN_TIMES = {
+  /** Longest wait for a picture of the last frame before wiping paper over it instead. */
+  capture: 0.25,
+  /** The free edge picked up and curled over. */
+  lift: 0.32,
+  /** The page turned away. */
+  turn: 0.82,
+  /** From the turn's start until the cards begin to stand up. */
+  riseAfter: 0.1,
+  /** The paper under the lifted page gives way to the room. */
+  unveil: 0.16,
+  /** The chapter page is shown at least this long (from the start). */
+  chapterHold: 2.15,
+  /** The chapter page opens. */
+  open: 0.86,
+  /** Paper wiped over the screen when no picture could be taken. */
+  wipe: 0.28,
+  /** Less motion: the cross-fades, and how long the chapter page stays. */
+  fadeOut: 0.26,
+  fadeIn: 0.3,
+  reducedHold: 1.5,
+  /** Whatever happens, it is over by then. */
+  limit: 8,
+} as const;
+const T = TURN_TIMES;
 
-/** 0 before `a`, 1 after `b`, smooth in between. */
-function ramp(t: number, a: number, b: number): number {
-  const v = Math.min(1, Math.max(0, (t - a) / (b - a)));
-  return v * v * (3 - 2 * v);
-}
+/** The world is ready to be seen once it has run this many frames. */
+const READY_FRAMES = 3;
 
-/** The veil's picture: the chapter's paper glowing at the far end, deep plum around it. */
-function veilKey(scene: Phaser.Scene, paper: number): string {
-  const key = `fx.warpveil:${paper.toString(16)}`;
-  if (scene.textures.exists(key)) return key;
-  const n = 256;
-  const [c, ctx] = artCanvas(n, n);
-  const g = ctx.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n * 0.7);
-  g.addColorStop(0, `#${paper.toString(16).padStart(6, '0')}`);
-  g.addColorStop(0.18, '#9b88c0');
-  g.addColorStop(0.5, PLUM);
-  g.addColorStop(1, NIGHT);
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, n, n);
-  addStaticCanvas(scene.textures, key, c);
-  return key;
-}
+type Phase = 'capture' | 'lifted' | 'turning' | 'chapter' | 'opening' | 'fading' | 'done';
 
-/**
- * Gem-tunnel transition drawn above every other scene. The tunnel fills the
- * screen and speeds toward the viewer while its plum depth closes behind it
- * (the caller swaps what is underneath at the peak); a face looks out of
- * its lit far end around the peak, then everything slows and opens up.
- */
 export class WarpScene extends Phaser.Scene {
   private data0!: WarpData;
-  private warp!: CrystalWarp;
-  private veil!: Phaser.GameObjects.Image;
-  private face!: Phaser.GameObjects.Image;
-  private faceScale = 1;
+  private clock!: Clock;
   private t = 0;
-  private dur = 1.6;
+  private phase: Phase = 'capture';
+  private phaseAt = 0;
   private peaked = false;
+  private arrival!: Arrival;
+  private reduced = false;
+  private dir: 1 | -1 = 1;
+  private layer: HTMLElement | null = null;
+  /** The game view inside the layer (CSS px). */
+  private view: Rect = { x: 0, y: 0, w: 0, h: 0 };
+  private under: HTMLElement | null = null;
+  private leaf: Leaf | null = null;
+  private page: ChapterPage | null = null;
+  private spark: Spark | null = null;
+  private motes: Motes | null = null;
+  private shot: HTMLCanvasElement | null = null;
+  private captured = false;
+  /** When the room becomes playable (s). */
+  private endAt = Infinity;
 
   constructor() {
     super('warp');
@@ -74,63 +113,305 @@ export class WarpScene extends Phaser.Scene {
   init(data: WarpData): void {
     this.data0 = data;
     this.t = 0;
+    this.phase = 'capture';
+    this.phaseAt = 0;
     this.peaked = false;
+    this.captured = false;
+    this.shot = null;
+    this.endAt = Infinity;
+    this.dir = data.dir ?? 1;
+    this.arrival = { chapter: data.chapter ?? null, made: false, frames: 0, face: null, glow: null, rise: false, over: false };
   }
 
   create(): void {
-    fitScene(this, 'cover');
     this.scene.bringToTop();
-    const s = Math.max(0.2, Math.min(1, this.data0.strength ?? 1));
-    const reduced = app.settings.reducedMotion;
-    this.dur = reduced ? 0.9 : 0.9 + 0.9 * s;
-    const look = this.data0.look ?? DEFAULT_LOOK;
-    // A drawn picture (not a tint), so it shows the same in every renderer.
-    this.veil = this.add.image(VIEW_W / 2, VIEW_H / 2, veilKey(this, look.paper ?? PAPER)).setAlpha(0);
-    this.veil.setDisplaySize(VIEW_W * 1.25, VIEW_H * 1.25);
-    const art = GemArt.ensure(this);
-    this.face = this.add.image(VIEW_W / 2, VIEW_H / 2, GemArt.KEY, art.face).setAlpha(0).setDepth(4);
-    this.faceScale = FACE_PX / art.faceSize;
-    // Full screen: denser than a room's background tunnel, and faster.
-    const frames = reduced ? 5 : 5 + Math.round(2 * s);
-    this.warp = new CrystalWarp(this, { ...look, count: frames * PER_FRAME, perRing: PER_FRAME, size: 1.05, ribs: 1, brushed: true, brief: true, alpha: 0 }, 5);
-    this.warp.cy = VIEW_H / 2;
-    app.audio.sfx('whoosh', { vol: 0.5 + 0.4 * s });
+    this.reduced = app.settings.reducedMotion;
+    this.clock = new Clock();
+    this.buildLayer();
+    // The picture just drawn, taken in the same frame (WebGL keeps it only until then).
+    this.game.events.once(Phaser.Core.Events.POST_RENDER, this.capture, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.teardown());
+  }
+
+  private buildLayer(): void {
+    const stage = app.ui.stage;
+    const layer = h('div', { class: 'pt passive', 'aria-hidden': 'true' });
+    // Over the game view and the colour storm, under the HUD, texts and menus.
+    const storm = stage.querySelector(':scope > .color-storm');
+    if (storm) storm.after(layer);
+    else stage.prepend(layer);
+    this.layer = layer;
+    const sr = stage.getBoundingClientRect();
+    const cr = this.game.canvas.getBoundingClientRect();
+    this.view = { x: cr.left - sr.left, y: cr.top - sr.top, w: cr.width || sr.width, h: cr.height || sr.height };
+  }
+
+  /** Takes the picture now on the canvas (none if it cannot be taken), and lays the page over it. */
+  private capture(): void {
+    if (this.captured || !this.layer) return;
+    this.captured = true;
+    try {
+      const src = this.game.canvas;
+      const c = document.createElement('canvas');
+      c.width = src.width;
+      c.height = src.height;
+      const ctx = c.getContext('2d');
+      if (ctx && c.width > 0 && c.height > 0) {
+        ctx.drawImage(src, 0, 0);
+        if (!blank(c)) this.shot = c;
+      }
+    } catch {
+      this.shot = null;
+    }
+    try {
+      this.begin();
+    } catch (e) {
+      // Whatever went wrong, the swap still happens and play goes on.
+      console.warn('page turn failed', e);
+      this.finish();
+    }
+  }
+
+  /** The page is laid over the picture: from here on the old one is never seen again. */
+  private begin(): void {
+    const v = this.view;
+    const layer = this.layer!;
+    const chapter = this.arrival.chapter;
+    const shot = this.shot;
+    // Under the page: the chapter page, or a sheet of paper over the game view.
+    if (chapter !== null) {
+      const sr = app.ui.stage.getBoundingClientRect();
+      this.page = new ChapterPage(this.clock, layer, chapter, { w: sr.width, h: sr.height }, v, this.reduced, (n, o) => app.audio.sfx(n, o));
+      app.ui.stage.classList.add('pt-chapter');
+    } else {
+      this.under = h('div', { class: 'pt-under' });
+      place(this.under, v);
+      layer.append(this.under);
+      // The HUD's texts go with the old page and come back with the new room.
+      app.ui.stage.classList.add('pt-room');
+    }
+    if (shot) {
+      this.leaf = new Leaf(this.clock, layer, v, shot, this.dir, this.reduced);
+      if (this.reduced) this.leaf.fade(T.fadeOut * 1000);
+      else {
+        this.leaf.lift(T.lift * 1000);
+        app.audio.sfx('flutter', { vol: 0.8 });
+        this.motes = new Motes(this.clock, layer, v);
+        this.motes.puff(0.04, this.dir > 0 ? 0.97 : 0.03, 8, this.dir);
+        const g = this.data0.glow;
+        if (g) {
+          this.spark = new Spark(this.clock, layer, this.toLayer(g), Math.min(v.w, v.h));
+          this.spark.rise(this.dir);
+        }
+      }
+      this.page?.reveal(this.dir, this.reduced ? 0 : T.lift + 0.1);
+      this.peak();
+    } else {
+      // No picture: paper is wiped over the screen first.
+      const cover = this.page ? this.page.el : this.under!;
+      this.clock.play(cover, [{ opacity: 0 }, { opacity: 1 }], { duration: T.wipe * 1000, easing: 'ease-in' });
+      this.page?.reveal(this.dir, this.reduced ? 0 : T.wipe, false);
+    }
+    this.go('lifted');
+  }
+
+  /** Swaps what is under the page, once. */
+  private peak(): void {
+    if (this.peaked) return;
+    this.peaked = true;
+    this.data0.onPeak(this.arrival);
+  }
+
+  private go(p: Phase): void {
+    this.phase = p;
+    this.phaseAt = this.t;
+  }
+
+  /** The room has been made and has drawn a few frames. */
+  private get ready(): boolean {
+    return this.arrival.made && this.arrival.frames >= READY_FRAMES;
   }
 
   override update(_time: number, delta: number): void {
-    this.t += delta / 1000;
-    const d = this.dur;
+    this.t += Math.min(delta, 100) / 1000;
+    this.clock.tick(this.t);
     const t = this.t;
-    const u = Math.min(1, t / d);
-    const reduced = app.settings.reducedMotion;
-    const s = this.data0.strength ?? 1;
-    // Speed rises to the peak and falls away; the tunnel opens at the peak.
-    const pulse = Math.sin(Math.PI * u);
-    this.warp.speed = reduced ? 0.1 : 0.12 + (0.3 + 0.35 * s) * pulse * pulse;
-    this.warp.spread = reduced ? 2.5 : 2.3 + 0.6 * pulse;
-    // The tunnel grows out of its vanishing point while the paper comes in,
-    // holds through the peak, then pulls back into the distance and goes.
-    const fadeIn = ramp(t, 0, Math.max(MIN_FADE, 0.3 * d));
-    const fadeOut = ramp(t, 0.6 * d, d);
-    this.warp.alpha = fadeIn * (1 - fadeOut);
-    this.warp.recede = RECEDE * (1 - ramp(t, 0, Math.max(MIN_FADE, 0.4 * d)) + fadeOut);
-    this.veil.setAlpha(ramp(t, 0, 0.42 * d) * (1 - fadeOut));
-    // The face looks out of the far end around the peak.
-    const fade = Math.max(MIN_FADE, 0.2 * d);
-    const faceIn = 0.44 * d - fade;
-    const faceOut = 0.56 * d;
-    const faceA = ramp(t, faceIn, faceIn + fade) * (1 - ramp(t, faceOut, faceOut + fade));
-    const approach = ramp(t, faceIn, faceOut + fade);
-    this.face.setAlpha(faceA).setScale(this.faceScale * (reduced ? 1 : 0.85 + 0.25 * approach));
-    this.warp.core = FACE_PX * 0.45 * faceA;
-    this.warp.update(delta);
-    if (!this.peaked && u >= 0.5) {
-      this.peaked = true;
-      this.data0.onPeak();
+    if (t > T.limit && this.phase !== 'done') {
+      this.finish();
+      return;
     }
-    if (u >= 1) {
-      this.warp.destroy();
-      this.scene.stop();
+    switch (this.phase) {
+      case 'capture':
+        // No frame drawn in time: go on without a picture.
+        if (t > T.capture) this.capture();
+        break;
+      case 'lifted':
+        this.whileLifted(t);
+        break;
+      case 'chapter':
+        this.whileChapter(t);
+        break;
+      case 'turning':
+      case 'opening':
+      case 'fading':
+        if (t >= this.endAt) this.finish();
+        break;
+      case 'done':
+        break;
     }
+  }
+
+  private whileLifted(t: number): void {
+    const since = t - this.phaseAt;
+    if (!this.shot) {
+      // The wipe: the swap waits until the paper covers everything.
+      if (since < T.wipe) return;
+      this.peak();
+    }
+    if (this.page) {
+      // The old page turns onto the chapter page at once: the room is made behind it.
+      if (this.reduced || !this.leaf) {
+        if (since >= (this.shot ? T.fadeOut : T.wipe)) this.go('chapter');
+        return;
+      }
+      if (since >= T.lift) {
+        this.leaf.turn(T.turn * 1000);
+        app.audio.sfx('leaf', { vol: 0.9 });
+        this.spark?.fade(T.turn * 0.6);
+        this.motes?.puff(0.3, 0.5, 6, this.dir);
+        // Once it has gone over, the old page is let go.
+        this.clock.after(T.turn + 0.05, () => {
+          this.leaf?.destroy();
+          this.leaf = null;
+        });
+        this.go('chapter');
+      }
+      return;
+    }
+    const minLift = this.reduced ? T.fadeOut : this.shot ? T.lift : T.wipe;
+    if (since < minLift || !this.ready) return;
+    // The room is there: the page turns away and its cards stand up.
+    if (this.reduced) {
+      this.clock.play(this.under!, [{ opacity: 1 }, { opacity: 0 }], { duration: T.fadeIn * 1000, easing: 'ease-out' });
+      app.ui.stage.classList.remove('pt-room');
+      this.arrival.rise = true;
+      this.endAt = t + T.fadeIn;
+      this.go('fading');
+      return;
+    }
+    // Without a picture the leaf is plain paper, laid over the paper wiped in.
+    this.leaf ??= new Leaf(this.clock, this.layer!, this.view, null, this.dir);
+    this.clock.play(this.under!, [{ opacity: 1 }, { opacity: 0 }], { duration: T.unveil * 1000, easing: 'ease-out' });
+    this.leaf.turn(T.turn * 1000);
+    app.audio.sfx('leaf', { vol: 0.9 });
+    this.motes?.puff(0.32, 0.5, 6, this.dir);
+    this.clock.after(T.turn * 0.45, () => app.ui.stage.classList.remove('pt-room'));
+    this.time.delayedCall(T.riseAfter * 1000, () => {
+      this.arrival.rise = true;
+      this.pops();
+    });
+    const face = this.newFace();
+    if (this.spark && face) this.spark.home(face, T.turn * 0.92, () => this.arrival.glow?.(0.7));
+    else {
+      this.spark?.fade(T.turn * 0.5);
+      if (face) this.time.delayedCall(T.turn * 700, () => this.arrival.glow?.(0.6));
+    }
+    // Play begins as the page lands and the nearest cards settle.
+    this.endAt = t + Math.max(T.turn, T.riseAfter + RISE.spread + RISE.dur * 0.62);
+    this.go('turning');
+  }
+
+  /** Soft cardboard pops as the cards stand up, far to near. */
+  private pops(): void {
+    [0.05, 0.2, 0.36].forEach((d, i) => this.time.delayedCall(d * 1000, () => app.audio.sfx('pop', { vol: 0.5 + 0.15 * i, pitch: 0.85 + 0.12 * i })));
+  }
+
+  private whileChapter(t: number): void {
+    const hold = this.reduced ? T.reducedHold : T.chapterHold;
+    if (t < hold || !this.ready) return;
+    const page = this.page!;
+    if (this.reduced) {
+      app.ui.stage.classList.remove('pt-chapter');
+      page.fade(T.fadeIn * 1000);
+      this.arrival.rise = true;
+      this.endAt = t + T.fadeIn;
+      this.go('fading');
+      return;
+    }
+    page.open(T.open * 1000);
+    // The HUD comes back once the doors stand well apart.
+    this.clock.after(T.open * 0.5, () => app.ui.stage.classList.remove('pt-chapter'));
+    app.audio.sfx('leaf', { vol: 0.8, pitch: 0.78 });
+    this.time.delayedCall(T.riseAfter * 1000, () => {
+      this.arrival.rise = true;
+      this.pops();
+    });
+    if (this.newFace()) this.time.delayedCall(T.open * 650, () => this.arrival.glow?.(0.7));
+    this.endAt = t + Math.max(T.open, T.riseAfter + RISE.spread + RISE.dur * 0.62);
+    this.go('opening');
+  }
+
+  /** Gorti's face in the new room (layer px), if he shows. */
+  private newFace(): { x: number; y: number } | null {
+    const f = this.arrival.face?.() ?? null;
+    return f ? this.toLayer(f) : null;
+  }
+
+  /** Canvas px → the layer's CSS px. */
+  private toLayer(p: { x: number; y: number }): { x: number; y: number } {
+    const v = this.view;
+    const c = this.game.canvas;
+    return { x: v.x + (p.x / Math.max(1, c.width)) * v.w, y: v.y + (p.y / Math.max(1, c.height)) * v.h };
+  }
+
+  /** Play begins: everything of the turn goes. */
+  private finish(): void {
+    if (this.phase === 'done') return;
+    this.phase = 'done';
+    this.peak();
+    this.arrival.rise = true;
+    this.arrival.over = true;
+    this.scene.stop();
+  }
+
+  private teardown(): void {
+    this.game.events.off(Phaser.Core.Events.POST_RENDER, this.capture, this);
+    app.ui.stage.classList.remove('pt-chapter', 'pt-room');
+    // Whatever was cut short: the room is played from here.
+    this.arrival.rise = true;
+    this.arrival.over = true;
+    this.clock?.clear();
+    this.leaf?.destroy();
+    this.page?.destroy();
+    this.spark?.destroy();
+    this.motes?.destroy();
+    this.layer?.remove();
+    this.leaf = this.page = null;
+    this.spark = null;
+    this.motes = null;
+    this.layer = this.under = null;
+    this.shot = null;
+  }
+}
+
+/** Places an element over a rectangle of the layer. */
+function place(el: HTMLElement, r: Rect): void {
+  el.style.cssText = `left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px`;
+}
+
+/** A picture that came out empty (nothing drawn into it, or all black). */
+function blank(c: HTMLCanvasElement): boolean {
+  try {
+    const s = document.createElement('canvas');
+    s.width = 8;
+    s.height = 8;
+    const ctx = s.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return false;
+    ctx.drawImage(c, 0, 0, 8, 8);
+    const d = ctx.getImageData(0, 0, 8, 8).data;
+    for (let i = 0; i < d.length; i += 4) if (d[i + 3]! > 8 && d[i]! + d[i + 1]! + d[i + 2]! > 24) return false;
+    return true;
+  } catch {
+    return false;
   }
 }

@@ -3,7 +3,7 @@ import { app, persist } from '../App';
 import { DEPTH, HULL_H, HULL_W, JUMPING, PULSE_RADIUS, PULSE_WINDUP_MS, VIEW_W, VIEW_H, CAMERA_ZOOM } from '../constants';
 import { allParts } from '../../content/art/manifest';
 import { propZ, staging, type RoomStaging } from '../../content/stage';
-import { PaperStage, Press, actorScale, printScaleAt, waitFor } from '../../paper';
+import { PaperStage, PopUp, Press, actorScale, printScaleAt, waitFor } from '../../paper';
 import type { PartArt } from '../../render/2d/rig/rigTypes';
 import { hex, P } from '../../render/2d/palette';
 import { frameRef, hasFrame } from '../../render/2d/TextureFactory';
@@ -12,12 +12,12 @@ import { chapterOfRoom, roomDef, skyOf } from '../../content/data/rooms';
 import { NAMES } from '../../content/data/dialogue.tr';
 import { burstMode, ColorBursts } from '../../render/2d/fx/colorBurst';
 import { StepCrystals, warpLook } from '../../render/2d/fx/crystalFx';
-import type { WarpData } from './WarpScene';
+import type { Arrival, WarpData } from './WarpScene';
 import { memoryDef } from '../../content/data/memories';
 import type { RoomDef } from '../../content/data/roomTypes';
 import { Player } from '../../gameplay/Player';
 import { Narrative } from '../systems/NarrativeSystem';
-import { CHAPTER_TITLES, chapterOf, impliedAbilities, type Quest } from '../state/GameState';
+import { CHAPTER_TITLES, chapterOf, impliedAbilities, opensChapter, roomIndex, type Quest } from '../state/GameState';
 import type { FormId, RoomId } from '../state/types';
 import { RoomRuntime } from '../world/RoomRuntime';
 import { createScript } from '../../content/scripts';
@@ -25,7 +25,7 @@ import type { ExtraInteract, RoomScript } from '../../content/scripts/types';
 import type { Interactable } from '../world/Interactable';
 import { PaintingGallery } from '../world/PaintingGallery';
 import { MoveSystem } from '../../gameplay/moves/MoveSystem';
-import { PlayerGlow } from '../../gameplay/PlayerGlow';
+import { PlayerGlow, SCREEN_GLOW } from '../../gameplay/PlayerGlow';
 import { ComicWords, WORDS, pick } from '../../render/2d/fx/comicWords';
 import { FaceDialogue } from '../cinematics/FaceDialogue';
 import { ROMAN } from '../../ui/Menus';
@@ -54,6 +54,8 @@ const partArt = (key: string): PartArt | undefined => (partsByKey ??= new Map(al
 export interface WorldData {
   room: RoomId;
   checkpoint: string;
+  /** Arriving through a page turn (WarpScene): the room pops up when told, and play waits for it. */
+  arrive?: Arrival;
 }
 
 type ActionTarget = { kind: 'interact'; id: string; label: string; x: number; y: number } | { kind: 'move'; label: string };
@@ -83,6 +85,10 @@ export class WorldScene extends Phaser.Scene {
   script!: RoomScript;
   paused = false;
   transitioning = false;
+  /** The page turn this room is arriving through (null once it is played). */
+  private arrival: Arrival | null = null;
+  /** A room asked for while this one was still arriving. */
+  private pendingRoom: RoomId | null = null;
   private hintGlyph!: Phaser.GameObjects.Image;
   private particles!: Phaser.GameObjects.Particles.ParticleEmitter;
   /** Colour bursts: the Rezonans moves and the bombardment that comes now and then. */
@@ -139,6 +145,9 @@ export class WorldScene extends Phaser.Scene {
     this.features = [];
     this.paused = false;
     this.transitioning = false;
+    // A turn that is already over (it gave up waiting) brings nothing to wait for.
+    this.arrival = data.arrive && !data.arrive.over ? data.arrive : null;
+    this.pendingRoom = null;
     this.target = null;
     this.cleanups = [];
     this.camMode = 'player';
@@ -295,7 +304,12 @@ export class WorldScene extends Phaser.Scene {
     this.paper.follow = app.settings.reducedMotion ? 0.2 : 0.35;
     this.paper.setTarget(this.player.x, this.player.zone.y);
     this.paper.snap();
-    this.paper.screen.fadeIn(500, 15, 13, 24);
+    if (this.arrival) {
+      // Arriving through a page turn: the cards lie flat until the page is
+      // turned off them, then stand up (popUp.ts); nothing is played until then.
+      this.transitioning = true;
+      if (!app.settings.reducedMotion) this.paper.popUp = new PopUp();
+    } else this.paper.screen.fadeIn(500, 15, 13, 24);
 
     // Fixed-step gameplay aligned with Arcade physics.
     this.physics.world.on(Phaser.Physics.Arcade.Events.WORLD_STEP, this.fixedStep, this);
@@ -359,12 +373,21 @@ export class WorldScene extends Phaser.Scene {
     if (isEntry && this.def.checkpoints[0]!.id === cp.id) {
       const ch = chapterOf(this.def.id);
       const firstRoomOfChapter = chapterOfRoom(this.def.id)?.rooms[0] === this.def.id;
-      if (firstRoomOfChapter && quest.set(`chapterCard:${ch}`)) {
+      // Shown on its own page by the turn into it (WarpScene), else as a card in the HUD.
+      if (firstRoomOfChapter && quest.set(`chapterCard:${ch}`) && this.arrival?.chapter !== ch) {
         app.ui.hud.areaTitle(`BÖLÜM ${ROMAN[ch]}`, CHAPTER_TITLES[ch]!, 3600);
       }
     }
     // Entering a room persists the entry checkpoint.
     this.activateCheckpoint(cp.id, true);
+    if (this.arrival) {
+      const a = this.arrival;
+      // Hands off until the page has turned (the touch controls go too).
+      app.input.pushContext('none');
+      a.face = () => this.faceOnScreen();
+      a.glow = (k) => this.glow?.burst(SCREEN_GLOW, k);
+      a.made = true;
+    }
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.cleanup());
   }
@@ -694,19 +717,62 @@ export class WorldScene extends Phaser.Scene {
   }
 
   goToRoom(to: RoomId): void {
+    if (this.arrival) {
+      // Still arriving: it goes on as soon as this room is played.
+      this.pendingRoom = to;
+      return;
+    }
     if (this.transitioning) return;
     this.transitioning = true;
     const next = roomDef(to);
-    this.quest.setCheckpoint(to, next.checkpoints[0]!.id);
+    const cp = next.checkpoints[0]!.id;
+    const chapter = opensChapter(this.def.id, to, cp, this.quest) ? next.chapter : null;
+    this.quest.setCheckpoint(to, cp);
     persist();
     app.input.freeze();
-    // Crystal tunnel between rooms; a full, dense one between chapters.
-    const chapter = next.chapter !== this.def.chapter;
+    // Hands off from here until the next room is played (the touch controls go too).
+    app.input.pushContext('none');
+    // The page is turned: forward through the story from right to left, back the other way.
     this.scene.launch('warp', {
-      strength: chapter ? 1 : 0.45,
-      look: warpLook(next.theme),
-      onPeak: () => this.scene.restart({ room: to, checkpoint: next.checkpoints[0]!.id } satisfies WorldData),
+      chapter,
+      dir: roomIndex(to) >= roomIndex(this.def.id) ? 1 : -1,
+      glow: this.faceOnScreen(),
+      onPeak: (arrive) => this.scene.restart({ room: to, checkpoint: cp, arrive } satisfies WorldData),
     } satisfies WarpData);
+  }
+
+  /** Where Gorti's screen glows on the canvas (device px), when he shows. */
+  private faceOnScreen(): { x: number; y: number } | null {
+    const p = this.player;
+    if (!p || p.kind !== 'gorti' || p.state === 'hidden' || !p.rig.container.visible) return null;
+    const e = p.rig.attachPoint('eye');
+    const s = this.paper.lens.project(e.x, e.y, p.z);
+    if (!(s.x >= 0 && s.y >= 0 && s.x <= this.scale.width && s.y <= this.scale.height)) return null;
+    return { x: s.x, y: s.y };
+  }
+
+  /** While arriving through a page turn: the cards stand up when told, and play begins when it is over. */
+  private arriving(dt: number): void {
+    const a = this.arrival!;
+    a.frames++;
+    const pop = this.paper.popUp;
+    if (pop) {
+      if (a.rise && !pop.started) pop.start();
+      pop.tick(dt / 1000);
+    }
+    if (a.over) this.arrived();
+  }
+
+  /** The page has turned: play begins (and a room asked for meanwhile is gone to). */
+  private arrived(): void {
+    if (!this.arrival) return;
+    this.arrival = null;
+    this.paper.popUp?.finish();
+    this.transitioning = false;
+    app.input.popContext('none');
+    const to = this.pendingRoom;
+    this.pendingRoom = null;
+    if (to) this.goToRoom(to);
   }
 
   // ------------------------------------------------------------ pause
@@ -753,6 +819,7 @@ export class WorldScene extends Phaser.Scene {
   override update(time: number, delta: number): void {
     if (!this.player) return;
     const dt = Math.min(delta, 50);
+    if (this.arrival) this.arriving(dt);
     if (this.laughter.left > 0) this.laughter.left -= dt;
     const i = app.input;
     if (!this.paused && !this.transitioning) {
@@ -982,6 +1049,8 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private cleanup(): void {
+    this.arrival = null;
+    this.pendingRoom = null;
     this.scene.stop('sky');
     // The physics plugin may already have torn its world down on shutdown.
     this.physics?.world?.off(Phaser.Physics.Arcade.Events.WORLD_STEP, this.fixedStep, this);

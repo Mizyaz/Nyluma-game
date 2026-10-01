@@ -17,7 +17,9 @@ import type { Player } from './Player';
 /** A light's colour, strength, reach (world px) and unsteadiness, and its bloom's width (world px) and strength. */
 type Look = { color: number; intensity: number; radius: number; flicker?: number; bloom: number; bloomA: number };
 
-const SCREEN: Look = { color: 0xff86d6, intensity: 1.25, radius: 520, bloom: 170, bloomA: 0.55 };
+/** The pink of his screen. */
+export const SCREEN_GLOW = 0xff86d6;
+const SCREEN: Look = { color: SCREEN_GLOW, intensity: 1.25, radius: 520, bloom: 170, bloomA: 0.55 };
 const HEADS: Record<SkyOut, Look> = {
   sun: { color: 0xffc56e, intensity: 1.2, radius: 540, bloom: 170, bloomA: 0.45 },
   moon: { color: 0xb9c4ff, intensity: 1, radius: 500, bloom: 160, bloomA: 0.4 },
