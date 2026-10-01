@@ -46,6 +46,8 @@ describe('face-animated dialogue scenes', () => {
     for (const t of talks()) {
       const lines = DIALOGUE[t.key];
       expect(lines, `${t.file}: DIALOGUE.${t.key}`).toBeDefined();
+      // (A missing key reads as a default line; it must be in the file itself.)
+      expect(Object.keys(DIALOGUE), `${t.file}: DIALOGUE.${t.key}`).toContain(t.key);
       const names = t.cast.map((id) => CAST_NAMES[id as CastId]);
       for (const l of lines!) if (l.who) expect(names, `${t.file}: "${l.text}"`).toContain(l.who);
     }

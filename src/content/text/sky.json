@@ -1,0 +1,309 @@
+{
+  "$schema": "./sky.schema.json",
+  "default": {
+    "sun": {
+      "mood": "calm",
+      "lines": [
+        "Işığım biraz yorgun, ama burada.",
+        "Öhö… Bir şey yok, bir şey yok.",
+        { "text": "Bana bu kadar yakından bakma, gözlerin kamaşır.", "answer": "Benim ekranım var." },
+        "Uzak yıldızlara selam söyle."
+      ]
+    },
+    "moon": {
+      "mood": "calm",
+      "lines": [
+        "Şşş… Dünya uyuyor.",
+        "Yükseklere bak. Daha yükseklere.",
+        { "text": "Gece seni izliyor, küçük kök.", "answer": "Ben de geceyi izliyorum." }
+      ]
+    }
+  },
+  "chapters": {
+    "c1": {
+      "sun": {
+        "mood": "curious",
+        "lines": ["Toprağın altında bile seni görüyorum.", "Yeni doğan her şey önce ışığa bakar."]
+      },
+      "moon": {
+        "mood": "delighted",
+        "lines": ["Hoş geldin, on dördüncü.", "Kristaller fısıldıyor; dinle."]
+      }
+    },
+    "c2": {
+      "sun": {
+        "mood": "worried",
+        "lines": ["Yeryüzüne hoş geldin.", "Rüzgâr da benim kadar yorgun."]
+      },
+      "moon": {
+        "mood": "grumpy",
+        "lines": ["Her yalan bir doğrunun gölgesidir.", "Rakunlar hep izler."]
+      }
+    },
+    "c3": {
+      "sun": {
+        "mood": "delighted",
+        "wear": ["sweat"],
+        "lines": ["Hahaha! Öhö öhö!", "Işığım dalgalanıyor, tutamıyorum."]
+      },
+      "moon": {
+        "mood": "worried",
+        "lines": ["Güneş çok gülüyor. Bu iyiye işaret değil.", "Atın toynakları beni uyandırdı."]
+      }
+    },
+    "c4": {
+      "sun": {
+        "mood": "sleepy",
+        "wear": ["bandage"],
+        "lines": ["Buradayım… biraz.", "Işığım bandajların altında."]
+      },
+      "moon": {
+        "mood": "sleepy",
+        "wear": ["nightcap"],
+        "lines": ["Koğuşta herkes uyur, ruhlar hariç.", "Meşaleni sıkı tut."]
+      }
+    },
+    "c5": {
+      "sun": {
+        "mood": "grumpy",
+        "lines": ["Işığı da devredebilirler mi?", "Masada kimse yok."]
+      },
+      "moon": {
+        "mood": "teary",
+        "lines": ["Satıldı… Ruhlar satılır mı?", "Kâğıtlar ağlamaz, ben ağlarım."]
+      }
+    },
+    "c6": {
+      "sun": {
+        "mood": "curious",
+        "wear": ["freckles"],
+        "lines": ["Bu sayfa bomboş! Bir şey çiz.", { "text": "Burası henüz yazılmamış.", "answer": "Ben yazarım." }]
+      },
+      "moon": {
+        "mood": "delighted",
+        "lines": ["Boş odalar en çok yankı yapar.", "Kahkaha at, yer değiştirelim!"]
+      }
+    }
+  },
+  "rooms": {
+    "r01": {
+      "sun": {
+        "mood": "curious",
+        "wear": ["freckles"],
+        "place": "peek",
+        "tilt": -8,
+        "lines": [
+          { "text": "Uyandın mı? Bak, ben de uyandım.", "answer": "Burası neresi?" },
+          "On dört çentik… Sen hangisisin?",
+          "Oyuncakların sana bakıyor."
+        ]
+      },
+      "moon": {
+        "mood": "sleepy",
+        "wear": ["nightcap", "zzz"],
+        "tilt": 10,
+        "lines": [
+          { "text": "Hıımm… beş dakika daha…", "answer": "Ay da mı uyur?" },
+          "Yatağın hiç uyunmamış. Benimki de.",
+          "Rüyanda balinalar vardı."
+        ]
+      }
+    },
+    "r02": {
+      "sun": {
+        "mood": "sleepy",
+        "place": "high",
+        "size": 0.85,
+        "tilt": 12,
+        "lines": [
+          "Bu kadar derine ışığım zor iniyor.",
+          { "text": "Köklerin benden daha yaşlı.", "answer": "Ben de mi yaşlıyım?" },
+          "Hımm… Toprak sıcacık."
+        ]
+      },
+      "moon": {
+        "mood": "delighted",
+        "wear": ["notes"],
+        "lines": [
+          "Balina şarkısını duydun mu?",
+          { "text": "Derin, orta, yüksek… Bir daha söyle!", "answer": "Sadece üç sesim var." },
+          "Kökler şarkıyla gerinir."
+        ]
+      }
+    },
+    "r03": {
+      "sun": {
+        "mood": "teary",
+        "tilt": -6,
+        "lines": [
+          { "text": "Umudun bende değil, unutma.", "answer": "Peki nerede?" },
+          "Öhö… Ağacın çiçekleri beni iyileştirmez.",
+          "En küçük yıldız en uzaktakidir."
+        ]
+      },
+      "moon": {
+        "mood": "proud",
+        "wear": ["crown"],
+        "tilt": -4,
+        "lines": [
+          "Tepeye çık. Algın kadar yükseğe.",
+          { "text": "Bu taç kristal ağaçtan.", "answer": "Bana da yakışır mı?" },
+          "Bir yıldız doğacak; acele etme."
+        ]
+      }
+    },
+    "r04": {
+      "sun": {
+        "mood": "delighted",
+        "wear": ["scarf"],
+        "tilt": 6,
+        "lines": [
+          { "text": "Rüzgârı derinde hissettin mi?", "answer": "Mor damarlarımda." },
+          "Atkım uçuyor! Tut onu!",
+          "İlk defa gerçekten ısınıyorsun."
+        ]
+      },
+      "moon": {
+        "mood": "curious",
+        "place": "peek",
+        "lines": [
+          "Rakunlar senden korkmuyor, merak ediyorlar.",
+          { "text": "O amca kim? Sen misin?", "answer": "Sanırım bazen." },
+          "Rüzgâr kulağıma bir şey fısıldadı."
+        ]
+      }
+    },
+    "r05": {
+      "sun": {
+        "mood": "worried",
+        "wear": ["sweat"],
+        "lines": [
+          "Dünya bu kadar ağırlığı taşıyabilir mi?",
+          { "text": "Taşlar çok ağır. Ben de.", "answer": "Biraz dinlen." },
+          "Öhö… Sivas’ta kar yağıyor mu?"
+        ]
+      },
+      "moon": {
+        "mood": "teary",
+        "size": 0.9,
+        "lines": [
+          "Büyüyorum galiba… Korkuyorum.",
+          { "text": "Bir ay ne zaman yaşlanır?", "answer": "Değişim gelince." },
+          "Gözyaşlarım yıldız oluyor."
+        ]
+      }
+    },
+    "r06": {
+      "sun": {
+        "mood": "proud",
+        "wear": ["flowers"],
+        "tilt": -5,
+        "lines": [
+          "Çiçekler benim için açtı!",
+          { "text": "Bağırdığını duydum. Bütün orman duydu.", "answer": "Yalanlar!" },
+          "Bir at doğacak, hissediyorum."
+        ]
+      },
+      "moon": {
+        "mood": "grumpy",
+        "wear": ["bandage"],
+        "tilt": 8,
+        "lines": [
+          "Hıh. Yalanlar dedi, yalanlar!",
+          { "text": "Bana kızgın mısın?", "answer": "Sana değil." },
+          "Düğümler çözülünce ben de rahatlarım."
+        ]
+      }
+    },
+    "r07": {
+      "sun": {
+        "mood": "delighted",
+        "wear": ["flowers", "sweat"],
+        "lines": [
+          "Koş, mor at, koş!",
+          { "text": "Her adımında bir orman çiçek açıyor!", "answer": "Atın işi bu." }
+        ]
+      },
+      "moon": {
+        "mood": "sleepy",
+        "wear": ["nightcap"],
+        "lines": ["Bu kadar gürültüde nasıl uyunur?", "Hımm… Çiçek kokuyor."]
+      }
+    },
+    "r08": {
+      "sun": {
+        "mood": "worried",
+        "wear": ["bandage", "sweat"],
+        "lines": [
+          "Öhö… Milyonlarca gözyaşı çok ağır.",
+          { "text": "Balıklar neden bana uçuyor?", "answer": "Değişim için." }
+        ]
+      },
+      "moon": {
+        "mood": "worried",
+        "lines": ["Güneş düşerse kim aydınlatacak?", "Dikkat et, küçük kök."]
+      }
+    },
+    "r09": {
+      "sun": {
+        "mood": "sleepy",
+        "wear": ["bandage"],
+        "place": "peek",
+        "size": 0.8,
+        "lines": [
+          { "text": "Ben yokum. Yani… pek yokum.", "answer": "Seni görüyorum ama." },
+          "Serçenin kanatları gözümü alıyor."
+        ]
+      },
+      "moon": {
+        "mood": "curious",
+        "lines": ["Serçe saatini mi kesti?", "Ağaçlar varlıklarını hissediyor."]
+      }
+    },
+    "r10": {
+      "sun": {
+        "mood": "teary",
+        "lines": [
+          "Anılar geriye akıyor… benimkiler de.",
+          { "text": "Damlalar koğuşu uyandırdı.", "answer": "Ben uyanığım." }
+        ]
+      },
+      "moon": {
+        "mood": "sleepy",
+        "wear": ["nightcap", "zzz"],
+        "lines": [
+          "Hırr… Şşş, koğuştayız.",
+          { "text": "Gece lambası mısın sen?", "answer": "Bir meşalem var." },
+          "Ters anılar en tatlı rüyalardır."
+        ]
+      }
+    },
+    "r11": {
+      "sun": {
+        "mood": "curious",
+        "wear": ["freckles"],
+        "lines": [
+          "Bir anahtar ve bir kilit… Sen hangisisin?",
+          { "text": "Tık tık… Kalbin mi bu ses?", "answer": "Dişliler." }
+        ]
+      },
+      "moon": {
+        "mood": "grumpy",
+        "lines": ["Mekanik şeyleri sevmem; tutulma gibiler.", "Gözlerinden biri kilit, biri anahtar."]
+      }
+    },
+    "r12": {
+      "sun": {
+        "mood": "grumpy",
+        "lines": [
+          { "text": "İmza yeri boş. İyi.", "answer": "İmzalamayacağım." },
+          "Saat biri geçti. Geç mi kaldın?"
+        ]
+      },
+      "moon": {
+        "mood": "teary",
+        "lines": ["Gelmedi… Keşke gelseydi.", "Bütün ruhların sahipliği… Ne ağır bir cümle."]
+      }
+    }
+  }
+}

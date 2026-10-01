@@ -41,7 +41,7 @@ export function r05(w: WorldScene): RoomScript {
         p.lock(true, 'idle');
         w.camTo(3600, MOON.y + 170);
         if (p.form !== 'human') {
-          cs.caption('Gorti’nin bedeni, ayın bakışı altında yeniden ağırlaştı.', 3600);
+          cs.caption(CAPTIONS.bodyHeavy, 3600);
           await new Promise<void>((res) => (cs.skipped ? res() : w.transform('human', res)));
         }
         p.lock(true, 'look');

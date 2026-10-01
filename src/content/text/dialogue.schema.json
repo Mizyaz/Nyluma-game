@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "description": "Bu dosyanın yardım şeması; dokunmayın",
+      "type": "string"
+    }
+  },
+  "additionalProperties": {
+    "minItems": 1,
+    "type": "array",
+    "items": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "description": "Anlatıcının sözü (kimse konuşmuyor)"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "who": {
+              "description": "Konuşan: names.json'daki anahtar (gorti, sun, babyMoon, oldMoon...); yazılmazsa anlatıcı",
+              "type": "string"
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Söylenen söz"
+            },
+            "whisper": {
+              "description": "true: fısıltı (kesik çizgili balon)",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "text"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "description": "Bir konuşma: satırlar sırayla gösterilir. Anahtarı değiştirmeyin."
+  },
+  "description": "Konuşmalar ve incelemeler, anahtarlarıyla."
+}

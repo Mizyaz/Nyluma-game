@@ -1,7 +1,7 @@
 // kd — the chapter builder's tool. Rooms are JSON files; this checks them,
 // lists what they can use, makes new ones and takes pictures of them.
 //
-//   npm run kd -- check                      every chapter and room file, cross-checked
+//   npm run kd -- check                      every chapter, room and story text file, cross-checked
 //   npm run kd -- list [what]                rooms, chapters, cast, props, themes, grounds, music, abilities
 //   npm run kd -- new <id> --chapter <c> [--title "…"] [--theme hill] [--width 2000]
 //   npm run kd -- show <room>                what a room file does, in words
@@ -15,16 +15,25 @@ import { z } from 'zod';
 import { SOLID_STYLES, THEME_IDS } from '../src/content/data/roomTypes';
 import { MUSIC_CUES } from '../src/music/types';
 import { ABILITIES } from '../src/engine/state/types';
-import { CAST, SPEAKERS } from '../src/content/characters/cast';
 import { allParts } from '../src/content/art/manifest';
 import { checkStory, walkActions } from '../src/engine/content/compile';
 import { RoomSchema, StorySchema, schemaProblems, type ActionJson, type RoomJson, type StoryJson } from '../src/engine/content/schema';
+import { auditText, describeProblem, textSyntax, TEXT_FILES } from '../src/content/text/audit';
+import { TEXT_SCHEMAS } from '../src/content/text/schema';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const CHAPTERS = join(ROOT, 'src/content/chapters');
 const ROOM_DIR = join(CHAPTERS, 'rooms');
 const STORY_FILE = join(CHAPTERS, 'chapters.json');
 const BUILT_IN_DIR = join(ROOT, 'src/content/rooms');
+const TEXT_DIR = join(ROOT, 'src/content/text');
+
+// The cast reads the story text (names.json), so it loads only when every
+// text file is JSON at all; `check` says where one is not.
+const TEXT_BROKEN = textSyntax(TEXT_DIR).length > 0;
+const cast = TEXT_BROKEN ? null : await import('../src/content/characters/cast');
+const CAST: Record<string, { name: string }> = cast?.CAST ?? {};
+const SPEAKERS: readonly string[] = cast?.SPEAKERS ?? [];
 
 const readJson = (f: string): unknown => JSON.parse(readFileSync(f, 'utf8'));
 const writeJson = (f: string, v: unknown): void => writeFileSync(f, JSON.stringify(v, null, 2) + '\n');
@@ -82,10 +91,10 @@ function check(): number {
     const at = `room ${r.id}`;
     for (const p of r.props ?? []) if (!props.has(p.key)) problems.push(`${at}: no drawing "${p.key}" (npm run kd -- list props)`);
     for (const b of r.breakables ?? []) if (b.key && !props.has(b.key)) problems.push(`${at} breakable ${b.id}: no drawing "${b.key}"`);
-    for (const n of r.npcs ?? []) if (!CAST[n.who]) problems.push(`${at} npc ${n.id}: "${n.who}" is not in the cast (npm run kd -- list cast)`);
+    for (const n of r.npcs ?? []) if (cast && !CAST[n.who]) problems.push(`${at} npc ${n.id}: "${n.who}" is not in the cast (npm run kd -- list cast)`);
     const lines = (list: readonly ActionJson[]): void =>
       walkActions(list, (a) => {
-        if ('say' in a) for (const l of a.say) if (l.who && !speakers.has(l.who)) warnings.push(`${at}: speaker "${l.who}" has no name of its own (shown as written)`);
+        if ('say' in a) for (const l of a.say) if (cast && l.who && !speakers.has(l.who)) warnings.push(`${at}: speaker "${l.who}" has no name of its own (shown as written)`);
       });
     lines(r.enter ?? []);
     for (const n of r.npcs ?? []) {
@@ -95,10 +104,16 @@ function check(): number {
     for (const g of r.gates ?? []) if (g.x < 60 || g.x > r.width - 60) problems.push(`${at} gate ${g.id}: x ${g.x} is too close to the edge`);
     for (const n of r.npcs ?? []) if (Math.abs(n.x - r.spawn.x) < 120) warnings.push(`${at} npc ${n.id}: stands on the spawn point`);
   }
+  // The story text (src/content/text, docs/METINLER.md).
+  const chapterIds = Array.isArray((storyRaw as StoryJson).chapters) ? (storyRaw as StoryJson).chapters.map((c) => c.id) : undefined;
+  const roomIds = [...builtInRooms(), ...roomFiles().map((f) => f.file.replace(/\.json$/, ''))];
+  for (const p of auditText({ dir: TEXT_DIR, srcDir: join(ROOT, 'src'), root: ROOT, chapters: chapterIds, rooms: roomIds })) {
+    (p.level === 'error' ? problems : warnings).push(describeProblem(p));
+  }
   for (const w of warnings) console.log(`  uyarı  ${w}`);
   for (const p of problems) console.log(`  HATA   ${p}`);
   const story = storyRaw as StoryJson;
-  console.log(problems.length ? `\n${problems.length} hata.` : `Tamam: ${story.chapters.length} bölüm, ${rooms.length} oda dosyası, ${builtInRooms().length} TS oda.`);
+  console.log(problems.length ? `\n${problems.length} hata.` : `Tamam: ${story.chapters.length} bölüm, ${rooms.length} oda dosyası, ${builtInRooms().length} TS oda, ${TEXT_FILES.length} metin dosyası.`);
   return problems.length ? 1 : 0;
 }
 
@@ -222,6 +237,8 @@ function schema(): number {
   writeJson(join(CHAPTERS, 'room.schema.json'), z.toJSONSchema(RoomSchema, opts));
   writeJson(join(CHAPTERS, 'chapters.schema.json'), z.toJSONSchema(StorySchema, opts));
   console.log('Yazıldı: src/content/chapters/room.schema.json, chapters.schema.json');
+  for (const [file, s] of Object.entries(TEXT_SCHEMAS)) writeJson(join(TEXT_DIR, file), z.toJSONSchema(s, opts));
+  console.log(`Yazıldı: src/content/text/${Object.keys(TEXT_SCHEMAS).join(', ')}`);
   return 0;
 }
 

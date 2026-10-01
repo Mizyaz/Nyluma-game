@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "description": "Bu dosyanın yardım şeması; dokunmayın",
+      "type": "string"
+    },
+    "gorti": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Gorti, oyunun kahramanı: konuşma balonunda ve kartta görünen ad"
+    },
+    "babyMoon": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Bebek Ay (I., II. ve VI. bölümler): konuşma balonunda ve kartta görünen ad"
+    },
+    "oldMoon": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Yaşlı Ay (III. bölümden sonra): konuşma balonunda ve kartta görünen ad"
+    },
+    "sun": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Güneş: konuşma balonunda ve kartta görünen ad"
+    },
+    "horse": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Mor at: konuşma balonunda ve kartta görünen ad"
+    },
+    "coward": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Korkak form: konuşma balonunda ve kartta görünen ad"
+    },
+    "forms": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Formlar, hep bir ağızdan: konuşma balonunda ve kartta görünen ad"
+    },
+    "voice": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Kimin olduğu bilinmeyen bir ses: konuşma balonunda ve kartta görünen ad"
+    },
+    "one": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Kalabalıktan biri: konuşma balonunda ve kartta görünen ad"
+    },
+    "two": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Kalabalıktan bir başkası: konuşma balonunda ve kartta görünen ad"
+    },
+    "three": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Kalabalıktan bir üçüncüsü: konuşma balonunda ve kartta görünen ad"
+    },
+    "mech": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Mekanik form: konuşma balonunda ve kartta görünen ad"
+    },
+    "suit": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Takım elbiseli adam: konuşma balonunda ve kartta görünen ad"
+    },
+    "moonMan": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Ay başlı adam: konuşma balonunda ve kartta görünen ad"
+    },
+    "sunMan": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Güneş başlı adam: konuşma balonunda ve kartta görünen ad"
+    },
+    "baldMan": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Sivaslı amca: konuşma balonunda ve kartta görünen ad"
+    },
+    "child": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Gorti, çocukken: konuşma balonunda ve kartta görünen ad"
+    },
+    "youth": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Gorti, gençken: konuşma balonunda ve kartta görünen ad"
+    },
+    "warrior": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Gorti, savaşçıyken: konuşma balonunda ve kartta görünen ad"
+    }
+  },
+  "required": [
+    "gorti",
+    "babyMoon",
+    "oldMoon",
+    "sun",
+    "horse",
+    "coward",
+    "forms",
+    "voice",
+    "one",
+    "two",
+    "three",
+    "mech",
+    "suit",
+    "moonMan",
+    "sunMan",
+    "baldMan",
+    "child",
+    "youth",
+    "warrior"
+  ],
+  "additionalProperties": {
+    "type": "string",
+    "minLength": 1,
+    "description": "Bir ad; konuşmalarda \"who\" ile bu anahtar yazılır"
+  },
+  "description": "Kim ne diye anılıyor. Konuşmalardaki \"who\" bu dosyanın anahtarlarıdır (gorti, sun, babyMoon...)."
+}

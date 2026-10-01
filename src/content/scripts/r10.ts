@@ -4,6 +4,7 @@ import { DEPTH } from '../../engine/constants';
 import { hex, P } from '../../render/2d/palette';
 import { frameRef } from '../../render/2d/TextureFactory';
 import { CAPTIONS, DIALOGUE } from '../data/dialogue.tr';
+import { MEMORY_TEXT } from '../text/text';
 import { Sparrow } from '../../gameplay/actors/Creatures';
 import type { WorldScene } from '../../engine/scenes/WorldScene';
 import type { RoomScript } from './types';
@@ -17,41 +18,30 @@ interface Station {
   title: string;
   fragments: { label: string }[];
 }
+const WARD = MEMORY_TEXT.reversed.stations;
 const STATIONS: Record<string, { flag: string; x: number; def: Station }> = {
   st1: {
     flag: 'r10.s1',
     x: 760,
     def: {
-      title: 'Birinci anı: Geç kalmak',
-      fragments: [
-        { label: 'Çalan saat' },
-        { label: 'Koşan ayaklar' },
-        { label: 'Kapanan kapı' },
-      ],
+      title: WARD.st1!.title,
+      fragments: WARD.st1!.fragments.map((label) => ({ label })),
     },
   },
   st2: {
     flag: 'r10.s2',
     x: 1650,
     def: {
-      title: 'İkinci anı: Emanet ışık',
-      fragments: [
-        { label: 'Uzatılan mum' },
-        { label: 'Aydınlanan oda' },
-        { label: 'Büyüyen gölge' },
-      ],
+      title: WARD.st2!.title,
+      fragments: WARD.st2!.fragments.map((label) => ({ label })),
     },
   },
   st3: {
     flag: 'r10.s3',
     x: 2500,
     def: {
-      title: 'Üçüncü anı: Gözyaşı',
-      fragments: [
-        { label: 'Açan çiçek' },
-        { label: 'Solan çiçek' },
-        { label: 'Düşen damla' },
-      ],
+      title: WARD.st3!.title,
+      fragments: WARD.st3!.fragments.map((label) => ({ label })),
     },
   },
 };
@@ -76,7 +66,7 @@ export function r10(w: WorldScene): RoomScript {
     const back = [...st.def.fragments].reverse().map((f) => f.label.toLocaleLowerCase('tr')).join(', ');
     app.audio.sfx('clock', { pitch: 0.8 });
     app.audio.sfx('rootGrow');
-    app.ui.hud.caption(`${st.def.title}. Geriye doğru: ${back}.`, 5200);
+    app.ui.hud.caption(`${st.def.title}. ${MEMORY_TEXT.reversed.caption}: ${back}.`, 5200);
     w.player.emote('surprise', 900);
     w.flag(st.flag);
     w.activateCheckpoint(id === 'st1' ? 'r10_s1' : 'r10_s2', true);

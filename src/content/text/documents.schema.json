@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "description": "Bu dosyanın yardım şeması; dokunmayın",
+      "type": "string"
+    },
+    "portraits": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "title",
+        "note"
+      ],
+      "additionalProperties": false,
+      "description": "Görüntüler sayfası"
+    },
+    "russian": {
+      "type": "object",
+      "properties": {
+        "lines": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "ru": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Rusça satır"
+              },
+              "tr": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Altındaki Türkçe karşılığı"
+              }
+            },
+            "required": [
+              "ru",
+              "tr"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "lines"
+      ],
+      "additionalProperties": false,
+      "description": "Rusça sözleşme"
+    },
+    "clause": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "articles": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Maddeler, sırayla"
+        },
+        "signature": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "title",
+        "articles",
+        "signature"
+      ],
+      "additionalProperties": false,
+      "description": "Hak aktarımı anlaşması"
+    },
+    "final": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "lines": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "stamp": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Damga"
+        }
+      },
+      "required": [
+        "title",
+        "lines",
+        "stamp"
+      ],
+      "additionalProperties": false,
+      "description": "Son sayfa"
+    }
+  },
+  "required": [
+    "portraits",
+    "russian",
+    "clause",
+    "final"
+  ],
+  "additionalProperties": false,
+  "description": "Boş Masa'daki (r12) kâğıtlar"
+}

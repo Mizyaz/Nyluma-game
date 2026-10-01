@@ -4,6 +4,7 @@ import { DEPTH } from '../../engine/constants';
 import { frameRef, hasFrame } from '../../render/2d/TextureFactory';
 import { portraitUrl } from '../art/memoryArt';
 import { CAPTIONS, DIALOGUE } from '../data/dialogue.tr';
+import { DOCUMENTS as D } from '../text/text';
 import type { WorldScene } from '../../engine/scenes/WorldScene';
 import type { RoomScript } from './types';
 import { addArt } from './helpers';
@@ -17,9 +18,9 @@ function docPortraits(): HTMLElement {
   return h(
     'div',
     {},
-    h('h4', { text: 'EK-3 · Devredilen Varlıkların Görüntüleri' }),
+    h('h4', { text: D.portraits.title }),
     h('div', { class: 'portraits' }, ...pics.map((k) => h('img', { src: portraitUrl(k), alt: '' }))),
-    h('p', { text: 'Her görüntünün altında bir sayı var. Hiçbirinin altında bir ad yok.' }),
+    h('p', { text: D.portraits.note }),
   );
 }
 
@@ -27,14 +28,7 @@ function docRussian(): HTMLElement {
   return h(
     'div',
     {},
-    h('p', { class: 'ru', text: 'ДОГОВОР О ПЕРЕДАЧЕ ПРАВ НА ОБЪЕКТ НЕДВИЖИМОСТИ' }),
-    h('p', { class: 'gloss', text: '(Bir gayrimenkul üzerindeki hakların devrine ilişkin sözleşme)' }),
-    h('p', { class: 'ru', text: 'Объект: комната № 14' }),
-    h('p', { class: 'gloss', text: '(Taşınmaz: 14 numaralı oda)' }),
-    h('p', { class: 'ru', text: 'Местонахождение: мир № 382' }),
-    h('p', { class: 'gloss', text: '(Konumu: 382 numaralı dünya)' }),
-    h('p', { class: 'ru', text: 'Площадь: не установлена' }),
-    h('p', { class: 'gloss', text: '(Alanı: belirlenmemiş)' }),
+    ...D.russian.lines.flatMap((l) => [h('p', { class: 'ru', text: l.ru }), h('p', { class: 'gloss', text: l.tr })]),
   );
 }
 
@@ -42,10 +36,9 @@ function docClause(): HTMLElement {
   return h(
     'div',
     {},
-    h('h4', { text: 'ULUSAL KRİSTAL KOMİTESİ — HAK AKTARIMI ANLAŞMASI' }),
-    h('p', { text: 'Madde 7. Devreden, bünyesinde taşıdığı tüm ruhların, anıların ve bunlardan doğacak her türlü meyvenin sahipliğini, işbu anlaşmanın damgalandığı andan itibaren Komite’ye devreder.' }),
-    h('p', { text: 'Madde 8. Devredenin toplantıda hazır bulunmaması, devrin geçerliliğini etkilemez.' }),
-    h('p', { class: 'gloss', text: 'Devreden: Gorti Evaskinan · İmza yeri boş bırakılmıştır.' }),
+    h('h4', { text: D.clause.title }),
+    ...D.clause.articles.map((a) => h('p', { text: a })),
+    h('p', { class: 'gloss', text: D.clause.signature }),
   );
 }
 
@@ -53,10 +46,9 @@ function docFinal(): HTMLElement {
   return h(
     'div',
     { style: 'text-align:center' },
-    h('h4', { text: 'SON SAYFA' }),
-    h('p', { text: 'Devredilen: bünyedeki tüm ruhlar.' }),
-    h('p', { text: 'Devralan: Ulusal Kristal Komitesi.' }),
-    h('div', { class: 'stamp', text: 'SATILDI' }),
+    h('h4', { text: D.final.title }),
+    ...D.final.lines.map((l) => h('p', { text: l })),
+    h('div', { class: 'stamp', text: D.final.stamp }),
   );
 }
 

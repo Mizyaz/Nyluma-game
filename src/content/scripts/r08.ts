@@ -207,7 +207,7 @@ export function r08(w: WorldScene): RoomScript {
         p.lock(true, 'idle');
         horse = new Horse(w, 60, GROUND, DEPTH.actors);
         await cs.wait(500);
-        cs.caption('At, toprağa ve mor sıvıya geri döndü.', 3600);
+        cs.caption(CAPTIONS.horseBack, 3600);
         await new Promise<void>((res) => (cs.skipped ? res() : horse!.dissolve(res)));
         sun?.cough();
         cs.caption(CAPTIONS.sunEyes, 5600);

@@ -193,6 +193,31 @@ Conventions:
 - `CrystalWarp` in `crystalFx.ts` is no longer used by the transitions. The rooms' background
   tunnels still use the shared gem-tunnel code.
 
+### The story text in JSON (`src/content/text/`)
+
+- All the story's words are JSON files the user edits: names, captions, dialogue, inspect,
+  memories (found and reversed), paintings, documents (r12's papers) and sky (the Sun's and
+  the Moon's looks and sayings). `docs/METINLER.md` is the user's guide, in Turkish.
+- `text.ts` loads them and checks each as it loads (`check.ts`: typed validators, no
+  dependencies). A bad entry falls back to a default (`…`, a name's own key, the default
+  look) and, in dev, warns once in the console as `[metin] <file> › <key>: …`. The tables
+  are Proxies: a key the code asks for that a file lacks also gets a default and a warning
+  (`in` and `Object.keys` still tell the truth). The game never stops on its text.
+- The old names stay: `NAMES`, `CAPTIONS`, `DIALOGUE` (dialogue.tr.ts re-exports them),
+  `MEMORIES`, `PAINTINGS`, `CHAPTER_TITLES` (still from chapters.json). Scripts only swapped
+  a string for a lookup. Menus, buttons, control hints and toasts stay in code.
+- `npm run kd -- check` runs `audit.ts`: JSON syntax (line and column), every validator,
+  sky.json's pages against the real chapters and rooms, and the code's own reads
+  (`CAPTIONS.x`, `DIALOGUE.x`/`['x']`, `NAMES.x`, r01's `INSPECTABLE`) against the files.
+  Errors fail it; unused keys are warnings. `kd` loads the cast only after the syntax check,
+  so a broken file is reported rather than crashing kd.
+- `npm run kd -- schema` also writes `src/content/text/*.schema.json` from `schema.ts` (zod,
+  editor help only; the game never imports it).
+- A JSON syntax error is the one thing that stops the game: Vite refuses the file and
+  names its line, and kd check says the same.
+- Tests: `tests/unit/text.test.ts` (validators on broken samples, the loader's defaults,
+  lookOf/linesOf fallbacks, audit on a temp copy).
+
 ## Other pending work
 
 - Adaptive, balanced line art across the game, following the rules above.

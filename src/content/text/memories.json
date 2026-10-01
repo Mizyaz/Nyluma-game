@@ -1,35 +1,45 @@
 {
   "$schema": "./memories.schema.json",
-  "m1": {
-    "title": "Kuyu Başında",
-    "text": "Bir köy kuyusunun başında bir kadın, kovayı çekmeden önce suya şarkı söylerdi. Bir sabah su mavi parladı. Kova ağırlaştı ama şarkı bitmedi. Kuyunun dibinde ışık bir balığın şeklini almıştı; balık kıpırdamıyor, yalnızca parlıyordu."
+  "found": {
+    "m1": {
+      "title": "Kuyu Başında",
+      "text": "Bir köy kuyusunun başında bir kadın, kovayı çekmeden önce suya şarkı söylerdi. Bir sabah su mavi parladı. Kova ağırlaştı ama şarkı bitmedi. Kuyunun dibinde ışık bir balığın şeklini almıştı; balık kıpırdamıyor, yalnızca parlıyordu."
+    },
+    "m2": {
+      "title": "Tahta Balina",
+      "text": "Bir baba, kış boyunca kızı için tahtadan bir balina oydu. Kız balinayı yastığının altına koyar, sabahları kulağına dayardı. Balina hiç ses çıkarmadı. Yine de kız, her sabah biraz daha uzak bir denizden uyandığına yemin ederdi."
+    },
+    "m3": {
+      "title": "Rakunun Taşı",
+      "text": "Bir rakun, dereden çıkardığı kristal bir taşı patileriyle yıkamaya çalıştı. Taş temizlendikçe parladı, parladıkça rakun daha çok yıkadı. Sonunda dere mavi aktı. Rakun taşı bıraktı; ama patileri o geceden beri karanlıkta hafifçe ışıdı."
+    },
+    "m4": {
+      "title": "Sivas’ta Kar",
+      "text": "Kar yağarken bir kahvehanede kel bir adam çayını karıştırıyordu. Kaşık bardağa her değdiğinde, buğulu camda bir yüz belirip kayboldu. Adam başını hiç kaldırmadı. “Acele eden,” dedi kendi kendine, “kendi yüzünü de geçer.”"
+    },
+    "m5": {
+      "title": "Derin Ses",
+      "text": "Buzların altında yaşlı bir balina, yavrusuna en derin sesi öğretiyordu. “Yüksek ses uzağa gider,” dedi, “derin ses ise geri döner.” Yavru ilk derin sesini çıkardığında, dönen yankının içinde kendi adını duydu; daha önce hiç duymadığı bir dilde."
+    },
+    "m6": {
+      "title": "Irkutsk’ta Buz",
+      "text": "Nehir donduğunda bir çocuk buzun üstüne yüzüstü yattı ve altından geçen balıkları saydı. Saymayı bıraktığında bir balık durdu ve ona baktı. Pulları mor bir ışıkla doluydu. Çocuk o kış boyunca, bir balığın gözünde büyüdüğünü hissetti."
+    },
+    "m7": {
+      "title": "Kayıştan Yuva",
+      "text": "Bir serçe, yuvasını eski bir kol saatinin kayışından ördü. Yavrular her gece tiktakların arasında uyudu. Kayış çürüyünce saat düştü; ama yavrular zamanı çoktan öğrenmişti. Her sabah, güneşten bir dakika önce uyandılar."
+    },
+    "m8": {
+      "title": "Mesai",
+      "text": "Bir memur, yirmi yıl boyunca her sabah aynı saatte aynı kapıdan girdi. Bir gün kapı açılmadı. Öğle oldu, saat biri geçti; memur bekledi. Sonra anladı: kapı kilitli değildi. Yalnızca onu hatırlamayı bırakmıştı."
+    }
   },
-  "m2": {
-    "title": "Tahta Balina",
-    "text": "Bir baba, kış boyunca kızı için tahtadan bir balina oydu. Kız balinayı yastığının altına koyar, sabahları kulağına dayardı. Balina hiç ses çıkarmadı. Yine de kız, her sabah biraz daha uzak bir denizden uyandığına yemin ederdi."
-  },
-  "m3": {
-    "title": "Rakunun Taşı",
-    "text": "Bir rakun, dereden çıkardığı kristal bir taşı patileriyle yıkamaya çalıştı. Taş temizlendikçe parladı, parladıkça rakun daha çok yıkadı. Sonunda dere mavi aktı. Rakun taşı bıraktı; ama patileri o geceden beri karanlıkta hafifçe ışıdı."
-  },
-  "m4": {
-    "title": "Sivas’ta Kar",
-    "text": "Kar yağarken bir kahvehanede kel bir adam çayını karıştırıyordu. Kaşık bardağa her değdiğinde, buğulu camda bir yüz belirip kayboldu. Adam başını hiç kaldırmadı. “Acele eden,” dedi kendi kendine, “kendi yüzünü de geçer.”"
-  },
-  "m5": {
-    "title": "Derin Ses",
-    "text": "Buzların altında yaşlı bir balina, yavrusuna en derin sesi öğretiyordu. “Yüksek ses uzağa gider,” dedi, “derin ses ise geri döner.” Yavru ilk derin sesini çıkardığında, dönen yankının içinde kendi adını duydu; daha önce hiç duymadığı bir dilde."
-  },
-  "m6": {
-    "title": "Irkutsk’ta Buz",
-    "text": "Nehir donduğunda bir çocuk buzun üstüne yüzüstü yattı ve altından geçen balıkları saydı. Saymayı bıraktığında bir balık durdu ve ona baktı. Pulları mor bir ışıkla doluydu. Çocuk o kış boyunca, bir balığın gözünde büyüdüğünü hissetti."
-  },
-  "m7": {
-    "title": "Kayıştan Yuva",
-    "text": "Bir serçe, yuvasını eski bir kol saatinin kayışından ördü. Yavrular her gece tiktakların arasında uyudu. Kayış çürüyünce saat düştü; ama yavrular zamanı çoktan öğrenmişti. Her sabah, güneşten bir dakika önce uyandılar."
-  },
-  "m8": {
-    "title": "Mesai",
-    "text": "Bir memur, yirmi yıl boyunca her sabah aynı saatte aynı kapıdan girdi. Bir gün kapı açılmadı. Öğle oldu, saat biri geçti; memur bekledi. Sonra anladı: kapı kilitli değildi. Yalnızca onu hatırlamayı bırakmıştı."
+  "reversed": {
+    "caption": "Geriye doğru",
+    "stations": {
+      "st1": { "title": "Birinci anı: Geç kalmak", "fragments": ["Çalan saat", "Koşan ayaklar", "Kapanan kapı"] },
+      "st2": { "title": "İkinci anı: Emanet ışık", "fragments": ["Uzatılan mum", "Aydınlanan oda", "Büyüyen gölge"] },
+      "st3": { "title": "Üçüncü anı: Gözyaşı", "fragments": ["Açan çiçek", "Solan çiçek", "Düşen damla"] }
+    }
   }
 }
