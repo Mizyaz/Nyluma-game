@@ -5,6 +5,7 @@ import { mix } from '../../render/2d/palette';
 import { lineFor } from '../../render/2d/style';
 import { ellipsePath, hashSeed, mixed, nextId, poly, Rng, rrect, smooth, taper, type Pt } from '../../render/2d/svg';
 import { applyGrain } from '../../render/2d/TextureFactory';
+import { portrait, sign } from './p1Pictures';
 
 // The first painting ("House of The Stranger") as the 14th Room: a pink box
 // papered inside with a torn cream sheet, in a pale world of cracked stone
@@ -104,16 +105,8 @@ export const P1 = {
   shade: '#8a8096',
   shadeDark: '#756b82',
   bang: '#ad98b8',
-  frame: '#b6a8af',
-  frameInner: '#dad0d9',
-  portrait: '#a4d1a4',
-  window: '#b0a199',
-  earth: '#cdbeaf',
-  earthDark: '#bdae9f',
-  earthLight: '#d6c8ba',
   crystal: '#aae5dc',
   crystalDeep: '#88d0c2',
-  fossil: '#bda4b4',
   marksPaper: '#ecdec2',
   pencil: '#8f7d89',
   circle14: '#e490b4',
@@ -578,55 +571,7 @@ function bang(): PartArt {
 
 // ---------------------------------------------------------------- on the back wall
 
-/** A frame cut with notches, as the painting draws them. */
-function notchedFrame(x0: number, y0: number, x1: number, y1: number, notches: { side: 'l' | 'r'; y: number; h: number }[]): string {
-  const left = notches.filter((n) => n.side === 'l').sort((a, b) => b.y - a.y);
-  const right = notches.filter((n) => n.side === 'r').sort((a, b) => a.y - b.y);
-  const pts: Pt[] = [[x0, y0], [x1, y0]];
-  for (const n of right) pts.push([x1, n.y], [x1 - 8, n.y], [x1 - 8, n.y + n.h], [x1, n.y + n.h]);
-  pts.push([x1, y1], [x0 + 12, y1], [x0, y1 - 12]);
-  for (const n of left) pts.push([x0, n.y + n.h], [x0 + 8, n.y + n.h], [x0 + 8, n.y], [x0, n.y]);
-  return poly(pts);
-}
-
-/** The first picture: a green creature's portrait in a tilted, notched frame. */
-function picture(): PartArt {
-  let inner = '';
-  inner += shape(poly([[30, 28], [110, 28], [110, 142], [30, 142]]), P1.frameInner, 1.6);
-  for (const [x, y] of [[40, 42], [54, 30], [86, 30], [102, 40], [106, 60]] as const) inner += shape(taper([[70, 64], [(70 + x) / 2 + 2, (64 + y) / 2 - 4], [x, y]], 7, 3), P1.portrait, 1.4);
-  inner += shape(taper([[70, 82], [66, 110], [70, 140]], 20, 14), P1.portrait, 1.6);
-  inner += shape(taper([[64, 94], [50, 104], [44, 118]], 7, 4), P1.portrait, 1.4) + shape(taper([[76, 94], [90, 104], [96, 116]], 7, 4), P1.portrait, 1.4);
-  inner += shape(circle(70, 72, 15), P1.portrait, 1.8);
-  inner += closedEye(64, 72, 3.4, lineFor(P1.portrait), 1.6) + closedEye(77, 72, 3.4, lineFor(P1.portrait), 1.6);
-  let s = shape(notchedFrame(18, 16, 122, 154, [{ side: 'l', y: 60, h: 12 }, { side: 'r', y: 100, h: 12 }]), P1.frame, 2.4) + inner;
-  s += shape(sparkD(16, 14, 9, 4, 0.2), mix(P1.frame, '#ffffff', 0.35), 1.4);
-  s += shape(circle(130, 12, 4), P1.frame, 1.4);
-  return part('p1.picture', 140, 170, 70, 85, group('rotate(-7 70 85)', s));
-}
-
-/**
- * The window, as the painting's second picture: a notched frame hung on a
- * wire. Behind it no sky: earth, a fossil root and a blue crystal with the
- * shadow of a fish frozen inside.
- */
-function windowPart(): PartArt {
-  let s = '';
-  s += ln('M34 44L75 8L116 44', P1.string, 2.4) + shape(circle(75, 8, 4.2), mix(P1.frame, P1.string, 0.4), 1.4);
-  s += shape(notchedFrame(16, 40, 134, 200, [{ side: 'l', y: 86, h: 14 }, { side: 'r', y: 150, h: 14 }]), P1.window, 2.6);
-  let view = fill(rrect(26, 50, 98, 140, 0), P1.earth);
-  view += fill(`M24 92Q60 82 126 96V122Q70 110 24 120Z`, P1.earthDark);
-  view += fill(`M24 150Q72 140 126 150V172Q70 164 24 176Z`, P1.earthLight);
-  view += shape(taper([[20, 142], [58, 124], [96, 116], [128, 98]], 11, 6), P1.fossil, 1.6);
-  view += shape(smooth([[54, 184], [40, 142], [48, 98], [60, 124], [60, 172]]), P1.crystalDeep, 1.8);
-  view += shape(smooth([[96, 184], [110, 142], [102, 98], [90, 124], [90, 172]]), P1.crystalDeep, 1.8);
-  view += shape(poly([[62, 186], [64, 112], [75, 62], [86, 112], [88, 186]]), P1.crystal, 2, {
-    inner:
-      fill(`M64 140Q75 128 88 138Q76 150 64 140ZM62 140L54 132L55 148Z`, mix(P1.crystalDeep, P1.earthDark, 0.35), 0.55) + ln('M75 64L74 184', lineFor(P1.crystal), 1.1, 0.7),
-  });
-  view += ln('M36 176L66 58', '#ffffff', 6, 0.14) + ln('M52 182L82 70', '#ffffff', 2.2, 0.2);
-  s += shape(rrect(28, 52, 94, 136, 0), P1.earth, 2, { inner: view, line: lineFor(P1.window) });
-  return part('p1.window', 150, 212, 75, 120, s);
-}
+// The two pictures (the portrait and the sign) are in p1Pictures.ts.
 
 /** Fourteen notches on a scrap of paper; a name beside the fourteenth. */
 function marks(): PartArt {
@@ -860,7 +805,7 @@ function charms(): PartArt[] {
 export function painting1Parts(): PartArt[] {
   return [
     cube(), arm(), lamp(), tree(), gift(), starfolk(), flower(), rootling(), shade(), bang(),
-    picture(), windowPart(), marks(), bed(), whaleToy(), rootDoor(), ...charms(),
+    portrait(), sign(), marks(), bed(), whaleToy(), rootDoor(), ...charms(),
   ];
 }
 

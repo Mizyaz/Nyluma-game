@@ -16,6 +16,8 @@ const onWall = (x: number, y: number): { x: number; y: number; scroll: number } 
   return { x: x - (1 - PLANE.wall) * scrollX, y: y - (1 - PLANE.wall) * 180, scroll: PLANE.wall };
 };
 
+/** How much larger than the other things on the wall the two pictures hang. */
+const PICTURES = 1.8;
 const wall = (x: number, y: number): { x: number; y: number; scroll: number } => ({ ...inWide(PLANE.wall, x, y), scroll: PLANE.wall });
 // In front of the box, but drawn under the floor: while Gorti plays, the
 // view ends at the box's bottom edge and their strings stay out of sight.
@@ -55,10 +57,10 @@ export const R01: RoomDef = {
     { id: 'toywhale', x: 620, y: 660, r: 70, prompt: 'İncele' },
     { id: 'tree', x: 760, y: 660, r: 55, prompt: 'İncele' },
     { id: 'gift', x: 900, y: 640, r: 65, prompt: 'İncele' },
-    { id: 'marks', x: 1090, y: 660, r: 90, prompt: 'İncele' },
+    { id: 'marks', x: 990, y: 660, r: 60, prompt: 'İncele' },
     { id: 'starfolk', x: 1010, y: 660, r: 45, prompt: 'İncele' },
-    { id: 'picture', x: 1245, y: 660, r: 60, prompt: 'İncele' },
-    { id: 'window', x: 1441, y: 630, r: 90, prompt: 'İncele' },
+    { id: 'picture', x: 1255, y: 660, r: 120, prompt: 'İncele' },
+    { id: 'window', x: 1580, y: 640, r: 120, prompt: 'İncele' },
     { id: 'bed', x: 430, y: 660, r: 70, prompt: 'İncele' },
   ],
   exits: [{ id: 'tunnel', x: 2150, y: 440, w: 50, h: 220, to: 'r02' }],
@@ -71,11 +73,12 @@ export const R01: RoomDef = {
     // before the box's front).
     { key: 'p1.lamp', x: 80, y: 330, ox: 0.5, oy: 0.5, depth: -100, z: STAGE_BOX.lampZ },
     { key: 'p1.lamp', x: 2120, y: 330, ox: 0.5, oy: 0.5, flipX: true, depth: -100, z: STAGE_BOX.lampZ },
-    // Hung on the back wall: the fourteen notches, the green creature's
-    // portrait, and the window (the painting's blue crystal sign).
-    { key: 'p1.marks', ...onWall(1085, 470), oy: 0.5, depth: -120, ...ON_WALL },
-    { key: 'p1.picture', ...onWall(1245, 470), oy: 0.5, depth: -120, ...ON_WALL },
-    { key: 'p1.window', ...onWall(1441, 465), oy: 0.566, depth: -120, ...ON_WALL },
+    // Hung on the back wall: the fourteen notches, and the painting's two
+    // pictures as large on the wall as it paints them: the green creature's
+    // portrait and the sign with the cyan sigil (p1Pictures.ts).
+    { key: 'p1.marks', ...onWall(980, 470), oy: 0.5, depth: -120, ...ON_WALL },
+    { key: 'p1.picture', ...onWall(1255, 410), oy: 0.5, depth: -120, ...ON_WALL, scale: ON_WALL.scale * PICTURES },
+    { key: 'p1.window', ...onWall(1580, 425), oy: 0.566, depth: -120, ...ON_WALL, scale: ON_WALL.scale * PICTURES },
     // Inside the box, along the floor.
     { key: 'p1.rootling', x: 185, y: 662, depth: -30 },
     { key: 'p1.bed', x: 430, y: 662, depth: -20 },

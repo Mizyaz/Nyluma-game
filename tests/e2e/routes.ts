@@ -88,8 +88,8 @@ export const ROUTES: Record<string, Route> = {
     // Nothing has to be done here; Gorti looks at a few things on the way.
     await stages(b, 'r01', [
       { name: 'whale toy', when: (s) => !s.flags.includes('r01.toywhale'), run: () => inspect(b, 620) },
-      { name: 'marks', when: (s) => !s.flags.includes('r01.marks'), run: () => inspect(b, 1090) },
-      { name: 'window', when: (s) => !s.flags.includes('r01.window'), run: () => inspect(b, 1441) },
+      { name: 'marks', when: (s) => !s.flags.includes('r01.marks'), run: () => inspect(b, 990) },
+      { name: 'window', when: (s) => !s.flags.includes('r01.window'), run: () => inspect(b, 1580) },
       // The roots at the far end are always open.
       { name: 'leave', when: () => true, run: () => leave(b, 1, 'r02') },
     ]);
