@@ -1,0 +1,67 @@
+{
+  "$schema": "./dialogue.schema.json",
+  "whale": [
+    { "text": "Hatıraların arasında yalnızca insanlar yoktu; başka hayvanlarınkiler de vardı." },
+    { "text": "En tuhafı, mavi balinalarla kurduğu duygusal bağdı." },
+    { "text": "Balina üç sesle konuştu: derin, orta, yüksek. Gorti, Ulu Balina Dili ile tanıştı." }
+  ],
+  "moon": [
+    { "who": "gorti", "text": "Bir sonraki değişim ne zamandır?" },
+    { "who": "babyMoon", "text": "Sen tepeye çıkınca, yükseklere, daha yükseklere, algın kadar yükseklere.", "whisper": true }
+  ],
+  "sun": [
+    { "who": "gorti", "text": "Bu yolda benim umudum nedir? Neden var oluşum var?" },
+    { "who": "gorti", "text": "Sebebimin oluşu ve gizemi, varlığın ayrık sebeplerinden bir başkası mı?" },
+    { "who": "sun", "text": "Umudun bende değil, daha uzak yıldızlarda, belki de en küçük ama en uzak yıldızda." }
+  ],
+  "pool": [
+    { "text": "Havuzun yüzeyinde, hafızasındaki yüzler birbirinin içinden geçiyordu." },
+    { "text": "Hareketsizliği, onu hafızasındaki kişiler arasından en çok yaşlı bir Sivaslı amcaya benzetiyordu." },
+    { "text": "Sivas… Belki de asla nerede olduğunu bilemeyeceği, ama ruhunun bir parçasının kesinlikle oradan geldiğini bildiği bir yer." },
+    { "who": "gorti", "text": "Kim bilir kaç bölge daha böyleydi? Hangi hayvanlar bu insanlarla karşılaşmıştı?" },
+    { "who": "gorti", "text": "Bu insanların toplam bilgisi, bireysel toplamları kadar mı, yoksa çok daha fazlası mı?" }
+  ],
+  "oldMoon": [
+    { "who": "gorti", "text": "Ben neyim? Bu hep ait olduğum form muydu?" },
+    { "text": "Ay ona baktı ve güldü." },
+    { "who": "oldMoon", "text": "Yalanlar sadece doğrular varken oluşur." },
+    { "who": "oldMoon", "text": "Sen artık insanlık gözünde bir doğruluksun. Yalanını da kendin bulmalısın." }
+  ],
+  "shout": [
+    { "text": "Dallarından gelen kükürt kokusunu değil, mor gözlerinin sıvısını kanına katmak istiyordu. Bu, onu gerçekten mutlu ediyordu." },
+    { "text": "Yaşlı, şişman bacaklarıyla geri bir adım attı ve son sesiyle bağırdı:" },
+    { "who": "gorti", "text": "Yalanlar!" }
+  ],
+  "horse": [
+    { "who": "horse", "text": "Yhvan Est Polita, Nokra Pretalit!" },
+    { "text": "Sözlerini hiçbir hayvan anlamamıştı, ama Gorti tüm kanıyla hissetti." },
+    { "text": "Dünya değişim istiyordu ve bu at, ona bütün değişimi sağlayacaktı." }
+  ],
+  "sunCall": [
+    { "text": "Gorti, yalanlarını benimsemiş haliyle bir kez daha nefesini tuttu ve bağırdı:" },
+    { "who": "gorti", "text": "Güneş!" }
+  ],
+  "selfLine": [
+    { "text": "Gecenin olaylarından ve keşiflerinden kendini sıyıramamıştı; ama çok mutluydu." },
+    { "text": "Milyonlarca ruh arasından kendi kişiliğini oluşturmak üzereydi ve başaracağını biliyordu." },
+    { "who": "gorti", "text": "Dönüşmek yanlış değil, dönüşmeliyiz, herkes dönüşmeli. En çok ben dönüşmeliyim." },
+    { "text": "Yine de ruhunun farklı parçalara bölünme isteğini engelleyemiyordu." }
+  ],
+  "closeEyes": [
+    { "text": "Beynindeki geveze ruhları zihninin yüzeye yakın bir köşesine topladı." },
+    { "text": "Gözlerini bir kez daha gerginlikle kapattı." }
+  ],
+  "ward": [
+    { "who": "coward", "text": "Konuşun!" }
+  ],
+  "late": [
+    { "who": "voice", "text": "Saat öğleden sonra 1 olmuş!" },
+    { "who": "forms", "text": "Geç kaldın! İşe geç kaldın!" },
+    { "who": "coward", "text": "Geri dönmek mümkün!" }
+  ],
+  "table": [
+    { "who": "one", "text": "Gelmedi." },
+    { "who": "two", "text": "Evet, gelmedi." },
+    { "who": "three", "text": "Keşke gelseydi." }
+  ]
+}

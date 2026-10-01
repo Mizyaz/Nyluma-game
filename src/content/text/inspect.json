@@ -1,0 +1,39 @@
+{
+  "$schema": "./dialogue.schema.json",
+  "toywhale": [
+    { "text": "Tahtadan bir balina. Sırtında sayısız küçük parmağın izi." },
+    { "text": "Dokununca, içinde uzak bir şarkı kıpırdadı." }
+  ],
+  "marks": [
+    { "text": "Duvarda on dört çentik. On üçünün yanı boş." },
+    { "text": "Kendi hesaplarına göre, onun gibi on üç varlık daha oluşmuştu. Kaderleri bilinmiyordu." },
+    { "text": "On dördüncünün yanında tek bir ad: Gorti Evaskinan." }
+  ],
+  "window": [
+    { "text": "Telden sarkan kırık bir çerçeve. İçinde turkuaz bir amblem: bir kule, iki yanında kanatlar." },
+    { "text": "Tuvalin kenarları kopmuş ama amblemin tek bir çizgisi bile eksik değil." }
+  ],
+  "bed": [
+    { "text": "Hiç uyunmamış bir yatak. Yastıkta toprak kokusu." }
+  ],
+  "tree": [
+    { "text": "Kabuğu mor, uçları kristal bir ağaç." },
+    { "text": "Toprağın bu kadar altında bile yaprakları yeşil; dallarında yapraktan kuşlar uyuyor." }
+  ],
+  "gift": [
+    { "text": "Pembe, mavi, sarı kâğıtlara sarılmış bir hediye. Kimden geldiği yazmıyor." },
+    { "text": "Gorti onu açmaya kıyamadı." }
+  ],
+  "starfolk": [
+    { "text": "Kristalden küçük bir yıldız, kollarını Gorti’ye doğru uzatmış." },
+    { "text": "Dokunmaya bir türlü cesaret edemiyor." }
+  ],
+  "eyeleaf": [
+    { "text": "Yerde bir yarık açılmış. İçinden bir göz bakıyor; bütün çatlaklar ona varıyor." },
+    { "text": "Göz kırpmıyor. Gorti nereye gitse ardından bakıyor." }
+  ],
+  "picture": [
+    { "text": "Duvarda yeşil bir yaratığın portresi." },
+    { "text": "Gorti onu bir yerden tanır gibi oldu." }
+  ]
+}
