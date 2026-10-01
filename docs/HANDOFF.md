@@ -159,7 +159,18 @@ Conventions:
   trunk, the crystal, the roses at the branch tips, the birds coming out of them, the roots, the
   mist). It is drawn in the painting's measure and scaled down, so its contours and hatching use
   their own widths (`L`, `HATCH`) rather than the kit's defaults.
-- `src/ui/LoadingView.ts` is the loading screen. It uses the same faces as inline SVG (`skyFaceSvg`), and a crystal cluster grows with the progress.
+- `src/ui/LoadingView.ts` is the loading screen: a pop-up paper theatre on a CSS 3D stage that
+  builds itself with the progress. The art is in `src/ui/loadingStage.ts`, drawn in the comic
+  manner (the faces are `skyFaceSvg`; its `'shut'` part lays the blink over them). Each card
+  stands at its depth (`--z`) and is scaled back to its drawn size (`--c`), so the picture
+  composes in 2D while the sway and the pointer turn it with true parallax; the box's floor,
+  walls and ceiling are true 3D and hide the cards' ends. Pieces come up one per beat once the
+  progress reaches their `data-at`; crystals sprout and Gorti glances at each (`data-g`). At
+  100% the ta-da (the curtains part, confetti, twinkles) plays, also during `close()`'s fade,
+  as the game closes it at once. Only transform and opacity move; the one rAF loop eases the
+  pointer parallax and stops when it settles. Reduced motion: no sway, parallax or bobbing.
+- `dev/loading.html` (dev server only, not in the build) holds it on screen: no query loops
+  0→100%, `?p=0.42` holds a progress, `?err=1` shows the failure, `?rm=1` reduced motion.
 
 ## Other pending work
 
