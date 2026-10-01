@@ -5,7 +5,64 @@ listeler. Ölçümler aşağıdaki test ortamında alınmıştır; gerçek cihaz
 performansını temsil etmez. İlk bölüm bu sürümün kontrolleridir. Sonraki
 bölümlerdeki sonuçlar önceki sürümlerin oyun kodu içindir.
 
-## Bu sürüm: düz odalar, Sivaslı amca, yıkma, bölüm kütüphanesi
+## Bu sürüm: kâğıt motoru, ışık kaynakları, duvarlar, derinlikte yürüyüş
+
+Bu sürümde eklenenler:
+
+- dünya kendi kâğıt motorumuzla çizilir (`src/paper/`, Phaser 4.2.1); three.js
+  sahnesi kaldırıldı. Tuval cihazın kendi pikselleriyle tüm pencereyi doldurur;
+  her derinliğin kendi kamerası vardır, her çizim göründüğü ölçekte basılır;
+- odanın lambaları, derinlikle koyulaşan sis, önde siluetler, kenar kararması
+  ve havada toz zerreleri (varsayılan masalsı hava; `?mood=nightmare`);
+- karakterler lambanın gölgesini arka duvara ve zemine düşürür, dönerken
+  kâğıt gibi çevrilir, yakın ve uzak kolları ve bacakları ayrı derinliktedir;
+- Ay ve Güneş kalın mürekkeple yeniden çizildi; ikisi de odanın ışık
+  kaynağıdır (hale, ışık huzmeleri, odaya düşen lamba, odanın havası); ışıkları
+  yüzleriyle nefes alır, göz kırpınca, gülünce ve konuşunca değişir;
+- Gorti'nin kendi ışığı: ekran yüzünün çevresinde bir parıltı, nefes alır,
+  konuşurken, şarkıda ve gülerken büyür, her Rezonans hareketinde parlar;
+- duvar ayrıntıları: mağara duvarında taş taş gölge, gözenek, çatlak, yosun,
+  fosil, kristal filizi, tebeşir çizimleri; 14. Oda'nın resimleri arka duvarda
+  asılı ve duvara gölge düşürür;
+- derinlikte yürüyüş: yukarı/aşağı (W/S, oklar; dokunmatik yön tuşunda
+  başparmağı yukarı ya da aşağı kaydırmak) Gorti'yi zeminde izleyiciden
+  uzaklaştırır ya da yaklaştırır; derinliğine göre küçülür ya da büyür,
+  eşyaların arkasından ya da önünden geçer, gölgesi ve ışığı onunla gider;
+- yeni yükleme ekranı.
+
+Kontroller `4589b34` üzerinde koşuldu:
+
+| Kontrol | Sonuç |
+| --- | --- |
+| `npm run typecheck` | Hatasız |
+| `npx vitest run` | 17 dosya, 150 test geçti |
+| `npm run kd -- check` | Hatasız: 6 bölüm, 4 oda dosyası, 12 TS oda |
+| Tarayıcı testleri (`npm run test:e2e`, 1 işçi) | 25 geçti, 13 atlandı (yalnızca `SHOTS`/`DEV_ROUTE` ile çalışanlar), 8,8 dk |
+| Tam kampanyalar (`npm run test:campaign -- --workers=2`: klavye ve dokunmatik telefon aynı anda) | İkisi de geçti, 6,3 dk. Oda başına klavye / telefon (s): r01 33/37, r02 8/8, r03 17/18, r04 24/26, r05 24/25, r06 18/20, r07 96/96, r08 29/30, r09 19/22, r10 25/26, r11 19/20, r12 33/34 |
+
+Bu sürümde eklenen tarayıcı testleri:
+
+- derinlikte yürüyüş: W ile Gorti izleyiciden uzaklaşır (z < −40), zeminde ve
+  aynı x'te kalır; yukarı ok basılı tutulunca daha da uzaklaşır ama arka
+  duvara 100 px'ten fazla yaklaşmaz (z ≥ −200); S ile öne gelir
+  (20 < z ≤ 70); orada sağa yürüyünce derinliği değişmez;
+- dokunmatik: yön tuşunda başparmak ortadan yukarı kaydırılınca Gorti
+  uzaklaşır, aşağı kaydırılınca yaklaşır.
+
+Görsel kontrol (yazılımsal WebGL, oyun döngüsü elle adımlanarak): r02'de
+Gorti z = −190, −60, 0 ve +65'te çekildi. Derinde küçülür, sislenir ve
+fosil kökün arkasında kalır; önde büyür. Bu kontrolde bulunan ve düzeltilen
+sorun: önde (z = +65) siluet kararması Gorti'yi okunmaz yapıyordu; artık
+derinlikte yürüyen figür bu kararmanın yalnızca %30'unu alır. Telefon
+boyutunda (844×390) dokunmatik yön tuşu, üstünde ve altında yukarı/aşağı
+işaretleriyle çekildi.
+
+Bilinen sınırlar: Gorti'nin çizimi oyuncu düzlemi için basılır; derinde biraz
+ölçeklenmiş çizilir (eşyalar ise kendi derinliklerinde tam basılır). Derinlik
+etkileşimleri etkilemez: konuşma ve İncele yalnızca x ve y'ye bakar.
+
+
+## Önceki sürüm: düz odalar, Sivaslı amca, yıkma, bölüm kütüphanesi
 
 Bu sürümde eklenenler:
 
@@ -62,7 +119,7 @@ oyun saniyede 1–2 kare çizer. Karakter değişikliklerinden önceki ve sonrak
 sürüm aynı koşullarda art arda ölçüldü, fark görülmedi. Gerçek cihazlarda
 ölçülmedi.
 
-## Önceki sürüm: tablolar, Rezonans, yüz sahneleri, yaylılar, pastel tünel
+## Daha önceki sürüm: tablolar, Rezonans, yüz sahneleri, yaylılar, pastel tünel
 
 Bu sürümde eklenenler:
 
