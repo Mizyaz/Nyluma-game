@@ -14,10 +14,12 @@ import { pick, WORDS, type ComicWords } from '../../render/2d/fx/comicWords';
 // Collision stays with the room (the platform's static body); the whale is
 // visual only. Landings are read from the player's ground state each frame:
 // the whale dips on a spring, pastel bubbles and droplets puff out and it
-// calls in its species' voice. Now and then a far whale calls. Whales of a
-// set piece (SolidDef.whale) arrive their own way when their gate opens:
-// rising out of the earth one after the other, gliding in on the wind,
-// circling in around a trunk; each answers in its own pitch as it arrives.
+// calls in its species' voice (a step onto a whale lying level with the
+// floor dips it gently). Now and then a far whale calls. Whales of a set
+// piece (SolidDef.whale) arrive their own way when their gate opens: rising
+// out of the earth one after the other, gliding in on the wind, circling in
+// around a trunk; each answers in its own pitch as it arrives. Scenery
+// whales (WhaleDef.scenery) bear no weight: their platform never collides.
 
 /**
  * What the manager reads from the scene (WorldScene), structurally. Feet are
@@ -73,6 +75,8 @@ export class WhalePlatforms {
   private nextMote = 0;
   private synced = false;
   private wasGround = true;
+  /** The whale Gorti stands on (a step onto one dips it). */
+  private on: Entry | null = null;
   private air = 0;
   private fallV = 0;
   private clock = 0;
@@ -105,6 +109,7 @@ export class WhalePlatforms {
     if (!place) return;
     const w = new WhaleActor(this.scene, place);
     w.setVisible(false);
+    if (rt.def.whale?.scenery) rt.body.enable = false;
     if (app.settings.reducedMotion) w.calm = 0.45;
     const b = { x0: 0, y0: 0, x1: 0, y1: 0 };
     w.bounds(b);
@@ -141,6 +146,8 @@ export class WhalePlatforms {
       if (p.onGround) {
         standing = this.under(px, p.body.bottom);
         if (!this.wasGround && this.air > 0.1 && standing && this.synced) this.land(standing, px);
+        // Walked onto its back from the floor beside it: a gentle dip.
+        else if (standing && standing !== this.on && this.wasGround && this.synced) this.land(standing, px, 0.18);
         this.air = 0;
         this.fallV = 0;
       } else {
@@ -148,6 +155,7 @@ export class WhalePlatforms {
         this.fallV = Math.max(this.fallV, p.body.velocity.y);
       }
       this.wasGround = p.onGround;
+      this.on = standing;
     }
 
     const view = this.scene.cameras.main.worldView;
@@ -202,9 +210,10 @@ export class WhalePlatforms {
           }
         }
       }
-      // A set piece's whale bears weight once it has (nearly) arrived.
+      // A set piece's whale bears weight once it has (nearly) arrived; a
+      // scenery whale never does (the room's refresh may have enabled it).
       if (e.rt.def.whale && e.rt.active) {
-        const solid = e.swimIn >= 0.75;
+        const solid = !e.rt.def.whale.scenery && e.swimIn >= 0.75;
         if (e.rt.body.enable !== solid) e.rt.body.enable = solid;
       }
       const latent = e.rt.def.latent ? 0.1 + 0.9 * e.rt.reveal : 1;
@@ -224,8 +233,17 @@ export class WhalePlatforms {
     this.farCalls(dt, p ?? null);
   }
 
-  private land(e: Entry, x: number): void {
-    const impact = Math.max(0.15, Math.min(1, (this.fallV - 60) / 640));
+  /**
+   * A landing a script makes (Gorti carried onto a scenery whale's back):
+   * the whale with this platform id dips, puffs and calls.
+   */
+  bump(id: string, x: number, impact = 0.45): void {
+    const e = this.entries.find((q) => q.rt.def.id === id);
+    if (e) this.land(e, x, impact);
+  }
+
+  private land(e: Entry, x: number, soft?: number): void {
+    const impact = soft ?? Math.max(0.15, Math.min(1, (this.fallV - 60) / 640));
     e.w.dip(impact, x);
     this.puff(e, x, impact);
     if (this.clock - e.lastCall > 1.2) {
@@ -236,7 +254,8 @@ export class WhalePlatforms {
       e.w.vocalize(e.place.species === 'blue' ? 1.4 : 1);
     }
     if (impact > 0.45 && Math.random() < 0.45) e.w.spout();
-    // The comic word for a landing on a whale.
+    // The comic word for a landing on a whale (not for a step onto one).
+    if (soft !== undefined && soft < 0.3) return;
     const comic = (this.scene as { comic?: ComicWords }).comic;
     comic?.pop(x, e.place.y - 70, pick(WORDS.whale), 'whale');
   }

@@ -5,16 +5,17 @@ import { WhaleActor } from '../../gameplay/actors/WhaleActor';
 import type { WorldScene } from '../../engine/scenes/WorldScene';
 import type { RoomScript } from './types';
 
-/** The passing whale's back line: in view from the floor, behind the lift. */
+/** The passing whale's back line: in view from the floor, behind the rising whales. */
 const SWIM_Y = 850;
-/** When it sings: as it swims past the foot of the lift (the lift rises in its wake). */
+/** When it sings: as it swims past the sleeping root (the whales rise in its wake). */
 const SONG_MS = 3600;
 
 // Chapter I — fossil-root chamber. Walking in, Gorti meets the whale memory:
 // a blue whale passes through the earth, speaks in three tones, and its song
-// wakes the way up: in its wake three whales rise out of the soil one above
-// the other, a lift to the upper tunnel, each answering the song in one of
-// its voices (deep, middle, high) as it arrives (see the room data).
+// wakes the way on: in its wake three whales rise out of the soil one above
+// the other, each answering the song in one of its voices (deep, middle,
+// high) as it arrives, and the roots closing the tunnel mouth part (see the
+// room data). Gorti walks on under them and out.
 export function r02(w: WorldScene): RoomScript {
   let whale: WhaleActor | null = null;
 
@@ -28,7 +29,7 @@ export function r02(w: WorldScene): RoomScript {
     app.ui.hud.caption(CAPTIONS.whalePass, 3600);
     const lines = DIALOGUE.whale ?? [];
     lines.forEach((l, i) => w.time.delayedCall(3800 + i * 4200, () => app.ui.hud.caption(l.text, 4100)));
-    // The song wakes the way up as the whale passes the foot of the lift.
+    // The song wakes the way on as the whale passes the sleeping root.
     w.time.delayedCall(SONG_MS, () => {
       app.audio.sfx('rootGrow');
       w.shake(0.004, 700);
@@ -50,7 +51,7 @@ export function r02(w: WorldScene): RoomScript {
     },
     onFixed() {
       // Whoever comes in past the whale's place (a later checkpoint) still
-      // meets it, and finds the way up awake at once.
+      // meets it, and finds the way on open at once.
       if (w.player.x > 800 && !w.quest.has('r02.whale')) {
         whalePasses();
         w.flag('r02.song');

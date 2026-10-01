@@ -5,10 +5,9 @@ import { Raccoons } from '../../gameplay/actors/Creatures';
 import type { WorldScene } from '../../engine/scenes/WorldScene';
 import type { RoomScript } from './types';
 
-// Chapter II — first wind on the surface. The first wind carries a whale to
-// the foot of the cliff (the one step up to it); at the memory pool on the
-// cliff top Gorti sees the faces of the memories and becomes human for the
-// first time.
+// Chapter II — first wind on the surface. The first wind carries a whale
+// over Gorti's head (it floats on ahead of him); at the memory pool Gorti
+// sees the faces of the memories and becomes human for the first time.
 export function r04(w: WorldScene): RoomScript {
   let raccoons: Raccoons | null = null;
 
@@ -46,7 +45,7 @@ export function r04(w: WorldScene): RoomScript {
     );
   };
 
-  /** The first wind: Gorti feels it, and it carries a whale to the cliff. */
+  /** The first wind: Gorti feels it, and it carries a whale over his head. */
   const firstWind = (): void => {
     if (!w.flag('r04.wind')) return;
     app.ui.hud.caption(CAPTIONS.wind1, 5200);
@@ -60,7 +59,7 @@ export function r04(w: WorldScene): RoomScript {
       'r04.pool',
       async (cs) => {
         w.player.lock(true, 'look');
-        w.camTo(2300, 640);
+        w.camTo(2300, 780);
         await cs.say(DIALOGUE.pool!);
         cs.caption(CAPTIONS.eyes, 4200);
         w.player.lock(true, 'transform');
@@ -92,10 +91,10 @@ export function r04(w: WorldScene): RoomScript {
         { x: 800, y: 868, kind: 'sit', scale: 0.9 },
         { x: 852, y: 868, kind: 'sniff', scale: 0.85 },
         { x: 700, y: 905, kind: 'sit', scale: 0.8, flip: true, depth: DEPTH.props },
-        { x: 1720, y: 760, kind: 'shadow', scale: 0.8, depth: DEPTH.backProps },
-        { x: 1800, y: 760, kind: 'shadow', scale: 0.7, depth: DEPTH.backProps },
-        { x: 2900, y: 760, kind: 'shadow', scale: 0.8, depth: DEPTH.backProps },
-        { x: 2980, y: 770, kind: 'shadow', scale: 0.7, depth: DEPTH.backProps, flip: true },
+        { x: 1720, y: 900, kind: 'shadow', scale: 0.8, depth: DEPTH.backProps },
+        { x: 1800, y: 900, kind: 'shadow', scale: 0.7, depth: DEPTH.backProps },
+        { x: 2900, y: 900, kind: 'shadow', scale: 0.8, depth: DEPTH.backProps },
+        { x: 2980, y: 905, kind: 'shadow', scale: 0.7, depth: DEPTH.backProps, flip: true },
       ]);
       if (!w.quest.has('r04.emerged')) emerge();
       // Saves from the old kneeling moment: it is over.
@@ -112,10 +111,10 @@ export function r04(w: WorldScene): RoomScript {
     onFixed() {
       const p = w.player;
       // Come in past the wind's place (a later checkpoint): it blows anyway,
-      // and the whale it carries is there to climb the cliff.
+      // and the whale it carries floats ahead.
       if (p.x > 460 && !w.quest.has('r04.wind')) firstWind();
       // At the memory pool, the faces look back.
-      if (!w.quest.has('r04.human') && p.x > 2230 && p.feetY <= 762 && p.onGround) poolScene();
+      if (!w.quest.has('r04.human') && p.x > 2230 && p.onGround) poolScene();
     },
     onUpdate(dt) {
       raccoons?.update(dt);

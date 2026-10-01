@@ -48,7 +48,9 @@ describe('room data', () => {
         expect(e.x + e.w).toBeLessThanOrEqual(r.width);
       }
     }
-    const scripted = ['r06', 'r07', 'r09', 'r10', 'r11', 'r12'];
+    // r03 has no exit: at the bloomed tree Gorti's roots carry him up the
+    // whale spiral into the canopy, and the scene moves on to r04.
+    const scripted = ['r03', 'r06', 'r07', 'r09', 'r10', 'r11', 'r12'];
     for (const r of rooms) if (!r.exits.length && r.id !== ROOM_IDS.at(-1)) expect(scripted).toContain(r.id);
   });
 

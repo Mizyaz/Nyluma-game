@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
 import { app, persist } from '../App';
-import { DEPTH, HULL_H, HULL_W, PULSE_RADIUS, PULSE_WINDUP_MS, VIEW_W, VIEW_H, CAMERA_ZOOM } from '../constants';
+import { DEPTH, HULL_H, HULL_W, JUMPING, PULSE_RADIUS, PULSE_WINDUP_MS, VIEW_W, VIEW_H, CAMERA_ZOOM } from '../constants';
 import { hex, P } from '../../render/2d/palette';
 import { frameRef, hasFrame } from '../../render/2d/TextureFactory';
 import { themeDef } from '../../render/2d/painters/backgrounds';
@@ -322,8 +322,9 @@ export class WorldScene extends Phaser.Scene {
     const gameplay = i.context === 'gameplay';
     const p = this.player;
     const axis = gameplay ? i.axisX() : 0;
-    const jumpPressed = gameplay && i.consume('jump');
-    const jumpHeld = gameplay && i.held('jump');
+    // With jumping off a press is still consumed (so it never lingers), then dropped.
+    const jumpPressed = gameplay && i.consume('jump') && JUMPING;
+    const jumpHeld = JUMPING && gameplay && i.held('jump');
 
     this.stepInput = { axis, jumpPressed, jumpHeld };
     if (p.state !== 'hidden') p.fixed(dt, this.stepInput);
@@ -851,7 +852,7 @@ export class WorldScene extends Phaser.Scene {
     }
     hud.setPrompts(prompts);
     const canForm = p.kind === 'gorti' && this.quest.hasAbility('form');
-    app.ui.touch.setAvail({ focus: false, form: canForm, song: false, actionLabel, jump: p.canJump });
+    app.ui.touch.setAvail({ focus: false, form: canForm, song: false, actionLabel, jump: JUMPING && p.canJump });
   }
 
   // ------------------------------------------------------------ fx helpers

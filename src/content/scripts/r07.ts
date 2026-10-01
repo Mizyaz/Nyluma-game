@@ -1,11 +1,11 @@
 import * as Phaser from 'phaser';
 import { app, persist } from '../../engine/App';
-import { DEPTH, VIEW_W } from '../../engine/constants';
+import { DEPTH, JUMPING, VIEW_W } from '../../engine/constants';
 import { hex, P } from '../../render/2d/palette';
 import { frameRef, hasFrame } from '../../render/2d/TextureFactory';
 import { CAPTIONS } from '../data/dialogue.tr';
 import { memoryDef } from '../data/memories';
-import { RIDE_CHASMS, RIDE_GAPS, RIDE_GROUND_Y, RIDE_MOUND, RIDE_STOP_X } from '../rooms/r07';
+import { RIDE_CHASMS, RIDE_GROUND_Y, RIDE_STOP_X } from '../rooms/r07';
 import { CreaturePool } from '../../gameplay/actors/Creatures';
 import { Face } from '../../gameplay/actors/Celestial';
 import { Horse } from '../../gameplay/actors/Horse';
@@ -13,9 +13,9 @@ import type { WorldScene } from '../../engine/scenes/WorldScene';
 import type { RoomScript } from './types';
 import { addArt } from './helpers';
 
-// Chapter III — the flowering ride. Constant forward motion; the horse leaps
-// the gaps by itself (the player may jump whenever they like) and flower
-// bridges bloom over the chasms as it comes near.
+// Chapter III — the flowering ride. Constant forward motion over one meadow
+// floor; flower bridges bloom over the chasms as the horse comes near, and
+// the rider only sets the pace (with jumping on, the horse also jumps).
 
 const HULL_W = 110;
 const HULL_H = 96;
@@ -40,8 +40,6 @@ export function r07(w: WorldScene): RoomScript {
   let coyote = 0;
   let buffer = 0;
   let jumping = false;
-  /** A leap the horse takes by itself: full height, never cut short. */
-  let autoLeap = false;
   let ending = false;
   let restarting = false;
   let hoofCount = 0;
@@ -192,7 +190,7 @@ export function r07(w: WorldScene): RoomScript {
       w.cameras.main.setDeadzone(40, 60);
       if (w.quest.set('r07.enter')) {
         app.ui.hud.caption(CAPTIONS.r07enter, 5000);
-        w.time.delayedCall(2500, () => app.ui.hud.toast('Boşluk: zıpla  ·  ← →: hızını ayarla', 5200));
+        w.time.delayedCall(2500, () => app.ui.hud.toast(JUMPING ? 'Boşluk: zıpla  ·  ← →: hızını ayarla' : '← →: hızını ayarla', 5200));
         w.time.delayedCall(9000, () => app.ui.hud.caption(CAPTIONS.flowersRide, 4200));
       }
       w.onCleanup(() => {
@@ -222,12 +220,6 @@ export function r07(w: WorldScene): RoomScript {
       body.velocity.x += (target - body.velocity.x) * Math.min(1, dt * 4);
       // Never stall against a ledge: the horse hops up on its own.
       if (!ending && g && body.blocked.right && buffer <= 0) buffer = BUFFER;
-      // Gaps and the mound: the horse leaps by itself.
-      const lead = body.velocity.x * 0.2;
-      if (!ending && g && buffer <= 0 && (RIDE_GAPS.some(([a]) => a - horse.x > lead && a - horse.x < lead + 60) || (RIDE_MOUND[0] - horse.x > lead + 30 && RIDE_MOUND[0] - horse.x < lead + 90))) {
-        buffer = BUFFER;
-        autoLeap = true;
-      }
       if (!ending && buffer > 0 && coyote > 0) {
         body.velocity.y = -JUMP_V;
         buffer = 0;
@@ -235,14 +227,11 @@ export function r07(w: WorldScene): RoomScript {
         jumping = true;
         app.audio.sfx('jump', { pitch: 0.7 });
       }
-      if (jumping && !autoLeap && !inp.jumpHeld && body.velocity.y < 0) {
+      if (jumping && !inp.jumpHeld && body.velocity.y < 0) {
         body.velocity.y *= 0.55;
         jumping = false;
       }
-      if (body.velocity.y >= 0) {
-        jumping = false;
-        autoLeap = false;
-      }
+      if (body.velocity.y >= 0) jumping = false;
       horse.x = zone.x;
       horse.y = zone.y + HULL_H / 2;
       w.probeExtra.horse = { x: horse.x, y: horse.y, grounded: g, vx: body.velocity.x, bridges: bridges.map((b) => b.bloomed) };
@@ -250,7 +239,7 @@ export function r07(w: WorldScene): RoomScript {
       for (const br of bridges) {
         if (!br.bloomed && horse.x > br.a - 700 && horse.x < br.b - 80) bloomBridge(br);
       }
-      // Optional memory on the alternate arc.
+      // The memory over the way, at the rider's height.
       if (!memTaken) {
         const m = w.def.memories?.[0];
         if (m) {
@@ -276,7 +265,6 @@ export function r07(w: WorldScene): RoomScript {
       }
       if (zone.y > RIDE_GROUND_Y + 160) restart();
       if (!ending && horse.x > RIDE_STOP_X - 1600) finish();
-      void RIDE_MOUND;
     },
     onUpdate(dt) {
       const moving = Math.abs(body.velocity.x) > 20;

@@ -1,23 +1,12 @@
 import type { RoomDef, SolidDef } from '../data/roomTypes';
 
-// Chapter III — the flowering ride. The route is authored as intervals so
-// its rhythm (teach → isolate → combine) is easy to read and tune.
+// Chapter III — the flowering ride: one meadow floor from start to end. The
+// chasms along it fill with flower bridges as the horse comes near (the
+// script), level with the ground, so the horse only ever gallops.
 
 export const RIDE_GROUND_Y = 800;
 export const RIDE_LENGTH = 34000;
 export const RIDE_STOP_X = 33200;
-
-/** Gaps the horse must jump. */
-export const RIDE_GAPS: [number, number][] = [
-  [4400, 4600],
-  [5300, 5520],
-  [10200, 10420],
-  [14600, 14820],
-  [16800, 17020],
-  [19800, 20020],
-  [26000, 26220],
-  [28400, 28620],
-];
 
 /** Chasms; a flower bridge blooms over each one as the horse comes near. */
 export const RIDE_CHASMS: [number, number][] = [
@@ -28,20 +17,14 @@ export const RIDE_CHASMS: [number, number][] = [
   [29600, 30200],
 ];
 
-/** Raised mound whose far edge launches the optional memory arc. */
-export const RIDE_MOUND: [number, number] = [17600, 18300];
-export const RIDE_MOUND_Y = 700;
-
 function groundSolids(): SolidDef[] {
-  const cuts = [...RIDE_GAPS, ...RIDE_CHASMS].sort((a, b) => a[0] - b[0]);
   const out: SolidDef[] = [];
   let x = 0;
-  for (const [a, b] of cuts) {
+  for (const [a, b] of RIDE_CHASMS) {
     out.push({ x, y: RIDE_GROUND_Y, w: a - x, h: 200, style: 'moss' });
     x = b;
   }
   out.push({ x, y: RIDE_GROUND_Y, w: RIDE_LENGTH - x, h: 200, style: 'moss' });
-  out.push({ x: RIDE_MOUND[0], y: RIDE_MOUND_Y, w: RIDE_MOUND[1] - RIDE_MOUND[0], h: 100, style: 'moss' });
   return out;
 }
 
@@ -64,7 +47,8 @@ export const R07: RoomDef = {
     { id: 'r07_end', x: 32600, y: RIDE_GROUND_Y, silent: true },
   ],
   solids: groundSolids(),
-  memories: [{ id: 'm6', x: 18470, y: 545 }],
+  // Hanging at the rider's height over the way: the gallop carries him through it.
+  memories: [{ id: 'm6', x: 18470, y: RIDE_GROUND_Y - 116 }],
   exits: [],
   props: [],
 };

@@ -334,7 +334,7 @@ renk bombardımanı kapalı, `?bursts=0`):
 | `qa/screenshots/09-phone-menu.jpg` | Dik telefonda ana menü (başlık resmin üstünde, düğmeler altında) |
 | `qa/screenshots/10-phone-game.jpg` | Dik telefonda ilk oda: altyazı görüntünün altında, kontroller en altta |
 | `qa/screenshots/11-colour-storm.jpg` | Renk bombardımanı: renk dalgası, yağan kristaller, şaşıran Gorti |
-| `qa/screenshots/12-jump.jpg` | Zıplamanın tepesine yakın: dizler çekili, kollar açık, gözler sevinçle kavisli |
+| `qa/screenshots/12-walk.jpg` | Ormanda yürüyen Gorti, adımın ortasında (zıplama kapalı; odalar yürünür) |
 
 ## Performans (bu ortamda)
 

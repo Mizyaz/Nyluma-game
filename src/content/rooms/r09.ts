@@ -1,6 +1,7 @@
 import type { RoomDef } from '../data/roomTypes';
 
-// Chapter IV — sparrow clearing by the river.
+// Chapter IV — sparrow clearing by the river. One floor from end to end:
+// a row of flat stones crosses the river, level with both banks.
 export const R09: RoomDef = {
   id: 'r09',
   chapter: 4,
@@ -18,10 +19,10 @@ export const R09: RoomDef = {
   ],
   solids: [
     { x: 0, y: 900, w: 1300, h: 200, style: 'moss' },
+    // The river's bed, and flat stones across it, level with both banks;
+    // the gaps between them are narrower than Gorti's stance, so he walks.
     { x: 1300, y: 960, w: 400, h: 140, style: 'stone' },
-    // Stepping stones across the river (wading through its bed works too).
-    { x: 1360, y: 880, w: 80, h: 24, style: 'stone', oneWay: true },
-    { x: 1530, y: 872, w: 80, h: 24, style: 'stone', oneWay: true },
+    ...[1300, 1404, 1508, 1612].map((x) => ({ x, y: 900, w: 88, h: 24, style: 'stone' as const, oneWay: true })),
     { x: 1700, y: 900, w: 1500, h: 200, style: 'moss' },
   ],
   memories: [{ id: 'm7', x: 2300, y: 900 }],

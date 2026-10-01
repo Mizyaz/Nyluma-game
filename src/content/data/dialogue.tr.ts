@@ -24,7 +24,7 @@ export const CAPTIONS = {
   room14: 'Gorti bu odaya “14. Oda” adını vermişti. Toprakta gizlenmiş insan hatıralarının en garip, en ilginç parçalarından yapılmıştı.',
   r02enter: 'Gorti, fosilleşmiş ağaç köklerinin kristallerle buluştuğu yerde oluşmuştu.',
   whalePass: 'Toprağın içinden, suyun içindeymiş gibi bir balina geçti.',
-  songRoot: 'Uyuyan kök şarkıyla gerindi ve yukarıya bir yol açtı.',
+  songRoot: 'Uyuyan kök şarkıyla gerindi ve ileriye bir yol açtı.',
   r03enter: 'Balina dili, toprağın içinden göğe uzanan bir yoldu.',
   starBorn: 'Gorti’nin önünde, küçük bir bebek gibi parlayan bir yıldız oluştu.',
   starTaken: 'Gorti yıldızı sarmaşıklarıyla sardı.',

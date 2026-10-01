@@ -1,6 +1,6 @@
 import type * as Phaser from 'phaser';
 import { app } from '../../engine/App';
-import { DEPTH, VIEW_H, VIEW_W } from '../../engine/constants';
+import { DEPTH, JUMPING, VIEW_H, VIEW_W } from '../../engine/constants';
 import { hex } from '../../render/2d/palette';
 import { frameRef, hasFrame } from '../../render/2d/TextureFactory';
 import { P1 } from '../art/painting1';
@@ -13,7 +13,7 @@ import { GemPortal } from '../../render/2d/fx/gemPortal';
 import { StoneFrame } from '../../render/2d/fx/stoneFrame';
 import type { RoomScript } from './types';
 
-/** The bed's mattress (see the room data) and where Gorti steps down. */
+/** The bed's mattress (the top of the drawn bed, p1.bed) and where Gorti steps down. */
 const BED = { left: 322, right: 538, top: 590 };
 const FLOOR_Y = 660;
 const STEP_DOWN_X = 564;
@@ -382,7 +382,7 @@ export function r01(w: WorldScene): RoomScript {
         p.startIdle('stretch');
         w.quest.set('r01.awake');
         w.time.delayedCall(900, () => app.ui.hud.caption(CAPTIONS.intro3, 4200));
-        w.time.delayedCall(2600, () => app.ui.hud.toast('A / D ya da ← →: yürü   ·   Boşluk: zıpla   ·   E: incele', 6500));
+        w.time.delayedCall(2600, () => app.ui.hud.toast(JUMPING ? 'A / D ya da ← →: yürü   ·   Boşluk: zıpla   ·   E: incele' : 'A / D ya da ← →: yürü   ·   E: incele', 6500));
       },
     );
   };

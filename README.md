@@ -14,7 +14,8 @@ sunucu, hesap, çevrim içi hizmet ya da dış kaynak (CDN, yazı tipi, ses) yok
 ## Deneyim
 
 Oyun bir deneyimdir: can değeri, diken ya da tehlike, görev, hedef ya da
-bulmaca yoktur; her odada hep ilerlenebilir. Yürümek ve zıplamak yeter;
+bulmaca yoktur; her odada hep ilerlenebilir. Yürümek yeter: her oda tek bir
+zeminde baştan sona yürünür, zıplamak gerekmez (zıplama kapalıdır);
 hikâyenin sahneleri Gorti bir yere vardığında kendiliğinden başlar. Bazı
 şeylerin yanında E ile incelemek mümkündür ama zorunlu değildir.
 
@@ -57,9 +58,11 @@ yağar, Gorti yukarı bakar ve sevinçle dans eder. (Ani yanıp sönme yoktur; h
 renk değişimi en az üçte bir saniye sürer. Azaltılmış hareket açıkken daha
 seyrek ve daha sakindir.)
 
-Gorti'nin zıplaması baştan sona canlandırılmıştır: çömelir, itilir ve gerilir,
-yükselirken dizlerini çeker, tepede bir an kollarını açıp süzülür, düşerken
-bacaklarını yere uzatır ve inişte düşüşün sertliğine göre esneyip toparlanır.
+Zıplama şimdilik kapalıdır (`src/engine/constants.ts` içindeki `JUMPING`);
+açıldığında Gorti'nin zıplaması baştan sona canlandırılmıştır: çömelir,
+itilir ve gerilir, yükselirken dizlerini çeker, tepede bir an kollarını açıp
+süzülür, düşerken bacaklarını yere uzatır ve inişte düşüşün sertliğine göre
+esneyip toparlanır.
 Yüzü de canlıdır: siyah gözleri kırpışır, sevinçte kavislenir, şaşkınlıkta
 büyür, yorgunlukta ağırlaşır; ağzı konuşur, gülümser, dişlerini sıkar. Dal
 saçları hareketle yaylanıp sallanır. Bir süre durduğunda etrafına bakar,
@@ -71,7 +74,7 @@ incelenebilecek şeylere göz atar.
 | Eylem | Klavye | Dokunmatik |
 | --- | --- | --- |
 | Yürü | A / D ya da ← / → | Sol alttaki yön tuşları |
-| Zıpla (bırakınca kısa zıplar) | Boşluk | Zıpla |
+| Zıpla (şimdilik kapalı, `JUMPING`) | Boşluk | Zıpla (kapalıyken gizli) |
 | İncele (yakında bir şey varsa) / Rezonans | E | Eylem |
 | Duraklat / geri | Esc | Sağ üstteki ⏸ |
 | Anılar | M | Duraklatma menüsü |
@@ -81,13 +84,13 @@ incelenebilecek şeylere göz atar.
 | Tam ekran | — | Sağ üstteki ⛶ (dokunmatik cihazlarda oyun başlarken otomatik denenir) |
 
 **Mobil:** Oyun baştan sona yalnızca dokunmatikle oynanabilir. Sol altta yön
-düğmeleri, sağ altta Zıpla ve Eylem. Birden çok parmak aynı anda kullanılabilir
-(ör. yürürken zıplamak). Dokunmatik cihazlarda ekrandaki yönergeler tuş
-adları yerine bu düğmelerin adlarıyla gösterilir. Cihaz dik ya da yatay
-tutulabilir: dik tutulduğunda oyun görüntüsü üstte tam genişlikte, altyazılar
-ve diyaloglar hemen altında, kontroller en altta durur; yatay tutulduğunda oyun
-ekranı doldurur ve altyazılar görüntünün altında gösterilir. Tarayıcı
-destekliyorsa oyun başlarken tam ekrana geçer.
+düğmeleri, sağ altta Eylem (zıplama açıkken yanında Zıpla). Birden çok parmak
+aynı anda kullanılabilir (ör. yürürken incelemek). Dokunmatik cihazlarda
+ekrandaki yönergeler tuş adları yerine bu düğmelerin adlarıyla gösterilir.
+Cihaz dik ya da yatay tutulabilir: dik tutulduğunda oyun görüntüsü üstte tam
+genişlikte, altyazılar ve diyaloglar hemen altında, kontroller en altta durur;
+yatay tutulduğunda oyun ekranı doldurur ve altyazılar görüntünün altında
+gösterilir. Tarayıcı destekliyorsa oyun başlarken tam ekrana geçer.
 
 Menüler klavyeyle (↑ ↓, Enter, Esc) ve fareyle kullanılabilir. Ayarlar'da ses
 seviyeleri, azaltılmış hareket, ekran sarsıntısı, metin hızı (anında dahil) ve
@@ -271,7 +274,8 @@ which GitHub Pages serves (*Settings → Pages → Source → Deploy from a bran
 keyboard, a mouse for menus, or touch alone, held upright or sideways. It is
 an experience rather than a challenge: no health, hazards, quests or puzzles;
 story scenes start as Gorti walks on, a colour bombardment breaks out now and
-then, and Gorti's jump and face are fully animated. The action key's
+then, every room is walked on one floor (jumping is switched off by
+`JUMPING`), and Gorti's face is fully animated. The action key's
 "Rezonans" move grows with the story: flowers that release birds, or, in
 Gorti's human form, a ground stomp that raises the Moon and a purple horse.
 Paintings of Gorti's life hang at the chapter starts, key conversations

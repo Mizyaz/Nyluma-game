@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { PORTS } from './tests/e2e/ports';
 
 // Browser tests run against real builds: dist/ (production) mounted at the
 // domain root and under a repository sub-path, and dist-e2e/ (the same game
@@ -30,9 +31,9 @@ export default defineConfig({
     { name: 'desktop', testIgnore: WEBGL_SPECS, use: { ...devices['Desktop Chrome'], viewport, launchOptions: { args: [autoplay] } } },
   ],
   // DEV_ROUTE runs only need the e2e build.
-  webServer: process.env.DEV_ROUTE ? [{ command: 'node scripts/serve.mjs dist-e2e 4175 /', port: 4175, reuseExistingServer: true }] : [
-    { command: 'node scripts/serve.mjs dist 4173 /', port: 4173, reuseExistingServer: true },
-    { command: 'node scripts/serve.mjs dist 4174 /kristaller-dunyasi/', url: 'http://localhost:4174/kristaller-dunyasi/', reuseExistingServer: true },
-    { command: 'node scripts/serve.mjs dist-e2e 4175 /', port: 4175, reuseExistingServer: true },
+  webServer: process.env.DEV_ROUTE ? [{ command: `node scripts/serve.mjs dist-e2e ${PORTS.e2e} /`, port: PORTS.e2e, reuseExistingServer: true }] : [
+    { command: `node scripts/serve.mjs dist ${PORTS.root} /`, port: PORTS.root, reuseExistingServer: true },
+    { command: `node scripts/serve.mjs dist ${PORTS.sub} /kristaller-dunyasi/`, url: `http://localhost:${PORTS.sub}/kristaller-dunyasi/`, reuseExistingServer: true },
+    { command: `node scripts/serve.mjs dist-e2e ${PORTS.e2e} /`, port: PORTS.e2e, reuseExistingServer: true },
   ],
 });

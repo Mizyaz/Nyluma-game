@@ -1,5 +1,6 @@
 import { test } from '@playwright/test';
 import { Bot } from './bot';
+import { E2E } from './helpers';
 import { ROUTES } from './routes';
 
 // Developer harness (skipped unless DEV_ROUTE is set): runs one room route
@@ -20,7 +21,7 @@ test.describe('dev route', () => {
     if (process.env.DEV_CP) q.set('cp', process.env.DEV_CP);
     if (process.env.DEV_FORM) q.set('form', process.env.DEV_FORM);
     page.on('pageerror', (e) => console.log('PAGEERROR', e.message));
-    await page.goto(`http://localhost:4175/?${q.toString()}`);
+    await page.goto(`${E2E}?${q.toString()}`);
     await page.waitForFunction(() => {
       const w = window as unknown as { __kd?: { state(): { room: string | null } } };
       return !!w.__kd && !!w.__kd.state().room;

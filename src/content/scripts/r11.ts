@@ -8,11 +8,13 @@ import type { RoomScript } from './types';
 import { addArt } from './helpers';
 
 // Chapter IV — key and lock. The mechanical form walks through by itself: at
-// the wall its key-eye turns into the key outline and the wall gives way; at
-// the cliff its keyhole-eye shows the hidden lock and steps unfold; up on the
-// ledge it anchors into Gorti's legs and wakes him.
+// the first wall its key-eye turns into the key outline and the wall gives
+// way; at the second its keyhole-eye shows the hidden lock and that wall
+// opens too; beyond it the form anchors into Gorti's legs and wakes him.
 const KEY_TARGET = 135;
 const KEY_STEP = 15;
+/** The hidden lock, on the near side of the second wall (room data: x 1845). */
+const LOCK = { x: 1825, y: 700 };
 
 export function r11(w: WorldScene): RoomScript {
   let keyGhost: Phaser.GameObjects.Image | null = null;
@@ -85,7 +87,7 @@ export function r11(w: WorldScene): RoomScript {
     );
   };
 
-  /** The keyhole-eye looks at the cliff and the hidden lock shows. */
+  /** The keyhole-eye looks at the second wall and the hidden lock shows. */
   const lockScene = (): void => {
     void w.narrative.play(
       'r11.lock',
@@ -100,8 +102,10 @@ export function r11(w: WorldScene): RoomScript {
       },
       () => {
         looking = false;
-        lockImg?.setAlpha(1);
+        // The lock turns and its wall gives way.
+        lockImg?.setVisible(false);
         w.flag('r11.m2');
+        w.shake(0.004, 500);
         w.player.lock(false);
         w.player.emote('surprise', 900);
       },
@@ -139,10 +143,10 @@ export function r11(w: WorldScene): RoomScript {
       keyOutline?.setAngle(KEY_TARGET).setVisible(!w.quest.has('r11.m1'));
       keyGhost = addArt(w, 'prop.keyoutline', 1035, 560, DEPTH.props + 5);
       keyGhost?.setTint(hex(P.crystalTealLight)).setAlpha(0.8).setVisible(false);
-      lockImg = addArt(w, 'prop.lock', 1880, 700, DEPTH.props + 4);
-      lockImg?.setAlpha(w.quest.has('r11.m2') ? 1 : 0);
+      lockImg = addArt(w, 'prop.lock', LOCK.x, LOCK.y, DEPTH.props + 4);
+      lockImg?.setAlpha(0).setVisible(!w.quest.has('r11.m2'));
       beam = w.add.graphics().setDepth(DEPTH.fx - 2);
-      legs = addArt(w, 'giant.legs', 2640, 562, DEPTH.backProps + 6);
+      legs = addArt(w, 'giant.legs', 2640, 822, DEPTH.backProps + 6);
       if (!w.quest.has('r11.intro')) assemble();
     },
     onFixed() {
@@ -152,17 +156,17 @@ export function r11(w: WorldScene): RoomScript {
       if (!q.has('r11.m1')) {
         if (p.x > 830) keyScene();
       } else if (!q.has('r11.m2')) {
-        if (p.x > 1640 && p.feetY > 800) lockScene();
-      } else if (!q.has('r11.wake') && p.x > 2440 && p.feetY < 600) wake();
+        if (p.x > 1640) lockScene();
+      } else if (!q.has('r11.wake') && p.x > 2440) wake();
     },
     onUpdate(_dt, time) {
       beam?.clear();
       if (looking) {
         const eye = w.player.rig.attachPoint('eye');
         beam?.fillStyle(hex(P.vein), 0.18 + 0.05 * Math.sin(time / 80));
-        beam?.fillTriangle(eye.x, eye.y, 1890, 650, 1890, 760);
+        beam?.fillTriangle(eye.x, eye.y, LOCK.x + 10, LOCK.y - 50, LOCK.x + 10, LOCK.y + 60);
       }
-      if (legs) legs.setY(562 + Math.sin(time / 900) * 2);
+      if (legs) legs.setY(822 + Math.sin(time / 900) * 2);
     },
   };
 }

@@ -88,14 +88,15 @@ test.describe('reference screenshots', () => {
     await shot(page, '11-colour-storm');
   });
 
-  test('Gorti near the top of a jump', async ({ page }) => {
+  test('Gorti mid-stride in the forest', async ({ page }) => {
+    // Jumping is off: the story rooms are walked.
     const bot = await jump(page, 'r06', { cp: 'r06_knots', flags: 'r06.shout', form: 'root' });
-    await bot.walkTo(860, 10);
-    await page.waitForTimeout(800);
-    await page.keyboard.down('Space');
-    await waitState(page, (s) => !!s.player && !s.player.onGround && s.player.vy > -220, 5000, 'top of the jump');
-    await shot(page, '12-jump');
-    await page.keyboard.up('Space');
+    await bot.walkTo(760, 10);
+    await bot.keyDown('KeyD');
+    await waitState(page, (s) => !!s.player && s.player.onGround && s.player.vx > 150, 5000, 'walking');
+    await page.waitForTimeout(300);
+    await shot(page, '12-walk');
+    await bot.keyUp('KeyD');
   });
 
   test('final document', async ({ page }) => {
