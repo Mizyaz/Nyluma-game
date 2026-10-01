@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { E2E, hold, probe, seedSave, startNewGame, tap, waitState, watchErrors } from './helpers';
 import { Bot } from './bot';
 import { ROUTES } from './routes';
+import { JUMPING } from '../../src/engine/constants';
 
 // Gameplay flows against the e2e build (the production game plus a read-only
 // state probe). `?canvas=1` selects Phaser's Canvas renderer: headless
@@ -20,8 +21,21 @@ async function freshPage(page: Page): Promise<void> {
   await page.evaluate(() => localStorage.clear());
 }
 
+/** Jumping is off (JUMPING): Space held for a while leaves Gorti standing on the floor at `floorY`. */
+async function spaceDoesNotJump(page: Page, floorY: number): Promise<void> {
+  expect(JUMPING).toBe(false);
+  await page.keyboard.down('Space');
+  for (let i = 0; i < 8; i++) {
+    await page.waitForTimeout(80);
+    const s = await probe(page);
+    expect(s.player!.onGround).toBe(true);
+    expect(Math.abs(s.player!.y - floorY)).toBeLessThan(4);
+  }
+  await page.keyboard.up('Space');
+}
+
 test.describe('gameplay', () => {
-  test('walks, jumps, passes the furniture and inspects in the first room', async ({ page }) => {
+  test('walks, passes the furniture and inspects in the first room; the jump key does nothing', async ({ page }) => {
     const errors = watchErrors(page);
     await freshPage(page);
     await startNewGame(page, GAME);
@@ -32,11 +46,8 @@ test.describe('gameplay', () => {
     const s1 = await probe(page);
     expect(s1.player!.x).toBeGreaterThan(s0.player!.x + 60);
 
-    // Variable-height jump: leaves the ground and comes back down.
-    await page.keyboard.down('Space');
-    await waitState(page, (s) => !s.player!.onGround && s.player!.vy < 0, 3000, 'airborne');
-    await page.keyboard.up('Space');
-    await waitState(page, (s) => s.player!.onGround, 4000, 'landed');
+    // No jumping: the room is one floor, and Space leaves Gorti on it.
+    await spaceDoesNotJump(page, 660);
 
     // Contextual interaction: the toy whale.
     await bot.walkTo(620, 10);
@@ -45,8 +56,8 @@ test.describe('gameplay', () => {
     await bot.settle();
     expect((await probe(page)).flags).toContain('r01.toywhale');
 
-    // The toy blocks and the chest stand against the back wall: Gorti walks
-    // in front of them to the window without jumping.
+    // The bed, the gift and the other toys stand against the back wall:
+    // Gorti walks in front of them to the window.
     await bot.walkTo(1441, 10);
     const s2 = await probe(page);
     expect(s2.player!.onGround).toBe(true);
@@ -246,17 +257,17 @@ test.describe('colour bombardment', () => {
     expect(s1.bursts!.count).toBe(1);
     await expect(storm).toHaveClass(/\bon\b/);
     await expect(storm).toBeVisible();
-    // Visual only: Gorti keeps control, walks and jumps through it.
+    // Visual only: Gorti keeps control and walks through it (and, jumping
+    // being off, stays on the floor when Space is held).
     expect(s1.context).toBe('gameplay');
     expect(s1.player!.state).toBe('normal');
     await hold(page, 'KeyD', 600);
     const s2 = await probe(page);
     expect(s2.bursts!.active).toBe(true);
     expect(s2.player!.x).toBeGreaterThan(s1.player!.x + 60);
-    await page.keyboard.down('Space');
-    await waitState(page, (s) => !s.player!.onGround && s.player!.vy < 0 && !!s.bursts?.active, 3000, 'jump during the bombardment');
-    await page.keyboard.up('Space');
-    await waitState(page, (s) => s.player!.onGround, 4000, 'landed');
+    await spaceDoesNotJump(page, 660);
+    await hold(page, 'KeyA', 400);
+    expect((await probe(page)).player!.x).toBeLessThan(s2.player!.x - 30);
     // It passes, and the next one comes by itself.
     await waitState(page, (s) => !s.bursts!.active, 10_000, 'bombardment over');
     await expect(storm).not.toHaveClass(/\bon\b/);
@@ -269,27 +280,33 @@ test.describe('colour bombardment', () => {
 test.describe('touch', () => {
   test.use({ hasTouch: true, isMobile: false });
 
-  test('two simultaneous touches move and jump; cancelling releases everything', async ({ page }) => {
+  test('two simultaneous touches move and act; cancelling releases everything', async ({ page }) => {
     await freshPage(page);
     await startNewGame(page, GAME);
-    await new Bot(page).settle();
+    const bot = new Bot(page);
+    await bot.settle();
+    // Past the window: nothing to inspect for a while, so Eylem makes the
+    // Rezonans move. (Zıpla stays hidden: jumping is off.)
+    await bot.walkTo(1560, 10);
+    await expect(page.locator('.tc[data-key="jump"]')).toBeHidden();
     const pad = await page.locator('.tc-pad').boundingBox();
-    const jump = await page.locator('.tc[data-key="jump"]').boundingBox();
-    expect(pad && jump).toBeTruthy();
+    const act = await page.locator('.tc[data-key="action"]').boundingBox();
+    expect(pad && act).toBeTruthy();
     const cdp = await page.context().newCDPSession(page);
     const right = { x: pad!.x + pad!.width * 0.8, y: pad!.y + pad!.height / 2, id: 1 };
-    const j = { x: jump!.x + jump!.width / 2, y: jump!.y + jump!.height / 2, id: 2 };
+    const a = { x: act!.x + act!.width / 2, y: act!.y + act!.height / 2, id: 2 };
     const x0 = (await probe(page)).player!.x;
+    const moves0 = (await probe(page)).moves!.count;
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [right] });
     await page.waitForTimeout(250);
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [right, j] });
-    await waitState(page, (s) => !s.player!.onGround, 3000, 'jump while moving');
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [right, a] });
+    await waitState(page, (s) => s.moves!.count > moves0, 3000, 'a move while walking');
     const mid = await probe(page);
     expect(mid.heldSources).toBe(2);
     expect(mid.player!.vx).toBeGreaterThan(50);
-    // Lift the jump finger (touchEnd lists the fingers that lift); the
+    // Lift the action finger (touchEnd lists the fingers that lift); the
     // movement finger keeps moving.
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [j] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [a] });
     await page.waitForTimeout(300);
     const one = await probe(page);
     expect(one.heldSources).toBe(1);

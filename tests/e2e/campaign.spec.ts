@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { Bot } from './bot';
 import { E2E, probe, startNewGame, watchErrors } from './helpers';
 import { ROUTES } from './routes';
+import { MEMORY_IDS } from '../../src/content/data/memories';
 
 // The whole campaign, New Game to the ending card, played with ordinary
 // keyboard input only (no room jumps, no state writes). The bot reads the
@@ -29,9 +30,11 @@ test('@campaign full playthrough with normal inputs from New Game to the ending'
   }
   await expect(page.locator('.ending .final-line')).toHaveText('Gorti, içindeki tüm ruhların sahipliğini kaybetmişti.');
   await expect(page.getByRole('button', { name: 'Yeniden oyna' })).toBeVisible({ timeout: 15_000 });
-  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('kristaller-dunyasi:save') ?? '{}') as { profile?: { endingSeen?: boolean; chaptersReached?: number[] } });
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('kristaller-dunyasi:save') ?? '{}') as { profile?: { endingSeen?: boolean; chaptersReached?: number[]; memories?: string[] } });
   expect(saved.profile?.endingSeen).toBe(true);
   expect(saved.profile?.chaptersReached).toEqual([1, 2, 3, 4, 5]);
+  // Every memory lies on the one floor of its room: walking picks them all up.
+  expect([...(saved.profile?.memories ?? [])].sort()).toEqual([...MEMORY_IDS].sort());
   await test.info().attach('room-times', { body: times.join('\n'), contentType: 'text/plain' });
   expect(errors).toEqual([]);
 });
