@@ -1028,7 +1028,7 @@ a {
   font-family: var(--display);
   font-weight: 900;
   font-synthesis: none;
-  font-size: max(10px, calc(var(--s) * 13px));
+  font-size: max(11px, calc(var(--s) * 16px));
   letter-spacing: 0.22em;
   color: var(--b-ink);
   white-space: nowrap;
@@ -1038,7 +1038,7 @@ a {
   font-family: var(--display);
   font-weight: 900;
   font-synthesis: none;
-  font-size: max(18px, calc(var(--s) * 30px));
+  font-size: max(22px, calc(var(--s) * 42px));
   line-height: 1.1;
   letter-spacing: 0.03em;
   text-transform: uppercase;

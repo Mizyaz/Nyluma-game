@@ -3,6 +3,7 @@ import { app } from '../App';
 import { VIEW_H, VIEW_W } from '../constants';
 import { CrystalWarp, type WarpLook } from '../../render/2d/fx/crystalFx';
 import { GemArt } from '../../render/2d/fx/gemArt';
+import { addStaticCanvas, artCanvas } from '../../render/2d/TextureFactory';
 import { fitScene } from '../../paper/screen';
 
 export interface WarpData {
@@ -15,6 +16,9 @@ export interface WarpData {
 
 const DEFAULT_LOOK: WarpLook = { count: 60, alpha: 1, speed: 0.3, colors: [0x548cd6, 0x53bfaf, 0xef9a47, 0x9459d8] };
 const PAPER = 0xf2ecf6;
+/** The tunnel's depth around its lit far end: plum, as the night of the first painting. */
+const PLUM = '#3b2f57';
+const NIGHT = '#211a30';
 /** Shortest fade: nothing on screen changes faster than this (seconds). */
 const MIN_FADE = 0.34;
 /** Gems per frame of the full-screen tunnel. */
@@ -30,16 +34,33 @@ function ramp(t: number, a: number, b: number): number {
   return v * v * (3 - 2 * v);
 }
 
+/** The veil's picture: the chapter's paper glowing at the far end, deep plum around it. */
+function veilKey(scene: Phaser.Scene, paper: number): string {
+  const key = `fx.warpveil:${paper.toString(16)}`;
+  if (scene.textures.exists(key)) return key;
+  const n = 256;
+  const [c, ctx] = artCanvas(n, n);
+  const g = ctx.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n * 0.7);
+  g.addColorStop(0, `#${paper.toString(16).padStart(6, '0')}`);
+  g.addColorStop(0.18, '#9b88c0');
+  g.addColorStop(0.5, PLUM);
+  g.addColorStop(1, NIGHT);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, n, n);
+  addStaticCanvas(scene.textures, key, c);
+  return key;
+}
+
 /**
  * Gem-tunnel transition drawn above every other scene. The tunnel fills the
- * screen and speeds toward the viewer while pastel paper closes behind it
- * (the caller swaps what is underneath at the peak); a painted face looks
- * out of its far end around the peak, then everything slows and opens up.
+ * screen and speeds toward the viewer while its plum depth closes behind it
+ * (the caller swaps what is underneath at the peak); a face looks out of
+ * its lit far end around the peak, then everything slows and opens up.
  */
 export class WarpScene extends Phaser.Scene {
   private data0!: WarpData;
   private warp!: CrystalWarp;
-  private veil!: Phaser.GameObjects.Rectangle;
+  private veil!: Phaser.GameObjects.Image;
   private face!: Phaser.GameObjects.Image;
   private faceScale = 1;
   private t = 0;
@@ -63,8 +84,9 @@ export class WarpScene extends Phaser.Scene {
     const reduced = app.settings.reducedMotion;
     this.dur = reduced ? 0.9 : 0.9 + 0.9 * s;
     const look = this.data0.look ?? DEFAULT_LOOK;
-    // A filled shape (not a tinted sprite) so the paper shows in every renderer.
-    this.veil = this.add.rectangle(VIEW_W / 2, VIEW_H / 2, VIEW_W * 1.2, VIEW_H * 1.2, look.paper ?? PAPER, 1).setAlpha(0);
+    // A drawn picture (not a tint), so it shows the same in every renderer.
+    this.veil = this.add.image(VIEW_W / 2, VIEW_H / 2, veilKey(this, look.paper ?? PAPER)).setAlpha(0);
+    this.veil.setDisplaySize(VIEW_W * 1.25, VIEW_H * 1.25);
     const art = GemArt.ensure(this);
     this.face = this.add.image(VIEW_W / 2, VIEW_H / 2, GemArt.KEY, art.face).setAlpha(0).setDepth(4);
     this.faceScale = FACE_PX / art.faceSize;
