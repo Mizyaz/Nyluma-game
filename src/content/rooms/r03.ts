@@ -65,7 +65,6 @@ export const R03: RoomDef = {
   solids: [
     { x: 0, y: 1180, w: 760, h: 220, style: 'soil' },
     { x: 0, y: 0, w: 120, h: 1180, style: 'soil' },
-    { x: 280, y: 0, w: 360, h: 1080, style: 'soil' },
     // The poisoned pool and the whale lying across it, level with the banks.
     { x: 760, y: 1280, w: 340, h: 120, style: 'soil' },
     { id: 'bridge', x: 760, y: 1180, w: 340, h: 24, style: 'root', oneWay: true, whale: { species: 'blue', facing: 1 } },
