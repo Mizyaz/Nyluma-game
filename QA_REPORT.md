@@ -5,7 +5,60 @@ listeler. Ölçümler aşağıdaki test ortamında alınmıştır; gerçek cihaz
 performansını temsil etmez. İlk bölüm bu sürümün kontrolleridir. Sonraki
 bölümlerdeki sonuçlar önceki sürümlerin oyun kodu içindir.
 
-## Bu sürüm: kâğıt motoru, ışık kaynakları, duvarlar, derinlikte yürüyüş
+## Bu sürüm: 1. tablonun resimleri, göz-yaprak, tablodaki Gorti
+
+Bu sürümde eklenenler:
+
+- yatakhane (r10) ve ofis (r12) duvarları tamamlandı: yatakhanede yıldızlı
+  çizgili duvar kâğıdı, lambri, perdeler, iğneli boya kalemi resimleri, askılar;
+  ofiste korniş, paneller, pencereler, sertifikalar, durmuş saat, takvim;
+- 14. Oda'nın iki duvar resmi 1. tablodan elle, kalın mürekkeple yeniden
+  çizildi ve tablodaki boyutlarında asıldı: yeşil yaratığın portresi ve
+  turkuaz amblem. Amblemin İncele metni artık resmi anlatıyor;
+- göz-yaprak: tabloda büyük Gorti'nin tuttuğu yedi plakalı mor yaprak,
+  ortasında göz. Odanın zemininde yatıyor ve incelenebiliyor (`r01.eyeleaf`).
+  Boyutu Gorti'ye göre ayarlandı;
+- Gorti tablodaki gibi yeniden çizildi: kabuk kutu kafa, kalın çerçeveli
+  lila ekran, geniş yeşil gövde, kabuk plakalar, dikenli kabuk ön kollar,
+  kabuk bacaklar, kök parmaklar. Yüzü ekrandaki pembe desendir; duygular
+  desenin bloklarıyla gösterilir (göz blokları üzgünken eğilir, kırpınca
+  çizgiye iner; ağız blokları açılır, dişlenir, kemerlenir, gülerken üst
+  üste biner). Gorti hâlâ gülümsemez. Ekran ve çerçeve ayrı eklemlerdir
+  (`screen`, `bezel`); ekranlı yüzlerde desen bloklarının büyüme ölçeği
+  sınırlıdır.
+
+Kontroller `0fd2f05` üzerinde koşuldu:
+
+| Kontrol | Sonuç |
+| --- | --- |
+| `npm run typecheck` | Hatasız |
+| `npx vitest run` | 17 dosya, 150 test geçti |
+| `npm run kd -- check` | Hatasız: 6 bölüm, 4 oda dosyası, 12 TS oda |
+| Tarayıcı testleri (`npm run test:e2e`, 1 işçi) | 25 geçti, 13 atlandı (yalnızca `SHOTS`/`DEV_ROUTE` ile çalışanlar), 8,9 dk. Not: bu koşu, ekran desenine yapılan son ince ayardan önceki derlemeyle başladı; bu yüzden aşağıdaki iki koşu son derlemeyle tekrarlandı |
+| Hedefli tarayıcı testleri, son derleme (r01 yürüme ve İncele, göz-yaprak dahil; dokunmatik; yüz sahnesi) | 3 geçti, 1,5 dk |
+| Tam kampanyalar, son derleme (`npm run test:campaign -- --workers=2`: klavye ve dokunmatik telefon aynı anda) | İkisi de geçti: klavye 6,0 dk, telefon 6,3 dk. Oda başına klavye / telefon (s): r01 33/37, r02 8/9, r03 17/18, r04 24/26, r05 24/25, r06 18/19, r07 96/96, r08 29/30, r09 19/22, r10 25/26, r11 19/20, r12 33/34 |
+
+Bu sürümde eklenen tarayıcı testi: r01'de pencere incelendikten sonra Gorti
+köklerin ötesine yürür, göz-yaprağı inceler ve `r01.eyeleaf` bayrağı kaydedilir.
+
+Görsel kontrol: Gorti'nin karakter sayfası (`/dev/chars.html`) şu hareketlerde
+çekildi: durma, yürüme, koşma, etkileşim, gülme, kahkaha, bağırma, itme,
+endişe, uzanma, diz çökme, oturma, uyku, kalkma. Her duygu için ekran deseni
+ayrıca çekildi. Oyunda r01'de Gorti yatakta uyurken, yürürken ve yaprağın
+yanında çekildi. Bu kontrollerde bulunup düzeltilen sorunlar:
+
+- gövde dar kalıyor ve kolları örtüyordu; gövde genişletildi, omuzlar açıldı;
+- omuz başı top gibi, dizler tekerlek gibi, kabuk düğümleri göz gibi
+  görünüyordu; üçü de yumuşatıldı;
+- bağırma ağzı tüm ekranı kaplıyordu; ekranlı yüzlerde desen ölçeği
+  sınırlandı;
+- yaprak oyunda Gorti'den büyüktü; 0,36 ölçeğe indirildi.
+
+Not: oyun döngüsü elle adımlanınca Gorti başsız tarayıcıda uykudan
+uyanmadı; bu yüzden oyun içi çekimler gerçek zamanlı alındı.
+
+
+## Önceki sürüm: kâğıt motoru, ışık kaynakları, duvarlar, derinlikte yürüyüş
 
 Bu sürümde eklenenler:
 
@@ -62,7 +115,7 @@ Bilinen sınırlar: Gorti'nin çizimi oyuncu düzlemi için basılır; derinde b
 etkileşimleri etkilemez: konuşma ve İncele yalnızca x ve y'ye bakar.
 
 
-## Önceki sürüm: düz odalar, Sivaslı amca, yıkma, bölüm kütüphanesi
+## Daha önceki sürüm: düz odalar, Sivaslı amca, yıkma, bölüm kütüphanesi
 
 Bu sürümde eklenenler:
 
@@ -119,7 +172,7 @@ oyun saniyede 1–2 kare çizer. Karakter değişikliklerinden önceki ve sonrak
 sürüm aynı koşullarda art arda ölçüldü, fark görülmedi. Gerçek cihazlarda
 ölçülmedi.
 
-## Daha önceki sürüm: tablolar, Rezonans, yüz sahneleri, yaylılar, pastel tünel
+## Daha eski sürüm: tablolar, Rezonans, yüz sahneleri, yaylılar, pastel tünel
 
 Bu sürümde eklenenler:
 
