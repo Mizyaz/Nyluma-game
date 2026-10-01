@@ -22,7 +22,7 @@ const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
  * Comic-cover lettering: every letter in its own box (so styles can set each
  * one by hand), words kept whole; assistive tech reads the plain text.
  */
-function comicTitle(text: string): HTMLElement {
+export function comicTitle(text: string): HTMLElement {
   const letters = h('span', { 'aria-hidden': 'true' });
   text.split(' ').forEach((word, i) => {
     if (i) letters.append(' ');

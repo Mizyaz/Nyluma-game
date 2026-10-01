@@ -11,12 +11,14 @@ import type { SkyJson, SkyOut } from '../content/types';
 // light. Its own scene so the world camera's zoom and the 2.5D stage leave
 // it alone; the world scene runs it.
 
-// Clear of the HUD's buttons in the top right corner.
-const MOON_AT = { x: 80, y: 80, scale: 0.32 };
-const SUN_AT = { x: VIEW_W - 205, y: 76, scale: 0.24 };
-/** Scale and alpha of the one that is out, and of the other. */
-const OUT = { s: 1.45, a: 1 };
-const IN = { s: 0.78, a: 0.5 };
+// Big enough to read their faces, clear of the HUD's buttons in the top
+// right corner.
+const MOON_AT = { x: 92, y: 92, scale: 0.5 };
+const SUN_AT = { x: VIEW_W - 262, y: 98, scale: 0.4 };
+/** Scale of the one that is out and of the other; the other also dims (never fades out). */
+const OUT = { s: 1.22, a: 1 };
+const IN = { s: 0.86, a: 1 };
+const DIM = 0.42;
 /** The room's light while each one is out. */
 const TINT: Record<SkyOut, { color: number; alpha: number }> = {
   none: { color: 0x000000, alpha: 0 },
@@ -33,7 +35,7 @@ export class SkyScene extends Phaser.Scene {
   private sky: FullSky = { ...NONE };
   private eye = { x: VIEW_W / 2, y: 400 };
   /** Current emphasis (tweened): moon/sun scale factor and alpha. */
-  private k = { m: 1, ma: 1, s: 1, sa: 1 };
+  private k = { m: 1, ma: 1, s: 1, sa: 1, md: 0, sd: 0 };
   private tint!: Phaser.GameObjects.Rectangle;
   private laughT = 0;
   /** The part of the 1280 × 720 layout the screen shows (the faces keep to its corners). */
@@ -46,7 +48,7 @@ export class SkyScene extends Phaser.Scene {
   create(data: { sky?: FullSky }): void {
     this.moon = this.sun = null;
     this.sky = { ...NONE };
-    this.k = { m: 1, ma: 1, s: 1, sa: 1 };
+    this.k = { m: 1, ma: 1, s: 1, sa: 1, md: 0, sd: 0 };
     this.laughT = 0;
     this.view = fitScene(this, 'height');
     this.tint = this.add.rectangle(0, 0, VIEW_W, VIEW_H, 0x000000, 0).setOrigin(0).setDepth(0);
@@ -113,6 +115,8 @@ export class SkyScene extends Phaser.Scene {
       ma: out === 'sun' ? IN.a : 1,
       s: out === 'sun' ? OUT.s : out === 'moon' ? IN.s : 1,
       sa: out === 'moon' ? IN.a : 1,
+      md: out === 'sun' ? DIM : 0,
+      sd: out === 'moon' ? DIM : 0,
     };
     const tint = TINT[out];
     this.tweens.killTweensOf([this.k, this.tint]);
@@ -134,11 +138,13 @@ export class SkyScene extends Phaser.Scene {
     if (this.moon) {
       this.moon.setScale(MOON_AT.scale * this.k.m);
       this.moon.c.setAlpha(this.k.ma);
+      this.moon.dim(this.k.md);
       if (out === 'moon' && this.laughT > 0 && Math.random() < 0.04) this.moon.say(500);
     }
     if (this.sun) {
       this.sun.setScale(SUN_AT.scale * this.k.s);
       this.sun.c.setAlpha(this.k.sa);
+      this.sun.dim(this.k.sd);
       this.sun.laughing = this.sky.sun === 'laugh' || (out === 'sun' && this.laughT > 0);
     }
     for (const f of [this.moon, this.sun]) {

@@ -11,7 +11,7 @@ import { EndingView } from './EndingView';
 import { Hud } from './Hud';
 import { Menus } from './Menus';
 import { TouchControls } from './TouchControls';
-import { h } from './dom';
+import { LoadingView } from './LoadingView';
 
 /** Root of all DOM overlays; keeps #stage aligned with the letterboxed canvas. */
 export class UI {
@@ -23,7 +23,7 @@ export class UI {
   readonly ending: EndingView;
   readonly touch: TouchControls;
   readonly colorStorm: ColorStorm;
-  private loadingEl: HTMLElement | null = null;
+  private loadingView: LoadingView | null = null;
   private game: Phaser.Game;
   private last = performance.now();
   /** The speech balloon, and who its tail was last aimed at. */
@@ -154,15 +154,12 @@ export class UI {
 
   loading(progress: number | null, label = 'Kristaller büyüyor…'): void {
     if (progress === null) {
-      this.loadingEl?.remove();
-      this.loadingEl = null;
+      this.loadingView?.close();
+      this.loadingView = null;
       return;
     }
-    if (!this.loadingEl) {
-      this.loadingEl = h('div', { class: 'loading', role: 'status' }, h('div', { class: 'lbl', text: label }), h('div', { class: 'bar' }, h('i')));
-      this.stage.append(this.loadingEl);
-    }
-    (this.loadingEl.querySelector('.bar i') as HTMLElement).style.width = `${Math.round(progress * 100)}%`;
-    (this.loadingEl.querySelector('.lbl') as HTMLElement).textContent = label;
+    this.loadingView ??= new LoadingView(this.stage);
+    this.loadingView.set(progress, label);
   }
+
 }

@@ -23,23 +23,28 @@ interface FaceLayout {
   eyes: [number, number][];
   mouthAt: [number, number];
   size: number;
+  /** The painted heavy lids stay over the eyes' tops, and this shut eye shows for a blink; else faint lids only show to blink. */
+  shut?: string;
 }
 
 const LAYOUTS: Record<'baby' | 'old' | 'sun', FaceLayout> = {
-  baby: { disk: 'moon.baby', eye: 'moon.baby.eye', lid: 'moon.baby.lid', mouth: 'moon.baby.mouth', eyes: [[-68, -12]], mouthAt: [-34, 46], size: 260 },
+  baby: { disk: 'moon.baby', eye: 'moon.baby.eye', lid: 'moon.baby.lid', mouth: 'moon.baby.mouth', eyes: [[-68, -12]], mouthAt: [-34, 46], size: 260, shut: 'moon.baby.shut' },
   old: { disk: 'moon.old', eye: 'moon.old.eye', lid: 'moon.old.lid', mouth: 'moon.old.mouth', laugh: 'moon.old.mouth.laugh', eyes: [[-88, -26]], mouthAt: [-46, 46], size: 300 },
-  sun: { disk: 'sun.disk', eye: 'sun.eye', lid: 'sun.lid', mouth: 'sun.mouth', laugh: 'sun.mouth.open', eyes: [[-46, -18], [46, -18]], mouthAt: [0, 54], size: 320 },
+  sun: { disk: 'sun.disk', eye: 'sun.eye', lid: 'sun.lid', mouth: 'sun.mouth', laugh: 'sun.mouth.open', eyes: [[-46, -18], [46, -18]], mouthAt: [0, 54], size: 320, shut: 'sun.shut' },
 };
 
-/** The Sun's ring of spikes: how many, where their bases sit, which are bent. */
-const RAYS = 24;
-const RAY_R = 128;
+/** The Sun's ring of spikes: how many, where their bases sit (under the face's edge), which are bent. */
+const RAYS = 18;
+const RAY_R = 104;
+/** Long and short spikes by turns, as drawn. */
+const rayLength = (i: number): number => (i % 2 ? 0.74 : 1);
 const isBroken = (i: number): boolean => i % 4 === 1;
 
 export class Face {
   readonly c: Phaser.GameObjects.Container;
   private eyes: Phaser.GameObjects.Image[] = [];
   private lids: Phaser.GameObjects.Image[] = [];
+  private shuts: Phaser.GameObjects.Image[] = [];
   private mouth: Phaser.GameObjects.Image | null;
   private laugh: Phaser.GameObjects.Image | null = null;
   private layout: FaceLayout;
@@ -54,6 +59,7 @@ export class Face {
   private brokenRays: Phaser.GameObjects.Image[] = [];
   coughT = 0;
   rayLevel = 1;
+  private dimmed = 0;
 
   constructor(private scene: Phaser.Scene, readonly kind: 'baby' | 'old' | 'sun', x: number, y: number, depth: number = DEPTH.backProps) {
     this.layout = LAYOUTS[kind];
@@ -66,6 +72,7 @@ export class Face {
         r.setRotation(a + Math.PI / 2);
         r.setPosition(Math.cos(a) * RAY_R, Math.sin(a) * RAY_R);
         r.setData('a', a);
+        r.setData('i', i);
         this.c.add(r);
         (isBroken(i) ? this.brokenRays : this.rays).push(r);
       }
@@ -84,6 +91,12 @@ export class Face {
         l.setPosition(ex, ey);
         this.c.add(l);
         this.lids.push(l);
+      }
+      const shut = this.layout.shut ? img(scene, this.layout.shut) : null;
+      if (shut) {
+        shut.setPosition(ex, ey).setAlpha(0);
+        this.c.add(shut);
+        this.shuts.push(shut);
       }
     }
     this.mouth = img(scene, this.layout.mouth);
@@ -122,12 +135,16 @@ export class Face {
       const [ex, ey] = this.layout.eyes[i]!;
       e.setPosition(ex + this.gaze.x, ey + this.gaze.y);
     });
-    this.lids.forEach((l, i) => {
-      const [ex, ey] = this.layout.eyes[i]!;
-      const close = Math.max(blink, this.lidDrop);
-      l.setAlpha(0.15 + 0.85 * close);
-      l.setPosition(ex, ey - 6 + 6 * close);
-    });
+    const close = Math.max(blink, this.lidDrop);
+    // Painted heavy lids stay put; the shut eye shows through a blink.
+    for (const s of this.shuts) s.setAlpha(close > 0.5 ? 1 : close * 2);
+    if (!this.shuts.length) {
+      this.lids.forEach((l, i) => {
+        const [ex, ey] = this.layout.eyes[i]!;
+        l.setAlpha(0.15 + 0.85 * close);
+        l.setPosition(ex, ey - 6 + 6 * close);
+      });
+    }
     if (this.mouth) {
       const talk = this.talking > 0 ? 0.35 * Math.abs(Math.sin(this.t * 11)) : 0;
       if (this.talking > 0) this.talking -= dt;
@@ -153,10 +170,11 @@ export class Face {
     const all = [...this.rays, ...this.brokenRays];
     all.forEach((r, i) => {
       const a = r.getData('a') as number;
-      const len = this.rayLevel * (0.85 + 0.15 * Math.sin(this.t * 2 + i));
+      const ring = r.getData('i') as number;
+      const len = this.rayLevel * rayLength(ring) * (0.88 + 0.12 * Math.sin(this.t * 2 + ring));
       const f = frameRef(this.brokenRays.includes(r) ? 'sun.ray.broken' : 'sun.ray');
       r.setScale(1 / f.scale, (1 / f.scale) * Math.max(0.001, len));
-      r.setAlpha(this.rayLevel <= 0.01 ? 0 : 0.9 - cough * 0.4 * (i % 2));
+      r.setAlpha(this.rayLevel <= 0.01 ? 0 : 1 - cough * 0.4 * (i % 2));
       r.setPosition(Math.cos(a) * RAY_R, Math.sin(a) * RAY_R);
     });
   }
@@ -172,6 +190,20 @@ export class Face {
 
   say(ms = 1800): void {
     this.talking = ms / 1000;
+  }
+
+  /** Dims the face toward the night's lilac (0: as drawn), for the one that is not out. */
+  dim(k: number): void {
+    if (k === this.dimmed) return;
+    this.dimmed = k;
+    const c = Phaser.Display.Color.Interpolate.ColorWithColor(
+      Phaser.Display.Color.ValueToColor(0xffffff),
+      Phaser.Display.Color.ValueToColor(0x9a92b8),
+      1,
+      k,
+    );
+    const tint = Phaser.Display.Color.GetColor(c.r, c.g, c.b);
+    for (const o of this.c.list) (o as Phaser.GameObjects.Image).setTint?.(tint);
   }
 
   setScale(s: number): void {

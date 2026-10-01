@@ -1630,35 +1630,142 @@ a {
 /* ------------------------------------------------------------ loading */
 
 .loading {
+  /* The night of the first painting: plum air, paper grain, dark corners. */
   position: absolute;
   inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1em;
-  background: var(--grain), var(--hatch), var(--page);
+  z-index: 20;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background:
+    var(--grain),
+    radial-gradient(ellipse 75% 70% at 50% 42%, #54477a 0%, #372d52 52%, #211a31 100%);
   color: var(--ink);
+  transition: opacity 0.45s ease;
+}
+
+.loading.done {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loading .ld-middle {
+  display: grid;
+  justify-items: center;
+  gap: max(6px, calc(var(--s) * 10px));
+  width: min(92%, 760px);
+}
+
+.loading .subtitle {
+  margin: 0;
+}
+
+/* The Moon and the Sun look on from the top corners, drifting a little. */
+.loading .ld-moon,
+.loading .ld-sun {
+  position: absolute;
+  top: max(10px, calc(var(--s) * 18px));
+  width: max(84px, calc(var(--s) * 170px));
+  aspect-ratio: 1;
+  animation: ld-drift 6s ease-in-out infinite;
+}
+
+.loading .ld-moon {
+  left: max(10px, calc(var(--s) * 26px));
+}
+
+.loading .ld-sun {
+  right: max(10px, calc(var(--s) * 26px));
+  width: max(96px, calc(var(--s) * 196px));
+  animation-delay: -3s;
+}
+
+.loading .ld-moon svg,
+.loading .ld-sun svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.loading .ld-grow {
+  width: max(230px, calc(var(--s) * 420px));
+}
+
+.loading .ld-grow svg {
+  width: 100%;
+  display: block;
+  overflow: visible;
+}
+
+.loading .cr {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transform: scaleY(0.06);
+  transition: transform 0.35s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+
+.loading .spark {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ld-twinkle 1.8s ease-in-out infinite;
+}
+
+/* The words and the count on a strip of paper. */
+.loading .ld-strip {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8em;
+  padding: 0.3em 1em;
+  background: var(--grain), var(--paper);
+  border: var(--lw) solid var(--line);
+  border-radius: 10px 4px 12px 3px / 4px 10px 3px 12px;
+  box-shadow: 3px 4px 0 rgba(20, 14, 28, 0.45);
+  rotate: -1deg;
   font-family: var(--serif);
+  font-size: max(16px, calc(var(--s) * 26px));
+}
+
+.loading .ld-lbl {
   font-style: italic;
 }
 
-.loading .bar {
-  width: min(60%, 420px);
-  height: 16px;
-  background: var(--paper);
-  border: var(--lw) solid var(--line);
-  border-radius: 8px 4px 9px 3px / 4px 8px 3px 9px;
-  box-shadow: 2px 3px 0 var(--shade);
-  overflow: hidden;
+.loading .ld-count {
+  font-family: var(--display);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: var(--pastel-lilac-deep);
 }
 
-.loading .bar i {
-  display: block;
-  height: 100%;
-  width: 0;
-  background: var(--pencil), repeating-linear-gradient(-45deg, var(--pastel-periwinkle) 0 7px, var(--pastel-lilac) 7px 14px);
-  border-right: var(--lw) solid var(--line);
+@keyframes ld-drift {
+  0%,
+  100% {
+    translate: 0 0;
+    rotate: -2deg;
+  }
+  50% {
+    translate: 0 6%;
+    rotate: 2deg;
+  }
+}
+
+@keyframes ld-twinkle {
+  0%,
+  100% {
+    scale: 0.55;
+    opacity: 0.5;
+  }
+  50% {
+    scale: 1.15;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading .ld-moon,
+  .loading .ld-sun,
+  .loading .spark {
+    animation: none;
+  }
 }
 
 /* ------------------------------------------------------------ touch */
