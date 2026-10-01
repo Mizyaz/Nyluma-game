@@ -212,6 +212,8 @@ export class Face {
 
   /** Dims the face toward the night's lilac (0: as drawn), for the one that is not out. */
   dim(k: number): void {
+    // The tween that sets it eases back past 0 and 1: beyond them the colour would overflow.
+    k = Math.min(1, Math.max(0, k));
     if (k === this.dimmed) return;
     this.dimmed = k;
     const c = Phaser.Display.Color.Interpolate.ColorWithColor(
