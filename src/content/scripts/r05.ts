@@ -9,12 +9,12 @@ import { DEPTH } from '../../engine/constants';
 import { hasFrame, frameRef } from '../../render/2d/TextureFactory';
 
 // Chapter II — weight of a remembered life: the memory stones already rest
-// on their plates, the crystal gate is open, and on the hilltop the ancient
+// on their plates, the crystal gate is open, and at the far end the ancient
 // Moon speaks.
 const PLATE_A = { x: 1180, y: 1100 };
 const PLATE_B = { x: 2060, y: 1100 };
-/** The Moon's face over the hilltop (905). */
-const MOON = { x: 3640, y: 515 };
+/** The Moon's face, high over the floor (1100) at the far end. */
+const MOON = { x: 3640, y: 710 };
 
 export function r05(w: WorldScene): RoomScript {
   let s1: MemoryStone | null = null;
@@ -91,7 +91,7 @@ export function r05(w: WorldScene): RoomScript {
       plates.push({ img: addArt(w, 'prop.plate', PLATE_A.x, PLATE_A.y + 2, DEPTH.props + 1), ...PLATE_A, down: false });
       plates.push({ img: addArt(w, 'prop.plate', PLATE_B.x, PLATE_B.y + 2, DEPTH.props + 1), ...PLATE_B, down: false });
       s1 = new MemoryStone(w, { x: 760, y: 1100 }, w.room.group);
-      s2 = new MemoryStone(w, { x: 1700, y: 820 }, w.room.group);
+      s2 = new MemoryStone(w, { x: 1700, y: 1100 }, w.room.group);
       // The stones rest in the background: Gorti walks in front of them.
       s1.placeAt(PLATE_A.x, PLATE_A.y);
       s1.locked = true;
