@@ -923,6 +923,10 @@ export class WorldScene extends Phaser.Scene {
       this.camLook += (want - this.camLook) * Math.min(1, dt / 600);
       this.paper.lookAt(null);
       this.paper.setTarget(p.x + this.camLook, p.zone.y - 40);
+      // In the air his head stays in the picture (a phone held upright
+      // frames the room tightly, most of all at the back of it).
+      if (!p.onGround && p.state === 'normal' && !app.settings.reducedMotion) this.paper.keepInView({ x: p.x, y: p.rig.attachPoint('eye').y - JUMP.headroom, z: p.z });
+      else this.paper.keepInView(null);
     } else {
       this.paper.lookAt(this.camTarget.x, this.camTarget.y);
     }

@@ -52,6 +52,12 @@ export const JUMP = {
   /** His shadow on the floor shrinks to `shadowMin` of its size and fades out by this height (world px). */
   shadowFade: 320,
   shadowMin: 0.55,
+  /**
+   * In the air the picture slides down if his head would leave its top edge
+   * (phones held upright frame the room tightly). The head's top is taken
+   * this far above his eyes (world px). Not with reduced motion.
+   */
+  headroom: 48,
 } as const;
 
 // ---------------------------------------------------------------- bodies

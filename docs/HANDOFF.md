@@ -144,7 +144,10 @@ Conventions:
   (`JUMP.actionBufferMs`) and what he can reach is measured from the ground. A jump press is
   only taken by something that can jump, so Space still wakes him in r01 and closes dialogue.
 - In depth his figure rises on its free camera; his shadow stays on the floor at his depth,
-  shrinking and fading as he rises (`JUMP.shadowFade`, `JUMP.shadowMin`).
+  shrinking and fading as he rises (`JUMP.shadowFade`, `JUMP.shadowMin`). If his head would
+  leave the top of the picture (a phone held upright frames the room tightly, most of all at
+  its back), the whole picture slides down just enough while he is in the air and settles
+  back after (`PaperStage.keepInView`, `JUMP.headroom`); never with reduced motion.
 - `tests/unit/walk.test.ts` checks that every room is walked without jumping, the gates, the
   paper box's lid and the swept hull; `gameplay.spec.ts` jumps with Space and by touch.
 
