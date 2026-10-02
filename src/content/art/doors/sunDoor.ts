@@ -242,10 +242,28 @@ function in1(): string {
   return s;
 }
 
+/** A leafy crown: a scalloped blob round (cx, cy), `n` bumps on an rx × ry ellipse. */
+function crownP(cx: number, cy: number, rx: number, ry: number, n: number, rng: Rng): string {
+  const pts: Pt[] = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 + rng.range(-0.08, 0.08);
+    const k = rng.range(0.93, 1.05);
+    pts.push([cx + Math.cos(a) * rx * k, cy + Math.sin(a) * ry * k]);
+  }
+  let d = `M${f(pts[0]![0])} ${f(pts[0]![1])}`;
+  for (let i = 1; i <= n; i++) {
+    const [px, py] = pts[i - 1]!;
+    const [x, y] = pts[i % n]!;
+    const r = Math.hypot(x - px, y - py) * rng.range(0.56, 0.68);
+    d += `A${f(r)} ${f(r)} 0 0 1 ${f(x)} ${f(y)}`;
+  }
+  return d + 'Z';
+}
+
 /**
  * The night of the next room, seen between the wings: a band of river
- * light, little pines, a stone tree, and the pink tree's branch with room
- * for the sparrow (all to the right of the middle: the eye looks in from the left).
+ * light, little pines, a stone tree, and the wood's own tree, its low branch
+ * with room for the sparrow (all to the right of the middle: the eye looks in from the left).
  */
 function beyond(): string {
   const rng = new Rng(hashSeed('door.sun.beyond'));
@@ -267,8 +285,8 @@ function beyond(): string {
     s += ink(d, 0.7, C.bandLine);
   }
   // A stone tree on the far bank.
-  s += comic(rrect(36, -150, 8, 32, 3), C.stoneTrunk, { line: LINE.detail });
-  s += comic(smooth([[16, -146], [20, -178], [42, -190], [66, -180], [68, -150], [40, -140]]), C.stoneTree, { line: LINE.small, rim: [3, -1.4], over: ink('M28 -164q5 4 10 0M44 -174q5 4 10 0', 0.8, darkOf(C.stoneTree, 0.35)) });
+  s += comic(rrect(-40, -150, 8, 32, 3), C.stoneTrunk, { line: LINE.detail });
+  s += comic(smooth([[-60, -146], [-56, -178], [-34, -190], [-10, -180], [-8, -150], [-36, -140]]), C.stoneTree, { line: LINE.small, rim: [3, -1.4], over: ink('M-48 -164q5 4 10 0M-32 -174q5 4 10 0', 0.8, darkOf(C.stoneTree, 0.35)) });
   // This bank: a meadow from the water to the threshold.
   s += comic(smooth([[-170, -70], [-60, -78], [60, -72], [170, -80], [170, 92], [-170, 92]]), C.meadow, { line: LINE.small, rim: [3, -1.4] });
   for (let i = 0; i < 9; i++) s += tuft(rng.range(-150, 150), rng.range(-56, 30), rng.range(6, 9), lightOf(C.meadow, 0.1), 60 + i);
@@ -277,11 +295,27 @@ function beyond(): string {
     const y = rng.range(-50, -10);
     s += ink(`M${f(x)} ${f(y)}v-9`, 0.9, darkOf(C.meadow, 0.3)) + comic(circleP(x, y - 10, 2.6), i % 2 ? '#f3c9da' : '#fbefb4', { line: LINE.detail });
   }
-  // The pink tree's trunk (off to the right, behind the wings), its branch reaching in for the sparrow.
-  s += comic(smooth([[100, 2], [106, -80], [104, -150], [112, -240], [156, -240], [152, -150], [154, -70], [164, 2]]), C.pink, { line: LINE.small, rim: [3, -1.4], glint: [-1, 1], over: ink('M126 -20Q120 -90 130 -170', 0.9, darkOf(C.pink, 0.3)) });
-  s += barkRoot([[110, -98], [84, -106], [54, -104], [20, -112]], 12, 5, C.pink, 5);
+  // The next room's own tree (a mauve trunk under a round green crown, as
+  // the wood grows them), right of the middle so the sparrow's eye looks in
+  // past it: roots flaring into the meadow, a knot hole, an upper limb into
+  // the crown, which hangs low enough to show across the top of the doorway
+  // (the doorway shows this far plane from about x 30 to 135 and up to
+  // y -170 when Gorti stands before it); its low branch reaches in for the
+  // sparrow. (Roots and limbs first, so the trunk hides where they join it.)
+  s += barkRoot([[108, -16], [98, -4], [84, 4]], 16, 5, C.pink, 21, { grooves: 1 });
+  s += barkRoot([[124, -16], [134, -4], [150, 4]], 16, 5, C.pink, 22, { grooves: 1 });
+  s += barkRoot([[114, -116], [94, -138], [72, -156]], 12, 5, C.pink, 24);
+  s += barkRoot([[114, -92], [84, -104], [54, -102], [20, -110]], 13, 5, C.pink, 5);
+  s += barkRoot([[116, 8], [112, -56], [118, -110], [114, -160]], 32, 20, C.pink, 23, { grooves: 3 });
+  s += comic(ellipsePath(121, -62, 5, 8), darkOf(C.pink, 0.1), { line: LINE.detail, over: fillP(ellipsePath(121.5, -61, 2.6, 4.8), '#4b3b4f') });
   s += comic(smooth([[46, -108], [52, -122], [62, -124], [58, -110]]), C.crown, { line: LINE.detail });
-  s += comic(circleP(130, -236, 42), C.crown, { line: LINE.small, rim: [3, -1.4] }) + comic(circleP(74, -232, 30), C.crown, { line: LINE.small, rim: [3, -1.4] });
+  let marks = '';
+  for (let i = 0; i < 10; i++) {
+    const x = rng.range(52, 150);
+    const y = rng.range(-200, -152);
+    marks += ink(`M${f(x - 3)} ${f(y - 2)}l3 3l3 -3`, 0.9, darkOf(C.crown, 0.28));
+  }
+  s += comic(crownP(100, -178, 62, 36, 12, rng), C.crown, { line: LINE.small, rim: [4, -1.8], glint: [-1.2, 1.2], hatch: 2.4, hatchWidth: 0.5, over: marks });
   return s;
 }
 
