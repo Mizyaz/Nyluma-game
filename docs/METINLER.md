@@ -62,13 +62,18 @@ alınır. Yalnızca değiştirmek istediğinizi yazın.
 | `mood` | Ruh hali | `calm` sakin, `sleepy` uykulu, `curious` meraklı, `worried` endişeli, `delighted` neşeli, `grumpy` huysuz, `proud` gururlu, `teary` ağlamaklı |
 | `wear` | Üstündekiler (liste) | `nightcap` takke, `bandage` yara bandı, `freckles` çil, `scarf` atkı, `crown` kristal taç, `sweat` ter, `flowers` çiçekler, `zzz` uyku, `notes` notalar; `[]` bölümdekileri kaldırır |
 | `tilt` | Başının eğikliği | derece, −25 … 25 (sola eksi) |
-| `size` | Boyu | 0.7 … 1.4 (1 olağan) |
+| `size` | Boyu | 0.7 … 1.25 (1 olağan) |
 | `place` | Köşedeki yeri | `corner` köşede, `peek` kenardan bakıyor, `high` yukarıda, `low` aşağıda, `inward` içeri doğru |
 | `lines` | Basılı tutunca söyledikleri | `"söz"` ya da `{ "text": "söz", "answer": "Gorti'nin cevabı" }` |
 
 Önce odanın sözleri gelir; üçten azsa bölümün ve varsayılanın sözleriyle
 tamamlanır. Aynı söz iki kez üst üste söylenmez. `answer` yazılan sözlere Gorti
 bazen cevap verir.
+
+Oyunda Güneş'e ya da Ay'a bir kez dokununca parlar. Üç saniye basılı tutunca
+çevresinde bir halka dolar, sonra bu sayfanın sözlerinden birini bir konuşma
+balonunda söyler. Bir konuşma, ara sahne ya da duraklatma menüsü açıkken
+yalnızca parlar.
 
 ## Denetlemek
 
