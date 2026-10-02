@@ -2035,6 +2035,7 @@ a {
 .reduced-motion #touch .tc-face,
 .reduced-motion #touch .tc-dial,
 .reduced-motion #touch .tc-knob,
+.reduced-motion #touch .tc-stick.held .tc-knob,
 .reduced-motion #touch .tc-tag,
 .reduced-motion #touch .tc::before,
 .reduced-motion #touch .tc-knob::before {
@@ -2048,6 +2049,7 @@ a {
   #touch .tc-face,
   #touch .tc-dial,
   #touch .tc-knob,
+  #touch .tc-stick.held .tc-knob,
   #touch .tc-tag,
   #touch .tc::before,
   #touch .tc-knob::before {
