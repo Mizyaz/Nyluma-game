@@ -8,9 +8,10 @@ import { archPts, barkRoot, circleP, comic, crescent, darkOf, doorPart, fillP, g
 // it, the stage's own sun: sad, eyes shut, a tear on her cheek. When the
 // room is done she opens her eyes and smiles, her rays turn, the marquee
 // lights up, and the two leaves are flung apart (the sun painted across
-// them splits in two); behind, the stage's curtains are drawn back on the
-// night of the next room, and a sparrow hops along its branch to look at
-// Gorti.
+// them splits in two); behind them the stage's wings, painted flats cut out
+// as a tree and a bush under a border of cardboard clouds, with a cardboard
+// moon on a stick and footlights along the boards, frame the night of the
+// next room, and a sparrow hops along its branch to look at Gorti.
 
 const C = {
   flat: '#efe0c4',
@@ -43,9 +44,6 @@ const C = {
   pink: '#c99ab8',
   crown: '#a9c79a',
   meadow: '#a9c7a2',
-  curtain: '#de9aaf',
-  valance: '#c8869f',
-  rope2: '#e8c46e',
   bird: '#c99a74',
   birdBelly: '#f2dcc2',
 } as const;
@@ -188,34 +186,64 @@ function in0(): string {
   return page(OPEN, -100, 100, -230, 10, C.edge, darkOf(C.edge, 0.2), { rim: 3, wallOver: ink(smooth(archPts(W + 8, H + 4, { rise: RISE + 4 }).filter((p) => p[1] < -1), 1, false), 0.8, darkOf(C.edge, 0.25)) });
 }
 
+/** A flat cut out of board along `d`: its raw edge showing on the right, then its painted face. */
+function cutout(d: string, fill: string, over = ''): string {
+  let s = `<g transform="translate(2.2 0.6)">${comic(d, C.edge, { line: LINE.small })}</g>`;
+  s += comic(d, fill, { line: LINE.limb, rim: [4, -1.8], glint: [-1, 1], hatch: 2.4, hatchWidth: 0.5, over });
+  return s;
+}
+
 function in1(): string {
-  // Behind the door, the stage's own curtains: drawn back and tied, the night in between.
-  const rng = new Rng(hashSeed('door.sun.curtains'));
+  // Behind the door, the stage's wings: flats cut out as a tree (left) and
+  // a bush (right), a border of cardboard clouds over them, a cardboard
+  // moon on its stick, footlights along the boards; the night in between.
+  const rng = new Rng(hashSeed('door.sun.wings'));
   let s = fillP(rrect(-120, -0.5, 240, 20.5, 0), C.floorIn);
-  for (const side of [-1, 1]) {
-    // One drape: from the top across to the middle, gathered at its tie, falling to the floor.
-    const P = (x: number, y: number): Pt => [side * x, y];
-    const drape: Pt[] = [P(120, -242), P(-2, -242), P(4, -200), P(16, -150), P(30, -112), P(34, -100), P(38, -86), P(50, -40), P(58, 0), P(120, 0)];
-    let folds = '';
-    for (let i = 0; i < 5; i++) {
-      const x0 = 14 + i * 20 + rng.range(-3, 3);
-      folds += ink(`M${f(side * x0)} -238Q${f(side * (x0 + 18 + i * 3))} -150 ${f(side * (36 + i * 2))} -100Q${f(side * (44 + i * 15))} -50 ${f(side * (62 + i * 12))} -2`, 0.9, darkOf(C.curtain, 0.28));
+  // The tree: a trunk on the boards, a crown of scallops.
+  const trunk = smooth([[-120, 0], [-118, -60], [-104, -118], [-86, -118], [-80, -60], [-66, 0]]);
+  s += cutout(trunk, C.stick, ink('M-100 -20q4 -40 -2 -80M-88 -36q2 -30 -4 -60', 0.8, darkOf(C.stick, 0.3)));
+  // Its crown: puffs cut out one over another, the hindmost first.
+  const puffs: [number, number, number][] = [[-78, -226, 20], [-112, -214, 24], [-58, -204, 22], [-92, -196, 28], [-70, -168, 26], [-104, -150, 30]];
+  for (const [x, y, r] of puffs) {
+    let paint = '';
+    for (let i = 0; i < 3; i++) {
+      const px = x + rng.range(-r * 0.5, r * 0.5);
+      const py = y + rng.range(-r * 0.4, r * 0.5);
+      paint += ink(`M${f(px - 3)} ${f(py - 2)}l3 3l3 -3`, 0.9, darkOf(C.crown, 0.28));
     }
-    s += comic(poly(side > 0 ? drape : [...drape].reverse()), C.curtain, { line: LINE.limb, rim: [5, -2.4], glint: [-1, 1], hatch: 2.6, hatchWidth: 0.5, inner: folds });
-    // Its tie: a gold rope round the gather, a tassel hanging.
-    s += comic(smooth([P(26, -106), P(40, -110), P(48, -100), P(40, -92), P(26, -96)]), C.rope2, { line: LINE.small, rim: [1.6, -0.8], glint: [-0.6, 0.6] });
-    s += comic(smooth([P(42, -96), P(46, -80), P(40, -70), P(36, -80)]), C.rope2, { line: LINE.detail, over: ink(`M${side * 38} -76l1 6M${side * 41} -76l0 7M${side * 44} -77l-1 6`, 0.6, darkOf(C.rope2, 0.35)) });
+    s += cutout(circleP(x, y, r), C.crown, paint);
   }
-  // The valance: a scalloped pelmet with a fringe of gold.
-  const top: Pt[] = [];
-  for (let x = -120; x <= 120; x += 4) top.push([x, -214 + (Math.cos(((x + 120) / 40) * Math.PI * 2) * 0.5 + 0.5) * 9]);
-  s += comic(poly([[-120, -246], [120, -246], ...top.reverse()]), C.valance, { line: LINE.limb, rim: [3, -1.4], glint: [-1, 1], hatch: 2.6, hatchWidth: 0.5 });
-  s += ink(smooth(top.map(([x, y]) => [x, y + 2] as Pt), 1, false), 1.6, C.rope2);
+  // The moon: a cardboard crescent on a stick, standing up behind the bush.
+  s += comic(rrect(66, -150, 3.4, 110, 1.4), C.stick, { line: LINE.detail });
+  s += cutout(crescent(70, -168, 20, 1.25), C.paintSun, ink('M64 -176q3 3 6 0', 0.9, darkOf(C.paintSun, 0.45)) + fillP(circleP(60, -164, 2.4), C.cheek, 0.6));
+  // The bush, low, so the sparrow's branch shows over it; flowers painted on.
+  const bush = smooth([[36, 0], [34, -30], [46, -52], [64, -58], [80, -72], [100, -66], [116, -76], [122, -60], [122, 0]]);
+  let flowers = '';
+  for (let i = 0; i < 7; i++) {
+    const x = rng.range(46, 116);
+    const y = rng.range(-56, -12);
+    flowers += fillP(circleP(x, y, 2.6), i % 2 ? '#f3c9da' : '#fbefb4') + fillP(circleP(x, y, 0.9), '#e8a96a');
+  }
+  s += cutout(bush, darkOf(C.meadow, 0.06), flowers);
+  // The border: cardboard clouds across the top.
+  let border = 'M-121 -248H121V-228';
+  for (let x = 121; x > -121; x -= 22) {
+    const ry = 9 + rng.range(-2, 4);
+    border += `A12 ${f(ry)} 0 0 1 ${f(x - 22)} -228`;
+  }
+  border += 'Z';
+  s += cutout(border, '#ebe5f6', ink('M-100 -238h30M10 -240h40', 0.8, darkOf('#ebe5f6', 0.18)));
+  s += twinkle(-40, -236, 3.2, '#fff3b8', 0.6) + twinkle(80, -234, 2.6, '#fff3b8', 0.6);
+  // Footlights: little shells along the boards, lit.
+  for (let x = -96; x <= 96; x += 48) {
+    s += glowDisc(x, -2, 16, '#fff1b0', 0.55);
+    s += comic(`M${x - 7} 1.5Q${x} -9 ${x + 7} 1.5Z`, '#f4dc8e', { line: LINE.detail, ink: darkOf(C.trim, 0.35), over: fillP(circleP(x, -2, 2), '#fffbe8') });
+  }
   return s;
 }
 
 /**
- * The night of the next room, seen between the curtains: a band of river
+ * The night of the next room, seen between the wings: a band of river
  * light, little pines, a stone tree, and the pink tree's branch with room
  * for the sparrow (all to the right of the middle: the eye looks in from the left).
  */
@@ -249,7 +277,7 @@ function beyond(): string {
     const y = rng.range(-50, -10);
     s += ink(`M${f(x)} ${f(y)}v-9`, 0.9, darkOf(C.meadow, 0.3)) + comic(circleP(x, y - 10, 2.6), i % 2 ? '#f3c9da' : '#fbefb4', { line: LINE.detail });
   }
-  // The pink tree's trunk (mostly behind the right curtain), its branch reaching in for the sparrow.
+  // The pink tree's trunk (off to the right, behind the wings), its branch reaching in for the sparrow.
   s += comic(smooth([[100, 2], [106, -80], [104, -150], [112, -240], [156, -240], [152, -150], [154, -70], [164, 2]]), C.pink, { line: LINE.small, rim: [3, -1.4], glint: [-1, 1], over: ink('M126 -20Q120 -90 130 -170', 0.9, darkOf(C.pink, 0.3)) });
   s += barkRoot([[110, -98], [84, -106], [54, -104], [20, -112]], 12, 5, C.pink, 5);
   s += comic(smooth([[46, -108], [52, -122], [62, -124], [58, -110]]), C.crown, { line: LINE.detail });
@@ -338,5 +366,4 @@ export function sunDoor(): DoorArt {
   };
 }
 
-void crescent;
 void leaf;
