@@ -10,7 +10,8 @@ import { barkRoot, crescent, face as faceOf, glowDisc, tuft, twinkle } from './d
 // b02's way on, at the far end of "Ay Kapısı": the room's right wall is the
 // grassy hill's flank, and a door is cut into it, shut by a great wheel
 // painted half day and half night like a playing card: the Sun over a green
-// hill on its upper half and, upside down below, the Moon over a blue one.
+// hill on its upper half and, upside down below, the Moon over a blue one,
+// and a card's corner marks on the planks round it.
 // Once Gorti has been through the Moon's gate, the wheel rolls aside along
 // its groove into the hill. Through the tunnel: the next room's clearing at
 // dusk, its toy blocks and its blue crystal; a mole looks out at Gorti.
@@ -31,23 +32,26 @@ const C = {
   dusk: '#dfeef5',
 };
 
-const HOLE: Hole = { z0: -240, z1: -76, spring: 92, rise: 86 };
+const HOLE: Hole = { z0: -282, z1: -2, spring: 96, rise: 104 };
+
+/** How much of the timber frame goes on beside the far jamb (18 px of bank are left there before the back corner). */
+const FAR = 0.7;
 
 function face(): FaceArt {
   const f = { u0: -300, u1: 170, h: 560 };
   const h = HOLE;
   const P = (u: number, v: number): Pt => at(f, u, v);
   let s = hillside(f, { earth: C.earth, turf: C.turf, flowers: ['#f7c6d9', '#fff3b0', '#ffffff'], seed: 57 });
-  // The wheel's groove: a timber frame round the door, its sill running on into the hill.
-  s += archBand(h, f, 0, 14, C.rim);
-  s += comic(`M${r2(P(h.z0 - 100, 0)[0])} ${r2(P(0, 10)[1])}L${r2(P(h.z1 + 14, 0)[0])} ${r2(P(0, 10)[1])}L${r2(P(h.z1 + 14, 0)[0])} ${f.h + 2}L${r2(P(h.z0 - 100, 0)[0])} ${f.h + 2}Z`, C.rimDeep, { line: LINE.small, rim: [1.6, -0.8] });
+  // The wheel's groove: a timber frame round the door, its sill running on into the hill (into the back corner).
+  s += archBand(h, f, 0, 14, C.rim, { far: FAR });
+  s += comic(`M${r2(P(-300, 0)[0])} ${r2(P(0, 10)[1])}L${r2(P(h.z1 + 14, 0)[0])} ${r2(P(0, 10)[1])}L${r2(P(h.z1 + 14, 0)[0])} ${f.h + 2}L${r2(P(-300, 0)[0])} ${f.h + 2}Z`, C.rimDeep, { line: LINE.small, rim: [1.6, -0.8] });
   // Roots through the bank over the door, grass at its foot.
-  s += barkRoot([P(h.z0 - 20, 300), P(h.z0 + 30, 270), P(h.z0 + 60, 250)], 6, 2, '#8a6f5a', 3);
-  s += barkRoot([P(h.z1 + 60, 290), P(h.z1 + 20, 260), P(h.z1 - 10, 240)], 5, 2, '#8a6f5a', 7);
-  for (const u of [-290, -40, 20, 90, 150]) s += tuft(...P(u, 2), 14, '#8fb07a', u);
-  // A little lamp hung on a hook by the door.
+  s += barkRoot([P(-298, 304), P(-262, 274), P(-226, 254)], 6, 2, '#8a6f5a', 3);
+  s += barkRoot([P(-4, 300), P(-36, 266), P(-74, 244)], 5, 2, '#8a6f5a', 7);
+  for (const u of [-291, 10, 60, 120]) s += tuft(...P(u, 2), 14, '#8fb07a', u);
+  // A little lamp hung on a hook over the door's near shoulder.
   {
-    const [x, y] = P(h.z1 + 34, 170);
+    const [x, y] = P(-30, 214);
     s += ink(`M${r2(x)} ${r2(y - 30)}l0 -10l-8 0`, 1.6, '#6a5a4a');
     s += glowDisc(x, y, 26, '#fff3b0', 0.55);
     s += comic(`M${r2(x - 8)} ${r2(y - 22)}L${r2(x + 8)} ${r2(y - 22)}L${r2(x + 10)} ${r2(y + 10)}L${r2(x - 10)} ${r2(y + 10)}Z`, '#fff6d0', { line: LINE.small, rim: [1.6, -0.8], glint: [-0.8, 0.8] });
@@ -63,10 +67,20 @@ function wheel(): FaceArt {
   const H = h.spring + h.rise;
   const cx = W / 2;
   const cy = H - (h.spring + h.rise) / 2 - 4;
-  const r = Math.min(W, H) / 2 - 4;
+  const r = Math.min(W, H) / 2 - 8;
   let body = `<rect x="0" y="0" width="${r2(W)}" height="${r2(H)}" fill="${C.rim}"/>`;
-  // Planks behind the wheel.
-  for (let i = 1; i < 6; i++) body += `<path d="M${r2((i * W) / 6)} 0L${r2((i * W) / 6)} ${r2(H)}" stroke="${C.rimDeep}" stroke-width="1"/>`;
+  // Planks behind the wheel (about as wide as ever: more of them), their grain and nails.
+  const n = Math.round(W / 28);
+  const pw = W / n;
+  for (let i = 0; i < n; i++) {
+    const x = i * pw;
+    if (i > 0) body += `<path d="M${r2(x)} 0L${r2(x)} ${r2(H)}" stroke="${C.rimDeep}" stroke-width="1"/>`;
+    body += `<path d="M${r2(x + pw * 0.45)} ${r2(H * 0.08)}Q${r2(x + pw * 0.6)} ${r2(H * 0.5)} ${r2(x + pw * 0.4)} ${r2(H * 0.95)}" fill="none" stroke="${darkOf(C.rim, 0.1)}" stroke-width="0.8"/>`;
+    for (const v of [12, 176]) body += `<circle cx="${r2(x + pw / 2)}" cy="${r2(H - v)}" r="1.5" fill="${darkOf(C.rim, 0.35)}"/>`;
+  }
+  // A playing card's corner marks: a little sun up by the far jamb, a little moon upside down by the near one.
+  body += `<circle cx="${r2(pw * 0.9)}" cy="${r2(H - 128)}" r="6.4" fill="${C.sun}" stroke="${lineFor(C.sun)}" stroke-width="0.9"/>` + ink(Array.from({ length: 8 }, (_, k) => { const a = (k * Math.PI) / 4; return `M${r2(pw * 0.9 + Math.cos(a) * 8.4)} ${r2(H - 128 + Math.sin(a) * 8.4)}L${r2(pw * 0.9 + Math.cos(a) * 11)} ${r2(H - 128 + Math.sin(a) * 11)}`; }).join(''), 1.2, darkOf(C.sun, 0.2));
+  body += `<g transform="rotate(180 ${r2(W - pw * 0.9)} ${r2(H - 40)})">` + comic(crescent(W - pw * 0.9, H - 40, 8, 1.3, true), C.moon, { line: LINE.fine, rim: [1, -0.6] }) + `</g>`;
   const id = 'hw';
   body += `<clipPath id="${id}"><circle cx="${r2(cx)}" cy="${r2(cy)}" r="${r2(r)}"/></clipPath><g clip-path="url(#${id})">`;
   body += `<rect x="0" y="0" width="${r2(W)}" height="${r2(cy)}" fill="${C.day}"/>`;
@@ -100,7 +114,8 @@ function earthRing(inset: number, fill: string, seed: number): FaceArt {
   const h = HOLE;
   const f = { u0: h.z0 - 2, h: 240 };
   const inner: Hole = { z0: h.z0 + inset, z1: h.z1 - inset, spring: h.spring - inset * 0.6, rise: Math.max(4, h.rise - inset * 0.3) };
-  const ring = holeRing(inner, f, 0, 26);
+  // As many roots and blades as the arch is long (about one every 11 px).
+  const ring = holeRing(inner, f, 0, Math.round((inner.z1 - inner.z0) / 5.5));
   let fringe = '';
   const rng = new Rng(seed);
   ring.forEach((p, i) => {
@@ -142,7 +157,7 @@ export function hillDoor(): WallDoorArt {
         { x: 56, art: earthRing(22, '#8fb07a', 5) },
       ],
     },
-    peek: { art: mole(), z: -158, hidden: 130, shown: 22 },
+    peek: { art: mole(), z: -142, hidden: 170, shown: 22 },
     light: { color: '#fff0c8', radius: 320, intensity: 0.85, y: 90 },
     glow: '#fff0d0',
     sounds: { wake: ['chirp', 0.18, 1.5], peek: ['chirp', 0.28, 1.2], open: [['rumble', 0.35, 1.4], ['noteLow', 0.3, 1.1]], shut: ['rumble', 0.3, 1.2] },

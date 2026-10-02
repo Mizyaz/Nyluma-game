@@ -32,7 +32,10 @@ const C = {
   day: '#e8f4f8',
 };
 
-const HOLE: Hole = { z0: -250, z1: -74, spring: 150, rise: 46 };
+const HOLE: Hole = { z0: -282, z1: -2, spring: 144, rise: 56 };
+
+/** How much of the gold frame goes on beside the far jamb (18 px of canvas are left there before the back corner). */
+const FAR = 0.75;
 
 /** A little stencilled sun (a disc, rays as ticks). */
 function stencilSun(x: number, y: number, r: number, fill: string): string {
@@ -68,8 +71,8 @@ function face(): FaceArt {
   // The skirting: the stage's boards turned up against the wall.
   s += comic(`M0 ${f.h - 34}L${W} ${f.h - 34}L${W} ${f.h + 2}L0 ${f.h + 2}Z`, C.board, { line: LINE.small, rim: [2, -1], glint: [-1, 1], over: Array.from({ length: Math.ceil(W / 60) }, (_, i) => `<path d="M${i * 60 + 20} ${f.h - 34}L${i * 60 + 20} ${f.h}" stroke="${C.boardDeep}" stroke-width="1"/>`).join('') });
   // The door's frame, painted gold, a marquee of bulbs round it.
-  s += archBand(h, f, 0, 18, '#e8b858');
-  s += bulbs(h, f, 9, 18, C.bulb);
+  s += archBand(h, f, 0, 18, '#e8b858', { far: FAR });
+  s += bulbs(h, f, 9, 18, C.bulb, FAR);
   // The stage's cut-out sun over the door: sad, eyes shut, a tear.
   {
     const [x, y] = P((h.z0 + h.z1) / 2, h.spring + h.rise + 70);
@@ -101,7 +104,9 @@ function cloth(): FaceArt {
   body += faceOf(W * 0.66, H * 0.3, 14, '#9a6a3a', false, { cheeks: '#f5a6a0', mouth: 'smile' });
   body += `<path d="M0 ${r2(H * 0.62)}Q${r2(W * 0.3)} ${r2(H * 0.5)} ${r2(W * 0.55)} ${r2(H * 0.62)}T${r2(W)} ${r2(H * 0.58)}L${r2(W)} ${r2(H)}L0 ${r2(H)}Z" fill="${C.hill}" stroke="${lineFor(C.hill)}" stroke-width="1"/>`;
   body += `<path d="M0 ${r2(H * 0.78)}Q${r2(W * 0.4)} ${r2(H * 0.68)} ${r2(W)} ${r2(H * 0.8)}L${r2(W)} ${r2(H)}L0 ${r2(H)}Z" fill="${darkOf(C.hill, 0.08)}"/>`;
-  for (const [x, y] of [[30, 30], [70, 50], [120, 24]] as const) body += `<path d="M${x - 14} ${y + 4}q2 -9 10 -7q4 -8 12 -3q8 -2 8 6q4 3 0 6z" fill="${C.cloud}" stroke="${darkOf(C.cloud, 0.2)}" stroke-width="0.8"/>`;
+  for (const [x, y] of [[30, 30], [80, 54], [128, 24], [238, 30]] as const) body += `<path d="M${x - 14} ${y + 4}q2 -9 10 -7q4 -8 12 -3q8 -2 8 6q4 3 0 6z" fill="${C.cloud}" stroke="${darkOf(C.cloud, 0.2)}" stroke-width="0.8"/>`;
+  // A painted tree on the hill.
+  body += `<path d="M${r2(W * 0.17)} ${r2(H * 0.6)}L${r2(W * 0.17)} ${r2(H * 0.6 + 18)}" stroke="#8a6f5a" stroke-width="3"/><circle cx="${r2(W * 0.17)}" cy="${r2(H * 0.6 - 4)}" r="13" fill="#8fc07a" stroke="${lineFor('#8fc07a')}" stroke-width="1"/>`;
   // The canvas's hem and its pull ring at the foot.
   body += `<rect x="0" y="${r2(H - 8)}" width="${r2(W)}" height="8" fill="${C.board}"/>`;
   body += `<circle cx="${r2(W / 2)}" cy="${r2(H - 14)}" r="5" fill="none" stroke="#c9a04a" stroke-width="2"/>`;
@@ -124,7 +129,8 @@ function treeFlat(inset: number): FaceArt {
   const h = HOLE;
   const f = { u0: h.z0 - 2, h: 260 };
   const inner: Hole = { z0: h.z0 + inset, z1: h.z1 - inset, spring: h.spring - inset * 0.6, rise: Math.max(4, h.rise - inset * 0.3) };
-  const ring = holeRing(inner, f, 0, 30);
+  // As many leaves as the arch is long (about one every 15 px).
+  const ring = holeRing(inner, f, 0, Math.round((inner.z1 - inner.z0) / 5.2));
   let leaves = '';
   ring.forEach((p, i) => {
     if (i % 3 || i === 0 || i === ring.length - 1) return;
@@ -138,7 +144,8 @@ function cloudBorder(inset: number): FaceArt {
   const h = HOLE;
   const f = { u0: h.z0 - 2, h: 260 };
   const inner: Hole = { z0: h.z0 + inset, z1: h.z1 - inset, spring: h.spring - inset * 0.6, rise: Math.max(4, h.rise - inset * 0.3) };
-  const ring = holeRing(inner, f, 0, 30);
+  // As many puffs as the arch is long (about one every 9 px).
+  const ring = holeRing(inner, f, 0, Math.round((inner.z1 - inner.z0) / 4.7));
   let puffs = '';
   ring.forEach((p, i) => {
     if (i % 2 || f.h - p[1] < inner.spring - 10) return;
@@ -179,7 +186,7 @@ export function sunDoor(): WallDoorArt {
         { x: 58, art: cloudBorder(18) },
       ],
     },
-    peek: { art: sparrow(), z: -160, hidden: 150, shown: 30 },
+    peek: { art: sparrow(), z: -142, hidden: 180, shown: 30 },
     light: { color: '#ffe6a8', radius: 340, intensity: 0.95, y: 110 },
     glow: '#fff0c0',
     sounds: { wake: ['ray', 0.25, 1.2], peek: ['chirp', 0.35, 1.3], open: [['sunhit', 0.5, 1.2], ['paper', 0.4, 0.9]], shut: ['paper', 0.35, 0.8] },

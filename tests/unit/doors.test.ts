@@ -10,7 +10,7 @@ vi.mock('../../src/engine/App', () => ({ app: { settings: { reducedMotion: false
 
 import { DOORS, type DoorSpec } from '../../src/content/doorSpecs';
 import { ROOMS } from '../../src/content/data/rooms';
-import { staging } from '../../src/content/stage';
+import { FRAMING, staging } from '../../src/content/stage';
 import { parseCond } from '../../src/engine/content/cond';
 import { HULL_H, HULL_W } from '../../src/engine/constants';
 import { artOf, doorJobs, packShelves, wallSpecOf } from '../../src/content/doors';
@@ -33,6 +33,28 @@ function ways(roomId: string): WallWay[] {
 }
 
 const clean = (svg: string): boolean => !/NaN|undefined|Infinity/.test(svg);
+
+/** Each side doorway's opening (z0..z1) before the openings were made deeper, to see how much wider they show now. */
+const BEFORE: Record<string, [number, number]> = {
+  'r01.tunnel': [-250, -70],
+  'r02.mouth': [-240, -64],
+  'r04.tree': [-236, -74],
+  'r05.moon': [-246, -70],
+  'r08.stage': [-250, -74],
+  'b01.hedge': [-244, -72],
+  'b02.hill': [-240, -76],
+  'b03.blocks': [-240, -74],
+};
+
+/**
+ * How wide an opening from z0 to z1 in the right side wall shows, as a share
+ * of half the view, with the eye at the room's right end: there the wall's
+ * depth 0 meets the screen's edge, and its depth z shows d / (d − z) of half
+ * the view right of the middle (the lens: scale f / (d − z), the eye d in
+ * front of the actors' plane). Wherever the eye stands, the share it shows
+ * grows with this alike.
+ */
+const shows = (z0: number, z1: number, d = FRAMING.dist): number => d / (d - z1) - d / (d - z0);
 
 describe('doorways', () => {
   it('stand at real exits and gates of their rooms and open with them', () => {
@@ -143,6 +165,47 @@ describe('doorways', () => {
         // Far from the wall the room is his again.
         const away = spec.wall === 'side' ? room.width - 400 : spec.x! - 400;
         if (away > 0 && w.length === 1) expect(depthRange(w, away, base.min, base.max)).toEqual(base);
+      }
+    }
+  });
+
+  it("show wide even on a narrow screen: from the room's right end, each side doorway at least 1.5 times as wide as before", () => {
+    const side = all().filter(({ spec }) => spec.wall === 'side');
+    expect(side.map(({ spec }) => spec.id).sort()).toEqual(Object.keys(BEFORE).sort());
+    for (const { roomId, spec, art } of side) {
+      const h = art.hole;
+      const box = staging(ROOMS[roomId]!).box;
+      // The near jamb no nearer than the actors' plane (the eye never sees the wall in front of it); the far one short of the back corner, a little paper left there, and nothing drawn behind the back wall.
+      expect(h.z1, spec.id).toBeLessThanOrEqual(0);
+      expect(h.z0 - box.back, `${spec.id} leaves paper at the back corner`).toBeGreaterThanOrEqual(12);
+      expect(art.face.u0, `${spec.id} nothing behind the back wall`).toBeGreaterThanOrEqual(box.back);
+      const [a, b] = BEFORE[spec.id]!;
+      expect(shows(h.z0, h.z1) / shows(a, b), spec.id).toBeGreaterThanOrEqual(1.5);
+    }
+  });
+
+  it('have room behind them for what opens into them and what peeks out', () => {
+    for (const { spec, art } of all()) {
+      const p = art.passage;
+      if (!p) continue;
+      const h = art.hole;
+      // The passage's far wall is drawn all along it.
+      if (p.art) expect(p.art.u1 - p.art.u0, spec.id).toBeGreaterThanOrEqual(p.length);
+      // A leaf swung into the passage, at its widest, stays short of the passage's end.
+      const lf = art.leaf;
+      if (lf?.kind === 'swing') expect(p.length, spec.id).toBeGreaterThanOrEqual((h.z1 - h.z0) * Math.sin(((lf.wide ?? lf.open) * Math.PI) / 180) + 20);
+      // Someone peeks out of the middle of the opening, coming from deeper in the passage: hidden, out of
+      // sight past the near jamb even on a 32:9 screen with the eye at the room's end (half the view
+      // (32 / 9) · span / 2 wide at the actors' plane; a point x past the wall at depth z shows only while
+      // x < half · ((d − z) / (d − z1) − 1)).
+      if (art.peek) {
+        const pk = art.peek;
+        const w = pk.art.u1 - pk.art.u0;
+        const d = FRAMING.dist;
+        const half = ((32 / 9) * FRAMING.span) / 2;
+        expect(Math.abs(pk.z - (h.z0 + h.z1) / 2), spec.id).toBeLessThanOrEqual(8);
+        expect(pk.hidden > pk.shown && pk.hidden + w / 2 <= p.length, spec.id).toBe(true);
+        expect(pk.hidden - w / 2, `${spec.id} hides its figure`).toBeGreaterThanOrEqual(half * ((d - pk.z) / (d - h.z1) - 1));
       }
     }
   });

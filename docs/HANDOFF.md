@@ -351,12 +351,19 @@ Conventions:
   side of a cross wall's middle), so he goes through the doorway and never through the wall;
   he keeps 26 px from the jambs. Keys, the stick and the bots all walk the same way. A wall
   without an opening stands where no one walks.
-- A doorway in the right side wall is small on a narrow screen, by geometry: the camera stops
-  at the room's end, the eye is never more than half a screen from the wall, and a hole from
-  z −250 to −70 shows at most about 16% of the half-screen wide (the lens, dist 900). That is
-  about 100 px at 1280 × 720, 60 CSS px at 844 × 390 and 25–30 CSS px held upright
-  (390 × 844), where the doorway is a sliver at the band's right edge. On phones the
-  Rezonans/Zıpla buttons cover its foot. A deeper hole, or a stronger lens, would widen it.
+- A doorway in the right side wall is cut as deep as the wall goes, from z −282 to −2: a
+  strip of paper is left in the back corner (the back wall is at −300), and what rings the
+  opening narrows beside the far jamb (their `far`, in `wallArt.ts` and `wallKit.ts`). It
+  still shows small on a narrow screen, by geometry: the camera stops at the room's end, the
+  eye is never more than half a screen from the wall, and a hole from z0 to z1 shows
+  dist/(dist − z1) − dist/(dist − z0) of the half-screen wide (the lens, dist 900). That is
+  24% here, 1.6–1.8 times the old holes (about −245 to −70, 13–15%): 151 px at 1280 × 720
+  (was 84–93) and 100 CSS px at 844 × 390 (was 56–61; r08, a room narrower than the view
+  there, 82, was 49). Held upright (390 × 844) it is 46 CSS px (was 26–28), but the torn
+  front's right margin (`tear.right` in `stage.ts`) hides the wall nearer than about
+  z −80 to −110 there, so 25–30 CSS px of it show (was 20–26; r08, shot wider, shows all 46):
+  still a sliver at the band's right edge. A narrower margin on that side would show the
+  rest. On phones the Rezonans/Zıpla buttons cover its foot.
 - Leaving through the side wall (`WorldScene.walkIn`): he walks on into the passage while the
   flats close, seen only through the opening (his plane's camera is cut at the near jamb,
   `PlaneCamera.clipRight`), his shadow on the passage's floor, and the leaf shuts behind him.

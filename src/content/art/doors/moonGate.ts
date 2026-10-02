@@ -27,15 +27,18 @@ const C = {
   glade: '#a9c7c0',
 };
 
-const HOLE: Hole = { z0: -246, z1: -70, spring: 96, rise: 88 };
+const HOLE: Hole = { z0: -282, z1: -2, spring: 76, rise: 110 };
+
+/** How deep the ring of stones is beside the far jamb (18 px of bank are left there before the back corner). */
+const FAR = 0.5;
 
 function face(): FaceArt {
   const f = { u0: -300, u1: 170, h: 560 };
   const h = HOLE;
   const P = (u: number, v: number): Pt => at(f, u, v);
   let s = hillside(f, { earth: C.earth, turf: C.turf, flowers: ['#f2ecff', '#fff3b0', '#f7c6d9'], seed: 31 });
-  // The ring of old stones round the gate.
-  s += voussoirs(h, f, 30, C.stone, 32);
+  // The ring of old stones round the gate (slimmer beside the far jamb, in the corner).
+  s += voussoirs(h, f, 30, C.stone, 32, FAR);
   // The Moon as its keystone, dozing.
   {
     const [x, y] = P((h.z0 + h.z1) / 2, h.spring + h.rise + 26);
@@ -47,7 +50,7 @@ function face(): FaceArt {
   // Moonflowers in the turf over the gate: white trumpets on twining stems.
   const rng = new Rng(8);
   for (let i = 0; i < 9; i++) {
-    const u = h.z0 - 40 + i * 30 + rng.range(-6, 6);
+    const u = h.z0 + 8 + i * 33 + rng.range(-6, 6);
     const v = 330 + rng.range(-20, 40);
     const [x, y] = P(u, v);
     s += ink(`M${r2(x)} ${r2(y)}q${r2(rng.range(-8, 8))} ${r2(14)} ${r2(rng.range(-4, 4))} ${r2(28)}`, 1.2, darkOf(C.turf, 0.35));
@@ -55,8 +58,8 @@ function face(): FaceArt {
     s += `<circle cx="${r2(x)}" cy="${r2(y - 7)}" r="1.8" fill="#fff3b0"/>`;
   }
   // Roots and stones in the bank by the gate, grass at its foot.
-  for (const u of [-290, -270, -40, 0, 60, 120, 150]) s += tuft(...P(u, 2), 14, '#86ab72', u);
-  s += twinkle(...P(h.z1 + 40, 250), 4, '#fff7d6', 0.5) + twinkle(...P(h.z0 - 30, 280), 3, '#fff7d6', 0.5);
+  for (const u of [-291, 6, 60, 120, 150]) s += tuft(...P(u, 2), 14, '#86ab72', u);
+  s += twinkle(...P(-30, 240), 4, '#fff7d6', 0.5) + twinkle(...P(-290, 252), 3, '#fff7d6', 0.5) + twinkle(...P(-214, 268), 3.4, '#fff7d6', 0.5);
   return { ...f, body: s };
 }
 
@@ -125,7 +128,7 @@ export function moonGate(): WallDoorArt {
         { x: 58, art: ferns(22, darkOf(C.fern, 0.12), 5) },
       ],
     },
-    peek: { art: moth(), z: -158, hidden: 150, shown: 26 },
+    peek: { art: moth(), z: -142, hidden: 170, shown: 26 },
     light: { color: '#e6e2ff', radius: 320, intensity: 0.8, y: 100 },
     glow: '#e2ddff',
     sounds: { wake: ['noteHigh', 0.18, 1.5], peek: ['flutter', 0.3, 1.1] },
