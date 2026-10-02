@@ -5,14 +5,14 @@
 // asks for that a file lacks gets the default too, so the game never
 // breaks on its text. `npm run kd -- check` reports the same problems.
 
-import namesJson from './names.json';
-import captionsJson from './captions.json';
-import dialogueJson from './dialogue.json';
-import inspectJson from './inspect.json';
-import memoriesJson from './memories.json';
-import paintingsJson from './paintings.json';
-import documentsJson from './documents.json';
-import skyJson from './sky.json';
+import namesJson from './names.json' with { type: 'json' };
+import captionsJson from './captions.json' with { type: 'json' };
+import dialogueJson from './dialogue.json' with { type: 'json' };
+import inspectJson from './inspect.json' with { type: 'json' };
+import memoriesJson from './memories.json' with { type: 'json' };
+import paintingsJson from './paintings.json' with { type: 'json' };
+import documentsJson from './documents.json' with { type: 'json' };
+import skyJson from './sky.json' with { type: 'json' };
 import {
   checkCaptions,
   checkDialogue,
