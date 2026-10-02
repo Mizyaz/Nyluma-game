@@ -5,7 +5,115 @@ listeler. Ölçümler aşağıdaki test ortamında alınmıştır; gerçek cihaz
 performansını temsil etmez. İlk bölüm bu sürümün kontrolleridir. Sonraki
 bölümlerdeki sonuçlar önceki sürümlerin oyun kodu içindir.
 
-## Bu sürüm: 14. Oda'nın zeminindeki yarık göz
+## Bu sürüm: zıplama geri geldi, yeni dokunmatik kontroller
+
+Bu sürümde değişenler:
+
+- Zıplama geri geldi.
+  - Boşluk tuşu, dokunmatik "Zıpla" düğmesi ve oyun kolunun alttaki (güney)
+    düğmesi zıplatıyor. W/S/↑/↓ derinlikte yürüyor, E eylem yapıyor; bunlar
+    değişmedi.
+  - Boşluk tuşu, zıplanamayan anlarda eskisi gibi diyaloğu ilerletiyor ve
+    ilk odada Gorti'yi uyandırıyor.
+  - Bir kenardan çıktıktan hemen sonra (110 ms) zıplama hâlâ tutuyor. Yere
+    inmeden hemen önce (130 ms içinde) basılan zıplama, inince yapılıyor.
+  - Tuş erken bırakılınca zıplama alçak kalıyor.
+  - Kalkışta ve inişte hafif bir ezilme, toz bulutları, her bedene göre
+    perdesi değişen bir zıplama sesi ve bir iniş sesi var.
+  - Havadayken basılan E ya da Rezonans, inince yapılıyor.
+  - Derinlikte zıplarken gölge zeminde kalıyor; Gorti yükseldikçe küçülüp
+    soluyor.
+  - Dik tutulan telefonda, zıplayan Gorti'nin başı kadrajda kalıyor.
+    Hareket azaltma açıkken bu kaydırma yok.
+  - Hiçbir oda zıplama gerektirmiyor. Kapalı geçitler odanın tavanına kadar
+    uzanıyor, üstünden atlanamıyor. Havadayken üstünden geçilen tetikler
+    inince çalışıyor.
+- Dokunmatik kontroller yeniden tasarlandı.
+  - Sol başparmak için krem rengi kâğıt bir yön kolu var. Nane yeşili
+    topuzu parmağı izliyor, bırakınca yerine dönüyor. Gidilen yön yeşil
+    (yürüme) ya da lila (derinlik) bir dilimle gösteriliyor.
+  - Sağ köşede büyük "Zıpla" düğmesi var; üstünde zıplayan Gorti çizili.
+  - Eylem düğmesi Zıpla'nın hemen yanında. Çizimi duruma göre değişiyor:
+    Rezonans için yıldız, İncele için büyüteç, Konuş için balon, Yık için
+    yarık kristal.
+  - Biçim düğmesi Zıpla'nın çevresinde duruyor.
+  - Basılan düğmenin kâğıdı gölgesine doğru iniyor. Hareket azaltma
+    açıkken yaylanma yok, yalnızca kısa geçişler var.
+  - Dik telefonda düğmeler oyunun ve altyazının altında. Yatay telefonda
+    alt köşelerde, altyazı sütununun iki yanındalar. Üst köşeler Güneş, Ay
+    ve menü düğmeleri için boş kalıyor.
+  - Ayarlara "Dokunmatik düzen" eklendi: Sağlak ya da Solak. Solak seçilince
+    düğmeler aynalanıyor.
+  - Birkaç parmak aynı anda çalışıyor. Parmak kalkınca, dokunma iptal
+    olunca ya da pencere odağı gidince basılı bütün tuşlar bırakılıyor.
+  - Diyalog, menü ve sayfa çevirme sırasında düğmeler kayboluyor.
+- Ayarlanabilecek bütün sayılar tek dosyada, `src/tuning.ts` içinde:
+  zıplama, bedenlerin hızları, tuşlar, oyun kolu, dokunmatik düğmelerin
+  boyutları ve yerleri. `docs/HANDOFF.md` ve README'de anlatıldı.
+
+Birleştirme commit'i (`16bdf63`) üzerinde koşulan kontroller:
+
+| Kontrol | Sonuç |
+| --- | --- |
+| `npm run typecheck` | Hatasız |
+| `npx vitest run` | 19 dosya, 172 test geçti |
+| `npm run kd -- check` | Tamam: 6 bölüm, 4 oda dosyası, 12 TS oda |
+| `npm run build`, `npm run build:e2e` | Başarılı |
+| `npx playwright test --grep-invert @campaign --workers=1` | 21 geçti, 13 atlandı, 4 kaldı, 25.9 dk |
+| Kalan 4 test tek başına | 1 geçti, 3 kaldı, 4.7 dk |
+| Hâlâ kalan 3 test, yük düşünce tek başına | 2 geçti, 1 kaldı, 2.0 dk |
+| Aynı 3 test yayındaki sürümde (`510aadb`) | 3 geçti, 2.8 dk |
+| `npx playwright test --grep @campaign --workers=1` | 2 geçti, 15.2 dk |
+
+İki tam kampanya da geçti: klavyeyle tam oyun 6.8 dk, telefonda yalnız
+dokunmayla tam oyun 8.3 dk.
+
+Kalan testlerin ayrıntısı. Tam koşu sırasında makinede başka işler de
+çalışıyordu (yük ortalaması 26–31):
+
+- İlk odada "yürür, zıplar, mobilyaların önünden geçer ve inceler" testi
+  tam koşuda 120 saniyelik süreyi aştı. Tek başına koşulunca geçti
+  (1.3 dk).
+- İki açılış testi (alan adının kökünde ve depo alt yolunda) "Yeni Oyun"dan
+  sonra HUD'u 30 saniye içinde göremedi. Tam koşuda ve yük 26–31 iken tek
+  başına koşulunca kaldılar. Yük 15'e inince ikisi de geçti (34 sn).
+- Renk bombardımanı testi, 600 ms tuş basılıyken Gorti'nin 60 pikselden
+  fazla yürümesini istiyor. Bu adım üç kez kaldı (46, 55 ve 54 piksel
+  yürüdü). Yayındaki sürümde aynı test yük 17–24 iken geçti.
+  - Karşılaştırma: iki sürüm aynı anda sunuldu ve bu adım sırayla dörder
+    kez ölçüldü (yük 13–16).
+  - Yayındaki sürümde Gorti 77, 11, 66 ve 156 piksel yürüdü; bu sürümde
+    72, 38, 131 ve 128 piksel.
+  - Oyun bu sırada saniyede yayındaki sürümde 9–11, bu sürümde 2–14 kare
+    çiziyordu.
+  - Yayındaki sürüm de bir kez eşiğin altında kaldı. Dört ölçümde iki sürüm
+    arasında tutarlı bir fark görülmedi.
+  - Yürüme hızları değişmedi; `src/tuning.ts`'e aynen taşındı.
+
+Atlanan 13 test önceki sürümdekilerle aynı: 12'si yalnızca `SHOTS=1` ile
+koşan ekran görüntüsü testleri, 1'i `DEV_ROUTE` isteyen geliştirici rotası
+testi.
+
+Görsel kontrol: kontrol dalının ekran görüntüleri incelendi.
+
+- 390×844 dik telefonda düğmeler hem beklerken hem basılıyken; basılı
+  karede Gorti havada.
+- 844×390 yatay telefonda savaşçı havada; altyazı iki başparmağın arasında
+  açık kalıyor.
+- Derinlikte (odanın arkasında) zıplama: gölge zeminde kalıyor.
+- Diyalog açıkken düğmeler kayboluyor.
+
+Henüz denenmeyenler:
+
+- Titreşim gerçek bir telefonda denenmedi.
+- Şarkı ve Nefes düğmeleri çizildi ve bağlandı, ama oyun onları hâlâ hiç
+  sunmuyor; bu değişmedi.
+- Gerçek GPU'lu cihaz ve telefon denenmedi.
+
+Önceki bölümlerde yazan sayfa çevirme sorunları bu sürümde de duruyor.
+Düzeltmesi hazır; bir sonraki sürümde gelecek.
+
+## Önceki sürüm: 14. Oda'nın zeminindeki yarık göz
 
 Bu sürümde değişenler:
 
@@ -66,7 +174,7 @@ telefon ekranında.
 çizgiler, düz panel gibi okunan kıvrım) bu sürümde de duruyor;
 düzeltmeleri sürüyor.
 
-## Önceki sürüm: sayfa çevirerek oda ve bölüm geçişleri
+## Eski sürüm: sayfa çevirerek oda ve bölüm geçişleri
 
 Bu sürümde değişenler:
 
