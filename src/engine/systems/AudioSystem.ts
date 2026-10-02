@@ -310,7 +310,9 @@ export class AudioSystem {
         this.osc('sine', 85 * p, t, 0.14, 0.14 * v, out, { f1: 55 });
         break;
       case 'jump':
-        this.noiseBurst(t, 0.12, 0.06 * v, out, { type: 'bandpass', f0: 300, f1: 900, q: 1.5 });
+        // A paper hop: a soft rush of air and a little rising blip, pitched by the body.
+        this.noiseBurst(t, 0.12, 0.06 * v, out, { type: 'bandpass', f0: 300 * p, f1: 900 * p, q: 1.5 });
+        this.osc('sine', 330 * p, t, 0.09, 0.03 * v, out, { f1: 560 * p });
         break;
       case 'root':
         this.osc('sawtooth', 95 * p, t, 0.32, 0.05 * v, out, { f1: 150, vib: 0.08, vibRate: 22 });

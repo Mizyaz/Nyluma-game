@@ -244,7 +244,9 @@ export function r07(w: WorldScene): RoomScript {
         const m = w.def.memories?.[0];
         if (m) {
           const chest = { x: horse.x + 10, y: horse.y - 150 };
-          if (Math.abs(chest.x - m.x) < 70 && Math.abs(chest.y - (m.y - 34)) < 70) {
+          // A jump over it still catches it: the reach grows with the horse's lift.
+          const lift = Math.max(0, RIDE_GROUND_Y - horse.y);
+          if (Math.abs(chest.x - m.x) < 70 && Math.abs(chest.y - (m.y - 34)) < 70 + lift) {
             memTaken = true;
             w.room.takeMemory(m.id);
             if (w.quest.collectMemory(m.id)) {

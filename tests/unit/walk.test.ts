@@ -3,7 +3,9 @@ import { ROOMS } from '../../src/content/data/rooms';
 import type { RoomDef, SolidDef } from '../../src/content/data/roomTypes';
 import { RIDE_CHASMS } from '../../src/content/rooms/r07';
 import { HULL_H, HULL_W, JUMPING } from '../../src/engine/constants';
+import { bodyTop, overlaps, sweptHull } from '../../src/engine/world/geometry';
 import { isWhalePlatform } from '../../src/gameplay/whales/whalePlan';
+import { BODIES, JUMP } from '../../src/tuning';
 
 // The story rooms are walked, never jumped: each has one floor line, and
 // from where Gorti comes in he reaches every checkpoint, memory, thing to
@@ -40,10 +42,6 @@ function walk(r: RoomDef): { y: number; lo: number; hi: number } {
 }
 
 describe('story rooms without jumping', () => {
-  it('has jumping switched off', () => {
-    expect(JUMPING).toBe(false);
-  });
-
   it('reaches every checkpoint, memory, inspectable thing, trigger and exit along one floor', () => {
     for (const id of STORY_ROOMS) {
       const r = ROOMS[id]!;
@@ -93,5 +91,63 @@ describe('story rooms without jumping', () => {
         expect(s.y, `${id}/${s.id ?? s.x} bears weight off the floor`).toBe(y);
       }
     }
+  });
+});
+
+// Jumping is on, and only for fun: no room needs it (above), and none can
+// be cheated with it. A closed gate is a wall up to the top of the room, a
+// hop never reaches the paper box's lid, and what lies on the floor under
+// a jump (a story trigger, an exit, a memory) is met as if he walked.
+
+describe('jumping, never needed and never a shortcut', () => {
+  const apex = (v: number): number => (v * v) / (2 * JUMP.gravity);
+  const highest = Math.max(...Object.values(BODIES).map((b) => apex(b.jumpVel)));
+
+  it('is on, and every body that jumps makes a hop: clearly up, never a climb', () => {
+    expect(JUMPING).toBe(true);
+    for (const [name, b] of Object.entries(BODIES)) {
+      if (b.jumpVel === 0) continue;
+      expect(apex(b.jumpVel), name).toBeGreaterThan(60);
+      expect(apex(b.jumpVel), name).toBeLessThan(HULL_H * 2);
+      expect(b.jumpCut, name).toBeGreaterThan(0);
+      expect(b.jumpCut, name).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('meets every closed gate as a wall up to the top of the room', () => {
+    let gates = 0;
+    for (const id of STORY_ROOMS) {
+      const r = ROOMS[id]!;
+      const { y } = walk(r);
+      for (const s of r.solids) {
+        if (!s.unless || s.oneWay || s.whale || s.y + s.h !== y) continue;
+        gates++;
+        expect(bodyTop(s, y), `${id}/${s.id ?? s.x}`).toBeLessThanOrEqual(0);
+        expect(bodyTop(s, y), `${id}/${s.id ?? s.x}`).toBeLessThan(y - HULL_H - highest);
+      }
+      // Anything else keeps its own top.
+      for (const s of r.solids) if (!s.unless || s.oneWay || s.whale) expect(bodyTop(s, y)).toBe(s.y);
+    }
+    expect(gates).toBeGreaterThan(0);
+  });
+
+  it('keeps the highest hop inside the paper box', () => {
+    for (const id of STORY_ROOMS) {
+      const { y } = walk(ROOMS[id]!);
+      // The box's lid stands at least 720 above the floor (PaperBox).
+      expect(y - HULL_H - highest, id).toBeGreaterThan(Math.min(0, y - 720) + 100);
+    }
+  });
+
+  it('meets what lies on the floor under a jump, as if he walked', () => {
+    // Up in the air over a trigger lying on the floor (ground at 660).
+    const hull = { x: 100, y: 400, w: HULL_W, h: HULL_H };
+    const trigger = { x: 90, y: 620, w: 80, h: 40 };
+    expect(overlaps(hull, trigger)).toBe(false);
+    expect(overlaps(sweptHull(hull, 660), trigger)).toBe(true);
+    // Nothing below, or standing: the hull itself.
+    expect(sweptHull(hull, null)).toEqual(hull);
+    const standing = { ...hull, y: 660 - HULL_H };
+    expect(sweptHull(standing, 660)).toEqual(standing);
   });
 });

@@ -15,8 +15,8 @@ sunucu, hesap, çevrim içi hizmet ya da dış kaynak (CDN, yazı tipi, ses) yok
 
 Oyun bir deneyimdir: can değeri, diken ya da tehlike, görev, hedef ya da
 bulmaca yoktur; her odada hep ilerlenebilir. Yürümek yeter: her oda tek bir
-zeminde baştan sona yürünür, zıplamak gerekmez (zıplama kapalıdır);
-hikâyenin sahneleri Gorti bir yere vardığında kendiliğinden başlar. Bazı
+zeminde baştan sona yürünür, zıplamak hiçbir yerde gerekmez (ama keyfe göre
+zıplanır); hikâyenin sahneleri Gorti bir yere vardığında kendiliğinden başlar. Bazı
 şeylerin yanında E ile incelemek mümkündür ama zorunlu değildir.
 
 Başka bir yerde E, **Rezonans** hareketini yapar. Hareket Gorti'nin biçimine
@@ -58,11 +58,19 @@ yağar, Gorti yukarı bakar ve sevinçle dans eder. (Ani yanıp sönme yoktur; h
 renk değişimi en az üçte bir saniye sürer. Azaltılmış hareket açıkken daha
 seyrek ve daha sakindir.)
 
-Zıplama şimdilik kapalıdır (`src/engine/constants.ts` içindeki `JUMPING`);
-açıldığında Gorti'nin zıplaması baştan sona canlandırılmıştır: çömelir,
-itilir ve gerilir, yükselirken dizlerini çeker, tepede bir an kollarını açıp
-süzülür, düşerken bacaklarını yere uzatır ve inişte düşüşün sertliğine göre
-esneyip toparlanır.
+Gorti istediği an zıplar (Boşluk, dokunmatikte Zıpla, oyun kumandasında alt
+düğme). Zıplaması baştan sona canlandırılmıştır: çömelir, itilir ve gerilir,
+yükselirken dizlerini çeker, tepede bir an kollarını açıp süzülür, düşerken
+bacaklarını yere uzatır ve inişte düşüşün sertliğine göre esneyip toparlanır;
+kalkışta ve inişte toz kalkar, hafif bir hop ve yumuşak bir tok ses duyulur.
+Kenardan az önce düşmüşken basılan ya da yere inmeden az önce basılan zıplama
+yine sayılır; tuş erken bırakılırsa zıplama kısalır. Derinlikte zıplarken
+gölgesi kendi derinliğinde yerde kalır ve yükseldikçe küçülüp silikleşir. Her
+beden (çocuk, genç, savaşçı, Sivaslı amca, korkak, mekanik) kendi
+iskeletiyle zıplar; takım elbise zıplamaz. Zıplama hiçbir kapıyı, olayı ya da
+sahneyi atlatmaz: kapalı bir kapı tavana kadar duvardır, havada geçilen bir
+olay iniş anında başlar. Bütün sayıları `src/tuning.ts` dosyasındadır
+(`JUMP.enabled` ile kapatılabilir).
 Yüzü de canlıdır: siyah gözleri kırpışır, sevinçte kavislenir, şaşkınlıkta
 büyür, yorgunlukta ağırlaşır; ağzı konuşur, gülümser, dişlerini sıkar. Dal
 saçları hareketle yaylanıp sallanır. Bir süre durduğunda etrafına bakar,
@@ -71,30 +79,45 @@ incelenebilecek şeylere göz atar.
 
 ## Kontroller
 
-| Eylem | Klavye | Dokunmatik |
-| --- | --- | --- |
-| Yürü | A / D ya da ← / → | Sol alttaki yön tuşları |
-| Zıpla (şimdilik kapalı, `JUMPING`) | Boşluk | Zıpla (kapalıyken gizli) |
-| İncele (yakında bir şey varsa) / Rezonans | E | Eylem |
-| Duraklat / geri | Esc | Sağ üstteki ⏸ |
-| Anılar | M | Duraklatma menüsü |
-| Menü seçimi | Enter | Dokun |
-| Diyaloğu ilerlet | Boşluk / E | Diyalog kutusuna dokun |
-| Ara sahneyi geç | Boşluk / E / Enter basılı tut | Eylem ya da diyalog kutusunu basılı tut |
-| Tam ekran | — | Sağ üstteki ⛶ (dokunmatik cihazlarda oyun başlarken otomatik denenir) |
+| Eylem | Klavye | Dokunmatik | Oyun kumandası |
+| --- | --- | --- | --- |
+| Yürü | A / D ya da ← / → | Sol alttaki yön kolunu sağa / sola it | Sol çubuk ya da yön tuşları |
+| Derinlikte yürü (uzaklaş / yaklaş) | W / S ya da ↑ / ↓ | Yön kolunu yukarı / aşağı it | Sol çubuk ya da yön tuşları |
+| Zıpla | Boşluk | Sağ alttaki Zıpla | Alt düğme (A / ✕) |
+| İncele, Konuş, Yık (yakında bir şey varsa) / Rezonans | E | Zıpla'nın yanındaki eylem düğmesi | Sağ ya da sol düğme (B / ○, X / □) |
+| Biçim değiştir (öğrenildikten sonra) | R | Biçim | Üst düğme (Y / △) |
+| Duraklat / geri | Esc | Sağ üstteki ⏸ | Start |
+| Anılar | M | Duraklatma menüsü | Select |
+| Menü seçimi | Enter | Dokun | Alt düğme |
+| Diyaloğu ilerlet | Boşluk / E | Diyalog kutusuna dokun | Alt düğme |
+| Ara sahneyi geç | Boşluk / E / Enter basılı tut | Zıpla, eylem düğmesi ya da diyalog kutusunu basılı tut | Alt düğmeyi basılı tut |
+| Tam ekran | — | Sağ üstteki ⛶ (dokunmatik cihazlarda oyun başlarken otomatik denenir) | — |
 
-**Mobil:** Oyun baştan sona yalnızca dokunmatikle oynanabilir. Sol altta yön
-düğmeleri, sağ altta Eylem (zıplama açıkken yanında Zıpla). Birden çok parmak
-aynı anda kullanılabilir (ör. yürürken incelemek). Dokunmatik cihazlarda
-ekrandaki yönergeler tuş adları yerine bu düğmelerin adlarıyla gösterilir.
+Tuşlar, oyun kumandası düğmeleri, ölü bölgeler ve dokunmatik kontrollerin
+boyutları da `src/tuning.ts` dosyasındadır.
+
+**Mobil:** Oyun baştan sona yalnızca dokunmatikle oynanabilir. Sol altta
+kâğıttan bir yön kolu durur: başparmak kadranın üstünde kaydıkça topuz onu
+izler; sağa sola itmek yürütür, yukarı aşağı itmek (biraz daha kararlı bir
+itişle) derinlikte yürütür, bırakınca topuz yerine yaylanır. Sağ altta,
+başparmağın altında Gorti'nin zıplayışı çizili büyük Zıpla düğmesi, yanında
+eylem düğmesi durur: yakında bir şey varsa büyüteç (İncele), konuşma balonu
+(Konuş) ya da yarık kristal (Yık), yoksa yıldız (Rezonans) gösterir. Biçim
+gibi düğmeler hikâyede öğrenildikçe aynı yayın üzerinde belirir. İki
+başparmak aynı anda kullanılabilir (ör. yürürken zıplamak ya da incelemek);
+destekleyen cihazlarda düğmeler hafifçe titreşir (azaltılmış harekette
+titremez). Ayarlar'daki **Dokunmatik düzen** (Sağlak / Solak) kontrolleri
+aynalar. Dokunmatik cihazlarda ekrandaki yönergeler tuş adları yerine bu
+kontrollerin adlarıyla gösterilir.
 Cihaz dik ya da yatay tutulabilir: dik tutulduğunda oyun görüntüsü üstte tam
 genişlikte, altyazılar ve diyaloglar hemen altında, kontroller en altta durur;
 yatay tutulduğunda oyun ekranı doldurur ve altyazılar görüntünün altında
 gösterilir. Tarayıcı destekliyorsa oyun başlarken tam ekrana geçer.
 
 Menüler klavyeyle (↑ ↓, Enter, Esc) ve fareyle kullanılabilir. Ayarlar'da ses
-seviyeleri, azaltılmış hareket, ekran sarsıntısı, metin hızı (anında dahil) ve
-dokunmatik kontroller (otomatik / açık / kapalı) bulunur.
+seviyeleri, azaltılmış hareket, ekran sarsıntısı, metin hızı (anında dahil),
+dokunmatik kontroller (otomatik / açık / kapalı) ve dokunmatik düzen (sağlak /
+solak) bulunur.
 
 İlerleme tarayıcının `localStorage` alanına kaydedilir (kontrol noktalarında ve
 önemli etkileşimlerden sonra). Depolama kullanılamıyorsa oyun yine oynanır ve
@@ -282,8 +305,9 @@ which GitHub Pages serves (*Settings → Pages → Source → Deploy from a bran
 keyboard, a mouse for menus, or touch alone, held upright or sideways. It is
 an experience rather than a challenge: no health, hazards, quests or puzzles;
 story scenes start as Gorti walks on, a colour bombardment breaks out now and
-then, every room is walked on one floor (jumping is switched off by
-`JUMPING`), and Gorti's face is fully animated. The action key's
+then, every room is walked on one floor (jumping is there for fun, never
+needed; its feel is tuned in `src/tuning.ts`), and Gorti's face is fully
+animated. The action key's
 "Rezonans" move grows with the story: flowers that release birds, or, in
 Gorti's human form, a ground stomp that raises the Moon and a purple horse.
 Paintings of Gorti's life hang at the chapter starts, key conversations

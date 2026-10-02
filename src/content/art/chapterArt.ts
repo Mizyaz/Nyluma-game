@@ -546,50 +546,223 @@ function picture4(): Picture {
   return card(wall, 404, s, PASTEL.periwinkle);
 }
 
-/** V · Hak Aktarımı: the office desk, papers to be signed over, and the stamp coming down on them. */
+/** Ink strokes for a few digits, about 6 × 9 units, top left at (x, y). */
+function digits(text: string, x: number, y: number, w: number, color: string): string {
+  const D: Record<string, (x: number, y: number) => string> = {
+    '1': (x, y) => `M${x + 1} ${y + 2}L${x + 3.5} ${y}V${y + 9}`,
+    '2': (x, y) => `M${x} ${y + 2.2}Q${x + 2.6} ${y - 1.2} ${x + 5} ${y + 1.6}Q${x + 5.6} ${y + 4} ${x} ${y + 9}H${x + 5.6}`,
+    '3': (x, y) => `M${x} ${y + 1}Q${x + 5.4} ${y - 1} ${x + 4.6} ${y + 3}Q${x + 3.6} ${y + 4.4} ${x + 2} ${y + 4.4}Q${x + 6} ${y + 4.8} ${x + 5} ${y + 7.6}Q${x + 3} ${y + 10.2} ${x} ${y + 8}`,
+    '4': (x, y) => `M${x + 4.4} ${y + 9}V${y}L${x} ${y + 6}H${x + 6}`,
+  };
+  let d = '';
+  [...text].forEach((ch, i) => {
+    const f = D[ch];
+    if (f) d += f(x + i * 7.4, y);
+  });
+  return ink(d, w, color);
+}
+
+/** V · Hak Aktarımı: the office, papers to be signed over and the stamp coming down on them; the clock keeps an eye on it all, the tea steams, the lamp hums. */
 function picture5(): Picture {
-  const wall = '#e8d9c2';
+  const wall = '#ecdcc3';
+  const wood = PASTEL.bark;
+  const sheet = '#fffaf1';
+  const writing = '#9a8f98';
   let s = `<path d="M0 0H320V240H0Z" fill="${wall}"/>`;
-  // Raised panels on the wall, their bevels lit from the upper right.
-  for (const x of [20, 120, 220]) {
-    s += comic(`M${x} 24H${x + 80}V120H${x}Z`, darkOf(wall, 0.05), { line: LINE.detail, rim: [-2, 2], glint: [2, -2] });
+  // Wallpaper: soft stripes, little diamonds between them; a picture rail.
+  for (let x = 4; x < 320; x += 24) s += `<path d="M${x} 0H${x + 9}V150H${x}Z" fill="${darkOf(wall, 0.045)}"/>`;
+  let dia = '';
+  for (let j = 0; j < 4; j++) {
+    for (let k = j % 2; k < 14; k += 2) {
+      const x = 18.5 + k * 24;
+      const y = 36 + j * 30;
+      dia += `M${r2(x)} ${y - 2.6}L${r2(x + 1.8)} ${y}L${r2(x)} ${y + 2.6}L${r2(x - 1.8)} ${y}Z`;
+    }
   }
-  // A clock on the wall, its hand going round.
-  s += comic(ellipsePath(160, 72, 22, 22), PASTEL.cream, { line: LINE.small, rim: [2, -2], glint: [-1, 1] });
-  s += ink('M160 56V60M160 84V88M144 72H148M172 72H176', LINE.fine, '#6d5a4a');
-  s += mv('tick', ink('M160 72L160 58', LINE.small, '#5d4a6a'), '50% 100%');
-  // The desk.
-  s += comic('M10 150H310V166H10Z', PASTEL.bark, { line: LINE.body, rim: [0, -3], glint: [0, 2] });
-  s += comic('M24 166H296V240H24Z', darkOf(PASTEL.bark, 0.12), { line: LINE.small, hatch: 3 });
-  s += ink('M40 186H140M180 186H280', LINE.small, darkOf(PASTEL.bark, 0.4));
-  // Papers, one already signed over.
-  const paper = (pts: Pt[], lines: string): string => comic(roundPoly(pts, 2), '#fffaf1', { line: LINE.small, rim: [2, -1.5], over: lines });
-  s += paper([[40, 140], [118, 132], [124, 156], [44, 162]], ink('M50 142L110 136M52 148L100 143', LINE.fine, '#8a7f8c'));
-  s += mv('flutter', paper([[150, 146], [250, 140], [256, 160], [152, 164]], ink('M160 148L230 144M162 154L214 151', LINE.fine, '#8a7f8c') + `<path d="M214 150Q222 142 230 150Q222 158 214 150Z" fill="none" stroke="${PASTEL.coral}" stroke-width="2"/>`), '0% 100%');
-  // The stamp: its knob, its handle, its rubber foot, thumping down.
+  s += `<path d="${dia}" fill="${darkOf(wall, 0.12)}"/>`;
+  s += ink('M0 22H320', LINE.detail, darkOf(wall, 0.25)) + ink('M0 25H320', LINE.fine, lightOf(wall, 0.6));
+  // The corner away from the light, in shade, hatched.
+  s += `<path d="M0 0H58V150H0Z" fill="${darkOf(wall, 0.06)}"/>` + hatchLines({ x0: 0, y0: 0, x1: 58, y1: 150 }, 5, SHADE.hatchWarm, 0.55);
+  // The lamp's warm light on the wall and the desk, humming.
+  const lg = nextId('vl');
+  s += `<radialGradient id="${lg}"><stop offset="0" stop-color="#fff1b8" stop-opacity="0.95"/><stop offset="0.55" stop-color="#fff1b8" stop-opacity="0.35"/><stop offset="1" stop-color="#fff1b8" stop-opacity="0"/></radialGradient>`;
+  s += mv('flicker', `<ellipse cx="86" cy="128" rx="74" ry="56" fill="url(#${lg})"/>`);
+  // The certificate, hung a little askew on its string: the frame, the paper, the writing, a rosette.
+  const cert =
+    comic('M26 36H96V90H26Z', wood, { line: LINE.small, rim: [2.4, -1.6], glint: [-1, 1.2], hatch: 2.4 }) +
+    comic('M31.5 41.5H90.5V84.5H31.5Z', sheet, {
+      line: LINE.fine,
+      rim: [1.4, -1],
+      over:
+        ink('M44 50H78', LINE.small, '#8a6f8c') +
+        ink('M38 58H84M40 64H82M42 70H66', LINE.fine, writing) +
+        ink('M44 78Q48 74 51 78T58 77', LINE.fine, '#5d4a6a'),
+    }) +
+    ink('M74 84L71 94M80 84L83 94', 2.2, PASTEL.coral) +
+    comic(ellipsePath(77, 81, 6, 6), PASTEL.coral, { line: LINE.detail, glint: [-0.8, 0.8], over: `<path d="${sparkle(77, 81, 3)}" fill="${lightOf(PASTEL.coral, 0.6)}"/>` });
+  s += ink('M61 12L34 37M61 12L88 37', LINE.fine, '#7d6a5a') + comic(ellipsePath(61, 12, 2, 2), PASTEL.butter, { line: LINE.fine });
+  s += `<g transform="rotate(-3 61 63)">${cert}</g>`;
+  // A paper plane, signed and away, sailing for the window.
+  s += mv(
+    'drift',
+    comic('M102 84L134 72L116 90Z', sheet, { line: LINE.small, rim: [1.6, -1] }) + comic('M116 90L134 72L118 82Z', darkOf(sheet, 0.12), { line: LINE.fine }) + ink('M96 92Q88 96 84 92', LINE.fine, writing, 0.8),
+    '50% 50%',
+  );
+  // The clock: a round face in a wooden rim, eyes that keep watch, its hand going round; the pendulum swinging in its case.
+  s += comic('M141 62H163V112H141Z', wood, {
+    line: LINE.small,
+    rim: [2, -1.4],
+    hatch: 2.4,
+    over:
+      comic('M145 68H159V106H145Z', '#f6ead7', {
+        line: LINE.fine,
+        inner: mv('sway', ink('M152 66V95', LINE.fine, '#7d6a5a') + comic(ellipsePath(152, 98, 4.4, 4.4), PASTEL.butter, { line: LINE.fine, glint: [-0.6, 0.6] }), '50% 0%'),
+      }) + ink('M147 70L151 74M147 75L149 77', LINE.fine, '#ffffff', 0.8),
+  });
+  let marks = '';
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    const r0 = i % 3 === 0 ? 12.2 : 13.6;
+    marks += `M${r2(152 + Math.sin(a) * r0)} ${r2(46 - Math.cos(a) * r0)}L${r2(152 + Math.sin(a) * 15.4)} ${r2(46 - Math.cos(a) * 15.4)}`;
+  }
+  s += comic(ellipsePath(152, 46, 21, 21), wood, { line: LINE.small, rim: [2.6, -1.8], glint: [-1, 1.2], hatch: 2.4 });
+  s += comic(ellipsePath(152, 46, 17, 17), PASTEL.cream, {
+    line: LINE.fine,
+    rim: [1.8, -1.2],
+    over:
+      ink(marks, LINE.fine, '#6d5a4a') +
+      `<ellipse cx="144" cy="51" rx="3" ry="1.8" fill="${PASTEL.pink}" opacity="0.8"/><ellipse cx="160" cy="51" rx="3" ry="1.8" fill="${PASTEL.pink}" opacity="0.8"/>` +
+      ink('M149 54Q152 56.4 155 54', LINE.fine, '#6d5a4a') +
+      mv('blink', `<ellipse cx="146.5" cy="44" rx="2.6" ry="3.2" fill="#fffaf2" stroke="#6d5a4a" stroke-width="0.6"/><ellipse cx="157.5" cy="44" rx="2.6" ry="3.2" fill="#fffaf2" stroke="#6d5a4a" stroke-width="0.6"/><circle cx="147.4" cy="44.6" r="1.4" fill="#2e2734"/><circle cx="158.4" cy="44.6" r="1.4" fill="#2e2734"/>`),
+  });
+  s += mv('tick', ink('M152 46L152 33', LINE.small, '#5d4a6a'), '50% 100%');
+  s += comic(ellipsePath(152, 46, 1.8, 1.8), '#5d4a6a', { line: 0 });
+  // The window, its blind half down, its cord swaying; a cloud going by outside.
+  const sky = '#cfe2ec';
+  s += comic('M238 28H302V104H238Z', PASTEL.cream, { line: LINE.small, rim: [2.4, -1.8], glint: [-1, 1] });
+  let slats = '';
+  for (let y = 34; y < 66; y += 5) slats += `M243 ${y}H297V${y + 4}H243Z`;
+  s += comic('M243 33H297V99H243Z', sky, {
+    line: LINE.fine,
+    inner:
+      mv('drift', comic('M256 84Q258 76 266 78Q270 70 280 74Q290 72 290 82Q296 86 290 90H260Q252 90 256 84Z', '#fffaf2', { line: LINE.fine, rim: [1.6, -1.4] }), '50% 50%', 0.4) +
+      `<path d="${slats}" fill="#f3e4c8" stroke="${lineFor('#f3e4c8')}" stroke-width="0.6"/>` +
+      `<path d="M243 66H297V70H243Z" fill="${darkOf('#f3e4c8', 0.12)}"/>`,
+  });
+  s += ink('M270 70V99M243 84H297', LINE.small, lineFor(PASTEL.cream));
+  s += mv('sway', ink('M292 70V92', LINE.fine, '#8a7a6a') + comic(ellipsePath(292, 94, 2, 2.8), PASTEL.coral, { line: LINE.fine }), '50% 0%', 0.5);
+  // The desk: its top, its front with drawers, the dark under it.
+  let grain = '';
+  for (const [y, x0, x1] of [[152, 24, 120], [156, 150, 260], [159, 60, 180], [153, 210, 300]] as const) grain += `M${x0} ${y}Q${(x0 + x1) / 2} ${y - 1.6} ${x1} ${y}`;
+  s += comic('M8 147H312V162H8Z', wood, { line: LINE.body, rim: [0, -3], glint: [0, 2], over: ink(grain, LINE.fine, darkOf(wood, 0.25)) });
+  s += comic('M20 162H300V240H20Z', darkOf(wood, 0.1), { line: LINE.small, rim: [3, -2], hatch: 3, over: `<path d="M20 162H300V168H20Z" fill="${darkOf(wood, 0.4)}" opacity="0.5"/>` });
+  s += comic('M140 168H180V240H140Z', darkOf(wood, 0.5), { line: LINE.small, over: hatchLines({ x0: 140, y0: 168, x1: 180, y1: 240 }, 3.4, darkOf(wood, 0.7), 0.6) });
+  const drawer = (x: number, y: number, w: number, h: number, hatch: number): string =>
+    comic(roundPoly([[x, y], [x + w, y], [x + w, y + h], [x, y + h]], 2), darkOf(wood, 0.02), {
+      line: LINE.small,
+      rim: [2.4, -1.6],
+      glint: [-1, 1],
+      hatch,
+      over:
+        ink(`M${x + 8} ${y + h * 0.35}Q${x + w * 0.4} ${y + h * 0.2} ${x + w * 0.7} ${y + h * 0.36}T${x + w - 6} ${y + h * 0.3}M${x + 10} ${y + h * 0.72}Q${x + w * 0.5} ${y + h * 0.84} ${x + w - 10} ${y + h * 0.7}`, LINE.fine, darkOf(wood, 0.3)) +
+        comic(ellipsePath(x + w / 2, y + h / 2, 4.4, 3.2), PASTEL.butter, { line: LINE.fine, rim: [1, -0.6], glint: [-0.6, 0.6] }),
+    });
+  s += drawer(32, 172, 98, 28, 2.6) + drawer(32, 206, 98, 28, 0) + drawer(190, 172, 98, 28, 2.6) + drawer(190, 206, 98, 28, 0);
+  // The lamp: its base, its jointed arm, its shade over a warm bulb.
+  s += comic(ellipsePath(44, 151, 16, 4.6), PASTEL.mintDeep, { line: LINE.small, rim: [2, -1], glint: [-0.8, 0.8] });
+  s += ink('M44 149L50 118L74 100', 3.2, lineFor(PASTEL.mintDeep)) + ink('M44 149L50 118L74 100', 1.6, PASTEL.mintDeep);
+  s += comic(ellipsePath(50, 118, 3, 3), PASTEL.mintDeep, { line: LINE.fine });
+  s += `<ellipse cx="80" cy="112" rx="18" ry="4.2" fill="#fff8d6" transform="rotate(12 80 112)"/>`;
+  s += comic('M60 106C60 92 72 84 84 86C96 88 102 98 99 114Q80 104 60 106Z', PASTEL.mint, { line: LINE.small, rim: [2.4, -2], glint: [-1, 1], hatch: 2.4 });
+  s += ink('M64 104Q80 101 97 110', LINE.fine, lightOf(PASTEL.mint, 0.6));
+  // A stack of folders, their coloured tabs, a paper clip on top.
+  const folders = [PASTEL.periwinkle, PASTEL.butter, PASTEL.pink, PASTEL.mint, PASTEL.apricot];
+  folders.forEach((f, i) => {
+    const y = 152 - i * 5.6;
+    const dx = i % 2 ? 2.4 : -1;
+    s += comic(roundPoly([[92 + dx, y - 5.4], [138 + dx, y - 6.2], [139.5 + dx, y], [91 + dx, y + 0.6]], 1.2), f, { line: LINE.fine, rim: [1.8, -0.9] });
+    s += comic(`M${118 + dx - i * 4} ${y - 6}h9l1 -2.6h-9Z`, f, { line: LINE.fine });
+    if (i === 2) s += ink(`M${96 + dx} ${y - 2.6}H${132 + dx}`, LINE.fine, sheet);
+  });
+  s += ink('M104 125.4H114Q116 125.4 116 127.2Q116 129 114 129H106', LINE.detail, PASTEL.slate);
+  // A mug of tea, steaming.
+  s += mv('drift', ink('M134 130Q129 122 134 116Q139 110 134 102M142 128Q146 121 142 115', LINE.detail, darkOf(wall, 0.22), 0.85), '50% 100%');
+  s += ink('M146 141Q155 142 153 149Q151 155 145 154', LINE.small, lineFor(PASTEL.pink));
+  s += comic(roundPoly([[127, 137], [147, 137], [146, 157], [128, 157]], 2.6), PASTEL.pink, {
+    line: LINE.small,
+    rim: [2.6, -1.4],
+    glint: [-1, 1],
+    hatch: 2.4,
+    over: `<ellipse cx="137" cy="138.4" rx="9" ry="2" fill="#b98a6a"/>` + `<path d="M135 147Q133 144 135.4 143.6Q137 143.4 137 145Q137 143.4 138.6 143.6Q141 144 139 147L137 149Z" fill="${PASTEL.pinkDeep}"/>`,
+  });
+  // The papers: the one under it, and the one being signed over (it jumps when the stamp comes down).
+  const paper = (pts: Pt[], lines: string): string => comic(roundPoly(pts, 2), sheet, { line: LINE.small, rim: [2, -1.5], over: lines });
+  s += paper([[166, 150], [258, 147], [262, 164], [168, 166]], '');
+  s += mv(
+    'flutter',
+    paper(
+      [[158, 145], [254, 139], [260, 159], [160, 163]],
+      ink('M168 147L232 143M169 152L222 148.6', LINE.fine, writing) +
+        ink('M172 158Q175 153 178 157.4T184 156.4Q186 153.6 189 156T196 155', LINE.fine, '#5d4a6a') +
+        `<path d="M222 152Q230 143 239 151Q231 160 222 152Z" fill="none" stroke="${PASTEL.coral}" stroke-width="2"/>` +
+        `<path d="${sparkle(230.5, 151.4, 2.6)}" fill="${PASTEL.coral}"/>`,
+    ),
+    '0% 100%',
+  );
+  // The ink pad, open, its lid leaning behind.
+  s += comic('M266 134L294 128L296 146L268 150Z', PASTEL.slate, { line: LINE.small, rim: [2, -1.2], glint: [-0.8, 0.8] });
+  s += comic(roundPoly([[264, 148], [300, 146], [300, 158], [264, 160]], 2), PASTEL.slate, { line: LINE.small, rim: [2.2, -1.2], glint: [-0.8, 0.8], over: comic(roundPoly([[268, 149], [296, 147.6], [296, 153], [268, 154.4]], 1.4), PASTEL.coral, { line: LINE.fine }) });
+  // The stamp: its knob, its handle, its brass collar, its rubber foot, thumping down.
   const stamp =
-    comic(ellipsePath(222, 64, 13, 12), PASTEL.coral, { line: LINE.small, rim: [2.4, -1.6], glint: [-1, 1] }) +
-    comic('M216 74H228L230 108H214Z', PASTEL.bark, { line: LINE.small, rim: [2, -1] }) +
-    comic('M200 108H244V120H200Z', '#5a4a5e', { line: LINE.small, glint: [-1, 1] }) +
+    comic(ellipsePath(222, 64, 13, 12), PASTEL.coral, { line: LINE.small, rim: [2.4, -1.6], glint: [-1, 1], hatch: 2.2 }) +
+    comic('M216 74H228L230 102H214Z', wood, { line: LINE.small, rim: [2, -1], over: ink('M219 78L218.4 98M224.6 80L225 99', LINE.fine, darkOf(wood, 0.3)) }) +
+    comic('M212 101H232V107H212Z', PASTEL.butter, { line: LINE.fine, glint: [-0.6, 0.6] }) +
+    comic('M200 107H244V120H200Z', '#5a4a5e', { line: LINE.small, glint: [-1, 1], over: ink('M206 111H238', LINE.fine, lightOf('#5a4a5e', 0.35)) }) +
     comic('M204 120H240V126H204Z', PASTEL.coral, { line: LINE.detail });
   s += mv('thump', stamp, '50% 100%');
-  // An inkwell and its pen.
-  s += comic('M272 128H296V150H272Z', '#4f5a7a', { line: LINE.small, glint: [-1, 1] });
-  s += ink('M286 128L300 96', LINE.small, '#5d4a6a');
+  // A pen lying ready in front.
+  s += comic('M58 160L104 154L105 157.4L59 163.4Z', PASTEL.periwinkleDeep, { line: LINE.fine, glint: [-0.5, 0.5] });
+  s += comic('M104 154L112 154.6L105 157.4Z', PASTEL.butter, { line: LINE.fine });
   return card(wall, 505, s, PASTEL.apricot);
 }
 
-/** VI · Boş Odalar: the paper rooms, open-fronted boxes in a row, empty; a little pink light left in the last. */
+/** VI · Boş Odalar: the paper rooms, open-fronted boxes in a row under a bare bulb, emptied; a mouse looks round one; a little pink light is left in the last. */
 function picture6(): Picture {
-  const wall = '#dfe0e8';
-  const floor = '#cfd0da';
+  const wall = '#dcdde8';
+  const floor = '#dccdb7';
   let s = `<path d="M0 0H320V150H0Z" fill="${wall}"/>`;
-  s += hatchLines({ x0: 0, y0: 0, x1: 320, y1: 150 }, 7, darkOf(wall, 0.08), 0.6);
+  // Where pictures hung once: paler patches, each with its nail.
+  for (const [x, y, w, h] of [[28, 30, 42, 34], [112, 22, 34, 44], [244, 26, 50, 30]] as const) {
+    s += `<path d="M${x} ${y}H${x + w}V${y + h}H${x}Z" fill="${lightOf(wall, 0.4)}" stroke="${darkOf(wall, 0.12)}" stroke-width="0.6" stroke-dasharray="2.4 2"/>`;
+    s += comic(ellipsePath(x + w / 2, y - 4, 1.6, 1.6), PASTEL.slate, { line: LINE.fine });
+  }
+  // The corners in shade, hatched; a cobweb in the far one.
+  s += hatchLines({ x0: 0, y0: 0, x1: 54, y1: 150 }, 5, darkOf(wall, 0.18), 0.55);
+  s += hatchLines({ x0: 296, y0: 0, x1: 320, y1: 150 }, 5, darkOf(wall, 0.12), 0.5);
+  let web = 'M14 12L56 12M14 12L50 32M14 12L34 48M14 12L14 54';
+  for (const r of [12, 22, 33]) web += `M${14 + r} 12Q${14 + r * 0.9} ${12 + r * 0.32} ${14 + r * 0.86} ${12 + r * 0.56}Q${14 + r * 0.62} ${12 + r * 0.7} ${14 + r * 0.56} ${12 + r * 0.92}Q${14 + r * 0.3} ${12 + r * 0.9} 14 ${12 + r * 1.1}`;
+  s += ink(web, LINE.fine, '#a9a3b4', 0.9);
+  s += mv('bob', ink('M44 34V44', 0.5, '#8f8b98') + comic(ellipsePath(44, 46, 2.4, 2), '#5d556a', { line: 0 }) + ink('M42 45L39.6 43.6M42 47L39.4 48M46 45L48.4 43.6M46 47L48.6 48', 0.5, '#5d556a'), '50% 0%', 0.3);
+  // The floorboards, their seams and nails.
   s += `<path d="M0 150H320V240H0Z" fill="${floor}"/>` + ink('M0 150H320', LINE.detail, lineFor(floor));
-  s += ink('M20 170L4 200M90 166L80 214M170 164L170 230M250 166L262 220M310 170L330 196', LINE.fine, darkOf(floor, 0.18));
+  let boards = 'M0 166H320M0 186H320M0 210H320';
+  for (const [y0, y1, xs] of [[150, 166, [64, 170, 262]], [166, 186, [24, 120, 218, 300]], [186, 210, [70, 168, 256]], [210, 240, [40, 136, 230]]] as const) for (const x of xs) boards += `M${x} ${y0}V${y1}`;
+  s += ink(boards, LINE.fine, darkOf(floor, 0.22));
+  let nails = '';
+  for (const [x, y] of [[70, 154], [176, 154], [30, 170], [126, 170], [224, 170], [76, 190], [174, 190], [262, 190], [46, 214], [142, 214], [236, 214]] as const) nails += `<circle cx="${x}" cy="${y}" r="0.9" fill="${darkOf(floor, 0.35)}"/>`;
+  s += nails;
+  s += hatchLines({ x0: 0, y0: 150, x1: 320, y1: 160 }, 4, darkOf(floor, 0.2), 0.5);
+  // Small footprints in the dust, going to the last room.
+  let steps = '';
+  for (let i = 0; i < 6; i++) {
+    const x = 128 + i * 19;
+    const y = 222 - i * 8 + (i % 2) * 5;
+    steps += `<ellipse cx="${x}" cy="${y}" rx="3.2" ry="1.7" fill="${darkOf(floor, 0.16)}" transform="rotate(-18 ${x} ${y})"/>`;
+  }
+  s += steps;
   const paper = PASTEL.sand;
-  // An open-fronted box (one of the game's rooms), lit from the upper right.
-  const box = (x0: number, y0: number, w: number, h: number, inner: string): string => {
+  // An open-fronted box (one of the game's rooms), lit from the upper right: its taped corner, its number tag.
+  const box = (x0: number, y0: number, w: number, h: number, inner: string, label: string): string => {
     const x1 = x0 + w;
     const y1 = y0 + h;
     const d = w * 0.2;
@@ -600,37 +773,82 @@ function picture6(): Picture {
     const lw = Math.max(0.8, LINE.small * (w / 100));
     const q = (pts: Pt[]): string => 'M' + pts.map((p) => `${r2(p[0])} ${r2(p[1])}`).join('L') + 'Z';
     let b = '';
-    // Its shadow on the floor, low on the left.
-    b += `<path d="${q([[x0 - w * 0.12, y1 + 2], [x1 - w * 0.1, y1 + 2], [x1 - w * 0.2, y1 + h * 0.12], [x0 - w * 0.26, y1 + h * 0.12]])}" fill="${darkOf(floor, 0.25)}" opacity="0.55"/>`;
+    // Its shadow on the floor, low on the left, hatched.
+    const sh = q([[x0 - w * 0.12, y1 + 2], [x1 - w * 0.1, y1 + 2], [x1 - w * 0.2, y1 + h * 0.14], [x0 - w * 0.28, y1 + h * 0.14]]);
+    b += `<path d="${sh}" fill="${darkOf(floor, 0.3)}" opacity="0.5"/>`;
+    b += hatchLines({ x0: x0 - w * 0.26, y0: y1 + 2, x1: x1 - w * 0.12, y1: y1 + h * 0.13 }, 3.4, darkOf(floor, 0.4), 0.45);
     // Inside: back wall, the left wall (toward the light, pale), the right (shaded), ceiling and floor.
     b += `<path d="${q([[bx0, by0], [bx1, by0], [bx1, by1], [bx0, by1]])}" fill="${lightOf(paper, 0.3)}"/>`;
     b += `<path d="${q([[x0, y0], [bx0, by0], [bx0, by1], [x0, y1]])}" fill="${lightOf(paper, 0.5)}"/>`;
     b += `<path d="${q([[x1, y0], [bx1, by0], [bx1, by1], [x1, y1]])}" fill="${darkOf(paper, 0.2)}"/>`;
     b += hatchLines({ x0: bx1, y0: y0, x1: x1, y1: y1 }, 3, darkOf(paper, 0.4), 0.5);
     b += `<path d="${q([[x0, y0], [x1, y0], [bx1, by0], [bx0, by0]])}" fill="${darkOf(paper, 0.28)}"/>`;
+    b += hatchLines({ x0: x0, y0: y0, x1: x1, y1: by0 }, 3.2, darkOf(paper, 0.45), 0.45);
     b += `<path d="${q([[x0, y1], [x1, y1], [bx1, by1], [bx0, by1]])}" fill="${lightOf(paper, 0.15)}"/>`;
     b += ink(`M${r2(bx0)} ${r2(by0)}H${r2(bx1)}V${r2(by1)}H${r2(bx0)}Z`, lw * 0.6, darkOf(paper, 0.35));
     b += ink(`M${x0} ${y0}L${r2(bx0)} ${r2(by0)}M${x1} ${y0}L${r2(bx1)} ${r2(by0)}M${x0} ${y1}L${r2(bx0)} ${r2(by1)}M${x1} ${y1}L${r2(bx1)} ${r2(by1)}`, lw * 0.6, darkOf(paper, 0.35));
     b += inner;
-    // The cut edge of the cardboard round the opening.
+    // The cut edge of the cardboard round the opening, its fluting showing along the top.
     const t = Math.max(2, w * 0.035);
     b += comic(`M${x0 - t} ${y0 - t}H${x1 + t}V${y1 + t}H${x0 - t}Z M${x0} ${y0}V${y1}H${x1}V${y0}Z`, lightOf(paper, 0.55), { line: lw, ink: lineFor(paper), rim: [t * 0.6, -t * 0.4] });
+    let flute = '';
+    for (let x = x0 - t + 1.5; x < x1 + t - 2.5; x += 3.2) flute += `M${r2(x)} ${r2(y0 - t * 0.35)}Q${r2(x + 1.6)} ${r2(y0 - t * 0.95)} ${r2(x + 3.2)} ${r2(y0 - t * 0.35)}`;
+    b += ink(flute, 0.45, darkOf(paper, 0.3));
+    // Tape over the top corner.
+    b += `<path d="${q([[x1 - w * 0.16, y0 - t - 4], [x1 + t + 3, y0 + w * 0.06], [x1 + t - 1, y0 + w * 0.14], [x1 - w * 0.2, y0 - t + 1]])}" fill="${PASTEL.butter}" opacity="0.8" stroke="${lineFor(PASTEL.butter)}" stroke-width="0.5"/>`;
+    // Its number on a tag hung from a string.
+    const tx = x0 + w * 0.22;
+    const ty = y0 - t - 2;
+    b += ink(`M${r2(tx)} ${r2(y0 - t)}V${r2(ty + 4)}`, 0.5, '#8a7a6a');
+    b += comic(roundPoly([[tx - 9, ty + 4], [tx + 9, ty + 4], [tx + 9, ty + 17], [tx - 9, ty + 17]], 2), PASTEL.cream, { line: LINE.fine, rim: [1.2, -0.8], over: digits(label, tx - 6.4, ty + 6.2, LINE.detail, '#6d5a6a') });
     return b;
   };
-  // The first: a chair, and a bare bulb swinging on its wire.
-  const chair =
-    comic('M58 166V138H63V156H80V166Z', PASTEL.bark, { line: LINE.small, rim: [1.4, -1] }) +
-    ink('M60 166V176M78 166V176', LINE.small, darkOf(PASTEL.bark, 0.3)) +
-    mv('sway', ink('M66 112V128', LINE.fine, '#6d6474') + comic(ellipsePath(66, 132, 4.2, 5), PASTEL.butter, { line: LINE.fine, glint: [-0.8, 0.8] }), '50% 0%');
-  // The last: the pink light he left behind.
+  // The bulb on its cord, swinging, its light going with it; a moth about it.
+  const bulbLight = nextId('vb');
+  s += `<radialGradient id="${bulbLight}" cx="0.5" cy="0" r="1"><stop offset="0" stop-color="#fff4c6" stop-opacity="0.75"/><stop offset="0.7" stop-color="#fff4c6" stop-opacity="0.12"/><stop offset="1" stop-color="#fff4c6" stop-opacity="0"/></radialGradient>`;
+  s += mv(
+    'sway',
+    mv('flicker', `<path d="M164 58L96 206H252L178 58Z" fill="url(#${bulbLight})"/>`) +
+      ink('M171 -4V40', LINE.detail, '#6d6474') +
+      comic('M166 40H176V47H166Z', PASTEL.slate, { line: LINE.fine }) +
+      comic(ellipsePath(171, 54, 7, 8.4), '#fff3c4', { line: LINE.fine, glint: [-1, 1], over: ink('M168.4 52Q171 56 173.6 52', 0.6, '#c9a56a') }),
+    '50% 0%',
+  );
+  s += mv('bob', comic('M196 36Q190 28 186 34Q190 40 196 36ZM196 36Q202 28 206 34Q202 40 196 36Z', '#f4ecdc', { line: LINE.fine }) + ink('M196 32V40', 1.2, '#7d6a5a'), '50% 50%', 0.5);
+  // Dust motes turning in the light.
+  for (let i = 0; i < 9; i++) s += mv('drift', `<circle cx="${128 + ((i * 37) % 88)}" cy="${76 + ((i * 23) % 96)}" r="${1 + (i % 3) * 0.5}" fill="#fffaf2" stroke="#b9b1c2" stroke-width="0.4"/>`, '50% 50%', i * 0.31);
+  // The last room: the pink light he left behind.
   const gid = nextId('ve');
-  const light = `<radialGradient id="${gid}"><stop offset="0" stop-color="#ff86d6" stop-opacity="0.95"/><stop offset="0.45" stop-color="#ff86d6" stop-opacity="0.45"/><stop offset="1" stop-color="#ff86d6" stop-opacity="0"/></radialGradient>` +
-    mv('pulse', `<circle cx="257" cy="150" r="22" fill="url(#${gid})"/><path d="${sparkle(257, 150, 5)}" fill="#ffe4f4"/>`);
-  s += box(228, 126, 60, 45, light);
-  s += box(136, 118, 72, 56, '');
-  s += box(22, 104, 98, 80, chair);
-  // Dust in the air.
-  for (let i = 0; i < 7; i++) s += mv('drift', `<circle cx="${30 + i * 42}" cy="${50 + (i % 3) * 18}" r="${1.6 + (i % 2)}" fill="#fffaf2" stroke="#a9a3b4" stroke-width="0.5"/>`, '50% 50%', i * 0.45);
+  const light =
+    `<radialGradient id="${gid}"><stop offset="0" stop-color="#ff86d6" stop-opacity="0.95"/><stop offset="0.45" stop-color="#ff86d6" stop-opacity="0.45"/><stop offset="1" stop-color="#ff86d6" stop-opacity="0"/></radialGradient>` +
+    mv('pulse', `<circle cx="257" cy="150" r="24" fill="url(#${gid})"/><path d="${sparkle(257, 150, 5)}" fill="#ffe4f4"/>`) +
+    twinkles([[246, 140, 2.4], [268, 158, 2]], '#fff0fa');
+  s += box(228, 126, 60, 45, light, '14');
+  // A mouse looking round the middle room.
+  const fur = '#b4aebf';
+  const mouse =
+    comic(ellipsePath(216, 151, 6, 6), fur, { line: LINE.small, over: `<ellipse cx="216.4" cy="151.4" rx="3.4" ry="3.4" fill="${PASTEL.pink}"/>` }) +
+    comic('M208 168Q206 156 216 156Q226 158 226 166Q222 172 214 172Q208 172 208 168Z', fur, { line: LINE.small, rim: [2, -1], glint: [-0.8, 0.8] }) +
+    comic(ellipsePath(225.6, 167, 1.8, 1.6), PASTEL.pinkDeep, { line: 0 }) +
+    ink('M224 168.4L232 167M224 169.6L231.4 171.4', 0.5, '#6d6474') +
+    mv('blink', `<ellipse cx="219.6" cy="163" rx="1.5" ry="1.9" fill="#2e2734"/><circle cx="220.1" cy="162.4" r="0.5" fill="#fff"/>`);
+  s += `<g transform="translate(216 172) scale(1.35) translate(-216 -172)">${mv('peek', mouse, '0% 100%')}</g>`;
+  // The middle room: a little door at its back, ajar, light behind it; a ball of paper left on its floor.
+  const middle =
+    comic('M164 136H178V158H164Z', '#6f6a82', { line: LINE.fine, inner: `<path d="M166 138H172V158H166Z" fill="#fff4c6" opacity="0.7"/>` }) +
+    mv('swing', comic('M164 136L158 132V161L164 158Z', PASTEL.sandLight, { line: LINE.fine, glint: [-0.5, 0.5] }), '100% 50%') +
+    comic(ellipsePath(186, 163, 4.4, 3.8), '#fffaf1', { line: LINE.fine, over: ink('M183.4 162L186 163.6L188.4 161.4M184.6 165L187.6 164.6', 0.5, '#a9a3b4') });
+  s += box(136, 118, 72, 56, middle, '13');
+  // The first room: a little chair, a rug, a picture on its back wall, all just as they were left.
+  const first =
+    comic('M46 120H64V134H46Z', PASTEL.butter, { line: LINE.fine, over: comic('M49 123H61V131H49Z', PASTEL.aqua, { line: 0, over: ink('M49 130L54 125L57 128L61 124', 0.6, darkOf(PASTEL.aqua, 0.4)) }) }) +
+    `<ellipse cx="74" cy="164" rx="22" ry="4.4" fill="${PASTEL.pink}" stroke="${lineFor(PASTEL.pink)}" stroke-width="0.6"/>` +
+    ink('M58 164H90M62 162H86M62 166H86', 0.5, lightOf(PASTEL.pink, 0.5)) +
+    comic('M58 166V138H63V156H80V166Z', PASTEL.bark, { line: LINE.small, rim: [1.4, -1] }) +
+    ink('M60 166V176M78 166V176', LINE.small, darkOf(PASTEL.bark, 0.3));
+  s += box(22, 104, 98, 80, first, '12');
+  // A scrap of paper blown about the floor.
+  s += mv('drift', comic('M286 206L298 202L300 210L290 214Z', '#fffaf1', { line: LINE.fine, rim: [1, -0.6] }), '50% 50%', 0.9);
   return card(wall, 606, s, PASTEL.slate);
 }
 

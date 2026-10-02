@@ -38,8 +38,10 @@ export class PaperStage {
   private target: { x: number; y: number } | null = null;
   private look: { x: number; y: number } | null = null;
   private eyeX = NaN;
-  /** Vertical framing shift (device px) for a scripted look, eased. */
+  /** Vertical framing shift (device px) for a scripted look or a point kept in view, eased. */
   private shiftY = 0;
+  /** A world point at depth z kept inside the picture (the head of a figure in the air), or null. */
+  private keep: { x: number; y: number; z: number } | null = null;
   zoom = 1;
   /** While the room arrives through a page turn: its cards standing up (null once all stand). */
   popUp: PopUp | null = null;
@@ -99,6 +101,16 @@ export class PaperStage {
   /** A scripted look at a world point of the actors' plane; null returns to following. */
   lookAt(x: number | null, y = 0): void {
     this.look = x === null ? null : { x, y };
+  }
+
+  /**
+   * Keeps a world point (at depth z) inside the picture: while it would show
+   * above the top edge, the whole picture slides down just enough, and
+   * settles back once it is let go (null). A scripted look comes first.
+   * It moves every plane alike, so nothing shifts against anything else.
+   */
+  keepInView(p: { x: number; y: number; z: number } | null): void {
+    this.keep = p;
   }
 
   /** Puts the eye on its target at once (room start, a cut). */
@@ -236,9 +248,13 @@ export class PaperStage {
     const lo = s.x0 + half;
     const hi = s.x1 - half;
     lens.eye.x = lo > hi ? (s.x0 + s.x1) / 2 : Math.min(hi, Math.max(lo, this.eyeX));
-    // A scripted look also frames its point at the middle of the screen.
-    const wantShift = this.look ? H / 2 - lens.project(this.look.x, this.look.y, 0).y : 0;
-    this.shiftY = dt === 0 ? wantShift : this.shiftY + (wantShift - this.shiftY) * (1 - Math.exp(-dt * 4));
+    // A scripted look also frames its point at the middle of the screen; a
+    // point kept in view pulls the picture down just enough, quickly.
+    let wantShift = 0;
+    if (this.look) wantShift = H / 2 - lens.project(this.look.x, this.look.y, 0).y;
+    else if (this.keep) wantShift = Math.max(0, H * 0.04 - lens.project(this.keep.x, this.keep.y, this.keep.z).y);
+    const rate = !this.look && wantShift > this.shiftY ? 14 : 4;
+    this.shiftY = dt === 0 ? wantShift : this.shiftY + (wantShift - this.shiftY) * (1 - Math.exp(-dt * rate));
     lens.cy += this.shiftY;
     if (this.shakeT > 0) {
       this.shakeT = Math.max(0, this.shakeT - dt);

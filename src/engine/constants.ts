@@ -1,77 +1,22 @@
+import { BODIES, JUMP, type MoveTuning } from '../tuning';
+
 // Logical composition space.
 export const VIEW_W = 1280;
 export const VIEW_H = 720;
 
-/** Jumping is off: the story rooms are walked on one floor; the jump key does nothing and the touch Zıpla button stays hidden. */
-export const JUMPING = false;
-
-// Movement envelope (world units / seconds), tuned by playtesting. The jump
-// numbers only matter while JUMPING is on (no room needs a jump).
-export const GRAVITY = 1400;
-export const MAX_FALL = 920;
-
-export interface MoveTuning {
-  speed: number;
-  accel: number;
-  decel: number;
-  airAccel: number;
-  airDecel: number;
-  jumpVel: number;
-  jumpCut: number;
-}
-
-export const ROOT_MOVE: MoveTuning = {
-  speed: 235,
-  accel: 1900,
-  decel: 2300,
-  airAccel: 1350,
-  airDecel: 900,
-  jumpVel: 640, // apex ≈ 146 px
-  jumpCut: 0.45,
-};
-
-export const HUMAN_MOVE: MoveTuning = {
-  speed: 178,
-  accel: 1150,
-  decel: 1700,
-  airAccel: 800,
-  airDecel: 600,
-  jumpVel: 530, // apex ≈ 100 px
-  jumpCut: 0.5,
-};
-
-export const COWARD_MOVE: MoveTuning = {
-  speed: 150,
-  accel: 1000,
-  decel: 1500,
-  airAccel: 700,
-  airDecel: 600,
-  jumpVel: 540,
-  jumpCut: 0.5,
-};
-
-export const MECH_MOVE: MoveTuning = {
-  speed: 190,
-  accel: 3600, // brief starts, precise stops
-  decel: 5200,
-  airAccel: 1200,
-  airDecel: 1200,
-  jumpVel: 560,
-  jumpCut: 0.5,
-};
-
-export const SUIT_MOVE: MoveTuning = {
-  speed: 88,
-  accel: 500,
-  decel: 900,
-  airAccel: 300,
-  airDecel: 300,
-  jumpVel: 0,
-  jumpCut: 1,
-};
-
-export const COYOTE_MS = 110;
-export const JUMP_BUFFER_MS = 130;
+// Jumping and each body's movement are tuned in src/tuning.ts (JUMP, BODIES).
+export type { MoveTuning };
+/** Jumping is on: Space, the touch Zıpla button and a gamepad's south button jump (no room needs a jump). */
+export const JUMPING: boolean = JUMP.enabled;
+export const GRAVITY = JUMP.gravity;
+export const MAX_FALL = JUMP.maxFall;
+export const ROOT_MOVE: MoveTuning = BODIES.root;
+export const HUMAN_MOVE: MoveTuning = BODIES.human;
+export const COWARD_MOVE: MoveTuning = BODIES.coward;
+export const MECH_MOVE: MoveTuning = BODIES.mech;
+export const SUIT_MOVE: MoveTuning = BODIES.suit;
+export const COYOTE_MS = JUMP.coyoteMs;
+export const JUMP_BUFFER_MS = JUMP.bufferMs;
 
 // Shared navigation hull (all Gorti forms). Smaller than the drawn silhouette.
 export const HULL_W = 34;

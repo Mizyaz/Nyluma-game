@@ -153,6 +153,7 @@ export function normalizeSettings(raw: unknown): Settings {
       ? raw.textSpeed
       : d.textSpeed;
   const touch = raw.touch === 'auto' || raw.touch === 'on' || raw.touch === 'off' ? raw.touch : d.touch;
+  const touchHand = raw.touchHand === 'right' || raw.touchHand === 'left' ? raw.touchHand : d.touchHand;
   return {
     master: clamp01(raw.master, d.master),
     music: clamp01(raw.music, d.music),
@@ -161,6 +162,7 @@ export function normalizeSettings(raw: unknown): Settings {
     screenShake: bool(raw.screenShake, d.screenShake),
     textSpeed,
     touch,
+    touchHand,
   };
 }
 

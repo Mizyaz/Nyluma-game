@@ -1,13 +1,13 @@
 // Instruction texts name keyboard keys (E, Q, R, F, Boşluk, arrows). On a
 // touch device the same sentences are rewritten to name the on-screen
-// buttons instead (Eylem, Nefes, Biçim, Şarkı, Zıpla, yön düğmeleri).
+// controls instead (Eylem, Nefes, Biçim, Şarkı, Zıpla, the yön kolu).
 
 const RULES: [RegExp, string][] = [
   // Whole phrases first.
-  [/A \/ D ya da ← →/g, 'Yön düğmeleri'],
+  [/A \/ D ya da ← →/g, 'Yön kolu'],
   [/← derin, ↓ orta, → yüksek \(A, S, D\)/g, 'derin, orta ve yüksek nota düğmeleriyle'],
-  [/← → ile/g, 'yön düğmeleriyle'],
-  [/← →/g, 'Yön düğmeleri'],
+  [/← → ile/g, 'yön koluyla'],
+  [/← →/g, 'Yön kolu'],
   [/Esc \/ Boşluk/g, 'Zıpla'],
   [/Boşluk: zıpla/g, 'Zıpla düğmesi: zıpla'],
   [/\(Boşluk\)/g, '(Zıpla düğmesi)'],

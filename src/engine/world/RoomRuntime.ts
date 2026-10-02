@@ -28,6 +28,7 @@ import { WhalePlatforms } from '../../gameplay/whales/WhalePlatforms';
 import { isWhalePlatform } from '../../gameplay/whales/whalePlan';
 import type { PaperStage } from '../../paper';
 import { isBoxFloor, propLight, propZ, type RoomStaging } from '../../content/stage';
+import { bodyTop } from './geometry';
 
 export interface SolidRt {
   def: SolidDef;
@@ -207,7 +208,10 @@ export class RoomRuntime {
   // ------------------------------------------------------------ solids
 
   private addSolid(def: SolidDef, index: number): void {
-    const zone = this.scene.add.zone(def.x + def.w / 2, def.y + def.h / 2, def.w, def.h);
+    // A gate on the floor stops Gorti at any height (geometry.ts bodyTop): no jump clears it.
+    const top = bodyTop(def, this.staged.box.floor);
+    const bottom = def.y + def.h;
+    const zone = this.scene.add.zone(def.x + def.w / 2, (top + bottom) / 2, def.w, bottom - top);
     this.scene.physics.add.existing(zone, true);
     const body = zone.body as Phaser.Physics.Arcade.StaticBody;
     if (def.oneWay) {
