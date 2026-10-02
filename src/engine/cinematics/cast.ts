@@ -39,7 +39,7 @@ function closeUp(s: Parameters<PortraitFactory>[0], rig: ReturnType<typeof rigFo
 export const CAST: Record<CastId, PortraitFactory> = {
   gorti: (s, w) => closeUp(s, gortiRig(), w),
   coward: (s, w) => closeUp(s, RIG_COWARD, w),
-  horse: (s, w) => new RigPortrait(s, RIG_HORSE, w, { scale: 1.5, focus: 'muzzle', dx: -70, dy: -10, horse: true }),
+  horse: (s, w) => new RigPortrait(s, RIG_HORSE, w, { scale: 1.5, focus: 'muzzle', dx: 70, dy: -10, horse: true }),
   babyMoon: (s, w) => new FacePortrait(s, 'baby', w),
   oldMoon: (s, w) => new FacePortrait(s, 'old', w),
   sun: (s, w) => new FacePortrait(s, 'sun', w),
