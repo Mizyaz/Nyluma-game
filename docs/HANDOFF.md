@@ -306,9 +306,18 @@ Conventions:
   hidden until the stage opens (a laptop, an upright phone's band and a phone on its side);
   the stage is open at the start and the end; the lengths; less motion only fades; the card
   never hangs in front of the room; the card's layout fits every screen.
-- Frame times of the theatre in SwiftShader have not been measured yet. Per frame it only
-  places a few printed sheets; the page turn drew its bands on a 2D canvas every frame
-  (about 220 ms a frame during the turn at 1280 × 720, headless).
+- Measured against the page turn (bee0b9f) in WebGL on SwiftShader (headless, a software GPU,
+  so only the comparison means anything):
+  - New Game to the HUD: median 5.5 s against 8.6 s (6 runs each, 1280 × 720); page open to
+    the menu 5.6 s against 6.0 s.
+  - A frame in r01 by its doorway: median 783 ms against 900 ms at 1280 × 720 (8 s), 233 ms
+    against 267 ms at 844 × 390, dpr 2 (20 s after settling). r05 by its gate: 583 against
+    633 ms at 1280 × 720.
+  - At about a frame a second the clock's 100 ms cap stretches every change; a change also
+    waits for the next room to draw 3 frames. At 1280 × 720 a room change took 55 frames
+    against the page turn's 26, a chapter 134 against 84 (one run each).
+  - Both builds stall now and then for 7–10 s in SwiftShader, with the main thread free
+    (the GPU process); an 8 s window can catch no frame at all.
 - Gone with the page turn: `PageTurn.ts`, `pageCurl.ts`, `ChapterPage.ts`, `PageBits.ts`,
   their CSS, `tests/unit/transitions.test.ts`, and the `brush` and `leaf` sounds.
 
@@ -342,6 +351,12 @@ Conventions:
   side of a cross wall's middle), so he goes through the doorway and never through the wall;
   he keeps 26 px from the jambs. Keys, the stick and the bots all walk the same way. A wall
   without an opening stands where no one walks.
+- A doorway in the right side wall is small on a narrow screen, by geometry: the camera stops
+  at the room's end, the eye is never more than half a screen from the wall, and a hole from
+  z −250 to −70 shows at most about 16% of the half-screen wide (the lens, dist 900). That is
+  about 100 px at 1280 × 720, 60 CSS px at 844 × 390 and 25–30 CSS px held upright
+  (390 × 844), where the doorway is a sliver at the band's right edge. On phones the
+  Rezonans/Zıpla buttons cover its foot. A deeper hole, or a stronger lens, would widen it.
 - Leaving through the side wall (`WorldScene.walkIn`): he walks on into the passage while the
   flats close, seen only through the opening (his plane's camera is cut at the near jamb,
   `PlaneCamera.clipRight`), his shadow on the passage's floor, and the leaf shuts behind him.
