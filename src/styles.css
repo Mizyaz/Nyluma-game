@@ -1636,142 +1636,762 @@ a {
 
 /* ------------------------------------------------------------ loading */
 
+/* A pop-up paper theatre in the night that builds itself while the game
+   draws its pictures (LoadingView.ts, loadingStage.ts). --u is one theatre
+   unit in px. The theatre is a stack of flat layers (.ld-z), back to front,
+   that the pointer slides against each other; their cards are hinged at the
+   floor and pop up. It shares the machine with the game, so it is cheap to
+   paint: what moves has a layer of its own, painted once, and only
+   transform and opacity ever change; nothing moves inside an SVG. */
 .loading {
-  /* The night of the first painting: plum air, paper grain, dark corners. */
   position: absolute;
   inset: 0;
   z-index: 20;
   overflow: hidden;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--safe-t) var(--safe-r) var(--safe-b) var(--safe-l);
   background:
     var(--grain),
-    radial-gradient(ellipse 75% 70% at 50% 42%, #54477a 0%, #372d52 52%, #211a31 100%);
+    radial-gradient(ellipse 72% 64% at 50% 46%, #4a3d6e 0%, #2f2648 56%, #1a1426 100%);
   color: var(--ink);
-  transition: opacity 0.45s ease;
+  /* Holds on a moment for the ta-da, then dissolves into the game. */
+  transition: opacity 0.45s cubic-bezier(0.55, 0, 0.85, 0.3);
 }
 
 .loading.done {
   opacity: 0;
+}
+
+#stage > .loading.done {
   pointer-events: none;
 }
 
-.loading .ld-middle {
-  display: grid;
-  justify-items: center;
-  gap: max(6px, calc(var(--s) * 10px));
-  width: min(92%, 760px);
+/* While the theatre covers the game, the game's canvas is not drawn under
+   it. The game repaints its canvas on every frame, and the page is then
+   composited anew over the whole screen, the theatre included: where a
+   software GPU draws the page, that held up the game's own pictures. The
+   canvas shows again as the theatre starts to fade. */
+#app:has(> #stage > .loading:not(.done)) > #game {
+  visibility: hidden;
 }
 
-.loading .subtitle {
-  margin: 0;
+.ld-box {
+  position: relative;
+  flex: none;
+  width: calc(var(--W) * var(--u));
+  height: calc(var(--H) * var(--u));
+  pointer-events: none;
 }
 
-/* The Moon and the Sun look on from the top corners, drifting a little. */
-.loading .ld-moon,
-.loading .ld-sun {
+/* The theatre's shadow on the page. */
+.ld-box::before {
+  content: '';
   position: absolute;
-  top: max(10px, calc(var(--s) * 18px));
-  width: max(84px, calc(var(--s) * 170px));
-  aspect-ratio: 1;
-  animation: ld-drift 6s ease-in-out infinite;
+  inset: auto 3% -4% 3%;
+  height: 10%;
+  background: radial-gradient(closest-side, rgba(8, 4, 16, 0.6), transparent);
 }
 
-.loading .ld-moon {
-  left: max(10px, calc(var(--s) * 26px));
+.ld-box svg,
+.ld-box canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
-.loading .ld-sun {
-  right: max(10px, calc(var(--s) * 26px));
-  width: max(96px, calc(var(--s) * 196px));
+/* The layers. Each slides with the pointer by its depth (LoadingView). They
+   stay flat: a layer drawn in perspective costs a software compositor a full
+   redraw of it whenever anything over it moves. */
+.ld-look,
+.ld-z {
+  position: absolute;
+  inset: 0;
+}
+
+.ld-z {
+  transform-origin: 0 0;
+}
+
+.ld-card,
+.ld-flat,
+.ld-fs,
+.ld-fsh,
+.ld-lamp,
+.ld-cr,
+.ld-spark,
+.ld-head,
+.ld-screen,
+.ld-title,
+.ld-tag,
+.ld-face,
+.ld-whale {
+  position: absolute;
+}
+
+/* What moves has a layer of its own, painted once and then only moved. */
+.ld-z,
+.ld-card,
+.ld-fs,
+.ld-fsh,
+.ld-cr,
+.ld-gorti,
+.ld-head,
+.ld-eyes,
+.ld-digits,
+.ld-count,
+.ld-drape,
+.ld-val {
+  will-change: transform;
+}
+
+.ld-lamp i,
+.ld-beam,
+.ld-joy {
+  will-change: opacity;
+}
+
+/* A card lies folded on the floor until its turn, then springs up past
+   upright and settles: in perspective while it moves, flat once it stands. A
+   card already up when the theatre is redrawn (.ld-up) does not pop again.
+   Until its turn it is not drawn at all. */
+.ld-card {
+  transform-origin: 50% 100%;
+  opacity: 0;
+  transition: opacity 0.25s ease-out;
+}
+
+.ld-z.on > .ld-card {
+  opacity: 1;
+  transition-delay: var(--w, 0s);
+  animation: ld-pop 0.8s var(--w, 0s) backwards;
+}
+
+.ld-z.ld-up > .ld-card {
+  animation: none;
+}
+
+/* Hanging things are let down on their threads, and swing there. */
+.ld-card.ld-drop {
+  transform: translateY(calc(-46 * var(--u)));
+  transition:
+    transform 1s cubic-bezier(0.25, 1.6, 0.5, 1),
+    opacity 0.35s ease-out;
+}
+
+.ld-z.on > .ld-card.ld-drop {
+  transform: none;
+  animation: none;
+}
+
+.ld-bob {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 0;
+}
+
+.ld-z.on .ld-bob {
+  animation: ld-bob 3.8s ease-in-out var(--d) infinite alternate;
+}
+
+/* The Moon and the Sun blink now and then. */
+.ld-blink {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
+.ld-z.on .ld-blink {
+  animation: ld-blink 5.3s linear infinite;
+}
+
+.ld-z.on .ld-blink.ld-sun {
+  animation-duration: 7.9s;
   animation-delay: -3s;
 }
 
-.loading .ld-moon svg,
-.loading .ld-sun svg {
-  width: 100%;
-  height: 100%;
-  display: block;
+/* The proscenium's shadow on the stage comes with it. */
+.ld-fsh {
+  opacity: 0;
+  transition: opacity 0.6s ease-out;
 }
 
-.loading .ld-grow {
-  width: max(230px, calc(var(--s) * 420px));
+.ld-z.on > .ld-fsh {
+  opacity: 1;
+  transition-delay: var(--w, 0s);
 }
 
-.loading .ld-grow svg {
-  width: 100%;
-  display: block;
+/* The whale swims along its wire, bobbing as it goes. */
+.ld-whale {
+  opacity: 0;
+  transition: opacity 0.6s ease-out;
+}
+
+.ld-z.on > .ld-whale {
+  opacity: 1;
+  transition-delay: var(--w, 0s);
+  animation: ld-swim 34s linear -12s infinite;
+}
+
+.ld-fish {
+  position: absolute;
+  inset: 0;
+}
+
+.ld-z.on > .ld-whale > .ld-fish {
+  animation: ld-bob 1.9s ease-in-out infinite alternate;
+}
+
+/* Crystals sprout, stretching past their height, and their tips sparkle. */
+.ld-cr {
+  transform-origin: 50% 100%;
+  transform: scale(0.4, 0);
+  opacity: 0;
+  transition:
+    transform 0.7s cubic-bezier(0.3, 1.8, 0.5, 1),
+    opacity 0.15s;
+}
+
+.ld-cr.on {
+  transform: none;
+  opacity: 1;
+  transition-delay: var(--w, 0s);
+}
+
+.ld-face svg,
+.ld-blink svg,
+.ld-cr svg,
+.ld-spark svg {
   overflow: visible;
 }
 
-.loading .cr {
-  transform-box: fill-box;
+.ld-spark {
+  opacity: 0;
+}
+
+.ld-cr.on + .ld-spark {
+  animation: ld-spark 0.9s ease-out calc(var(--w, 0s) + 0.25s) both;
+}
+
+/* Footlights light up one by one. */
+.ld-lamp i {
+  position: absolute;
+  inset: -40% 6% 22%;
+  background: radial-gradient(closest-side, rgba(255, 240, 180, 0.9), rgba(255, 196, 150, 0.32) 55%, transparent);
+  opacity: 0;
+  transition: opacity 0.5s ease-out;
+}
+
+.ld-lamp.on i {
+  opacity: 1;
+  transition-delay: var(--w, 0s);
+}
+
+/* Mist low over the far hills. */
+.ld-haze {
+  position: absolute;
+  inset: 30% 0 0;
+  background: linear-gradient(rgba(196, 184, 232, 0), rgba(196, 184, 232, 0.38));
+}
+
+/* Fireflies wander over the hills, glowing and dimming, once the hills are up. */
+.ld-fly {
+  position: absolute;
+  width: calc(18 * var(--u));
+  height: calc(18 * var(--u));
+  margin: calc(-9 * var(--u));
+  background: radial-gradient(closest-side, #fffbe0 18%, rgba(240, 250, 160, 0.4) 36%, transparent);
+  visibility: hidden;
+  transition: visibility 0s;
+}
+
+.ld-z.on > .ld-fly {
+  visibility: visible;
+  transition-delay: calc(var(--w, 0s) + 0.4s);
+  animation:
+    ld-fly 9s ease-in-out var(--d) infinite alternate,
+    ld-glow 1.9s ease-in-out var(--d) infinite alternate;
+}
+
+/* Gorti's spotlight; it brightens for the ta-da. */
+.ld-beam {
+  position: absolute;
+  inset: 0;
+  opacity: 0.6;
+  transition: opacity 0.5s ease-out;
+}
+
+.ld-tada .ld-beam {
+  opacity: 1;
+}
+
+/* Gorti: his head turns to each new crystal; his face is on the screen. */
+.ld-gorti {
+  position: absolute;
+  inset: 0;
   transform-origin: 50% 100%;
-  transform: scaleY(0.06);
-  transition: transform 0.35s cubic-bezier(0.3, 1.5, 0.5, 1);
 }
 
-.loading .spark {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: ld-twinkle 1.8s ease-in-out infinite;
+.ld-head {
+  transition: transform 0.45s cubic-bezier(0.3, 1.5, 0.6, 1);
 }
 
-/* The words and the count on a strip of paper. */
-.loading .ld-strip {
+.ld-eyes,
+.ld-joy,
+.ld-scan,
+.ld-snow {
+  position: absolute;
+  inset: 0;
+}
+
+.ld-eyes {
+  transition: transform 0.25s ease-out;
+}
+
+.ld-eyes i {
+  position: absolute;
+  left: 60%;
+  top: 19%;
+  width: 12%;
+  height: 22%;
+  border-radius: 24%;
+  background: #ffb8e2;
+  box-shadow:
+    0 0 calc(3 * var(--u)) #ff5db6,
+    0 0 calc(8 * var(--u)) rgba(255, 93, 182, 0.7);
+  animation: ld-wink 4.6s infinite;
+}
+
+.ld-eyes i:first-child {
+  left: 26%;
+  top: 17%;
+  width: 14%;
+  height: 25%;
+}
+
+/* Near the end the game finishes its pictures in one long stretch, and the
+   theatre holds still for it: the small life pauses, and the drapes settle
+   at once, so that there is nothing left to redraw (LoadingView's HUSH). */
+.ld-hush .ld-z.on .ld-bob,
+.ld-hush .ld-z.on .ld-blink,
+.ld-hush .ld-z.on > .ld-whale,
+.ld-hush .ld-z.on > .ld-whale > .ld-fish,
+.ld-hush .ld-z.on > .ld-fly,
+.ld-hush .ld-eyes i {
+  animation-play-state: paused;
+}
+
+.ld-hush:not(.ld-tada) .ld-drape {
+  transition: none;
+}
+
+.ld-digits {
+  position: absolute;
+  inset: 52% 0 auto;
+  font: 900 calc(19 * var(--u)) / 1 var(--display);
+  font-synthesis: none;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: #ffd6ee;
+  text-shadow: 0 0 calc(3 * var(--u)) #ff5db6;
+}
+
+/* Scan lines and the snow, rounded to the screen. */
+.ld-scan,
+.ld-snow {
+  border-radius: calc(8 * var(--u));
+}
+
+.ld-scan {
+  background: repeating-linear-gradient(rgba(44, 8, 38, 0) 0 2px, rgba(44, 8, 38, 0.42) 2px 3px);
+}
+
+.ld-joy,
+.ld-snow {
+  opacity: 0;
+}
+
+.ld-snow {
+  background: var(--pencil), var(--grain), #8a6c88;
+  background-size: 70px 70px;
+}
+
+/* The drapes gather toward the sides as the stage fills (--k). */
+.ld-drape,
+.ld-val {
+  position: absolute;
+  inset: 0;
+  transition: transform 0.9s cubic-bezier(0.3, 1.3, 0.5, 1);
+}
+
+.ld-drape {
+  transform: scaleX(var(--k, 1));
+}
+
+.ld-drape.ld-l {
+  transform-origin: 0 50%;
+}
+
+.ld-drape.ld-r {
+  transform-origin: 100% 50%;
+}
+
+/* The title on its banner (fitted in LoadingView), the room's tag under it. */
+.ld-title,
+.ld-tag {
+  display: grid;
+  place-items: center;
+}
+
+.ld-title .title {
+  --o: calc(2.3 * var(--u));
+  width: max-content;
+  font-size: calc(var(--tf) * var(--u));
+  line-height: 1.04;
+  white-space: nowrap;
+  rotate: -1.5deg;
+}
+
+.ld-title.ld-2 .title {
+  width: auto;
+  white-space: normal;
+}
+
+.ld-tag svg {
+  position: absolute;
+  inset: 0;
+}
+
+.ld-tag span {
+  position: relative;
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--ink);
+  rotate: 1.5deg;
+}
+
+/* The words and the count on a strip of paper pinned over the front board. */
+.ld-strip {
+  position: relative;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   align-items: baseline;
-  gap: 0.8em;
-  padding: 0.3em 1em;
+  gap: 0 0.7em;
+  max-width: min(92%, 34em);
+  margin: calc(-42 * var(--u)) 0 0;
+  padding: 0.28em 1em 0.32em;
   background: var(--grain), var(--paper);
-  border: var(--lw) solid var(--line);
+  border: var(--lw) solid #a8957a;
   border-radius: 10px 4px 12px 3px / 4px 10px 3px 12px;
-  box-shadow: 3px 4px 0 rgba(20, 14, 28, 0.45);
+  box-shadow: 3px 4px 0 rgba(16, 10, 24, 0.5);
   rotate: -1deg;
   font-family: var(--serif);
-  font-size: max(16px, calc(var(--s) * 26px));
+  font-size: max(14px, calc(var(--u) * 24));
+  line-height: 1.25;
+  text-align: center;
+  text-wrap: balance;
 }
 
-.loading .ld-lbl {
+.ld-lbl {
   font-style: italic;
 }
 
-.loading .ld-count {
+.ld-count {
   font-family: var(--display);
   font-weight: 900;
   font-variant-numeric: tabular-nums;
-  color: var(--pastel-lilac-deep);
+  color: #7a55a8;
 }
 
-@keyframes ld-drift {
-  0%,
-  100% {
-    translate: 0 0;
+/* 100%: the curtains swish apart, the valance hops up, Gorti jumps for joy,
+   the crystals twinkle in a ripple, the footlights flare, confetti flies. */
+.ld-tada .ld-drape {
+  transform: scaleX(0.42);
+  transition: transform 0.85s cubic-bezier(0.25, 1.5, 0.45, 1);
+}
+
+.ld-tada .ld-val {
+  transform: translateY(-18%);
+}
+
+.ld-tada .ld-gorti {
+  animation: ld-hop 0.5s cubic-bezier(0.3, 0, 0.5, 1) 2;
+}
+
+.ld-tada .ld-eyes,
+.ld-msg .ld-eyes,
+.ld-msg .ld-digits {
+  opacity: 0;
+}
+
+.ld-tada .ld-joy,
+.ld-msg .ld-snow {
+  opacity: 1;
+}
+
+.ld-tada .ld-ban {
+  animation: ld-hooray 0.8s ease-out;
+}
+
+.ld-tada .ld-cr + .ld-spark {
+  animation: ld-twinkle 0.8s ease-out var(--sd) both;
+}
+
+.ld-tada .ld-lamp i {
+  animation: ld-flare 0.7s ease-out var(--sd);
+}
+
+.ld-burst {
+  position: absolute;
+}
+
+.ld-cf {
+  position: absolute;
+  left: calc(-17 * var(--u));
+  top: calc(-17 * var(--u));
+  width: calc(34 * var(--u));
+  height: calc(34 * var(--u));
+  opacity: 0;
+}
+
+.ld-tada .ld-cf {
+  animation: ld-conf 1.9s var(--d) both;
+}
+
+.ld-msg .ld-snow {
+  animation: ld-snow 0.24s steps(3) infinite;
+}
+
+.ld-msg .ld-count {
+  display: none;
+}
+
+.ld-instant * {
+  transition: none !important;
+}
+
+/* Reduced motion: no parallax, bobbing or blinking, and the whale waits in
+   the sky. Nothing moves or fades: each piece just appears in its turn, a
+   beat apart (each frame of a fade would have the theatre composited again
+   while the game draws its pictures). */
+.ld-still .ld-z.on > .ld-card,
+.ld-still .ld-z.on .ld-bob,
+.ld-still .ld-z.on .ld-blink,
+.ld-still .ld-eyes i,
+.ld-still .ld-z.on > .ld-whale,
+.ld-still .ld-z.on > .ld-whale > .ld-fish,
+.ld-still .ld-z.on > .ld-fly,
+.ld-still .ld-cr.on + .ld-spark,
+.ld-still.ld-tada .ld-cr + .ld-spark,
+.ld-still.ld-tada .ld-gorti,
+.ld-still.ld-tada .ld-ban,
+.ld-still.ld-tada .ld-cf,
+.ld-still.ld-tada .ld-lamp i {
+  animation: none;
+}
+
+.ld-still .ld-whale {
+  translate: calc(var(--run) * 0.35 * var(--u)) 0;
+}
+
+.ld-still .ld-card,
+.ld-still .ld-cr,
+.ld-still .ld-drape,
+.ld-still .ld-val {
+  transform: none;
+}
+
+/* What changes there changes at once, once its wait (--w) is over. */
+.ld-still .ld-box * {
+  transition-duration: 0s;
+}
+
+@keyframes ld-pop {
+  from {
+    transform: perspective(calc(1500 * var(--u))) rotateX(82deg);
+    animation-timing-function: cubic-bezier(0.25, 0.7, 0.55, 1);
+  }
+  46% {
+    transform: perspective(calc(1500 * var(--u))) rotateX(-11deg);
+    animation-timing-function: ease-in-out;
+  }
+  76% {
+    transform: perspective(calc(1500 * var(--u))) rotateX(3deg);
+    animation-timing-function: ease-in-out;
+  }
+  to {
+    transform: perspective(calc(1500 * var(--u))) rotateX(0deg);
+  }
+}
+
+@keyframes ld-bob {
+  from {
+    translate: 0 calc(-3 * var(--u));
     rotate: -2deg;
   }
-  50% {
-    translate: 0 6%;
+  to {
+    translate: 0 calc(3 * var(--u));
     rotate: 2deg;
   }
 }
 
-@keyframes ld-twinkle {
-  0%,
-  100% {
-    scale: 0.55;
-    opacity: 0.5;
+@keyframes ld-fly {
+  0% {
+    translate: 0 0;
   }
-  50% {
-    scale: 1.15;
+  30% {
+    translate: calc(26 * var(--u)) calc(-14 * var(--u));
+  }
+  65% {
+    translate: calc(-12 * var(--u)) calc(-30 * var(--u));
+  }
+  100% {
+    translate: calc(20 * var(--u)) calc(-8 * var(--u));
+  }
+}
+
+@keyframes ld-glow {
+  from {
+    opacity: 0.2;
+  }
+  to {
     opacity: 1;
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .loading .ld-moon,
-  .loading .ld-sun,
-  .loading .spark {
-    animation: none;
+@keyframes ld-blink {
+  0%,
+  91%,
+  97%,
+  100% {
+    opacity: 0;
+  }
+  92%,
+  96% {
+    opacity: 1;
+  }
+}
+
+@keyframes ld-wink {
+  0%,
+  93%,
+  100% {
+    scale: 1 1;
+  }
+  95% {
+    scale: 1 0.1;
+  }
+}
+
+@keyframes ld-swim {
+  to {
+    translate: calc(var(--run) * var(--u)) 0;
+  }
+}
+
+/* A sparkle is painted at its largest (loadingStage's sprout), so it only
+   ever shrinks from there. */
+@keyframes ld-spark {
+  0% {
+    opacity: 0;
+    scale: 0;
+    rotate: 0deg;
+  }
+  30% {
+    opacity: 1;
+    scale: 0.87;
+  }
+  100% {
+    opacity: 0;
+    scale: 0.13;
+    rotate: 120deg;
+  }
+}
+
+@keyframes ld-hop {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  45% {
+    translate: 0 calc(-24 * var(--u));
+  }
+}
+
+/* The banner hops and rocks (it is not scaled up: that would draw it all
+   again, bigger, just as the game opens). */
+@keyframes ld-hooray {
+  0%,
+  100% {
+    translate: 0 0;
+    rotate: 0deg;
+  }
+  35% {
+    translate: 0 calc(-7 * var(--u));
+    rotate: -1.8deg;
+  }
+  70% {
+    translate: 0 calc(1.5 * var(--u));
+    rotate: 0.9deg;
+  }
+}
+
+@keyframes ld-conf {
+  0% {
+    opacity: 1;
+    translate: 0 0;
+    rotate: 1 0.5 0 0deg;
+    scale: 0.3;
+    animation-timing-function: cubic-bezier(0.12, 0.8, 0.3, 1);
+  }
+  24% {
+    translate: calc(var(--x) * var(--u)) calc(var(--y) * var(--u));
+    scale: 1;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.75, 0.6);
+  }
+  72% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    translate: calc(var(--x) * 1.18 * var(--u)) calc((var(--y) + var(--f)) * var(--u));
+    rotate: 1 0.5 0 var(--r);
+    scale: 0.9;
+  }
+}
+
+@keyframes ld-twinkle {
+  0% {
+    opacity: 0;
+    scale: 0;
+    rotate: 0deg;
+  }
+  35% {
+    opacity: 1;
+    scale: 1;
+  }
+  100% {
+    opacity: 0;
+    scale: 0.2;
+    rotate: 140deg;
+  }
+}
+
+@keyframes ld-flare {
+  35% {
+    scale: 1.6;
+  }
+}
+
+@keyframes ld-snow {
+  to {
+    background-position:
+      41px 23px,
+      -29px 37px,
+      0 0;
   }
 }
 

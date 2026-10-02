@@ -635,12 +635,18 @@ function placed(p: PartArt, x: number, y: number, rot = 0, len = 1): string {
 /**
  * A whole face as one picture (SVG markup), for screens drawn outside the
  * game (the loading screen): the Sun with its spikes, or the infant Moon.
+ * `shut` draws only its shut eyes, in the same frame, to lay over the face
+ * for a blink.
  */
-export function skyFaceSvg(kind: 'sun' | 'moon'): string {
+export function skyFaceSvg(kind: 'sun' | 'moon', part: 'face' | 'shut' = 'face'): string {
   if (kind === 'moon') {
-    const body = placed(moonBaby(), 130, 130) + placed(moonBabyEye(), MOON_EYE[0], MOON_EYE[1]) + placed(moonBabyLid(), MOON_EYE[0], MOON_EYE[1]) + placed(moonBabyMouth(), 96, 176);
+    const body =
+      part === 'shut'
+        ? placed(moonBabyShut(), MOON_EYE[0], MOON_EYE[1])
+        : placed(moonBaby(), 130, 130) + placed(moonBabyEye(), MOON_EYE[0], MOON_EYE[1]) + placed(moonBabyLid(), MOON_EYE[0], MOON_EYE[1]) + placed(moonBabyMouth(), 96, 176);
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 260" aria-hidden="true">${body}</svg>`;
   }
+  if (part === 'shut') return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-22 -22 364 364" aria-hidden="true">${SUN_EYES.map(([x, y]) => placed(sunShut(), x, y)).join('')}</svg>`;
   let body = '';
   const ray = sunRay();
   const bent = sunRayBroken();
