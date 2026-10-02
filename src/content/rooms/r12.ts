@@ -26,8 +26,6 @@ export const R12: RoomDef = {
   ],
   exits: [],
   props: [
-    { key: 'prop.officedoor', x: 1610, y: 682, depth: -8, unless: 'r12.door' },
-    { key: 'prop.officedoor.open', x: 1610, y: 682, depth: -8, when: 'r12.door' },
     { key: 'prop.bench', x: 600, y: 682, depth: -10 },
     { key: 'prop.coatrack', x: 1100, y: 682, depth: -10 },
     { key: 'prop.table', x: 2150, y: 682, depth: 5 },

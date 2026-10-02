@@ -21,7 +21,8 @@ import type { Pt } from '../svg';
 // close the opening, and open with a short animation when the condition
 // comes true. Gorti near wakes it: the light swells, the pages draw apart,
 // a leaf swings wider, someone peeks out, motes drift. With reduced motion
-// nothing idles, and opening is a short fade.
+// nothing idles or travels: opening (a leaf's swing too) and a peek are
+// short fades.
 //
 // Per frame it only moves, scales and fades a few dozen images: every
 // drawing is printed once, at the depth it stands at.
@@ -486,7 +487,8 @@ export class Doorway {
       }
       if (this.wake < 0.15) this.peekSounded = false;
       this.peeking = peekNow;
-      const tp = peekNow ? (reduced ? 0.08 : 0.35) : 0.25;
+      // (With reduced motion it does not come out: it fades in where it peeks, quickly.)
+      const tp = reduced ? 0.07 : peekNow ? 0.35 : 0.25;
       this.peek += ((peekNow ? 1 : 0) - this.peek) * (1 - Math.exp(-dt / tp));
       // Eyes follow Gorti, and blink now and then.
       const g = gortiX === null ? 0 : Math.max(-1, Math.min(1, (gortiX - this.place.x) / 260));
@@ -575,7 +577,9 @@ export class Doorway {
     const wv = s.wakeShut === 'only' ? wake * (1 - open) : s.wakeShut ? wake : wake * open;
     const wk = s.wake || s.sway?.byWake ? ease(clamp01((wv - wa) / (1 - wa))) : 0;
     const w = s.wake ?? {};
-    const pk = s.peek ? ease(clamp01(this.peek)) : 0;
+    const peek = s.peek ? clamp01(this.peek) : 0;
+    // With reduced motion a peek does not travel either: it is there or not, faded across.
+    const pk = reduced ? (peek < 0.5 ? 0 : 1) : ease(peek);
     const q = s.peek ?? {};
     const sw = s.sway && !reduced ? Math.sin((this.t * 1000 * Math.PI * 2) / s.sway.ms + p.ax * 0.013) * (s.sway.byWake ? wk : 1) : 0;
     let pose: DoorPose;
@@ -596,7 +600,7 @@ export class Doorway {
     const sx = (pose.sx ?? 1) * (1 + ((w.sx ?? 1) - 1) * wk) * (1 + ((q.sx ?? 1) - 1) * pk);
     const shut = s.blink && !reduced && this.blinkT >= 0 ? Math.sin(Math.PI * this.blinkT) : 0;
     const sy = (pose.sy ?? 1) * (1 + ((w.sy ?? 1) - 1) * wk) * (1 + ((q.sy ?? 1) - 1) * pk) * (1 - 0.85 * shut);
-    alpha = clamp01(alpha) * fade;
+    alpha = clamp01(alpha) * fade * (reduced && s.peek ? Math.abs(1 - 2 * peek) : 1);
     const img = p.img;
     if (p.inside) {
       const k = (E - zc) / (E - p.z);
@@ -619,8 +623,11 @@ export class Doorway {
   private drawLeaf(l: LeafRt, open: number, wake: number, ex: number, ey: number, E: number, reduced: boolean, fade: number): void {
     const s = l.spec;
     const { x, floor, z } = this.place;
-    const rest = lerp(s.shutAngle, s.restAngle, open);
-    const wide = (s.wideAngle - s.restAngle) * wake * open;
+    // With reduced motion it does not swing: it stands shut or open, faded across the change.
+    const turns = s.restAngle !== s.shutAngle;
+    const rest = lerp(s.shutAngle, s.restAngle, reduced ? (open < 0.5 ? 0 : 1) : open);
+    const dip = reduced && turns ? Math.abs(1 - 2 * open) : 1;
+    const wide = reduced ? 0 : (s.wideAngle - s.restAngle) * wake * open;
     const wobble = reduced || s.still ? 0 : Math.sin(this.t * 1.7) * 1.8 * open * (1 - wake * 0.5);
     const th = ((rest + wide + wobble) * Math.PI) / 180;
     const sgn = s.hinge === 'right' ? -1 : 1;
@@ -664,8 +671,8 @@ export class Doorway {
       img.setCrop(c0, 0, Math.max(0.5, c1 - c0), texH);
       img.setScale(sx, k / ps);
       img.setPosition(left - (l.m + la) * ps * sx, ey + (top - l.m - ey) * k);
-      img.setAlpha(fade);
-      img.setVisible(right - left > 0.1 && fade > 0.01);
+      img.setAlpha(fade * dip);
+      img.setVisible(right - left > 0.1 && fade * dip > 0.01);
     }
   }
 

@@ -136,6 +136,8 @@ interface Face {
   seed: number;
   /** Thickness (the near face is a little slimmer). */
   k: number;
+  /** How far the outer feet reach on the right (the near face keeps clear of the eye in the floor). */
+  reach?: number;
 }
 
 /** A wavy line from p0 to p1: `waves` swings of `amp` px across it. */
@@ -193,10 +195,11 @@ function face(o: Face & { vines: boolean }): string {
   // Feet first: buttress roots spreading on the floor and gripping it.
   for (const side of [-1, 1]) {
     const x = side * SPAN;
+    const r = side > 0 ? (o.reach ?? 1) : 1;
     const feet: [Pt[], number, string][] = [
-      [[[x + side * 4, -50], [x + side * 18, -22], [x + side * 40, -7], [x + side * 66, 2]], 20, b],
+      [[[x + side * 4, -50], [x + side * 18 * r, -22], [x + side * 40 * r, -7], [x + side * 66 * r, 2]], 20, b],
       [[[x - side * 6, -44], [x - side * 16, -17], [x - side * 30, -4], [x - side * 46, 2]], 16, c],
-      [[[x + side * 34, -6], [x + side * 56, -10], [x + side * 78, 1]], 7, b],
+      [[[x + side * 34 * r, -6], [x + side * 56 * r, -10], [x + side * 78 * r, 1]], 7, b],
       [[[x - side * 28, -4], [x - side * 40, -8], [x - side * 56, 1]], 6, a],
     ];
     feet.forEach(([p, w, fill], i) => (s += barkRoot(p, w * k, 3, fill, o.seed + i * 7 + (side > 0 ? 50 : 0), { grooves: i < 2 ? 2 : 1 })));
@@ -241,7 +244,7 @@ function front(): string {
   s += barkRoot(curled(lip2, 7, 0.7, -1), 13, 3, C.root, 812, { grooves: 1 });
   s += barkRoot(curled(lip1, 10, 0.75, -1), 24, 4, C.root2, 811, { grooves: 2 });
   s += leaf([150, ROOF - 44], -1.9, 12, C.leaf, { stroke: 0.7 }) + leaf([196, ROOF - 30], -0.7, 11, C.leaf, { stroke: 0.7 });
-  s += face({ fills: [C.root, C.root2, C.root3], seed: 801, k: 0.86, vines: true });
+  s += face({ fills: [C.root, C.root2, C.root3], seed: 801, k: 0.86, vines: true, reach: 0.55 });
   // The keystone: crystals growing out of the crown.
   s += crystals(0, CROWN_Y + 8, 40, [C.crystal, C.crystal2, C.crystal3, C.crystal], 83, 1.1);
   s += shard(-20, CROWN_Y + 14, 16, 6, -2.5, C.crystal3) + shard(20, CROWN_Y + 14, 16, 6, -0.64, C.crystal2);
@@ -302,12 +305,13 @@ function tunnel(): string {
     inner += ink(`M${f(x)} ${f(y)}q${f(rng.range(-8, 8))} ${f(rng.range(6, 12))} ${f(rng.range(-4, 4))} ${f(rng.range(14, 24))}`, 0.8, darkOf(C.earth, 0.22));
   }
   let s = comic(poly2(wall), C.earth, { line: LINE.small, rim: [10, -4], glint: [-1, 1], hatch: 2.4, hatchWidth: 0.5, inner });
-  // Two roots wind down the wall as its ribs, branching, and splay at the floor.
+  // Two roots wind down the wall as its ribs, a brace branching back up
+  // into the roof from each (nothing hangs loose), and splay at the floor.
   for (const [x, seed] of [[166, 61], [252, 62]] as const) {
     const ph = rng.range(0, 6);
     const pts = wavy([x - 4, top + 2], [x + 2, -12], 5, 1.7, ph, 16);
     s += barkRoot([...pts, [x + 8, -2]], 16, 11, C.back2, seed, { grooves: 2 });
-    s += barkRoot(wavy([x + 1, top + 70], [x + 30, top + 128], 3, 1, ph, 8), 7, 2, C.back3, seed + 3, { grooves: 1 });
+    s += barkRoot(wavy([x + 1, top + 104], [x + 38, top + 10], 3, 1, ph, 8), 7, 2, C.back3, seed + 3, { grooves: 1 });
     s += barkRoot([[x + 4, -16], [x + 18, -5], [x + 30, 2]], 10, 3, C.back, seed + 5, { grooves: 1 });
     s += barkRoot([[x - 2, -14], [x - 16, -4], [x - 26, 2]], 9, 3, C.back3, seed + 6, { grooves: 1 });
   }
@@ -323,9 +327,9 @@ function tunnel(): string {
     [WALL_X1 + 4, y + 24],
     [WALL_X1 + 2, y + 24 + down],
   ];
-  s += barkRoot(roofRoot(top - 30, 4, 2.2, 0.3, 20), 15, 5, C.back3, 71, { grooves: 2 });
-  s += barkRoot(roofRoot(top - 14, 5, 1.6, 2.2, 60), 23, 7, C.back, 72, { grooves: 3 });
-  s += barkRoot(roofRoot(top + 1, 4, 2.8, 4.1, 34), 14, 4, C.back2, 73, { grooves: 2 });
+  s += barkRoot(roofRoot(top - 30, 4, 2.2, 0.3, 8), 15, 5, C.back3, 71, { grooves: 2 });
+  s += barkRoot(roofRoot(top - 14, 5, 1.6, 2.2, 24), 23, 7, C.back, 72, { grooves: 3 });
+  s += barkRoot(roofRoot(top + 1, 4, 2.8, 4.1, 14), 14, 4, C.back2, 73, { grooves: 2 });
   s += barkRoot(wavy([60, top - 40], [230, top - 44], 3, 1.4, 1.2, 12), 9, 3, C.back3, 74, { grooves: 1 });
   s += leaf([182, top + 8], 1.9, 10, C.leaf, { stroke: 0.7 }) + leaf([110, top + 10], 1.2, 9, C.leaf, { stroke: 0.7 }) + leaf([248, top - 40], -1.2, 10, C.leaf, { stroke: 0.7 });
   return s;
