@@ -8,12 +8,12 @@ import { at, figure, frameSheet, leafArt, passageWall, r2, stoneCourses } from '
 import { glowDisc, twinkle } from './doorKit';
 
 // b03, "Kırık Oda": the room of toy blocks, and its right wall is built of
-// them, course on course of big painted blocks. The way on is a doorway in
-// it between two columns of letter blocks (they read KA and PI, "kapı"),
-// and until the crystal is broken a barricade of little blocks fills it;
-// then the barricade sinks into the floor block by block. Through it: the
-// next room, an empty hill at night, and a jester on a spring bobs out at
-// Gorti from his box.
+// them, course on course of big painted blocks. The way on is a wide
+// doorway in it under a lintel of letter blocks (they read KAPI, "kapı")
+// resting on a slim column in the back corner, and until the crystal is
+// broken a barricade of little blocks fills it; then the barricade sinks
+// into the floor block by block. Through it: the next room, an empty hill
+// at night, and a jester on a spring bobs out at Gorti from his box.
 
 const T = {
   blocks: ['#f2c46b', '#f7a8c4', '#8fc4e8', '#a8d890', '#c8b8ea', '#f4a87c'],
@@ -23,12 +23,12 @@ const T = {
   night: '#9aa3d0',
 };
 
-const HOLE: Hole = { z0: -240, z1: -74, spring: 140, rise: 38 };
+const HOLE: Hole = { z0: -282, z1: -2, spring: 136, rise: 42 };
 
-/** A big toy block seen square on: its colour, a bevel, a letter or a dot. */
-function block(x: number, y: number, w: number, h: number, fill: string, mark: string): string {
+/** A big toy block seen square on: its colour, a bevel (`bevel` in from its edge), a letter or a dot. */
+function block(x: number, y: number, w: number, h: number, fill: string, mark: string, bevel = 6): string {
   const d = `M${r2(x + 3)} ${r2(y)}L${r2(x + w - 3)} ${r2(y)}Q${r2(x + w)} ${r2(y)} ${r2(x + w)} ${r2(y + 3)}L${r2(x + w)} ${r2(y + h - 3)}Q${r2(x + w)} ${r2(y + h)} ${r2(x + w - 3)} ${r2(y + h)}L${r2(x + 3)} ${r2(y + h)}Q${r2(x)} ${r2(y + h)} ${r2(x)} ${r2(y + h - 3)}L${r2(x)} ${r2(y + 3)}Q${r2(x)} ${r2(y)} ${r2(x + 3)} ${r2(y)}Z`;
-  const inner = `<rect x="${r2(x + 6)}" y="${r2(y + 6)}" width="${r2(w - 12)}" height="${r2(h - 12)}" rx="3" fill="none" stroke="${lightOf(fill, 0.45)}" stroke-width="2"/>`;
+  const inner = `<rect x="${r2(x + bevel)}" y="${r2(y + bevel)}" width="${r2(w - bevel * 2)}" height="${r2(h - bevel * 2)}" rx="${r2(bevel / 2)}" fill="none" stroke="${lightOf(fill, 0.45)}" stroke-width="${r2(bevel / 3)}"/>`;
   return comic(d, fill, { line: LINE.small, rim: [3, -1.6], glint: [-1.2, 1.2], hatch: 2.4, hatchWidth: 0.5, over: inner + mark });
 }
 
@@ -48,21 +48,18 @@ function face(): FaceArt {
     const y = rng.range(10, f.h - 40);
     s += rng.chance(0.5) ? `<circle cx="${r2(x)}" cy="${r2(y)}" r="4" fill="#fffaf2" opacity="0.75"/>` : twinkle(x, y, 5, '#fffaf2', 0.4);
   }
-  // The two columns of letter blocks, and the beam across.
-  const col = (z: number, letters: string[]): void => {
-    letters.forEach((ch, i) => {
-      const [x, y] = P(z, 46 * (i + 1));
-      const fill = T.blocks[(i + (z > -100 ? 2 : 0)) % T.blocks.length]!;
-      s += block(x, y, 40, 46, fill, ch ? letter(x + 20, y + 32, ch, fill) : `<circle cx="${r2(x + 20)}" cy="${r2(y + 23)}" r="6" fill="#fffaf2"/>`);
-    });
-  };
-  col(h.z0 - 40, ['', 'A', 'K', '']);
-  col(h.z1, ['', 'I', 'P', '']);
-  {
-    const [x, y] = P(h.z0 - 40, h.spring + h.rise + 44);
-    const [x1] = P(h.z1 + 40, 0);
-    s += block(x, y, x1 - x, 40, '#f4a87c', [0.25, 0.5, 0.75].map((k) => `<circle cx="${r2(x + (x1 - x) * k)}" cy="${r2(y + 20)}" r="5" fill="#fffaf2"/>`).join(''));
-  }
+  // The slim column in the back corner, beside the far jamb: little blocks stacked up to the lintel.
+  const top = h.spring + h.rise + 2;
+  ['#f2c46b', '#a8d890', '#f7a8c4', '#8fc4e8'].forEach((fill, i) => {
+    const [x, y] = P(-298, (top * (i + 1)) / 4);
+    s += block(x, y, 15, top / 4 - 1, fill, `<circle cx="${r2(x + 7.5)}" cy="${r2(y + top / 8)}" r="3" fill="#fffaf2"/>`, 3);
+  });
+  // The lintel over the doorway: a row of letter blocks (KAPI), a dot block at each end.
+  const lintel: [string, string][] = [['', '#f4a87c'], ['K', '#8fc4e8'], ['A', '#f7a8c4'], ['P', '#c8b8ea'], ['I', '#a8d890'], ['', '#f2c46b']];
+  lintel.forEach(([ch, fill], i) => {
+    const [x, y] = P(-298 + i * 48, top + 42);
+    s += block(x, y, 47, 42, fill, ch ? letter(x + 23.5, y + 30, ch, fill) : `<circle cx="${r2(x + 23.5)}" cy="${r2(y + 21)}" r="6" fill="#fffaf2"/>`);
+  });
   return { ...f, body: s };
 }
 
@@ -88,7 +85,7 @@ function barricade(): FaceArt {
     row++;
   }
   // A few on top, tumbled.
-  for (const [x, ang, c] of [[30, -12, '#f7a8c4'], [96, 8, '#8fc4e8'], [140, -4, '#f2c46b']] as const) body += `<g transform="rotate(${ang} ${x + 14} ${r2(y - 12)})">${block(x, y - 26, 28, 26, c, '')}</g>`;
+  for (const [x, ang, c] of [[30, -12, '#f7a8c4'], [110, 8, '#8fc4e8'], [182, -4, '#f2c46b'], [244, 10, '#a8d890']] as const) body += `<g transform="rotate(${ang} ${x + 14} ${r2(y - 12)})">${block(x, y - 26, 28, 26, c, '')}</g>`;
   return leafArt(h, T.blocks[0]!, body, { bare: true });
 }
 
@@ -108,7 +105,8 @@ function blockArch(inset: number, fill: string, seed: number): FaceArt {
   const h = HOLE;
   const f = { u0: h.z0 - 2, h: 240 };
   const inner: Hole = { z0: h.z0 + inset, z1: h.z1 - inset, spring: h.spring - inset * 0.6, rise: Math.max(4, h.rise - inset * 0.3) };
-  const ring = holeRing(inner, f, 0, 20);
+  // As many studs as the arch is long (about one every 15 px).
+  const ring = holeRing(inner, f, 0, Math.round((inner.z1 - inner.z0) / 7.3));
   let studs = '';
   const rng = new Rng(seed);
   ring.forEach((p, i) => {
@@ -152,7 +150,7 @@ export function blockDoor(): WallDoorArt {
         { x: 58, art: blockArch(22, '#8fc4e8', 6) },
       ],
     },
-    peek: { art: jester(), z: -158, hidden: 150, shown: 30 },
+    peek: { art: jester(), z: -142, hidden: 180, shown: 30 },
     light: { color: '#fff0c0', radius: 320, intensity: 0.85, y: 90 },
     glow: '#ffe9c8',
     sounds: { wake: ['click', 0.2, 1.4], peek: ['giggle', 0.32, 1.2], open: [['clunk', 0.45, 1.2], ['crystal', 0.25, 1.6]], shut: ['clunk', 0.35, 1] },
