@@ -60,8 +60,13 @@ export function holeOutline(h: Hole, f: Pick<FaceArt, 'u0' | 'h'>, n = 36): Pt[]
   return pts;
 }
 
-/** The opening's outline grown by `by` px all round (for frames, bands and linings). */
-export function holeRing(h: Hole, f: Pick<FaceArt, 'u0' | 'h'>, by: number, n = 36): Pt[] {
-  const g: Hole = { z0: h.z0 - by, z1: h.z1 + by, spring: h.spring + by * 0.6, rise: h.rise + by * 0.4, peak: h.peak };
+/**
+ * The opening's outline grown by `by` px all round (for frames, bands and
+ * linings); at the far jamb only by `by · far` (a doorway near the back
+ * corner has little wall beside its far jamb, so what rings it narrows
+ * there).
+ */
+export function holeRing(h: Hole, f: Pick<FaceArt, 'u0' | 'h'>, by: number, n = 36, far = 1): Pt[] {
+  const g: Hole = { z0: h.z0 - by * far, z1: h.z1 + by, spring: h.spring + by * 0.6, rise: h.rise + by * 0.4, peak: h.peak };
   return holeOutline(g, f, n);
 }

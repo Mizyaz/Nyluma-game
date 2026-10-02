@@ -27,10 +27,10 @@ export function ringPath(outer: readonly Pt[], inner: readonly Pt[]): string {
   return `${closed(outer)} ${closed(inner)}`;
 }
 
-/** The band round an opening, `w` wide, starting `gap` out from its edge, in the comic manner. */
-export function archBand(h: Hole, f: Pick<FaceArt, 'u0' | 'h'>, gap: number, w: number, fill: string, o: { over?: string; hatch?: boolean } = {}): string {
-  const inner = holeRing(h, f, gap);
-  const outer = holeRing(h, f, gap + w);
+/** The band round an opening, `w` wide, starting `gap` out from its edge, in the comic manner (narrowed to `far` of that at the far jamb, see holeRing). */
+export function archBand(h: Hole, f: Pick<FaceArt, 'u0' | 'h'>, gap: number, w: number, fill: string, o: { over?: string; hatch?: boolean; far?: number } = {}): string {
+  const inner = holeRing(h, f, gap, 36, o.far);
+  const outer = holeRing(h, f, gap + w, 36, o.far);
   const d = ringPath(outer, inner.slice().reverse());
   const id = nextId('band');
   // Shaded on the side away from the light (the far, left jamb) and under the crown.
@@ -159,8 +159,8 @@ export const blob = (pts: readonly Pt[]): string => smooth(pts, 1, true);
 export const line = (d: string, color: string, w: number = LINE.fine): string => ink(d, w, lineFor(color));
 
 /** An open path along an opening's edge grown by `by` (from the foot of the far jamb over the top to the near one). */
-export function archLine(h: Hole, f: Pick<FaceArt, 'u0' | 'h'>, by: number, n = 48): string {
-  const pts = holeRing(h, f, by, n);
+export function archLine(h: Hole, f: Pick<FaceArt, 'u0' | 'h'>, by: number, n = 48, far = 1): string {
+  const pts = holeRing(h, f, by, n, far);
   return 'M' + pts.map((p) => `${r2(p[0])} ${r2(p[1])}`).join('L');
 }
 
@@ -172,11 +172,12 @@ export function archTopLine(h: Hole, f: Pick<FaceArt, 'u0' | 'h'>, by: number, a
 
 /**
  * A doily round an opening: a paper ring from `gap` to `gap + w` out,
- * its outer edge scalloped every `every` px, little holes punched along it.
+ * its outer edge scalloped every `every` px, little holes punched along it
+ * (narrowed to `far` of that at the far jamb, see holeRing).
  */
-export function doily(h: Hole, f: Pick<FaceArt, 'u0' | 'h'>, gap: number, w: number, every: number, fill: string): string {
-  const inner = holeRing(h, f, gap, 60);
-  const base = holeRing(h, f, gap + w, 90);
+export function doily(h: Hole, f: Pick<FaceArt, 'u0' | 'h'>, gap: number, w: number, every: number, fill: string, far = 1): string {
+  const inner = holeRing(h, f, gap, 60, far);
+  const base = holeRing(h, f, gap + w, 90, far);
   // Scallops: bumps outward along the outer edge (away from the opening's middle line).
   const cx = (h.z0 + h.z1) / 2 - f.u0;
   const out: Pt[] = [];
@@ -189,13 +190,14 @@ export function doily(h: Hole, f: Pick<FaceArt, 'u0' | 'h'>, gap: number, w: num
     const ny = p[1] - (f.h - h.spring);
     const l = Math.hypot(nx, ny) || 1;
     const bump = w * 0.42 * k;
-    // Straight jambs bump sideways, the top outward.
+    // Straight jambs bump sideways, the top outward (toward the far side only by `far` of that).
     const onJamb = f.h - p[1] < h.spring;
-    out.push(onJamb ? [p[0] + Math.sign(nx) * bump, p[1]] : [p[0] + (nx / l) * bump, p[1] + (ny / l) * bump]);
+    const side = nx < 0 ? far : 1;
+    out.push(onJamb ? [p[0] + Math.sign(nx) * bump * side, p[1]] : [p[0] + (nx / l) * bump * side, p[1] + (ny / l) * bump]);
   }
   const d = `${closed(out)} ${closed(inner.slice().reverse())}`;
   let holes = '';
-  const mid = holeRing(h, f, gap + w * 0.62, 90);
+  const mid = holeRing(h, f, gap + w * 0.62, 90, far);
   acc = 0;
   for (let i = 1; i < mid.length; i++) {
     acc += Math.hypot(mid[i]![0] - mid[i - 1]![0], mid[i]![1] - mid[i - 1]![1]);
@@ -420,10 +422,10 @@ export function planks(f: Pick<FaceArt, 'u0' | 'u1' | 'h'>, o: { fills: readonly
   return s;
 }
 
-/** A ring of big stones round an opening (voussoirs), `w` deep, their fills taken in turn. */
-export function voussoirs(h: Hole, f: Pick<FaceArt, 'u0' | 'h'>, w: number, fills: readonly string[], n = 30): string {
+/** A ring of big stones round an opening (voussoirs), `w` deep (only `far` of that at the far jamb), their fills taken in turn. */
+export function voussoirs(h: Hole, f: Pick<FaceArt, 'u0' | 'h'>, w: number, fills: readonly string[], n = 30, far = 1): string {
   const ring = holeRing(h, f, 0, n);
-  const out = holeRing(h, f, w, n);
+  const out = holeRing(h, f, w, n, far);
   let s = '';
   for (let i = 0, k = 0; i < ring.length - 1; i += 2, k++) {
     const j = Math.min(ring.length - 1, i + 2);
@@ -453,8 +455,8 @@ export function ivy(x: number, y: number, len: number, fill: string, seed: numbe
 }
 
 /** A row of little bulbs along an arch line `by` out from an opening (a marquee): glows, glass, a glint. */
-export function bulbs(h: Hole, f: Pick<FaceArt, 'u0' | 'h'>, by: number, every: number, fill: string): string {
-  const pts = holeRing(h, f, by, 90);
+export function bulbs(h: Hole, f: Pick<FaceArt, 'u0' | 'h'>, by: number, every: number, fill: string, far = 1): string {
+  const pts = holeRing(h, f, by, 90, far);
   let s = '';
   let acc = every;
   for (let i = 1; i < pts.length; i++) {
