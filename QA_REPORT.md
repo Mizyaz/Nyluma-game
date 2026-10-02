@@ -549,7 +549,7 @@ renk bombardımanı kapalı, `?bursts=0`):
 | `qa/screenshots/05-sun.jpg` | Güneş arenası |
 | `qa/screenshots/06-dormitory.jpg` | İç koğuş (Korkak Form, meşale) |
 | `qa/screenshots/07-final-document.jpg` | Son belge ("SATILDI") |
-| `qa/screenshots/08-crystal-tunnel.jpg` | Bölüm geçişindeki kristal tüneli |
+| `qa/screenshots/08-page-turn.jpg` | Sayfa çevirme: ana menünün resmi bir sayfa gibi sağ kenarından kalkıp çevriliyor |
 | `qa/screenshots/09-phone-menu.jpg` | Dik telefonda ana menü (başlık resmin üstünde, düğmeler altında) |
 | `qa/screenshots/10-phone-game.jpg` | Dik telefonda ilk oda: altyazı görüntünün altında, kontroller en altta |
 | `qa/screenshots/11-colour-storm.jpg` | Renk bombardımanı: renk dalgası, yağan kristaller, şaşıran Gorti |
