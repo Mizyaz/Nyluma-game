@@ -28,8 +28,8 @@ export const R02: RoomDef = {
     { x: 0, y: 0, w: 110, h: 1100, style: 'soil' },
     { x: 110, y: 0, w: 1490, h: 60, style: 'soil' },
     // The far wall over the tunnel mouth, and the roots closing it until
-    // the song (drawn by the root door prop).
-    { x: 1480, y: 60, w: 120, h: 790, style: 'soil' },
+    // the song (both drawn by its doorway, src/content/doors.ts).
+    { x: 1480, y: 60, w: 120, h: 790, style: 'soil', hidden: true },
     { id: 'roots', x: 1480, y: 850, w: 50, h: 250, style: 'none', unless: 'r02.song' },
     // The whales the song raises, one above the other toward the tunnel
     // mouth: scenery, floating behind Gorti as he walks on under them.
@@ -73,9 +73,6 @@ export const R02: RoomDef = {
   props: [
     // The sleeping root under the whales: it stretches away with the song.
     { key: 'prop.coil', x: 1010, y: 1102, depth: -10, unless: 'r02.song' },
-    // The tunnel mouth: roots closing it, parted by the song.
-    { key: 'prop.rootdoor', x: 1540, y: 1102, depth: -8, unless: 'r02.song' },
-    { key: 'prop.rootdoor.open', x: 1540, y: 1102, depth: -8, when: 'r02.song' },
     { key: 'prop.fossilroot', x: 300, y: 1102, depth: -60 },
     { key: 'prop.fossil', x: 420, y: 700, depth: -60, oy: 0.5 },
     { key: 'prop.crystals.teal', x: 1330, y: 1102, depth: -5 },

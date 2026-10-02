@@ -94,8 +94,6 @@ export const R01: RoomDef = {
     { key: 'p1.starfolk', x: 1010, y: 662, depth: -15 },
     { key: 'p1.shade', x: 1165, y: 662, depth: -10 },
     { key: 'p1.flower', x: 1468, y: 662, depth: -15 },
-    // The roots have already parted: the way on is always open.
-    { key: 'p1.rootdoor', x: 1735, y: 662, depth: 12 },
     // The slit eye in the floor, as in the painting beside the big Gorti's
     // hand: the slit's depth, the iris (its pupil narrow, and wide when he
     // comes near: scripts/r01.ts moves both after him), the floor broken round

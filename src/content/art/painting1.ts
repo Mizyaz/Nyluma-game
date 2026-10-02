@@ -609,54 +609,6 @@ function whaleToy(): PartArt {
   return part('p1.whale', 104, 64, 52, 64, s);
 }
 
-// ---------------------------------------------------------------- the root door
-
-/**
- * The roots of the 14th Room's door, parted like curtains and tied back
- * with crystal clasps, in the tree's purple bark. They grow down from the
- * lid, through the torn paper.
- */
-function rootDoor(): PartArt {
-  const rng = new Rng(hashSeed('p1.rootdoor'));
-  const root = (pts: Pt[], w0: number, w1: number, vein = false): string =>
-    shape(taper(pts, w0, w1), P1.bark, 1.8, { inner: vein ? ln(open(pts), mix(P1.bark, '#ffffff', 0.4), 1.2, 0.8) : '' });
-  let s = '';
-  // Roots coming down from the lid's edge onto the lintel, gripping it.
-  for (const [x, ph] of [[52, 0.4], [110, 1.6], [168, 2.8]] as const) {
-    const top: Pt = [x + Math.sin(ph) * 4, 22];
-    s += root([top, [x + Math.sin(ph + 0.6) * 6, 32], [x + Math.sin(ph + 1) * 5, 46]], 10, 12);
-    for (const [dx, dy] of [[-13, -4], [0, -8], [12, -5]] as const) s += shape(taper([top, [top[0] + dx * 0.6, top[1] + dy * 0.6], [top[0] + dx, top[1] + dy]], 5, 2), P1.bark, 1.3);
-  }
-  for (const side of [-1, 1] as const) {
-    const cx = 110 + side * 82;
-    for (let k = 0; k < 4; k++) {
-      const top: Pt = [110 + side * (30 + k * 13), 44];
-      const mid: Pt = [cx + side * (k - 1.5) * 3, 150];
-      const low: Pt = [cx + side * (-14 + k * 11), 206];
-      const foot: Pt = [cx + side * (-26 + k * 17) + rng.range(-3, 3), 300];
-      const bulge: Pt = [(top[0] + mid[0]) / 2 - side * (10 - k * 2), 96];
-      s += root([top, bulge, mid, low, foot], 13 - k, 10 - k * 0.5, k === 1);
-    }
-    const clx = cx + side;
-    s += shape(ellipsePath(clx, 150, 15, 9), P1.crystal, 1.8, { inner: ln(ellipsePath(clx, 150, 10, 5), P1.crystalDeep, 1.2) });
-    s += shape(`M${clx - 5} 141L${clx} 130L${clx + 5} 141Z`, P1.crystal, 1.4);
-    for (const [lx, ly, a] of [[cx - side * 14, 104, -0.6], [cx + side * 12, 236, 0.5]] as const) s += leafWithVein(lx, ly, 14, side > 0 ? -Math.PI + a : a, P1.leaf, 1.3);
-  }
-  // The lintel: three roots braided across, their ends curling down into the curtains.
-  for (let k = 0; k < 3; k++) {
-    const pts: Pt[] = [[18 + k * 4, 70 - k * 6]];
-    for (let i = 0; i <= 6; i++) pts.push([30 + i * 26.7, 42 + k * 8 + Math.sin(i * 1.25 + k * 2.1) * 6]);
-    pts.push([202 - k * 4, 70 - k * 6]);
-    s += root(pts, 13 - k * 2, 13 - k * 2, k === 1);
-  }
-  for (const [x, len, withLeaf] of [[64, 26, false], [80, 40, true], [96, 22, false], [112, 34, false], [128, 46, true], [144, 24, false], [158, 30, false]] as const) {
-    const pts: Pt[] = [[x, 44], [x + rng.range(-4, 4), 44 + len * 0.55], [x + rng.range(-6, 6), 44 + len]];
-    s += shape(taper(pts, 5, 1.4), P1.bark, 1.4);
-    if (withLeaf) s += leafWithVein(pts[2]![0], pts[2]![1], 12, Math.PI / 2, P1.leaf, 1.1);
-  }
-  return part('p1.rootdoor', 220, 300, 110, 300, s);
-}
-
 // ---------------------------------------------------------------- the charms below the box
 
 /** A string from the hanging point down to (x, y). */
@@ -755,7 +707,7 @@ function charms(): PartArt[] {
 export function painting1Parts(): PartArt[] {
   return [
     cube(), arm(), lamp(), crystalTree(), gift(), starfolk(), flower(), rootling(), shade(), bang(),
-    portrait(), sign(), ...floorEyeParts(), marks(), bed(), whaleToy(), rootDoor(), ...charms(),
+    portrait(), sign(), ...floorEyeParts(), marks(), bed(), whaleToy(), ...charms(),
   ];
 }
 

@@ -11,7 +11,6 @@ import { EYE_X } from '../rooms/r01';
 import { FloorEyeWatch } from './floorEye';
 import type { CinemaScene } from '../../engine/scenes/CinemaScene';
 import type { WorldScene } from '../../engine/scenes/WorldScene';
-import { GemPortal } from '../../render/2d/fx/gemPortal';
 import { StoneFrame } from '../../render/2d/fx/stoneFrame';
 import type { RoomScript } from './types';
 
@@ -51,7 +50,6 @@ export function r01(w: WorldScene): RoomScript {
   let waking = false;
   let sleptMs = 0;
   let zzz: Phaser.Time.TimerEvent | null = null;
-  let portal: GemPortal | null = null;
   /** The painting's cracked stone round the screen (not in the wide shot, which has its own). */
   let frame: StoneFrame | null = null;
   /** The opening's pending steps and the painting over the screen. */
@@ -384,8 +382,6 @@ export function r01(w: WorldScene): RoomScript {
 
   return {
     setup() {
-      // At the end of the root tunnel, the way on: a living mouth of the gem tunnel.
-      portal = new GemPortal(w, 2162, 660, 104, 214, -35);
       frame = new StoneFrame(w);
       if (w.quest.set('r01.intro')) goToSleep();
       else frame.show(true, 0);
@@ -393,7 +389,6 @@ export function r01(w: WorldScene): RoomScript {
       eye = new FloorEyeWatch(w, EYE_X);
     },
     onUpdate(dtMs) {
-      portal?.update(dtMs);
       frame?.update();
       updateShade(dtMs);
       eye?.update(dtMs);
@@ -420,8 +415,6 @@ export function r01(w: WorldScene): RoomScript {
       endSleep();
       endOpening(false);
       openBounds(false);
-      portal?.destroy();
-      portal = null;
       frame?.destroy();
       frame = null;
       eye = null;
