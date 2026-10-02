@@ -5,7 +5,121 @@ listeler. Ölçümler aşağıdaki test ortamında alınmıştır; gerçek cihaz
 performansını temsil etmez. İlk bölüm bu sürümün kontrolleridir. Sonraki
 bölümlerdeki sonuçlar önceki sürümlerin oyun kodu içindir.
 
-## Bu sürüm: sayfa çevirme yeniden çizildi, V. ve VI. bölüm sayfaları zenginleşti
+## Bu sürüm: Güneş ile Ay karakter oldu, hikâye metni JSON'da, yeni kapılar
+
+Bu sürümde değişenler:
+
+- Güneş ve Ay:
+  - Ekranda her birinden yalnız bir tane var. Aynı karakter daha yakında (diyalog
+    kartında ya da odada) görünürken köşedeki yüzü yavaşça kayboluyor ve sonra geri
+    geliyor. Önceden r03'teki "Sebebimin…" satırında aynı anda üç Güneş görünüyordu.
+  - Yüzler büyüdü: Ay çiziminin 0,68'i, Güneş 0,56'sı (önceden 0,5 ve 0,4).
+  - Yüzler canlı: göz kırpıyor, Gorti'ye bakıyor, nefes alıyor, ışınları dalgalanıyor.
+    Uykulu yüz esniyor, sevinçli yüz gözlerini sıkıyor, ağlamaklı yüz gözyaşı döküyor.
+    Gorti şarkı söylerken mırıldanıyorlar.
+  - Her sayfanın kendi görünüşü var (`src/content/text/sky.json`): ruh hâli, taktıkları
+    (gece takkesi, yara bandı, çil, atkı, kristal taç, ter, çiçek, Z'ler, notalar),
+    eğim, boy ve köşedeki yeri. r01–r12'nin ve her bölümün ayrı görünüşü var.
+  - Dokununca yüz kıpırdıyor, kıkırdıyor ya da göz kırpıyor; parlıyor, odanın ışığı
+    yumuşakça artıyor ve bir çan sesi çalıyor.
+  - 3 saniye basılı tutunca yüzün çevresinde bir halka doluyor. Sonra yüz o sayfanın
+    satırlarından birini balonla söylüyor. Gorti, cevabı yazılmış satırların %60'ına
+    cevap veriyor.
+  - Diyalog kartlarındaki soluk diskler kalktı. Atın başı kartında artık kesilmiyor.
+  - Telefon yan tutulunca duraklat ve tam ekran düğmeleri üstte ortada. Altlarında bir
+    yüz görünürse (r08'in büyük Güneşi) yana kayıyorlar.
+- Hikâyenin bütün metni JSON dosyalarında (`src/content/text/`): isimler, altyazılar,
+  diyaloglar, inceleme satırları, anılar, tablolar, belgeler ve Güneş ile Ay'ın
+  sözleri.
+  - Her dosya yüklenirken denetleniyor. Hatalı bir giriş varsayılana düşüyor; oyun
+    durmuyor. Yalnız JSON yazım hatası oyunu durdurur; Vite ve `kd check` satırını
+    gösterir.
+  - `npm run kd -- check` dosyaları ve kodun okuduğu anahtarları denetliyor.
+  - Türkçe rehber: `docs/METINLER.md`.
+- Kapılar: her geçidin artık kendi 2.5D kapısı var. Kapı, derinlikte duran kartlardan
+  yapılıyor; açıklığından bir sonraki oda görünüyor ve kamera kayarken içerideki
+  sayfalar birbirinin önünden geçiyor. Yolu kapalıyken kapı kapalı görünüyor, koşulu
+  gerçekleşince açılıyor. Gorti yaklaşınca uyanıyor: ışık artıyor, içeriden biri
+  bakıyor, bir ses çalıyor.
+  - r01: kökten bir kemer (asılı perde kalktı) ve gökkuşaklı kâğıt kapı.
+  - r02: köklerden örülmüş kapı; şarkıyla açılıyor.
+  - r04: ağacın dibinde yuvarlak yeşil kapı; içinden bir rakun bakıyor.
+  - r05: taş kapı ve ay kapısı.
+  - r08: sahne kapısı; oda bitince üstündeki karton güneş gülümsüyor.
+  - 6. bölüm: biçim kapısı, çit kemeri, ay kapısı, gündüz-gece çarkı, oyuncak blok kapı.
+  - r12: ofis kapısı; sıra numarası 14'e dönüyor.
+  - Çıkış kutuları, koşullar, hedefler ve kayıt noktaları değişmedi.
+- Düzeltme: HUD katmanı oyunun üstündeki bütün dokunuşları alıyordu. Bu yüzden Güneş'e
+  ya da Ay'a dokunmak hiç işlemiyordu; Güneş/Ay dalının kendi derlemesinde de böyleydi.
+  Artık yalnız HUD'un düğmeleri dokunuş alıyor.
+
+Son commit (`63d6450`) üzerinde koşulan kontroller:
+
+| Kontrol | Sonuç |
+| --- | --- |
+| `npm run typecheck` | Hatasız |
+| `npx vitest run` | 21 dosya, 198 test geçti |
+| `npm run kd -- check` | Tamam: 6 bölüm, 4 oda dosyası, 12 TS oda, 8 metin dosyası |
+| `npm run build`, `npm run build:e2e` | Başarılı |
+| `npx playwright test --grep-invert @campaign --workers=1` | 25 geçti, 13 atlandı, 0 kaldı, 11.2 dk |
+| `npx playwright test --grep @campaign --workers=1` | 2 geçti, 14.8 dk |
+
+Typecheck, vitest ve `kd check` kapı birleştirmesinde (`7bba1fa`) koşuldu; sonraki
+commit yalnız `docs/HANDOFF.md`'yi değiştiriyor.
+
+İki tam kampanya da geçti: klavyeyle tam oyun 6.3 dk, telefonda yalnız dokunmayla tam
+oyun 8.5 dk.
+
+Atlanan 13 test önceki sürümdekilerle aynı: 12'si yalnızca `SHOTS=1` ile koşan ekran
+görüntüsü testleri, 1'i `DEV_ROUTE` isteyen geliştirici rotası testi.
+
+Ara adım: yalnız Güneş/Ay birleştirmesi (`1033ec0`) üzerinde koşulan testler.
+
+- e2e: 23 geçti, 13 atlandı, 2 kaldı, 15.6 dk. Kalan ikisi açılış testleri (alan
+  adının kökünde ve alt yolda). Yeni Oyun'dan sonra HUD 30 saniye içinde görünmedi.
+- Kampanyalar: 2 geçti, 13.3 dk (klavye 6.4 dk, dokunma 6.9 dk).
+- Bu iki test, WebGL ile koşan tek testler (diğerleri kanvasla koşuyor). Bu yüzden
+  WebGL'de Yeni Oyun'dan HUD'un görünmesine kadar geçen süre iki sürümde ölçüldü
+  (yazılımla çizen başsız tarayıcı, saniyede 2–4 kare, yük ortalaması 8–12):
+
+  | Sürüm | 1. ölçüm | 2. ölçüm |
+  | --- | --- | --- |
+  | Yayındaki sürümün kodu (`b81a7c2`) | 24.9 sn | 24.0 sn |
+  | Güneş/Ay ve HUD düzeltmesi (`552dba0`) | 26.1 sn | 16.3 sn |
+
+  İki sürüm de yüklü makinede 30 saniyelik sınıra yaklaşıyor; Güneş/Ay bunu
+  uzatmıyor. Son commit'te yük düşükken iki açılış testi de 18 saniyede geçti.
+
+Güneş/Ay dokunuşunun denetimi (telefon benzetimi, 844×390, r05, gerçek dokunuş
+olayları):
+
+- `1033ec0` ve Güneş/Ay dalının kendi derlemesi: Ay'ın ortasına dokunuş HUD'a
+  gitti; Ay tepki vermedi, halka ve balon çıkmadı.
+- HUD düzeltmesiyle (`552dba0`): dokunuş Ay'a ulaştı. Dokununca Ay parladı ve göz
+  kırptı; basılı tutunca halka doldu, sonra Ay balonla "Büyüyorum galiba…
+  Korkuyorum." dedi.
+
+Görsel kontrol:
+
+- Son derlemede r01, 1280×720: kök kemer, zemindeki göz, kâğıt kapı, Ay (gece
+  takkesi ve Z'ler) ve Güneş (meraklı, çilli) birlikte. Kemer gözü kapatmıyor.
+- Güneş/Ay birleştirmesinde yeni dokunmatik kontrollerle r02 (844×390) ve r05
+  (844×390 ve 390×844): düğmeler, yüzler ve kontroller üst üste binmiyor.
+- Kapı ajanının her kapı için kapalı ve açık kareleri: r01, r04 ve r08 incelendi.
+
+Bilinen sorunlar:
+
+- 844×390 ekranda b02'deki kristal kapının üstündeki Ay kırpılıyor.
+- r01'in kâğıt kapısında ve r05'in ay kapısında ipe asılı kâğıt yıldızlar, kâğıt
+  kapıda iğneyle tutturulmuş bir etiket var.
+- Kapılar zıplamaya tepki vermiyor; yalnız doğru çiziliyorlar.
+- Güneş ve Ay'a klavyeyle dokunmanın bir yolu yok.
+- Saniyede 10 karenin altında balonlar daha yavaş yazılıyor.
+
+Henüz denenmeyenler: gerçek telefon ve gerçek GPU'lu cihaz. Güneş ve Ay'ın çan sesi
+kodda bağlı, ama kulakla dinlenmedi.
+
+## Önceki sürüm: sayfa çevirme yeniden çizildi, V. ve VI. bölüm sayfaları zenginleşti
 
 Bu sürümde değişenler:
 
@@ -94,7 +208,7 @@ ekranda bir kare kalkışta yaklaşık 40 ms, dönüşte yaklaşık 220 ms sürd
 (geçiş ajanının ölçümü). Geçişin saati kare başına en fazla 100 ms
 ilerlediği için yavaş bir cihazda sayfa atlamıyor, ama dönüş uzuyor.
 
-## Önceki sürüm: zıplama geri geldi, yeni dokunmatik kontroller
+## Eski sürüm: zıplama geri geldi, yeni dokunmatik kontroller
 
 Bu sürümde değişenler:
 
