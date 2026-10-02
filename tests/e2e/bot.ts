@@ -239,6 +239,11 @@ export class Bot {
   async walkTo(x: number, tol = 8, timeout = 40_000): Promise<void> {
     const start = Date.now();
     let room: string | null = null;
+    // Touch, closing in: how long the next short press lasts, and how often
+    // Gorti has gone past x.
+    let press = 80;
+    let passes = 0;
+    let side = 0;
     while (Date.now() - start < timeout) {
       const st = await this.s();
       const p = st.player;
@@ -267,13 +272,38 @@ export class Bot {
       // Touch presses travel through an extra hop: brake a little earlier.
       const lag = this.touch ? Math.abs(p.vx) * 0.09 : 0;
       const brake = Math.min(28, (p.vx * p.vx) / (2 * 2000) + 4) + lag;
-      if (Math.abs(dx) <= Math.max(tol, this.touch ? 9 : 0)) {
+      if (this.touch && Math.sign(dx) && side && Math.sign(dx) !== side) passes++;
+      side = Math.sign(dx) || side;
+      // Each time Gorti goes past x, close enough grows a little (up to 3×).
+      const near = Math.max(tol, this.touch ? 9 : 0) * (1 + Math.min(passes, 4) / 2);
+      if (Math.abs(dx) <= near) {
         await this.keyUp('KeyD');
         await this.keyUp('KeyA');
         if (Math.abs(p.vx) < 20) return;
+      } else if (this.touch && Math.abs(dx) <= 90) {
+        // Closing in by touch. A slow page reads the stick a frame or more
+        // late and the bot reads the page a few times a second, so a held
+        // stick carries Gorti well past x, and pressing back carries him
+        // past it again (seen pacing to and fro for 40 s). Let go, let him
+        // stand, then press for about as long as the distance left needs:
+        // a short press carries him about the square of its length, so the
+        // next one is scaled by how far this one went.
+        await this.keyUp('KeyD');
+        await this.keyUp('KeyA');
+        if (Math.abs(p.vx) >= 20) {
+          await this.wait(40);
+          continue;
+        }
+        const ms = Math.round(Math.min(240, Math.max(30, press)));
+        await this.tap(dx > 0 ? 'KeyD' : 'KeyA', ms);
+        const after = await this.waitFor((t) => !t.player || t.room !== room || Math.abs(t.player.vx) < 5, 2000, 'standing').catch(() => null);
+        const to = after?.player && after.room === room ? after.player.x : p.x;
+        const moved = Math.abs(to - p.x);
+        press = moved > 2 ? ms * Math.sqrt(Math.abs(x - to) / moved) : ms * 1.5;
+        continue;
       } else if (Math.abs(dx) <= brake && Math.abs(p.vx) < 20) {
         // Standing just short of the target: nudge with a short press.
-        await this.tap(dx > 0 ? 'KeyD' : 'KeyA', this.touch ? 70 : 30);
+        await this.tap(dx > 0 ? 'KeyD' : 'KeyA', 30);
         await this.wait(60);
         continue;
       } else if (dx > 0) {
