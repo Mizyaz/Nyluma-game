@@ -23,14 +23,14 @@ const humanoid: PoseFn = (anim, t, prm, rigId) => humanoidPose(rigId, anim, t, p
 
 export const CAST: Record<string, CastMember> = {
   coward: { name: NAMES.coward, rig: RIG_COWARD, pose: humanoid },
-  mech: { name: 'Mekanik Form', rig: RIG_MECH, pose: humanoid },
-  suit: { name: 'Takım Elbiseli', rig: RIG_GORTI_SUIT, pose: humanoid },
-  moonMan: { name: 'Ay Başlı', rig: RIG_GORTI_HUMAN, pose: humanoid },
-  sunMan: { name: 'Güneş Başlı', rig: RIG_GORTI_HUMAN_SUN, pose: humanoid },
-  baldMan: { name: 'Sivaslı Amca', rig: RIG_GORTI_HUMAN_BALD, pose: humanoid },
-  child: { name: 'Küçük Gorti', rig: RIG_GORTI_CHILD, pose: humanoid },
-  youth: { name: 'Genç Gorti', rig: RIG_GORTI_YOUTH, pose: humanoid },
-  warrior: { name: 'Savaşçı Gorti', rig: RIG_GORTI_WARRIOR, pose: humanoid },
+  mech: { name: NAMES.mech, rig: RIG_MECH, pose: humanoid },
+  suit: { name: NAMES.suit, rig: RIG_GORTI_SUIT, pose: humanoid },
+  moonMan: { name: NAMES.moonMan, rig: RIG_GORTI_HUMAN, pose: humanoid },
+  sunMan: { name: NAMES.sunMan, rig: RIG_GORTI_HUMAN_SUN, pose: humanoid },
+  baldMan: { name: NAMES.baldMan, rig: RIG_GORTI_HUMAN_BALD, pose: humanoid },
+  child: { name: NAMES.child, rig: RIG_GORTI_CHILD, pose: humanoid },
+  youth: { name: NAMES.youth, rig: RIG_GORTI_YOUTH, pose: humanoid },
+  warrior: { name: NAMES.warrior, rig: RIG_GORTI_WARRIOR, pose: humanoid },
 };
 
 /** Every name a line's `who` can take: the cast and the voices without a body. */

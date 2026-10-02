@@ -3,13 +3,15 @@ import stranger from '../../assets/paintings/p1-house-of-the-stranger.jpg';
 import moon from '../../assets/paintings/p2-moon-form.jpg';
 import youth from '../../assets/paintings/p3-late-to-work.jpg';
 import warrior from '../../assets/paintings/p4-warrior.jpg';
+import { PAINTING_TEXT } from '../text/text';
 
 // The author's drawings of Gorti's life hang at the start of every chapter
 // (the four of them together in the last one). Inspecting one, Gorti looks
-// at his future and his past.
+// at his future and his past. Their titles and captions are in
+// src/content/text/paintings.json.
 
 /** What Gorti feels in front of every painting. */
-export const PAINTING_LINE = 'Gorti geleceğine ve geçmişine bakış attı.';
+export const PAINTING_LINE = PAINTING_TEXT.line;
 
 export interface PaintingArt {
   id: PaintingId;
@@ -23,11 +25,13 @@ export interface PaintingArt {
 
 export type PaintingId = 'stranger' | 'moon' | 'youth' | 'warrior';
 
+const P = PAINTING_TEXT.paintings;
+
 export const PAINTINGS: Record<PaintingId, PaintingArt> = {
-  stranger: { id: 'stranger', key: 'painting.stranger', url: stranger, title: 'House of The Stranger', caption: 'Yer altındaki 14. Oda.' },
-  moon: { id: 'moon', key: 'painting.moon', url: moon, title: 'Ay Hali', caption: 'Sivaslı amcanın Güneş’te ve Ay’da değişen biçimi, ay hâliyle.' },
-  youth: { id: 'youth', key: 'painting.youth', url: youth, title: 'Late to Work', caption: 'Gorti’nin ergenliği: milleti kırbaçlayıp robotlaştırdığı günler.' },
-  warrior: { id: 'warrior', key: 'painting.warrior', url: warrior, title: 'Savaşçı', caption: 'Gorti artık bir savaşçı.' },
+  stranger: { id: 'stranger', key: 'painting.stranger', url: stranger, title: P.stranger!.title, caption: P.stranger!.caption },
+  moon: { id: 'moon', key: 'painting.moon', url: moon, title: P.moon!.title, caption: P.moon!.caption },
+  youth: { id: 'youth', key: 'painting.youth', url: youth, title: P.youth!.title, caption: P.youth!.caption },
+  warrior: { id: 'warrior', key: 'painting.warrior', url: warrior, title: P.warrior!.title, caption: P.warrior!.caption },
 };
 
 /** In the order of Gorti's life. */

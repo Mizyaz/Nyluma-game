@@ -1,0 +1,612 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "description": "Bu dosyanın yardım şeması; dokunmayın",
+      "type": "string"
+    },
+    "default": {
+      "type": "object",
+      "properties": {
+        "sun": {
+          "description": "Güneş",
+          "type": "object",
+          "properties": {
+            "mood": {
+              "description": "Ruh hali: calm sakin, sleepy uykulu, curious meraklı, worried endişeli, delighted neşeli, grumpy huysuz, proud gururlu, teary ağlamaklı",
+              "type": "string",
+              "enum": [
+                "calm",
+                "sleepy",
+                "curious",
+                "worried",
+                "delighted",
+                "grumpy",
+                "proud",
+                "teary"
+              ]
+            },
+            "wear": {
+              "description": "Üstündekiler: nightcap takke, bandage yara bandı, freckles çil, scarf atkı, crown kristal taç, sweat ter damlası, flowers çiçekler, zzz uyku, notes notalar; [] hepsini kaldırır",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "nightcap",
+                  "bandage",
+                  "freckles",
+                  "scarf",
+                  "crown",
+                  "sweat",
+                  "flowers",
+                  "zzz",
+                  "notes"
+                ]
+              }
+            },
+            "tilt": {
+              "description": "Başının eğikliği, derece (sola eksi, sağa artı)",
+              "type": "number",
+              "minimum": -25,
+              "maximum": 25
+            },
+            "size": {
+              "description": "Boyu: 1 olağan",
+              "type": "number",
+              "minimum": 0.7,
+              "maximum": 1.25
+            },
+            "place": {
+              "description": "Köşedeki yeri: corner köşede, peek kenardan bakıyor, high yukarıda, low aşağıda, inward içeri doğru",
+              "type": "string",
+              "enum": [
+                "corner",
+                "peek",
+                "high",
+                "low",
+                "inward"
+              ]
+            },
+            "lines": {
+              "description": "Basılı tutunca söyledikleri; üçten azsa bölümün ve varsayılanın sözleriyle tamamlanır",
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Basılı tutunca söylediği söz"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Söylediği söz"
+                      },
+                      "answer": {
+                        "description": "Gorti'nin cevabı (bazen söylenir)",
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "text"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "moon": {
+          "description": "Ay",
+          "type": "object",
+          "properties": {
+            "mood": {
+              "description": "Ruh hali: calm sakin, sleepy uykulu, curious meraklı, worried endişeli, delighted neşeli, grumpy huysuz, proud gururlu, teary ağlamaklı",
+              "type": "string",
+              "enum": [
+                "calm",
+                "sleepy",
+                "curious",
+                "worried",
+                "delighted",
+                "grumpy",
+                "proud",
+                "teary"
+              ]
+            },
+            "wear": {
+              "description": "Üstündekiler: nightcap takke, bandage yara bandı, freckles çil, scarf atkı, crown kristal taç, sweat ter damlası, flowers çiçekler, zzz uyku, notes notalar; [] hepsini kaldırır",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "nightcap",
+                  "bandage",
+                  "freckles",
+                  "scarf",
+                  "crown",
+                  "sweat",
+                  "flowers",
+                  "zzz",
+                  "notes"
+                ]
+              }
+            },
+            "tilt": {
+              "description": "Başının eğikliği, derece (sola eksi, sağa artı)",
+              "type": "number",
+              "minimum": -25,
+              "maximum": 25
+            },
+            "size": {
+              "description": "Boyu: 1 olağan",
+              "type": "number",
+              "minimum": 0.7,
+              "maximum": 1.25
+            },
+            "place": {
+              "description": "Köşedeki yeri: corner köşede, peek kenardan bakıyor, high yukarıda, low aşağıda, inward içeri doğru",
+              "type": "string",
+              "enum": [
+                "corner",
+                "peek",
+                "high",
+                "low",
+                "inward"
+              ]
+            },
+            "lines": {
+              "description": "Basılı tutunca söyledikleri; üçten azsa bölümün ve varsayılanın sözleriyle tamamlanır",
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Basılı tutunca söylediği söz"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Söylediği söz"
+                      },
+                      "answer": {
+                        "description": "Gorti'nin cevabı (bazen söylenir)",
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "text"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "description": "Her sayfada, aksi söylenmedikçe"
+    },
+    "chapters": {
+      "description": "Bölüme göre (c1 … c6); varsayılanın üstüne yazar",
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "sun": {
+            "description": "Güneş",
+            "type": "object",
+            "properties": {
+              "mood": {
+                "description": "Ruh hali: calm sakin, sleepy uykulu, curious meraklı, worried endişeli, delighted neşeli, grumpy huysuz, proud gururlu, teary ağlamaklı",
+                "type": "string",
+                "enum": [
+                  "calm",
+                  "sleepy",
+                  "curious",
+                  "worried",
+                  "delighted",
+                  "grumpy",
+                  "proud",
+                  "teary"
+                ]
+              },
+              "wear": {
+                "description": "Üstündekiler: nightcap takke, bandage yara bandı, freckles çil, scarf atkı, crown kristal taç, sweat ter damlası, flowers çiçekler, zzz uyku, notes notalar; [] hepsini kaldırır",
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "nightcap",
+                    "bandage",
+                    "freckles",
+                    "scarf",
+                    "crown",
+                    "sweat",
+                    "flowers",
+                    "zzz",
+                    "notes"
+                  ]
+                }
+              },
+              "tilt": {
+                "description": "Başının eğikliği, derece (sola eksi, sağa artı)",
+                "type": "number",
+                "minimum": -25,
+                "maximum": 25
+              },
+              "size": {
+                "description": "Boyu: 1 olağan",
+                "type": "number",
+                "minimum": 0.7,
+                "maximum": 1.25
+              },
+              "place": {
+                "description": "Köşedeki yeri: corner köşede, peek kenardan bakıyor, high yukarıda, low aşağıda, inward içeri doğru",
+                "type": "string",
+                "enum": [
+                  "corner",
+                  "peek",
+                  "high",
+                  "low",
+                  "inward"
+                ]
+              },
+              "lines": {
+                "description": "Basılı tutunca söyledikleri; üçten azsa bölümün ve varsayılanın sözleriyle tamamlanır",
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Basılı tutunca söylediği söz"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "Söylediği söz"
+                        },
+                        "answer": {
+                          "description": "Gorti'nin cevabı (bazen söylenir)",
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "text"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "moon": {
+            "description": "Ay",
+            "type": "object",
+            "properties": {
+              "mood": {
+                "description": "Ruh hali: calm sakin, sleepy uykulu, curious meraklı, worried endişeli, delighted neşeli, grumpy huysuz, proud gururlu, teary ağlamaklı",
+                "type": "string",
+                "enum": [
+                  "calm",
+                  "sleepy",
+                  "curious",
+                  "worried",
+                  "delighted",
+                  "grumpy",
+                  "proud",
+                  "teary"
+                ]
+              },
+              "wear": {
+                "description": "Üstündekiler: nightcap takke, bandage yara bandı, freckles çil, scarf atkı, crown kristal taç, sweat ter damlası, flowers çiçekler, zzz uyku, notes notalar; [] hepsini kaldırır",
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "nightcap",
+                    "bandage",
+                    "freckles",
+                    "scarf",
+                    "crown",
+                    "sweat",
+                    "flowers",
+                    "zzz",
+                    "notes"
+                  ]
+                }
+              },
+              "tilt": {
+                "description": "Başının eğikliği, derece (sola eksi, sağa artı)",
+                "type": "number",
+                "minimum": -25,
+                "maximum": 25
+              },
+              "size": {
+                "description": "Boyu: 1 olağan",
+                "type": "number",
+                "minimum": 0.7,
+                "maximum": 1.25
+              },
+              "place": {
+                "description": "Köşedeki yeri: corner köşede, peek kenardan bakıyor, high yukarıda, low aşağıda, inward içeri doğru",
+                "type": "string",
+                "enum": [
+                  "corner",
+                  "peek",
+                  "high",
+                  "low",
+                  "inward"
+                ]
+              },
+              "lines": {
+                "description": "Basılı tutunca söyledikleri; üçten azsa bölümün ve varsayılanın sözleriyle tamamlanır",
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Basılı tutunca söylediği söz"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "Söylediği söz"
+                        },
+                        "answer": {
+                          "description": "Gorti'nin cevabı (bazen söylenir)",
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "text"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "rooms": {
+      "description": "Odaya göre (r01, b02...); bölümün üstüne yazar",
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "sun": {
+            "description": "Güneş",
+            "type": "object",
+            "properties": {
+              "mood": {
+                "description": "Ruh hali: calm sakin, sleepy uykulu, curious meraklı, worried endişeli, delighted neşeli, grumpy huysuz, proud gururlu, teary ağlamaklı",
+                "type": "string",
+                "enum": [
+                  "calm",
+                  "sleepy",
+                  "curious",
+                  "worried",
+                  "delighted",
+                  "grumpy",
+                  "proud",
+                  "teary"
+                ]
+              },
+              "wear": {
+                "description": "Üstündekiler: nightcap takke, bandage yara bandı, freckles çil, scarf atkı, crown kristal taç, sweat ter damlası, flowers çiçekler, zzz uyku, notes notalar; [] hepsini kaldırır",
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "nightcap",
+                    "bandage",
+                    "freckles",
+                    "scarf",
+                    "crown",
+                    "sweat",
+                    "flowers",
+                    "zzz",
+                    "notes"
+                  ]
+                }
+              },
+              "tilt": {
+                "description": "Başının eğikliği, derece (sola eksi, sağa artı)",
+                "type": "number",
+                "minimum": -25,
+                "maximum": 25
+              },
+              "size": {
+                "description": "Boyu: 1 olağan",
+                "type": "number",
+                "minimum": 0.7,
+                "maximum": 1.25
+              },
+              "place": {
+                "description": "Köşedeki yeri: corner köşede, peek kenardan bakıyor, high yukarıda, low aşağıda, inward içeri doğru",
+                "type": "string",
+                "enum": [
+                  "corner",
+                  "peek",
+                  "high",
+                  "low",
+                  "inward"
+                ]
+              },
+              "lines": {
+                "description": "Basılı tutunca söyledikleri; üçten azsa bölümün ve varsayılanın sözleriyle tamamlanır",
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Basılı tutunca söylediği söz"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "Söylediği söz"
+                        },
+                        "answer": {
+                          "description": "Gorti'nin cevabı (bazen söylenir)",
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "text"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "moon": {
+            "description": "Ay",
+            "type": "object",
+            "properties": {
+              "mood": {
+                "description": "Ruh hali: calm sakin, sleepy uykulu, curious meraklı, worried endişeli, delighted neşeli, grumpy huysuz, proud gururlu, teary ağlamaklı",
+                "type": "string",
+                "enum": [
+                  "calm",
+                  "sleepy",
+                  "curious",
+                  "worried",
+                  "delighted",
+                  "grumpy",
+                  "proud",
+                  "teary"
+                ]
+              },
+              "wear": {
+                "description": "Üstündekiler: nightcap takke, bandage yara bandı, freckles çil, scarf atkı, crown kristal taç, sweat ter damlası, flowers çiçekler, zzz uyku, notes notalar; [] hepsini kaldırır",
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "nightcap",
+                    "bandage",
+                    "freckles",
+                    "scarf",
+                    "crown",
+                    "sweat",
+                    "flowers",
+                    "zzz",
+                    "notes"
+                  ]
+                }
+              },
+              "tilt": {
+                "description": "Başının eğikliği, derece (sola eksi, sağa artı)",
+                "type": "number",
+                "minimum": -25,
+                "maximum": 25
+              },
+              "size": {
+                "description": "Boyu: 1 olağan",
+                "type": "number",
+                "minimum": 0.7,
+                "maximum": 1.25
+              },
+              "place": {
+                "description": "Köşedeki yeri: corner köşede, peek kenardan bakıyor, high yukarıda, low aşağıda, inward içeri doğru",
+                "type": "string",
+                "enum": [
+                  "corner",
+                  "peek",
+                  "high",
+                  "low",
+                  "inward"
+                ]
+              },
+              "lines": {
+                "description": "Basılı tutunca söyledikleri; üçten azsa bölümün ve varsayılanın sözleriyle tamamlanır",
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Basılı tutunca söylediği söz"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "Söylediği söz"
+                        },
+                        "answer": {
+                          "description": "Gorti'nin cevabı (bazen söylenir)",
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "text"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "default"
+  ],
+  "additionalProperties": false,
+  "description": "Güneş ve Ay: her sayfadaki hâlleri ve basılı tutunca söyledikleri"
+}

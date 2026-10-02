@@ -256,6 +256,74 @@ Conventions:
 - `CrystalWarp` in `crystalFx.ts` is no longer used by the transitions. The rooms' background
   tunnels still use the shared gem-tunnel code.
 
+### The story text in JSON (`src/content/text/`)
+
+- All the story's words are JSON files the user edits: names, captions, dialogue, inspect,
+  memories (found and reversed), paintings, documents (r12's papers) and sky (the Sun's and
+  the Moon's looks and sayings). `docs/METINLER.md` is the user's guide, in Turkish.
+- `text.ts` loads them and checks each as it loads (`check.ts`: typed validators, no
+  dependencies). A bad entry falls back to a default (`…`, a name's own key, the default
+  look) and, in dev, warns once in the console as `[metin] <file> › <key>: …`. The tables
+  are Proxies: a key the code asks for that a file lacks also gets a default and a warning
+  (`in` and `Object.keys` still tell the truth). The game never stops on its text.
+- The old names stay: `NAMES`, `CAPTIONS`, `DIALOGUE` (dialogue.tr.ts re-exports them),
+  `MEMORIES`, `PAINTINGS`, `CHAPTER_TITLES` (still from chapters.json). Scripts only swapped
+  a string for a lookup. Menus, buttons, control hints and toasts stay in code.
+- `npm run kd -- check` runs `audit.ts`: JSON syntax (line and column), every validator,
+  sky.json's pages against the real chapters and rooms, and the code's own reads
+  (`CAPTIONS.x`, `DIALOGUE.x`/`['x']`, `NAMES.x`, r01's `INSPECTABLE`) against the files.
+  Errors fail it; unused keys are warnings. `kd` loads the cast only after the syntax check,
+  so a broken file is reported rather than crashing kd.
+- `npm run kd -- schema` also writes `src/content/text/*.schema.json` from `schema.ts` (zod,
+  editor help only; the game never imports it).
+- A JSON syntax error is the one thing that stops the game: Vite refuses the file and
+  names its line, and kd check says the same.
+- Tests: `tests/unit/text.test.ts` (validators on broken samples, the loader's defaults,
+  lookOf/linesOf fallbacks, audit on a temp copy).
+
+### The Sun and the Moon as characters
+
+- One of each on screen. A face is in one of three places: `'home'` (the sky's corner,
+  `SkyScene`), `'world'` (made by a room script: r03's canopy, r05's far end, r07, r08's boss,
+  the Moon of the stomp move) or `'card'` (`FacePortrait` in a face dialogue). Every `Face`
+  registers itself; while the same character shows in a closer place (card over world over
+  home) the farther one steps out of sight (`Face.presence`, eased; it steps out once the
+  closer one shows 22% and back under 8%). The sky's face glides halfway toward its closer self
+  as it goes and comes back the same way. Its lamp and halo stay at home, so the room's light
+  does not move. The big Sun behind the card in the user's screenshot was r03's world Sun
+  (`new Face(w, 'sun', T + 90, 540, …)`), now hidden while its card shows.
+- A new page's faces wait until the page turn is over (`WorldScene.transitioning`), then drop
+  in; the old page's faces are only on the turning sheet. Reduced motion: a fade.
+- Sizes: the Moon 0.68 and the Sun 0.56 of their parts (were 0.5 and 0.4), in the top corners
+  of what shows; the ancient Moon, the taller crescent, hangs 18 px lower. Sideways the HUD's
+  pause and full-screen buttons sit at the top middle, with the skip hint and the chapter card
+  below them (the styles.css block "sky faces"); while a face shows under them (r08's big Sun)
+  they step aside along the top to the nearest clear place (`--dodge`, set by SkyTouch).
+  Upright the buttons stay in the band above the game view.
+- Each page's look comes from `sky.json` (`skyLook`): a mood (mouth, lid, brows, blush, the
+  rays' wave, breath, blink pace, sway), things to wear, a tilt, a size (0.7 … 1.25: the
+  corners stay corners), a place in the corner. `Celestial.ts` puts the parts together; `sky.ts` draws
+  them in the faces' bold ink (moods: brows, six mouths, half-shut and happy eyes; wear:
+  nightcap and pompom, plaster, freckles, scarf, crystal crown, flowers, sweat, tears, Zs,
+  notes, sparkles). `setPageLook` dresses every face of the character, so the room's and the
+  card's wear the page's look too. All parts are drawn once; a frame only moves them.
+- Alive like the card: blinks by the mood's pace (sometimes twice), glances when lively, a
+  sleepy face yawns, a delighted one squeezes its eyes, a teary one cries a tear, it hums along
+  with eyes shut and notes while Gorti sings, and speaks while its own lines type in a plain
+  dialogue. Reduced motion: blinks and slow breathing only.
+- Touch (`src/ui/SkyTouch.ts`): DOM circles on the faces, clipped to the game view, under the
+  HUD and everything else (its buttons, dialogue, documents, menus, `#touch`).
+  A tap: `Face.poke()` (wiggle, giggle or blink, sparkles), `touchLevel` swells a glow
+  behind and over the face wherever it shows, the sky's halo and its lamp softly (SkyLamps
+  adds 0.3 of full strength; up 0.45 s, down 1.4 s), a chime (`sfx('skyChime')`,
+  `'giggle'`). Held 3 s while play is free (context `gameplay`,
+  nothing said or turning): a ring fills, then a line from `skyLines` in a balloon (set whole
+  from the start and lettered in, so no word jumps a line), voiced word by word like the
+  dialogue; Gorti answers 60% of the lines that have an `answer`.
+  During a dialogue, a cutscene or the pause menu a tap still lights it up (on the pause
+  menu's veil too), but no ring is offered. Pointer capture; up, cancel, lost capture, a drag
+  off the face, blur and a hidden page all end a hold.
+
 ## Tuning (`src/tuning.ts`)
 
 Every number worth changing by hand is in `src/tuning.ts`; save it and the dev server reloads.

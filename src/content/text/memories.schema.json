@@ -1,0 +1,291 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "description": "Bu dosyanın yardım şeması; dokunmayın",
+      "type": "string"
+    },
+    "found": {
+      "type": "object",
+      "properties": {
+        "m1": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Anının adı (Anılar menüsünde)"
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Anının metni"
+            }
+          },
+          "required": [
+            "title",
+            "text"
+          ],
+          "additionalProperties": false
+        },
+        "m2": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Anının adı (Anılar menüsünde)"
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Anının metni"
+            }
+          },
+          "required": [
+            "title",
+            "text"
+          ],
+          "additionalProperties": false
+        },
+        "m3": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Anının adı (Anılar menüsünde)"
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Anının metni"
+            }
+          },
+          "required": [
+            "title",
+            "text"
+          ],
+          "additionalProperties": false
+        },
+        "m4": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Anının adı (Anılar menüsünde)"
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Anının metni"
+            }
+          },
+          "required": [
+            "title",
+            "text"
+          ],
+          "additionalProperties": false
+        },
+        "m5": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Anının adı (Anılar menüsünde)"
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Anının metni"
+            }
+          },
+          "required": [
+            "title",
+            "text"
+          ],
+          "additionalProperties": false
+        },
+        "m6": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Anının adı (Anılar menüsünde)"
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Anının metni"
+            }
+          },
+          "required": [
+            "title",
+            "text"
+          ],
+          "additionalProperties": false
+        },
+        "m7": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Anının adı (Anılar menüsünde)"
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Anının metni"
+            }
+          },
+          "required": [
+            "title",
+            "text"
+          ],
+          "additionalProperties": false
+        },
+        "m8": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Anının adı (Anılar menüsünde)"
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Anının metni"
+            }
+          },
+          "required": [
+            "title",
+            "text"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "m1",
+        "m2",
+        "m3",
+        "m4",
+        "m5",
+        "m6",
+        "m7",
+        "m8"
+      ],
+      "additionalProperties": false,
+      "description": "Gorti'nin bulduğu sekiz anı (m1 … m8)"
+    },
+    "reversed": {
+      "type": "object",
+      "properties": {
+        "caption": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Anı tersine dönerken söylenen söz, ör. \"Geriye doğru\""
+        },
+        "stations": {
+          "type": "object",
+          "properties": {
+            "st1": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Durağın adı; anlatımda başta söylenir"
+                },
+                "fragments": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "description": "Anının parçaları, olduğu sırayla; oyun onları tersten söyler"
+                }
+              },
+              "required": [
+                "title",
+                "fragments"
+              ],
+              "additionalProperties": false
+            },
+            "st2": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Durağın adı; anlatımda başta söylenir"
+                },
+                "fragments": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "description": "Anının parçaları, olduğu sırayla; oyun onları tersten söyler"
+                }
+              },
+              "required": [
+                "title",
+                "fragments"
+              ],
+              "additionalProperties": false
+            },
+            "st3": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Durağın adı; anlatımda başta söylenir"
+                },
+                "fragments": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "description": "Anının parçaları, olduğu sırayla; oyun onları tersten söyler"
+                }
+              },
+              "required": [
+                "title",
+                "fragments"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "st1",
+            "st2",
+            "st3"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "caption",
+        "stations"
+      ],
+      "additionalProperties": false,
+      "description": "İç Koğuş'ta (r10) geriye akan anılar"
+    }
+  },
+  "required": [
+    "found",
+    "reversed"
+  ],
+  "additionalProperties": false
+}

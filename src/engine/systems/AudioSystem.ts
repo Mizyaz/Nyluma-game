@@ -61,7 +61,9 @@ export type Sfx =
   | 'brush'
   | 'chapter'
   | 'leaf'
-  | 'pop';
+  | 'pop'
+  | 'skyChime'
+  | 'giggle';
 
 export type AmbienceId = 'wind' | 'cave' | 'river' | 'room' | 'none';
 
@@ -492,6 +494,18 @@ export class AudioSystem {
       case 'ray':
         this.noiseBurst(t, 0.7, 0.05 * v, out, { type: 'bandpass', f0: 1800, f1: 900, q: 4 }, 0.15);
         this.osc('sine', 330, t, 0.7, 0.03 * v, out, { f1: 311, attack: 0.2 });
+        break;
+      case 'skyChime':
+        // The Sun or the Moon touched: a small bell, rising (lower for the Moon: pitch).
+        [1, 1.26, 1.5].forEach((m, i) => this.chime(t + i * 0.075, 784 * p * m, 0.042 * v, out, 1.3));
+        this.osc('sine', 392 * p, t, 0.7, 0.018 * v, out, { attack: 0.03 });
+        break;
+      case 'giggle':
+        // A little laugh: four quick bright blips.
+        [0, 0.1, 0.19, 0.29].forEach((d, i) => {
+          const f = (i % 2 ? 760 : 640) * p;
+          this.osc('sine', f, t + d, 0.09, 0.045 * v, out, { f1: f * 1.18, attack: 0.008, vib: 0.02, vibRate: 22 });
+        });
         break;
       default:
         break;

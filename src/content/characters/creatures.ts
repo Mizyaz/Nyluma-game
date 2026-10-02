@@ -1,7 +1,6 @@
 import { P, mix, pastelMarkup } from '../../render/2d/palette';
 import { Rng, cel, ellipsePath, fillPath, glow, line, mixed, poly, smooth, taper, type Pt } from '../../render/2d/svg';
 import type { PartArt } from '../../render/2d/rig/rigTypes';
-import { PASTEL } from '../../render/2d/style';
 import { skyParts } from './sky';
 
 // Creatures, celestial faces and crowd figures. Every part is authored
@@ -688,93 +687,6 @@ function raccoonShadow(): PartArt {
   return part('raccoon.shadow', 70, 60, 35, 60, s);
 }
 
-// ================================================================== moon & sun
-//
-// Drawn as in the paintings: the Moon is a crescent with a single eye (the
-// ancient one cries a cascade of tears), the Sun a round apricot face with
-// a ring of spiky rays and a sad, tired face. Flat fills, thin ink.
-
-/** Crescent: disc (cx,cy,r) minus a disc shifted by (dx,dy)·r of radius k·r. */
-function crescentPath(cx: number, cy: number, r: number, dx: number, dy: number, k: number): string {
-  const ox = cx + r * dx;
-  const oy = cy + r * dy;
-  const r2 = r * k;
-  const d = Math.hypot(ox - cx, oy - cy);
-  const tc = Math.atan2(oy - cy, ox - cx);
-  const al = Math.acos((r * r + d * d - r2 * r2) / (2 * r * d));
-  const be = Math.acos((r2 * r2 + d * d - r * r) / (2 * r2 * d));
-  const pts: Pt[] = [];
-  const N = 40;
-  for (let i = 0; i <= N; i++) {
-    const a = tc + al + (i / N) * (2 * Math.PI - 2 * al);
-    pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
-  }
-  for (let i = 1; i < N; i++) {
-    const a = tc + Math.PI + be - (i / N) * 2 * be;
-    pts.push([ox + Math.cos(a) * r2, oy + Math.sin(a) * r2]);
-  }
-  return poly(pts);
-}
-
-/** A tear drop pointing up, tip at (x, y). */
-function tear(x: number, y: number, s: number, fill: string): string {
-  const d = `M${n2(x)} ${n2(y)}C${n2(x + s * 0.2)} ${n2(y + s * 0.5)} ${n2(x + s * 0.55)} ${n2(y + s * 0.8)} ${n2(x + s * 0.5)} ${n2(y + s * 1.15)}C${n2(x + s * 0.45)} ${n2(y + s * 1.5)} ${n2(x - s * 0.45)} ${n2(y + s * 1.5)} ${n2(x - s * 0.5)} ${n2(y + s * 1.15)}C${n2(x - s * 0.55)} ${n2(y + s * 0.8)} ${n2(x - s * 0.2)} ${n2(y + s * 0.5)} ${n2(x)} ${n2(y)}Z`;
-  return cel(d, { fill, stroke: 1.5 });
-}
-
-const MOON_OLD = { fill: '#b3b3e0', mark: '#8f8fc6', iris: '#9fd6a3', tear: '#9ed7ea', tearDeep: '#7cc0dc' };
-
-function moonOld(): PartArt {
-  // A thinner crescent with sharp horns, as in the second painting.
-  const d = crescentPath(150, 150, 132, 0.5, -0.12, 0.84);
-  let over = '';
-  for (const [x, y, x2, y2] of [[34, 150, 36, 170], [50, 220, 62, 232], [48, 92, 58, 80], [96, 262, 112, 266]] as const) {
-    over += stroke([[x, y], [x2, y2]], MOON_OLD.mark, 1.4);
-  }
-  let s = cel(d, { fill: MOON_OLD.fill, over });
-  // The tears: a cascade of drops from the eye down the cheek.
-  const drops: [number, number, number][] = [
-    [64, 146, 10], [52, 162, 11], [76, 166, 10], [62, 184, 12], [46, 196, 9], [80, 198, 11],
-    [58, 218, 12], [78, 232, 10], [64, 250, 10], [82, 266, 8],
-  ];
-  drops.forEach(([x, y, r], i) => {
-    s += tear(x, y, r, i % 3 === 0 ? MOON_OLD.tearDeep : MOON_OLD.tear);
-  });
-  return part('moon.old', 300, 300, 150, 150, s);
-}
-
-function moonOldEye(): PartArt {
-  // A tired eye: pale almond, green iris, a heavy black lid over its top.
-  const almond = `M4 22Q18 6 32 6Q48 6 60 22Q46 36 32 36Q16 36 4 22Z`;
-  const inner = ell(34, 24, 8.5, 9, MOON_OLD.iris) + ell(35, 25, 4, 4.4, INK) + fillPath(`M2 22Q16 2 32 3Q50 3 62 22Q48 14 32 14Q16 14 2 22Z`, INK) + dot(31, 21, 1.6, '#ffffff', 0.9);
-  let s = cel(almond, { fill: '#eef3f0', inner, stroke: 1.8 });
-  s += stroke([[10, 34], [32, 40], [54, 34]], MOON_OLD.mark, 1.2);
-  return part('moon.old.eye', 64, 44, 32, 22, s);
-}
-
-function moonOldLid(): PartArt {
-  const d = `M3 22Q16 4 32 4Q48 4 61 22Q46 30 32 30Q18 30 3 22Z`;
-  let s = cel(d, { fill: MOON_OLD.fill, stroke: 1.8 });
-  s += stroke([[6, 24], [32, 32], [58, 24]], INK, 2);
-  for (const x of [16, 26, 36, 46]) s += stroke([[x, 30], [x - 1.5, 36]], INK, 1.2);
-  return part('moon.old.lid', 64, 44, 32, 22, s);
-}
-
-function moonOldMouth(): PartArt {
-  let s = stroke([[6, 16], [18, 11], [32, 12], [42, 16]], INK, 1.8);
-  s += stroke([[14, 20], [26, 19]], MOON_OLD.mark, 1.2);
-  return part('moon.old.mouth', 48, 28, 24, 14, s);
-}
-
-function moonOldLaugh(): PartArt {
-  const outer = smooth([[4, 10], [22, 7], [42, 10], [38, 24], [24, 32], [10, 26]]);
-  let teeth = '';
-  for (const x of [12, 20, 28]) teeth += cel(`M${x} 8L${x + 7} 8L${x + 6} 14L${x + 1} 14Z`, { fill: '#fbf5e6', stroke: 1.1 });
-  const inner = teeth + ell(24, 27, 8, 5, PASTEL.pinkDeep);
-  const s = cel(outer, { fill: '#3a3446', inner, stroke: 1.8 });
-  return part('moon.old.mouth.laugh', 48, 36, 24, 16, s);
-}
-
 // ================================================================== committee attendees
 
 const AT = {
@@ -1139,7 +1051,6 @@ export function creatureParts(): PartArt[] {
     birdA(), birdAWing(), birdB(), birdBWing(), birdC(), birdCWing(),
     fishA(), fishATail(), fishB(), fishBTail(), fishC(), fishCTail(),
     ...skyParts(),
-    moonOld(), moonOldEye(), moonOldLid(), moonOldMouth(), moonOldLaugh(),
     attendeeSit(), attendeeStand(),
     formShadow(), formPoint(),
     giantFinger(), giantLegs(), giantDrip(),

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "description": "Bu dosyanın yardım şeması; dokunmayın",
+      "type": "string"
+    }
+  },
+  "additionalProperties": {
+    "type": "string",
+    "minLength": 1,
+    "description": "Resmin altında beliren anlatım. Anahtarı değiştirmeyin: kod onu bu adla ister."
+  },
+  "description": "Anlatımlar: ekranın altındaki tek satırlık yazılar."
+}

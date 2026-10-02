@@ -1,0 +1,22 @@
+{
+  "$schema": "./names.schema.json",
+  "gorti": "Gorti",
+  "babyMoon": "Bebek Ay",
+  "oldMoon": "Ulu Ay",
+  "sun": "Güneş",
+  "horse": "Mor At",
+  "coward": "Korkak Form",
+  "forms": "Formlar",
+  "voice": "Uzak bir ses",
+  "one": "Biri",
+  "two": "Bir başkası",
+  "three": "Bir üçüncüsü",
+  "mech": "Mekanik Form",
+  "suit": "Takım Elbiseli",
+  "moonMan": "Ay Başlı",
+  "sunMan": "Güneş Başlı",
+  "baldMan": "Sivaslı Amca",
+  "child": "Küçük Gorti",
+  "youth": "Genç Gorti",
+  "warrior": "Savaşçı Gorti"
+}

@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "description": "Bu dosyanın yardım şeması; dokunmayın",
+      "type": "string"
+    },
+    "line": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Her tablonun önünde Gorti'nin hissettiği"
+    },
+    "paintings": {
+      "type": "object",
+      "properties": {
+        "stranger": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Tablonun adı"
+            },
+            "caption": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Tablonun altındaki yazı"
+            }
+          },
+          "required": [
+            "title",
+            "caption"
+          ],
+          "additionalProperties": false
+        },
+        "moon": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Tablonun adı"
+            },
+            "caption": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Tablonun altındaki yazı"
+            }
+          },
+          "required": [
+            "title",
+            "caption"
+          ],
+          "additionalProperties": false
+        },
+        "youth": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Tablonun adı"
+            },
+            "caption": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Tablonun altındaki yazı"
+            }
+          },
+          "required": [
+            "title",
+            "caption"
+          ],
+          "additionalProperties": false
+        },
+        "warrior": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Tablonun adı"
+            },
+            "caption": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Tablonun altındaki yazı"
+            }
+          },
+          "required": [
+            "title",
+            "caption"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "stranger",
+        "moon",
+        "youth",
+        "warrior"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "line",
+    "paintings"
+  ],
+  "additionalProperties": false
+}
