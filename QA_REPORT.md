@@ -5,7 +5,56 @@ listeler. Ölçümler aşağıdaki test ortamında alınmıştır; gerçek cihaz
 performansını temsil etmez. İlk bölüm bu sürümün kontrolleridir. Sonraki
 bölümlerdeki sonuçlar önceki sürümlerin oyun kodu içindir.
 
-## Bu sürüm: kapılar duvarın içinde, geçişler kâğıt sahnede
+## Bu sürüm: daha doğal hikâye metni, kapıyı örtmeyen dokunmatik düğmeler
+
+Bu sürümde değişenler:
+
+- Hikâye metni yeniden yazıldı: altyazılar, konuşmalar, inceleme notları, belgeler,
+  tablolar ve Güneş ile Ay'ın sözleri.
+  - Cümleler artık çeviri gibi değil, sesli anlatılan bir masal gibi akıyor. Kelimeler
+    daha sade, fiiller daha canlı; yer yer küçük şakalar var.
+  - Çocuklara uymayan görüntüler yumuşatıldı:
+    - Serçe Gorti'nin ayak bileğini kesmiyor; saatinin kayışını gagasıyla koparıyor.
+    - Mekanik form Gorti'nin bacaklarına bir şey saplamıyor; onlara sarılıp sarsarak
+      Gorti'yi uyandırıyor.
+    - Gençlik tablosunun yazısında kırbaç geçmiyor.
+  - Bütün olaylar, konuşan karakterler, adlar, bölüm başlıkları ve anılar aynı. Kodun
+    sıra numarasıyla okuduğu satırların sayısı değişmedi.
+  - Son cümle: "Kâğıt üstünde, Gorti’nin içindeki ruhların hiçbiri artık onun değildi."
+  - Tuş ipuçlarında düz kesme işareti (E'yi) yerine tipografik işaret (E’yi) var. Böylece
+    dokunmatik ekranda b02'nin ipucu da "Eylem’i basılı tut" olarak yazılıyor; önceden
+    "E'yi" olduğu gibi kalıyordu.
+  - Güneş ile Ay'ın ara sıra söylediği sözlere birer yeni cümle eklendi.
+- Telefon yan tutulunca sağ başparmağın düğmeleri (Zıpla, Rezonans) sağ duvardaki kapının
+  üstüne geliyordu. Artık bir düğmenin altında Gorti ya da Gorti'nin yaklaştığı bir kapı
+  varsa o düğme yarı saydam oluyor (`filter: opacity(0.4)`); altındaki görünüyor.
+  Basılı tutulan düğme tam görünür kalıyor.
+  - Yeni birim testi: bir düğmenin ekrandaki bir kutuyu örtüp örtmediği.
+
+Kontroller `92a228e` üzerinde koşuldu:
+
+| Kontrol | Sonuç |
+| --- | --- |
+| `npm run typecheck` | Hatasız |
+| `npx vitest run` | 22 dosya, 199 test geçti |
+| `npm run kd -- check` | Tamam: 6 bölüm, 4 oda dosyası, 12 TS oda, 8 metin dosyası |
+| `npm run build`, `npm run build:e2e` | Başarılı |
+| `npm run test:e2e` (kampanyalar hariç) | 25 geçti, 13 atlandı, 0 kaldı, 14.4 dk |
+| `npx playwright test --grep @campaign` | 2 geçti, 13.6 dk |
+
+İki tam kampanya da yeni metinle geçti: klavyeyle tam oyun 6.5 dakika, telefonda yalnız
+dokunmayla tam oyun 7.0 dakika. Sondaki sabit cümleyi denetleyen testler yeni cümleye göre
+güncellendi. Atlanan 13 test önceki sürümdekilerle aynı.
+
+Görsel olarak bakılanlar (ekran görüntüleri tek tek açıldı):
+
+- En uzun altyazı (135 harf) r04'te 390×844 dikey (dpr 3) ve 844×390 yan (dpr 2)
+  ekranda: iki yönde de altyazı alanına sığıyor, yüksekliği 64 CSS px.
+- 844×390'da (dpr 2, dokunmatik) r01 kapısının önünde Zıpla ve Rezonans yarı saydam;
+  altlarında Gorti ve kapı görünüyor. Kapıdan uzakta düğmeler tam görünür.
+- Dikey telefonda düğmeler oyun görüntüsünün altında kalıyor; orada hiç saydamlaşmıyorlar.
+
+## Önceki sürüm: kapılar duvarın içinde, geçişler kâğıt sahnede
 
 Bu sürümde değişenler:
 
@@ -140,7 +189,7 @@ Bilinen sorunlar:
   değiştirmiyor).
 - Gerçek bir telefonda denenmedi.
 
-## Önceki sürüm: yükleme ekranı açılır bir kâğıt tiyatrosu oldu
+## Eski sürüm: yükleme ekranı açılır bir kâğıt tiyatrosu oldu
 
 Bu sürümde değişenler:
 
