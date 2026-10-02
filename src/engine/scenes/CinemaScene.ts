@@ -77,12 +77,11 @@ export class CinemaScene extends Phaser.Scene {
 
   private makeSlot(id: CastId, win: PortraitWindow): Slot {
     const half = win.size / 2;
-    // Frame: a paper mat (no heavy black border), paper ground with a pale
-    // periwinkle disc; a soft plum rim is drawn over it below.
+    // Frame: a paper mat (no heavy black border) on plain paper ground; a
+    // soft plum rim is drawn over it below.
     const frame = this.add.graphics();
     frame.fillStyle(0xfbf6ea, 1).fillRoundedRect(win.cx - half - 7, win.cy - half - 7, win.size + 14, win.size + 14, 18);
     frame.fillStyle(0xf3ead8, 1).fillRoundedRect(win.cx - half, win.cy - half, win.size, win.size, 14);
-    frame.fillStyle(0xc9cfee, 1).fillCircle(win.cx, win.cy - win.size * 0.05, win.size * 0.36);
     const portrait = CAST[id](this, win);
     this.clip.shape.fillStyle(0xffffff, 1).fillRoundedRect(win.cx - half, win.cy - half, win.size, win.size, 14);
     this.clip.add(portrait.root);
