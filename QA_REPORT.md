@@ -5,7 +5,96 @@ listeler. Ölçümler aşağıdaki test ortamında alınmıştır; gerçek cihaz
 performansını temsil etmez. İlk bölüm bu sürümün kontrolleridir. Sonraki
 bölümlerdeki sonuçlar önceki sürümlerin oyun kodu içindir.
 
-## Bu sürüm: zıplama geri geldi, yeni dokunmatik kontroller
+## Bu sürüm: sayfa çevirme yeniden çizildi, V. ve VI. bölüm sayfaları zenginleşti
+
+Bu sürümde değişenler:
+
+- Odadan odaya geçen sayfa yeniden çizildi.
+  - Sayfa artık her karede tek bir kanvasa çiziliyor. Kıvrımın ötesindeki
+    kâğıt ince şeritlerle çiziliyor; her şerit bir öncekinin biraz üstüne
+    biniyor. Önceki sürümlerde şeritlerin arasında görünen ince dikey
+    çizgiler bu yüzden gitti.
+  - Kıvrım sıkı bir rulo. Sayfanın alt köşesi önce kalkıyor (kıvrım 10°
+    eğik); kâğıt ele doğru ayağa kalkıyor, sonra sırtın ötesine
+    çevriliyor.
+  - Rulo sağ üstten aydınlanıyor; kıvrımın içi koyu, gölgesi taralı.
+  - Sayfanın arkası daha sıcak bir kâğıt; baskı aynalanmış ve soluk
+    görünüyor.
+  - Kalkan kâğıt alttaki odaya yumuşak bir gölge düşürüyor.
+  - Geçişin süresi değişmedi (kalkış 0,32 sn, dönüş 0,82 sn).
+- V. ve VI. bölüm sayfalarının resimleri zenginleşti.
+  - V (ofis): çizgili duvar kâğıdı, eklemli lamba, eğri bir sertifika,
+    gözleri olan ve sarkacı sallanan saat, storu yarı inik pencere, klasör
+    yığını, buharı tüten çay, damga inince zıplayan kâğıt ve bir kâğıt
+    uçak.
+  - VI (boş odalar): köşeleri bantlı, önü açık 12, 13 ve 14 numaralı
+    kutu odalar. 12'de küçük bir sandalye, halı ve duvarda resim; 13'te
+    aralık küçük bir kapı, ardında ışık ve başını uzatan bir fare; 14'te
+    geride kalan pembe bir ışık. Üstte sallanan bir ampul ve etrafında bir
+    güve; duvarda resimlerin kalktığı soluk izler, köşede örümcek ağı,
+    tozda son odaya giden küçük ayak izleri.
+- Bölüm sayfası açıkken istenen diyalog satırları artık sayfa açılınca
+  gösteriliyor. Önceden hemen, bölüm sayfasının üstünde açılıyordu.
+- QA ekran görüntüsü 08 artık sayfa çevirmeyi gösteriyor
+  (`08-page-turn.jpg`).
+
+Birleştirme commit'i (`b81a7c2`) üzerinde koşulan kontroller:
+
+| Kontrol | Sonuç |
+| --- | --- |
+| `npm run typecheck` | Hatasız |
+| `npx vitest run` | 19 dosya, 177 test geçti |
+| `npm run kd -- check` | Tamam: 6 bölüm, 4 oda dosyası, 12 TS oda |
+| `npm run build`, `npm run build:e2e` | Başarılı |
+| `npx playwright test --grep-invert @campaign --workers=1` | 24 geçti, 13 atlandı, 1 kaldı, 14.8 dk |
+| Kalan test tek başına | Kaldı, 2.0 dk |
+| Aynı test yayındaki sürümde (`808463e`) | Geçti, 1.3 dk |
+| `npx playwright test --grep @campaign --workers=1` | 2 geçti, 15.0 dk |
+
+İki tam kampanya da geçti: klavyeyle tam oyun 6.8 dk, telefonda yalnız
+dokunmayla tam oyun 8.1 dk.
+
+Kalan test, telefonda ilk odanın yalnız dokunmayla oynandığı test. Bütün
+test 120 saniyeye sığmak zorunda. Bu sürümün bir şeyi yavaşlatıp
+yavaşlatmadığı ayrıca ölçüldü:
+
+- Testin adımları iki sürümde ikişer kez ayrı ayrı zamanlandı (yük
+  ortalaması 14–18).
+  - Açılış, bölüm sayfası ve ilk odaya yerleşme iki sürümde de yaklaşık
+    39–48 saniye sürdü.
+  - Fark, odada 990'dan 1580'e yürüyüşte çıktı. Bot yürürken yolda açılan
+    diyalog ve sahneleri de okuyor. Bu adım yayındaki sürümde 78 ve 63 sn,
+    bu sürümde 10 ve 57 sn sürdü.
+  - Bütün tur yayındaki sürümde 2.6 ve 2.2 dk, bu sürümde 1.3 ve 2.1 dk
+    sürdü. Yani bu yükte test iki sürümde de 120 saniyeyi aşabiliyor.
+- Yeni oyun ilk odada oturduktan sonra sayfada geçişten kalan bir şey
+  yok: iki sürümde de yalnız oyunun kanvası var, sayfa çevirme öğesi
+  kalmıyor.
+- İlk odada saniyedeki kare sayısı (her sürümde iki ölçüm):
+
+  | Ekran | Yayındaki sürüm | Bu sürüm |
+  | --- | --- | --- |
+  | Masaüstü | 26–28 | 30–33 |
+  | Telefon | 19–26 | 24–26 |
+
+Atlanan 13 test önceki sürümdekilerle aynı: 12'si yalnızca `SHOTS=1` ile
+koşan ekran görüntüsü testleri, 1'i `DEV_ROUTE` isteyen geliştirici rotası
+testi.
+
+Görsel kontrol: geçiş dalının kareleri incelendi.
+
+- r01→r02 oda geçişi: 1280×720 ve 844×390 ekranda. Şeritler arasında
+  çizgi görünmüyor; kıvrım düz bir panel gibi değil, kâğıt gibi okunuyor.
+  Önceki sürümlerde yazan bu iki sorun bu sürümde düzeldi.
+- V. ve VI. bölüm sayfaları.
+
+Henüz denenmeyenler: sayfanın çizim maliyeti gerçek bir cihazda
+ölçülmedi. Yazılımla çizen başsız tarayıcıda, makine yüklüyken, 1280×720
+ekranda bir kare kalkışta yaklaşık 40 ms, dönüşte yaklaşık 220 ms sürdü
+(geçiş ajanının ölçümü). Geçişin saati kare başına en fazla 100 ms
+ilerlediği için yavaş bir cihazda sayfa atlamıyor, ama dönüş uzuyor.
+
+## Önceki sürüm: zıplama geri geldi, yeni dokunmatik kontroller
 
 Bu sürümde değişenler:
 
@@ -113,7 +202,7 @@ Henüz denenmeyenler:
 Önceki bölümlerde yazan sayfa çevirme sorunları bu sürümde de duruyor.
 Düzeltmesi hazır; bir sonraki sürümde gelecek.
 
-## Önceki sürüm: 14. Oda'nın zeminindeki yarık göz
+## Eski sürüm: 14. Oda'nın zeminindeki yarık göz
 
 Bu sürümde değişenler:
 
