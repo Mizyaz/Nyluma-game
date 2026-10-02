@@ -53,7 +53,8 @@ export interface BoxSpec {
   /**
    * The torn opening in the front face, as insets from the box's edges
    * (world px): how far below the top and above the floor line it is torn,
-   * and how far in from each side. The tear wanders by `wander` and is
+   * and how far in from each side (at most: a narrow picture keeps the
+   * side walls in sight, see `PaperBox.sides`). The tear wanders by `wander` and is
    * jagged by `jag`; `seed` picks its shape.
    */
   tear: { top: number; bottom: number; left: number; right: number; wander: number; jag: number; seed: number };
@@ -472,7 +473,8 @@ export class PaperBox {
             common(set);
             set('uOuter', rgb(c.outer));
             set('uCore', rgb(c.core));
-            set('uTear', [t.top, t.bottom, t.left, t.right]);
+            const [left, right] = this.sides(this.lens);
+            set('uTear', [t.top, t.bottom, left, right]);
             set('uTear2', [t.wander, t.jag, (t.seed % 101) * 1.37, 0]);
             set('uBottom', spec.bottom);
             set('uVig', this.mood.vignette);
@@ -518,6 +520,19 @@ export class PaperBox {
     });
   }
 
+  /**
+   * How far in from the left and right edges the front is torn, for this
+   * lens. At a room's end the eye stops with the side wall on the picture's
+   * edge; a wider tear would hide the near part of that wall, and on a
+   * narrow picture (a phone held upright) the doorway in it. Never more than
+   * the room's own tear.
+   */
+  private sides(lens: Lens): [number, number] {
+    const t = this.spec.tear;
+    const fit = Math.max(0, (lens.halfWidth(0) * this.spec.front) / lens.eye.z - t.wander);
+    return [Math.min(t.left, fit), Math.min(t.right, fit)];
+  }
+
   /** The box in flat colours (no grain, no tear): for the Canvas renderer. */
   private drawFlat(lens: Lens, g: Phaser.GameObjects.Graphics, f: Phaser.GameObjects.Graphics): void {
     const s = this.spec;
@@ -561,10 +576,11 @@ export class PaperBox {
     }
     // The front face around its hole.
     const t = s.tear;
+    const [left, right] = this.sides(lens);
     const o0 = P(x0, top, front);
     const o1 = P(x1, s.bottom, front);
-    const h0 = P(x0 + t.left, top + t.top, front);
-    const h1 = P(x1 - t.right, floor + t.bottom, front);
+    const h0 = P(x0 + left, top + t.top, front);
+    const h1 = P(x1 - right, floor + t.bottom, front);
     f.clear();
     f.fillStyle(c.outer, 1);
     f.fillRect(o0.x, o0.y, o1.x - o0.x, h0.y - o0.y);
