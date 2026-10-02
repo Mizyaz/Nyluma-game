@@ -5,7 +5,142 @@ listeler. Ölçümler aşağıdaki test ortamında alınmıştır; gerçek cihaz
 performansını temsil etmez. İlk bölüm bu sürümün kontrolleridir. Sonraki
 bölümlerdeki sonuçlar önceki sürümlerin oyun kodu içindir.
 
-## Bu sürüm: yükleme ekranı açılır bir kâğıt tiyatrosu oldu
+## Bu sürüm: kapılar duvarın içinde, geçişler kâğıt sahnede
+
+Bu sürümde değişenler:
+
+- Her kapı artık duvarının bir parçası. Kapı duvara oyulmuş; duvarla aynı düzlemde ve
+  aynı hizada duruyor, duvarla birlikte gerçek perspektifte eğiliyor:
+  - Kapının kenarları dik kalıyor ve yakın kenar uzak kenardan uzun.
+  - Üst ve alt kenarı, duvarın üst ve alt kenarıyla birlikte göz noktasına doğru
+    daralıyor.
+- Çıkış kapıları kutunun sağ yan duvarında: r01, r02, r04, r05 Ay kapısı, r08, b01 çit
+  kemeri, b02 tepe kapısı ve b03 blok kapısı. Bütün çıkışlar zaten odanın sağ ucundaydı.
+  - Her kapının ardında derinliğe uzanan bir geçit var. Geçidin kendi zemini, uzak
+    duvarı ve kâğıt çerçeveleri var.
+  - Geçitten bir kâğıt figür bakıyor: balina, filiz, rakun, güve, serçe, tavşan, köstebek
+    ya da soytarı.
+- Odanın ortasındaki kapılar (r05 taş kapı, b01 "kapı", b02 "gece", r12 ofis kapısı),
+  odayı enine kesen bir ara duvarın içinde. Ara duvar arka duvardan öne doğru uzanıyor;
+  kamera geçtikçe gerçek perspektifte dönüyor.
+- Kanatlar kapalıyken duvarla aynı hizada duruyor. Açılırken ya menteşesinde dönüyor ya
+  da duvara kayıyor, eşiğe batıyor, lentoya kalkıyor veya rulo gibi sarılıyor.
+- Gorti kapıya yaklaşınca yürüyebildiği derinlik açıklığa doğru yumuşakça daralıyor, böylece
+  duvarın içinden geçmiyor. Sağ duvardan çıkarken açıklıktan geçide yürüyor ve kanat
+  arkasından kapanıyor.
+- r05'te taş kapının üstünde duran boş soluk kart gitti: o taş artık kapının duvarının
+  parçası.
+- Geçişlerde odanın ekran görüntüsü kıvrılmıyor, oyunun üstüne resim konmuyor. Her şey
+  kutunun önünde, kendi derinliğinde duran kâğıt:
+  - **Oda geçişi:** İki dekor paneli kanatlardan yuvarlanıp odanın önünde birleşiyor.
+    Arkalarında oda değişiyor, paneller açılıyor ve yeni odanın kartları uzaktan yakına
+    ayağa kalkıyor.
+  - **Bölüm geçişi:** Önce bir perde iniyor. Önüne iki ipe asılı başlık kartı iniyor
+    ("BÖLÜM", fırçayla boyanmış rakam ve başlık). Kartın resmi rafında ayağa kalkıyor.
+    Sonra kart ve perde kalkıyor, bölümün ilk odası açılıyor.
+  - Ara sahnelerdeki oda değişimleri de aynı panelleri kullanıyor. r09'da ekranın üstüne
+    çizilen şerit silme kalktı; yerine kamera yaklaşırken paneller kapanıyor.
+  - Azaltılmış hareket ayarında paneller ve perde yalnızca belirip kayboluyor.
+- Kaldırılanlar: sayfa çevirme (`PageTurn.ts`, `pageCurl.ts`), bölüm sayfası
+  (`ChapterPage.ts`), `PageBits.ts` ve bunların CSS'i, fırça ve yaprak sesleri.
+- Testler:
+  - Sayfa kıvrılmasının testleri kodla birlikte gitti.
+  - Kalan koda ait testler (kartların ayağa kalkışı, bölüm kartının ne zaman açıldığı,
+    bölüm çizimleri) `tests/unit/chapterPages.test.ts` dosyasına taşındı.
+  - Sahne değişiminin zaman çizelgesi ve başlık kartının yerleşimi için
+    `tests/unit/stagecraft.test.ts` eklendi.
+  - Kapı testleri yeni duvarlara göre yazıldı.
+
+Birleştirme commit'i (`e629e3b`) üzerinde koşulan kontroller:
+
+| Kontrol | Sonuç |
+| --- | --- |
+| `npm run typecheck` | Hatasız |
+| `npx vitest run` | 22 dosya, 198 test geçti |
+| `npm run kd -- check` | Tamam: 6 bölüm, 4 oda dosyası, 12 TS oda, 8 metin dosyası |
+| `npm run build`, `npm run build:e2e` | Başarılı |
+| `npx playwright test --grep-invert @campaign --workers=1` | 25 geçti, 13 atlandı, 0 kaldı, 12.6 dk |
+| `npx playwright test --grep @campaign --workers=1` | 2 geçti, 13.2 dk |
+
+Derlemeler ve iki e2e koşusu, birleştirmeden önce `walls-paper` dalında (`48d139d`) yapıldı.
+Birleştirmenin oyun kodu bu dalla aynı; birleştirmede yalnızca `docs/HANDOFF.md` değişti.
+
+İki tam kampanya da geçti: klavyeyle tam oyun 6.3 dakika, telefonda yalnız dokunmayla tam
+oyun 6.8 dakika sürdü. Atlanan 13 test önceki sürümdekilerle aynı. İki açılış testi 18.6
+ve 22.5 saniyede, dokunmatik ilk oda testi 57.8 saniyede geçti.
+
+Açılış süresi ölçüldü: yayındaki sürüm (`bee0b9f`) ile bu sürüm, sırayla.
+
+- Ortam: WebGL, yazılımla çizen başsız tarayıcı (SwiftShader), 1280×720.
+- Yük ortalaması 1.1–4.0.
+- Süreler saniye cinsinden.
+- "Yeni Oyun" düğmesine görünür görünmez basıldı.
+
+Sayfa açılışından "Yeni Oyun" düğmesinin görünmesine kadar:
+
+| Sürüm | Ölçümler | Ortanca |
+| --- | --- | --- |
+| Yayındaki | 6.9, 4.9, 5.5, 6.1, 5.9, 6.0 | 6.0 |
+| Bu sürüm | 5.8, 5.5, 5.6, 5.6, 5.2, 5.0 | 5.6 |
+
+"Yeni Oyun"dan oyun ekranının (HUD) görünmesine kadar:
+
+| Sürüm | Ölçümler | Ortanca |
+| --- | --- | --- |
+| Yayındaki | 12.5, 6.9, 8.8, 8.4, 9.1, 8.3 | 8.6 |
+| Bu sürüm | 6.2, 4.9, 5.7, 5.5, 5.6, 5.3 | 5.5 |
+
+Kare süreleri aynı ortamda ölçüldü. Her ölçüm bir koşu; sayılar milisaniye cinsinden kare
+süresi ortancası:
+
+| Yer | Boyut | Yayındaki | Bu sürüm |
+| --- | --- | --- | --- |
+| r01, kapının önü (8 sn) | 1280×720 | 900 | 783 |
+| r01, yerleştikten sonra (20 sn) | 844×390, dpr 2 | 267 | 233 |
+| r05, taş kapının önü (8 sn) | 1280×720 | 633 | 583 |
+
+- SwiftShader'da iki sürüm de ara sıra 7–10 saniye donuyor. Bu sırada sayfanın ana
+  iş parçacığı boşta, yani bekleyen GPU süreci. Bu yüzden 8 saniyelik bir ölçüm penceresi
+  bazen hiç kare yakalayamıyor (844×390'da yeni sürümün iki ölçümü böyle boş çıktı).
+- Saat bir karede en çok 100 ms ilerlediği için, bu ortamda (saniyede yaklaşık bir kare)
+  her geçiş uzuyor. Yeni geçiş ayrıca sonraki odanın 3 kare çizmesini bekliyor. 1280×720'de
+  oda geçişi 55 kare sürdü (sayfa çevirme 26), bölüm geçişi 134 kare (sayfa çevirme 84).
+
+Görsel olarak bakılanlar (ekran görüntüleri tek tek açıldı):
+
+- Her kapı 1280×720'de uzaktan, kapalı ve açık.
+- Canvas çizicide 12 kapının hepsi.
+- 844×390'da (dpr 2, dokunmatik) r01, r02, r04, r05 Ay kapısı, r08, b01 çit, b02 tepe
+  kapısı ve b03 blok kapısı.
+- 390×844 dikey telefonda r01, r02, r05 taş kapı, r05 Ay kapısı, b01 ve r08.
+- Kare kare geçiş şeritleri:
+  - oda ve bölüm geçişi 1280×720'de, dikey telefonda (390×844) ve Canvas'ta;
+  - ara sahne geçişi (r09'dan r10'a);
+  - azaltılmış harekette oda ve bölüm geçişi.
+
+Bilinen sorunlar:
+
+- **Sağ yan duvardaki kapı dar ekranda küçük kalıyor.** Bu bir geometri sınırı: kamera
+  odanın sonunda duruyor ve göz duvara en fazla yarım ekran uzaklıkta olabiliyor. Kapının
+  ekrandaki genişliği yaklaşık şöyle:
+  - 1280×720'de 100 piksel;
+  - 844×390'da 60 piksel;
+  - dikey telefonda (390×844) 25–30 piksel. Burada kapı, oyun şeridinin sağ kenarında ince
+    bir dilim olarak görünüyor.
+
+  Telefonda Rezonans ve Zıpla düğmeleri kapının alt kısmını örtüyor. Açıklığı daha derin
+  yapmak ya da perspektifi güçlendirmek kapıyı genişletir; ikisi de denenmedi.
+- Ara duvarın ön ucu (r05, b01) düz, gri bir şerit gibi görünüyor.
+- Geçiş dışındaki ekran efektleri hâlâ ekranın üstünde duruyor:
+  - ara sahnelerdeki ve oyundaki parlamalar;
+  - r01'in girişindeki tam ekran resim;
+  - kamera solmaları;
+  - sinema şeritleri.
+- Geçiş geriye giderken de ileri giderken olduğu gibi görünüyor (`dir` artık görünüşü
+  değiştirmiyor).
+- Gerçek bir telefonda denenmedi.
+
+## Önceki sürüm: yükleme ekranı açılır bir kâğıt tiyatrosu oldu
 
 Bu sürümde değişenler:
 
@@ -113,7 +248,7 @@ Henüz denenmeyenler:
 - Gerçek telefon ve gerçek GPU'lu cihaz.
 - Yükleme ekranının `:has()` seçicisini tanımayan eski tarayıcılarda görünüşü.
 
-## Önceki sürüm: 14. Oda'nın ortasındaki kök kemer kaldırıldı
+## Eski sürüm: 14. Oda'nın ortasındaki kök kemer kaldırıldı
 
 Bu sürümde değişenler:
 
