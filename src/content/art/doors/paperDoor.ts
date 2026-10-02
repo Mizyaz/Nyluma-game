@@ -339,7 +339,7 @@ function in1(): string {
 const HOLE2 = archPts(86, 158, { rise: 43 });
 function in2(): string {
   const rng = new Rng(hashSeed('door.paper.in2'));
-  // The soil: lumpy earth with pebbles in it, roots hanging over the hole.
+  // The soil: lumpy earth with pebbles in it, roots creeping round the hole.
   const lumpy = deckle(HOLE2, 1.4, 7, 5).filter((p) => p[1] <= 0.01);
   let over = '';
   for (let i = 0; i < 26; i++) {
@@ -358,11 +358,16 @@ function in2(): string {
     over += bit(ellipsePath(x, y, w, w * 0.64), C.stone, w * 2);
   }
   let s = page(lumpy, -130, 130, -200, 30, C.soil, C.soilFloor, { wallOver: over, rim: 4.5 });
-  // Roots hanging over the opening.
-  for (const [x, len, k] of [[-30, 30, 0], [-13, 20, 1], [9, 36, 2], [27, 22, 3]] as const) {
-    const top: Pt = [x, -150 + Math.abs(x) * 0.22];
-    const pts: Pt[] = [top, [x + (k % 2 ? 3 : -3), top[1] + len * 0.5], [x + (k % 2 ? -2 : 4), top[1] + len]];
-    s += comic(smoothTaper(pts, 4.4, 1.2), C.bark, { line: LINE.detail, rim: [1, -0.5] });
+  // Roots creeping round the hole's rim from either side, curling up at their tips.
+  for (const side of [-1, 1]) {
+    const pts: Pt[] = [];
+    for (let i = 0; i <= 8; i++) {
+      const t = Math.PI / 2 + side * (1.25 - (i / 8) * 1.05);
+      pts.push([Math.cos(t) * (43 + 7) + side * 0.5 * Math.sin(i * 1.6), -115 - Math.sin(t) * (43 + 8) + Math.sin(i * 1.3 + side) * 1.4]);
+    }
+    const tip = pts[pts.length - 1]!;
+    pts.push([tip[0] - side * 4, tip[1] - 4], [tip[0] - side * 2, tip[1] - 8]);
+    s += comic(smoothTaper(pts, 5.2, 1.4), C.bark, { line: LINE.detail, rim: [1, -0.5] });
   }
   return s;
 }
@@ -432,8 +437,12 @@ function far(): string {
     const y = rng.range(6, 50);
     s += bit(ellipsePath(x, y, rng.range(2.5, 5), rng.range(1.6, 3)), '#d9cbd8', 8);
   }
-  // Roots hanging from the top.
-  for (const [x, len] of [[-36, 54], [-12, 34], [20, 62], [44, 30]] as const) s += comic(smoothTaper([[x, -212], [x + 4, -212 + len * 0.5], [x - 2, -212 + len]], 6, 1.5), C.bark, { line: LINE.detail, rim: [1.4, -0.7] });
+  // Roots running along under its roof.
+  for (const [x0, x1, y] of [[-160, -20, -204], [14, 160, -200]] as const) {
+    const pts: Pt[] = [];
+    for (let i = 0; i <= 8; i++) pts.push([x0 + ((x1 - x0) * i) / 8, y + Math.sin(i * 1.4 + x0) * 3]);
+    s += comic(smoothTaper(x0 < 0 ? pts : pts.reverse(), 7, 2), C.bark, { line: LINE.detail, rim: [1.4, -0.7] });
+  }
   return s;
 }
 
