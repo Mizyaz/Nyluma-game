@@ -256,6 +256,37 @@ Conventions:
 - `CrystalWarp` in `crystalFx.ts` is no longer used by the transitions. The rooms' background
   tunnels still use the shared gem-tunnel code.
 
+### Doorways (`src/render/2d/fx/doorway.ts`, `src/content/doors.ts`, `doorSpecs.ts`)
+
+- Every way on is a doorway built like a tunnel book. A frame of cards stands just behind
+  the actors' plane. Behind its opening a few cut-out pages recede into the depth, the last
+  of them a glimpse of the room it leads to.
+  - The inside stands on one camera clipped to the opening. Each page is moved and scaled
+    every frame as the eye would see it at its depth, so the pages slide past each other as
+    the camera follows Gorti.
+  - The art is in `src/content/art/doors/` (`doorKit.ts` and one file per door), printed once.
+- A door only reads the condition that was already there (`doorSpecs.ts`: an exit, a solid
+  or a flag). Exit boxes, conditions, targets, checkpoints and room widths did not change.
+  - Shut, pieces or a leaf close its opening. When the condition comes true and the door is
+    on screen, it opens with a short animation. A leaf turns in true perspective, drawn as
+    vertical strips by depth.
+  - Gorti near wakes it: the light swells, the pages draw apart, someone peeks out, a sound.
+- The doors: r01 root gate (always open) and paper door (`tunnel`); r02 root lattice (the
+  `roots` solid, the song); r04 tree door; r05 stone gate (`gate`) and moon gate; r08 stage
+  door; b01 form door (`gate:kapi`) and hedge arch; b02 moon door (`gate:gece`) and hill
+  wheel; b03 block door; r12 office door (the `r12.door` flag). The room changes in r03,
+  r06, r07, r09, r10 and r11 are cutscenes, with no door to walk through.
+- Reduced motion: nothing idles; opening, a leaf's swing and a peek are 260 ms fades.
+- Per frame the doors only move and fade printed cards. The inside's camera is hidden while
+  the door is off screen.
+- Phaser 4's default quad submitter picks each quad's texture by an exact float compare,
+  which SwiftShader breaks across a rotated quad: half of a turning piece vanished now and
+  then. The doors draw with a single-texture submitter (`singleSubmitter` in `doorway.ts`).
+  Other rotating sprites may have the same problem.
+- Tests: `tests/unit/doors.test.ts`.
+- Known: at 844 × 390 the Moon on top of b02's crystal gate is cut off at the top. The old
+  `prop.officedoor` art is still in `props.ts`, used only by the props preview.
+
 ### The story text in JSON (`src/content/text/`)
 
 - All the story's words are JSON files the user edits: names, captions, dialogue, inspect,
@@ -312,7 +343,9 @@ Conventions:
   with eyes shut and notes while Gorti sings, and speaks while its own lines type in a plain
   dialogue. Reduced motion: blinks and slow breathing only.
 - Touch (`src/ui/SkyTouch.ts`): DOM circles on the faces, clipped to the game view, under the
-  HUD and everything else (its buttons, dialogue, documents, menus, `#touch`).
+  HUD and everything else (its buttons, dialogue, documents, menus, `#touch`). The HUD lets
+  touches through (`#stage > .hud`, which `#stage > *` would otherwise override); only its
+  buttons take them.
   A tap: `Face.poke()` (wiggle, giggle or blink, sparkles), `touchLevel` swells a glow
   behind and over the face wherever it shows, the sky's halo and its lamp softly (SkyLamps
   adds 0.3 of full strength; up 0.45 s, down 1.4 s), a chime (`sfx('skyChime')`,
