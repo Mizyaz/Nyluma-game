@@ -1,11 +1,11 @@
 // The geometry of a page being turned, with nothing of the DOM in it (so it
 // can be tested). The page lies on the book, its spine along one side.
 // Picked up by its free edge, the paper beyond a fold line leaves the page
-// over a tight roll and goes on straight from it, standing up toward the
-// viewer; as the fold travels to the spine the paper beyond turns on over,
-// until the whole page lies over beyond the spine, its back up. The fold is
-// tilted, its foot leading, the way a page is turned by a hand at its lower
-// corner.
+// over a tight roll, back over toward the spine; beyond the roll it bends up
+// again toward the hand that turns it, and goes on straight. As the fold
+// travels to the spine the page goes over with it, until the whole of it
+// lies over beyond the spine, its back up. The fold is tilted, its foot
+// leading, the way a page is turned by a hand at its lower corner.
 //
 // The page's own frame: x from the spine toward the free edge, y down the
 // page, z toward the viewer (px). "Across" runs over the fold toward the free
@@ -33,14 +33,17 @@ export interface Sheet {
 
 /**
  * A pose of the page: its fold (px across from the spine's top corner; the
- * paper beyond it is off the page), how far the paper beyond the roll has
- * turned (rad: 0 lying flat, π/2 standing up, π lying over, back up), and
- * the roll's radius (px).
+ * paper beyond it is off the page), how far over the roll takes the paper
+ * (rad: 0 lying flat, π/2 standing up, π lying over, back up), the roll's
+ * radius (px); and how far the paper beyond the roll then bends back up
+ * toward the hand (rad), over a gentler curve of radius `R` (px).
  */
 export interface Curl {
   f: number;
   phi: number;
   r: number;
+  bow: number;
+  R: number;
 }
 
 /** How far across the page reaches: from its spine's top corner (0) to its free edge's foot. */
@@ -55,17 +58,36 @@ export interface Bent {
   a: number;
 }
 
+/** How long the roll and the bow beyond it are (px along the paper), and how far over the paper is beyond them (rad). */
+export function parts(c: Curl): { roll: number; bow: number; end: number } {
+  const phi = Math.min(Math.PI, Math.max(0, c.phi));
+  const bow = Math.min(phi, Math.max(0, c.bow));
+  return { roll: phi * c.r, bow: bow * c.R, end: phi - bow };
+}
+
 /** Where the paper `d` px beyond the fold (measured along the paper) is. */
 export function bend(c: Curl, d: number): Bent {
   if (d <= 0) return { s: d, z: 0, a: 0 };
-  const phi = Math.max(0, c.phi);
-  const arc = phi * c.r;
-  if (d <= arc) {
+  const phi = Math.min(Math.PI, Math.max(0, c.phi));
+  const p = parts(c);
+  if (d <= p.roll) {
     const t = d / c.r;
     return { s: c.r * Math.sin(t), z: c.r * (1 - Math.cos(t)), a: t };
   }
-  const e = d - arc;
-  return { s: c.r * Math.sin(phi) + e * Math.cos(phi), z: c.r * (1 - Math.cos(phi)) + e * Math.sin(phi), a: phi };
+  // Over the top of the roll…
+  const s1 = c.r * Math.sin(phi);
+  const z1 = c.r * (1 - Math.cos(phi));
+  const e = d - p.roll;
+  if (e <= p.bow) {
+    // …bending back up toward the hand…
+    const t = phi - e / c.R;
+    return { s: s1 + c.R * (Math.sin(phi) - Math.sin(t)), z: z1 + c.R * (Math.cos(t) - Math.cos(phi)), a: t };
+  }
+  // …and on, straight.
+  const s2 = s1 + c.R * (Math.sin(phi) - Math.sin(p.end));
+  const z2 = z1 + c.R * (Math.cos(p.end) - Math.cos(phi));
+  const g = e - p.bow;
+  return { s: s2 + g * Math.cos(p.end), z: z2 + g * Math.sin(p.end), a: p.end };
 }
 
 /** Where the page's point (x, y) is now, and the angle the paper lies at there. */
@@ -95,7 +117,7 @@ export function rollRadius(sh: Sheet): number {
 
 /** Lying flat: the fold beyond the page. */
 export function flat(sh: Sheet): Curl {
-  return { f: across(sh) + 1, phi: 0, r: rollRadius(sh) };
+  return { f: across(sh) + 1, phi: 0, r: rollRadius(sh), bow: 0, R: 1 };
 }
 
 /** Picked up: how much of the page's width is off the page at its foot, and how far over it is rolled there (rad). */
@@ -104,14 +126,14 @@ export const LIFT = { depth: 0.17, phi: 2.75 } as const;
 /** The free edge picked up, its foot first (u: 0..1 over the lift). */
 export function liftCurl(u: number, sh: Sheet): Curl {
   const v = clamp01(u);
-  return { f: across(sh) - LIFT.depth * sh.w * (1 - (1 - v) ** 3), phi: LIFT.phi * (1 - (1 - v) ** 2), r: rollRadius(sh) };
+  return { f: across(sh) - LIFT.depth * sh.w * (1 - (1 - v) ** 3), phi: LIFT.phi * (1 - (1 - v) ** 2), r: rollRadius(sh), bow: 0, R: 1 };
 }
 
 /** Held up while the next page is made: it breathes (t: seconds held). */
 export function hoverCurl(t: number, sh: Sheet): Curl {
   const w = Math.sin(t * 5.2);
   const held = liftCurl(1, sh);
-  return { f: held.f - sh.w * 0.005 * w, phi: held.phi + 0.06 * w, r: held.r };
+  return { ...held, f: held.f - sh.w * 0.005 * w, phi: held.phi + 0.06 * w };
 }
 
 /** Where the turn leaves the fold: past the spine, so far that the page's top corner (it trails the foot) is out of sight too. */
@@ -143,15 +165,30 @@ export function turnPace(u: number): number {
   return ((ay * t + by) * t + cy) * t;
 }
 
-/** How far over the paper beyond the roll is laid by the end of the turn (rad). */
-export const TURN = { over: Math.PI - 0.06 } as const;
+/**
+ * How the page goes over: by the end the roll has laid it over, back up
+ * (`over`, rad); on the way the paper beyond the roll is lifted toward the
+ * hand until it stands (`stand`, rad: a little short of upright), over a
+ * curve `R` page widths across.
+ */
+export const TURN = { over: Math.PI - 0.06, stand: 1.45, R: 0.18 } as const;
 
-/** The turn (u: 0..1) from the pose it was held in: the fold travels past the spine, the paper beyond it laid over, back up. */
+/**
+ * The turn (u: 0..1) from the pose it was held in (or from lying flat, when
+ * it was never picked up): the fold travels past the spine and the page goes
+ * over with it.
+ */
 export function turnCurl(u: number, sh: Sheet, from: Curl): Curl {
   const q = turnPace(u);
   const f = from.f + (endFold(sh) - from.f) * q;
-  const phi = from.phi + (TURN.over - from.phi) * smooth(0, 0.4, q);
-  return { f, phi: Math.min(Math.PI, Math.max(0, phi)), r: from.r };
+  // Rolled over at once from lying flat; held up, it is most of the way over already.
+  const held = clamp01(from.phi / TURN.over);
+  const phi = Math.min(Math.PI, Math.max(0, from.phi + (TURN.over - from.phi) * smooth(0.1 * held, 0.4 + 0.55 * held, q)));
+  // Lifted toward the hand as soon as it is pulled (once it has rolled past
+  // standing up), and let down again as it reaches the spine.
+  const lift = Math.max(0, phi - TURN.stand) * (1 - smooth(0.62, 0.95, q));
+  const bow = from.bow + (lift - from.bow) * smooth(0, 0.18, u);
+  return { f, phi, r: from.r, bow: Math.max(0, bow), R: TURN.R * sh.w };
 }
 
 // ------------------------------------------------------------ light

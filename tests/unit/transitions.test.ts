@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   PERSPECTIVE,
+  TURN,
   across,
   bend,
   flat,
   hoverCurl,
   liftCurl,
   litAt,
+  parts,
   place,
   project,
   rollRadius,
@@ -30,10 +32,18 @@ const SHEETS: Sheet[] = [
   { w: 390, h: 219 },
 ];
 
-/** The poses of a whole turn: lifted, held, and turned over. */
+/** The poses of a whole turn: lifted, held, and turned over; and turned over from lying flat (no picture: the page was never picked up). */
 function poses(sh: Sheet): Curl[] {
   const held = liftCurl(1, sh);
-  return [liftCurl(0.3, sh), liftCurl(0.7, sh), held, hoverCurl(0.4, sh), ...[0, 0.15, 0.3, 0.5, 0.7, 0.9, 1].map((u) => turnCurl(u, sh, held))];
+  const turns = [0, 0.15, 0.3, 0.5, 0.7, 0.9, 1];
+  return [
+    liftCurl(0.3, sh),
+    liftCurl(0.7, sh),
+    held,
+    hoverCurl(0.4, sh),
+    ...turns.map((u) => turnCurl(u, sh, held)),
+    ...turns.map((u) => turnCurl(u, sh, flat(sh))),
+  ];
 }
 
 describe('page curl', () => {
@@ -60,21 +70,27 @@ describe('page curl', () => {
       for (const c of poses(sh)) {
         expect(c.phi).toBeGreaterThanOrEqual(0);
         expect(c.phi).toBeLessThanOrEqual(Math.PI);
-        // Along the paper from the fold, every px of it is a px of curve.
+        // Along the paper from the fold, every px of it is a px of curve…
         const len = across(sh) + sh.w;
         let a = bend(c, 0);
         let l = 0;
+        let longest = 0;
+        let fall = 0;
+        let over = 0;
         for (let d = 0.5; d <= len; d += 0.5) {
           const b = bend(c, d);
           const step = Math.hypot(b.s - a.s, b.z - a.z);
-          expect(step).toBeLessThan(0.5 + 1e-6);
+          longest = Math.max(longest, step);
           l += step;
-          // It only ever rises from the page, and never turns past lying over.
-          expect(b.z).toBeGreaterThanOrEqual(a.z - 1e-9);
-          expect(b.a).toBeLessThanOrEqual(Math.PI + 1e-9);
+          fall = Math.max(fall, a.z - b.z);
+          over = Math.max(over, b.a);
           a = b;
         }
+        expect(longest).toBeLessThan(0.5 + 1e-6);
         expect(l).toBeCloseTo(len, 0);
+        // …it only ever rises from the page, and never turns past lying over.
+        expect(fall).toBeLessThan(1e-9);
+        expect(over).toBeLessThanOrEqual(Math.PI + 1e-9);
       }
     }
   });
@@ -112,16 +128,65 @@ describe('page curl', () => {
 
   it('turns the fold steadily toward the spine and lays the paper over as it goes', () => {
     const sh = SHEETS[0]!;
-    const held = liftCurl(1, sh);
-    let last = turnCurl(0, sh, held);
-    expect(last.f).toBeCloseTo(held.f, 6);
-    for (let u = 0.05; u <= 1.0001; u += 0.05) {
-      const c = turnCurl(u, sh, held);
-      expect(c.f).toBeLessThan(last.f + 1e-9);
-      expect(c.phi).toBeGreaterThanOrEqual(last.phi - 1e-9);
-      last = c;
+    // From where it was held, or from lying flat (no picture).
+    for (const from of [liftCurl(1, sh), flat(sh)]) {
+      let last = turnCurl(0, sh, from);
+      expect(last.f).toBeCloseTo(from.f, 6);
+      for (let u = 0.05; u <= 1.0001; u += 0.05) {
+        const c = turnCurl(u, sh, from);
+        expect(c.f).toBeLessThan(last.f + 1e-9);
+        expect(c.phi).toBeGreaterThanOrEqual(last.phi - 1e-9);
+        last = c;
+      }
+      expect(last.phi).toBeGreaterThan(Math.PI - 0.1);
     }
-    expect(last.phi).toBeGreaterThan(Math.PI - 0.1);
+  });
+
+  it('lifts the page toward the hand as it goes over, and lays it down once past the spine', () => {
+    for (const sh of SHEETS) {
+      const held = liftCurl(1, sh);
+      expect(turnCurl(0, sh, held).bow).toBeCloseTo(held.bow, 6);
+      // On the way over, the paper beyond the roll stands up toward the hand…
+      const mid = turnCurl(0.3, sh, held);
+      expect(Math.abs(parts(mid).end - Math.PI / 2)).toBeLessThan(0.35);
+      // …and by the end it lies over, back up.
+      expect(turnCurl(1, sh, held).bow).toBe(0);
+      // It is lifted only once it has rolled past standing up, and never past it, toward the hand.
+      for (const from of [held, flat(sh)]) {
+        for (let u = 0; u <= 1.0001; u += 0.02) {
+          const c = turnCurl(u, sh, from);
+          expect(c.bow === 0 || parts(c).end >= TURN.stand - 1e-9).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('never lets the lifted paper hide more than 30% of the screen', () => {
+    for (const sh of SHEETS) {
+      const eye = { x: sh.w / 2, y: sh.h / 2 };
+      const cell = sh.w / 80;
+      const cols = Math.ceil(sh.w / cell);
+      const rows = Math.ceil(sh.h / cell);
+      // From where it was held, and from lying flat (no picture).
+      for (const from of [liftCurl(1, sh), flat(sh)]) {
+        let worst = 0;
+        for (let i = 0; i <= 32; i++) {
+          const c = turnCurl(i / 32, sh, from);
+          const hidden = new Set<number>();
+          for (let y = 0; y <= sh.h; y += cell / 2) {
+            for (let x = 0; x <= sh.w; x += cell / 2) {
+              const q = place(c, x, y);
+              if (q.z <= 0) continue;
+              const p = project(q, eye, sh.w * PERSPECTIVE);
+              if (p.x < 0 || p.y < 0 || p.x >= sh.w || p.y >= sh.h) continue;
+              hidden.add(Math.floor(p.y / cell) * cols + Math.floor(p.x / cell));
+            }
+          }
+          worst = Math.max(worst, hidden.size / (cols * rows));
+        }
+        expect(worst).toBeLessThan(0.3);
+      }
+    }
   });
 
   it('lights the roll from the upper right: the print as printed when flat, the roll bright toward the light and dark underneath', () => {

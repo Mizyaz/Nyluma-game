@@ -1,5 +1,5 @@
 import { h } from './dom';
-import { ACROSS, ALONG, PERSPECTIVE, across, bend, flat, hoverCurl, liftCurl, litAt, shadowDrift, turnCurl, type Bent, type Curl, type Lit, type Sheet } from './pageCurl';
+import { ACROSS, ALONG, PERSPECTIVE, across, bend, flat, hoverCurl, liftCurl, litAt, parts, shadowDrift, turnCurl, type Bent, type Curl, type Lit, type Sheet } from './pageCurl';
 
 // A page of the storybook turning over, in real 3D: the frame just shown is
 // the page. Picked up by its free edge, its foot first, it leaves the book
@@ -113,9 +113,9 @@ const PAPER = { back: '#dfc8a1', plain: '#f6eedd', edge: 'rgba(255, 250, 238, 0.
 /** The game's plum shadow tone, and the pale of paper turned to the light (rgb). */
 const SHADOW = '58, 42, 74';
 const PALE = '255, 249, 236';
-/** The roll is drawn in bands this many radians wide… */
+/** The paper is drawn in bands turning at most this many radians… */
 const ARC_STEP = 0.12;
-/** …and the straight paper beyond it in bands each rising about this many px (perspective changes along it). */
+/** …and rising at most about this many px each (perspective changes along it). */
 const RISE_STEP = 9;
 /** How far each band reaches back over the last (CSS px on screen), so no seam shows. */
 const OVERLAP = 1.6;
@@ -361,23 +361,63 @@ export class Leaf {
     const bands = this.bands(c, past);
     this.beneath(c, bands);
     // Each band's paper reaches back over the last band's edge, so no seam
-    // shows; its light and shade go on exactly where it lies, each laid on
-    // once the next band's paper is down (else they would be laid twice
-    // along every edge).
-    let last: Band | null = null;
-    for (const b of bands) {
-      this.base(b);
-      if (last) this.light(c, last);
-      last = b;
+    // shows in it. The light and shade go on over a whole run of bands at
+    // once, as one shape with one gradient across it (laid band by band, their
+    // soft edges would show as faint lines between them). A run goes one way
+    // across the screen: where the paper turns back over the roll a new run
+    // begins, laid over the last.
+    for (const run of this.runs(c, bands)) {
+      for (const b of run) this.base(b);
+      this.light(c, run);
     }
-    if (last) this.light(c, last);
     this.outline(c, bands);
+  }
+
+  /** The bands in runs, each run going one way across the screen. */
+  private runs(c: Curl, bands: Band[]): Band[][] {
+    const out: Band[][] = [];
+    let run: Band[] = [];
+    let way = 0;
+    for (const b of bands) {
+      const dx = this.seen(c.f + b.b1.s, b.b1.z) - this.seen(c.f + b.b0.s, b.b0.z);
+      const w = Math.abs(dx) < 1e-3 ? way : Math.sign(dx);
+      if (run.length && way !== 0 && w !== way) {
+        out.push(run);
+        run = [];
+      }
+      run.push(b);
+      way = w;
+    }
+    if (run.length) out.push(run);
+    return out;
   }
 
   /** Sets the canvas to draw in a frame mapped to the layer by `m` (CSS px). */
   private frame(m: Mat): void {
     const k = this.dpr;
     this.g!.setTransform(m[0] * k, m[1] * k, m[2] * k, m[3] * k, m[4] * k, m[5] * k);
+  }
+
+  /** Adds a closed outline to the path, turned the same way round as every other (so that outlines laid edge to edge make one shape). */
+  private ring(pts: P2[]): void {
+    const g = this.g!;
+    let area = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i]!;
+      const q = pts[(i + 1) % pts.length]!;
+      area += p[0] * q[1] - q[0] * p[1];
+    }
+    if (area < 0) pts.reverse();
+    g.moveTo(pts[0]![0], pts[0]![1]);
+    for (let i = 1; i < pts.length; i++) g.lineTo(pts[i]![0], pts[i]![1]);
+    g.closePath();
+  }
+
+  /** The path of a run of bands as one shape, as seen (in the layer's frame of the page). */
+  private runPath(run: Band[]): void {
+    this.frame(this.toLayer);
+    this.g!.beginPath();
+    for (const b of run) if (b.exact.length) this.ring(b.exact.map((p) => apply(b.m, p)));
   }
 
   private path(poly: readonly P2[]): void {
@@ -429,14 +469,19 @@ export class Leaf {
 
   /** The paper beyond the fold, cut in bands from the fold out (each nearer the eye than the last). */
   private bands(c: Curl, past: number): Band[] {
-    const arcEnd = Math.min(Math.max(0, c.phi) * c.r, past);
+    // The roll, the bow and the straight paper beyond, each cut finely enough
+    // for its light and its perspective.
+    const p = parts(c);
     const cuts: number[] = [0];
-    const nArc = Math.max(1, Math.ceil(arcEnd / c.r / ARC_STEP));
-    for (let i = 1; i <= nArc; i++) cuts.push((arcEnd * i) / nArc);
-    if (past > arcEnd + 0.25) {
-      const len = past - arcEnd;
-      const n = Math.max(1, Math.min(48, Math.ceil((len * Math.abs(Math.sin(c.phi))) / RISE_STEP)));
-      for (let i = 1; i <= n; i++) cuts.push(arcEnd + (len * i) / n);
+    let at = 0;
+    for (const end of [p.roll, p.roll + p.bow, past]) {
+      const to = Math.min(end, past);
+      if (to <= at + 0.25) continue;
+      const b0 = bend(c, at);
+      const b1 = bend(c, to);
+      const n = Math.max(1, Math.min(48, Math.ceil(Math.max(Math.abs(b1.a - b0.a) / ARC_STEP, (b1.z - b0.z) / RISE_STEP))));
+      for (let i = 1; i <= n; i++) cuts.push(at + ((to - at) * i) / n);
+      at = to;
     }
     const out: Band[] = [];
     const A = ACROSS;
@@ -493,34 +538,26 @@ export class Leaf {
     let zMax = 0;
     for (const b of bands) {
       zMax = Math.max(zMax, b.z);
-      const lift = Math.min(b.z, 240) * 0.1;
+      const lift = Math.min(b.z, 600) * 0.16;
       const m = compose(this.toLayer, b.m);
-      const pts = b.poly.map((p) => {
-        const q = apply(m, p);
-        return [q[0] + drift.x * lift - far, q[1] + drift.y * lift] as P2;
-      });
-      // All the same way round, so they add up to one shape.
-      let area = 0;
-      for (let i = 0; i < pts.length; i++) {
-        const p = pts[i]!;
-        const q = pts[(i + 1) % pts.length]!;
-        area += p[0] * q[1] - q[0] * p[1];
-      }
-      if (area < 0) pts.reverse();
-      g.moveTo(pts[0]![0], pts[0]![1]);
-      for (let i = 1; i < pts.length; i++) g.lineTo(pts[i]![0], pts[i]![1]);
-      g.closePath();
+      this.ring(
+        b.poly.map((p) => {
+          const q = apply(m, p);
+          return [q[0] + drift.x * lift - far, q[1] + drift.y * lift] as P2;
+        }),
+      );
     }
     g.shadowColor = `rgba(${SHADOW}, ${r2(0.34 * rise)})`;
-    g.shadowBlur = (4 + Math.min(12, zMax * 0.03)) * k;
+    g.shadowBlur = (4 + Math.min(26, zMax * 0.035)) * k;
     g.shadowOffsetX = far * k;
     g.shadowOffsetY = 0;
     g.fillStyle = '#000';
     g.fill();
     g.restore();
-    // The roll's own shadow on what it has uncovered: a thin dark line where
-    // it meets the paper, and a soft shade beyond.
-    const sil = this.silhouette(c, bands);
+    // The roll's own shadow on what it has uncovered, once it has rolled
+    // back over: a thin dark line where it meets the paper, a soft shade beyond.
+    const rolled = clamp01((c.phi - 1.2) / 0.6);
+    const sil = rolled > 0 ? this.silhouette(c, bands) : null;
     if (sil !== null) {
       const wide = c.r * 1.6 + 12;
       const zone = bandOf(this.sheet, sil - 0.5, sil + wide);
@@ -534,7 +571,7 @@ export class Leaf {
           [0.65, 0.04],
           [1, 0],
         ];
-        for (const [at, a] of stops) grd.addColorStop(at, `rgba(${SHADOW}, ${r2(a * rise)})`);
+        for (const [at, a] of stops) grd.addColorStop(at, `rgba(${SHADOW}, ${r2(a * rolled)})`);
         this.path(zone);
         g.fillStyle = grd;
         g.fill();
@@ -562,24 +599,27 @@ export class Leaf {
   }
 
   /**
-   * How a band's end is lit: the crease darkens the print where it leaves the
-   * page; the back darkens toward the roll's underside. Where the roll faces
-   * the light it is bright, with a sheen; the flat of the sheet keeps the
-   * back's own darker tone (paper is matte: only a breath of the light and
-   * the sheen are on it).
+   * How the paper `d` px beyond the fold is lit (`b`: where it is). The
+   * crease darkens the print where it leaves the page; the roll's back
+   * darkens toward its underside. Where the paper curves toward the light it
+   * pales, with a sheen; the straight of the sheet keeps the back's own
+   * darker tone (paper is matte: only a breath of the light and the sheen
+   * are on it).
    */
-  private lit(b: Bent, front: boolean, roll: boolean): Lit {
+  private lit(c: Curl, d: number, b: Bent, front: boolean): Lit {
+    const p = parts(c);
+    const roll = d <= p.roll + 0.5;
+    const curved = d <= p.roll + p.bow + 0.5;
     const l = litAt(b.a, front, this.dir);
     if (front) {
       const crease = 0.45 * clamp01(1 - b.a / 0.7) * clamp01(b.a / 0.08);
       l.dark = 1 - (1 - l.dark) * (1 - crease);
-    } else {
+    } else if (roll) {
       const under = 0.6 * (1 - clamp01((b.a - Math.PI / 2) / 1.1)) ** 1.6;
       l.dark = 1 - (1 - l.dark) * (1 - under);
     }
-    if (roll) {
-      l.sheen *= 0.9;
-    } else {
+    if (curved) l.sheen *= 0.9;
+    else {
       l.sheen *= 0.12;
       if (!front) l.pale *= 0.3;
     }
@@ -593,44 +633,56 @@ export class Leaf {
     this.paper(b.front);
   }
 
-  /** Lays a band's light and shade on it. */
-  private light(c: Curl, b: Band): void {
+  /** Lays the light and shade on a run of bands. */
+  private light(c: Curl, run: Band[]): void {
     const g = this.g!;
-    if (!b.exact.length) return;
-    this.frame(compose(this.toLayer, b.m));
-    this.path(b.exact);
-    const arc = c.phi * c.r + 0.5;
-    const l0 = this.lit(b.b0, b.front, b.d0 <= arc);
-    const l1 = this.lit(b.b1, b.front, b.d1 <= arc);
-    const s0 = c.f + b.d0;
-    const s1 = c.f + b.d1;
-    const across = (c0: string, c1: string): CanvasGradient | string => {
-      if (c0 === c1) return c0;
-      const grd = g.createLinearGradient(s0 * ACROSS.x, s0 * ACROSS.y, s1 * ACROSS.x, s1 * ACROSS.y);
-      grd.addColorStop(0, c0);
-      grd.addColorStop(1, c1);
-      return grd;
+    // How each band's ends are lit, and where they show across the screen.
+    const ends: { x: number; l: Lit }[] = [];
+    for (const b of run) {
+      ends.push({ x: this.seen(c.f + b.b0.s, b.b0.z), l: this.lit(c, b.d0, b.b0, b.front) });
+      ends.push({ x: this.seen(c.f + b.b1.s, b.b1.z), l: this.lit(c, b.d1, b.b1, b.front) });
+    }
+    // In order across the screen (a run going the other way is read backward).
+    if (ends.length > 1 && ends[ends.length - 1]!.x < ends[0]!.x) ends.reverse();
+    const lo = ends[0]!.x;
+    const hi = ends[ends.length - 1]!.x;
+    this.runPath(run);
+    const fill = (color: (l: Lit) => string, any: (l: Lit) => boolean): void => {
+      if (!ends.some((e) => any(e.l))) return;
+      if (hi - lo < 0.5) {
+        g.fillStyle = color(ends[0]!.l);
+      } else {
+        const grd = g.createLinearGradient(lo * ACROSS.x, lo * ACROSS.y, hi * ACROSS.x, hi * ACROSS.y);
+        for (const e of ends) grd.addColorStop(clamp01((e.x - lo) / (hi - lo)), color(e.l));
+        g.fillStyle = grd;
+      }
+      g.fill('nonzero');
     };
-    // Shade: the game's plum, a little hatched where it is deep; or the pale of paper turned to the light.
-    const tone = (l: Lit): string =>
-      l.dark > 0.004 ? `rgba(${SHADOW}, ${r2(0.42 * l.dark ** 0.8)})` : `rgba(${PALE}, ${r2(0.42 * l.pale)})`;
-    const t0 = tone(l0);
-    const t1 = tone(l1);
-    if (l0.dark > 0.004 || l1.dark > 0.004 || l0.pale > 0.004 || l1.pale > 0.004) {
-      g.fillStyle = across(t0, t1);
-      g.fill();
+    // Shade: the game's plum; or the pale of paper turned to the light.
+    fill(
+      (l) => (l.dark > 0.004 ? `rgba(${SHADOW}, ${r2(0.42 * l.dark ** 0.8)})` : `rgba(${PALE}, ${r2(0.42 * l.pale)})`),
+      (l) => l.dark > 0.004 || l.pale > 0.004,
+    );
+    // A little hatching where the shade is deep.
+    if (this.hatch) {
+      for (const b of run) {
+        const deep = Math.max(this.lit(c, b.d0, b.b0, b.front).dark, this.lit(c, b.d1, b.b1, b.front).dark);
+        if (deep <= 0.3 || !b.exact.length) continue;
+        this.frame(compose(this.toLayer, b.m));
+        this.path(b.exact);
+        g.globalAlpha = Math.min(0.28, (deep - 0.3) * 0.6);
+        g.fillStyle = this.hatch;
+        g.fill();
+        g.globalAlpha = 1;
+      }
     }
-    const deep = Math.max(l0.dark, l1.dark);
-    if (this.hatch && deep > 0.3) {
-      g.globalAlpha = Math.min(0.28, (deep - 0.3) * 0.6);
-      g.fillStyle = this.hatch;
-      g.fill();
-      g.globalAlpha = 1;
-    }
-    // The sheen riding the roll.
-    if (l0.sheen > 0.01 || l1.sheen > 0.01) {
-      g.fillStyle = across(`rgba(${PALE}, ${r2(l0.sheen)})`, `rgba(${PALE}, ${r2(l1.sheen)})`);
-      g.fill();
+    // The sheen riding the curve of the paper.
+    if (ends.some((e) => e.l.sheen > 0.01)) {
+      this.runPath(run);
+      fill(
+        (l) => `rgba(${PALE}, ${r2(l.sheen)})`,
+        (l) => l.sheen > 0.01,
+      );
     }
   }
 
@@ -694,18 +746,20 @@ export class Leaf {
         g.stroke();
       }
     }
-    // The roll's outline: where, seen from the eye, the paper turns out of sight over it.
+    // The roll's outline: where, seen from the eye, the paper turns out of
+    // sight over it (once it has turned back over the roll, so that the roll
+    // and not the paper beyond it is the outermost thing seen).
+    const roll = parts(c).roll;
     let best = -Infinity;
     let at = -1;
     for (const b of bands) {
-      if (b.d1 > c.phi * c.r + 1e-6) break;
       const x = this.seen(c.f + b.b1.s, b.b1.z);
       if (x > best) {
         best = x;
-        at = c.f + b.d1;
+        at = b.d1 < roll - 0.5 ? c.f + b.d1 : -1;
       }
     }
-    if (at < 0 || c.phi < 0.35) return;
+    if (at < 0) return;
     const seg = bandOf(this.sheet, at - 0.01, at + 0.01);
     if (!seg.length) return;
     // The ends of the line across the page at `at`: where it meets the page's edges.
