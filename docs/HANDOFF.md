@@ -218,11 +218,23 @@ Conventions:
   still restarts the world exactly once, behind the page, and passes it an `Arrival` handshake
   (`WorldData.arrive`). The world freezes play (input context `none`) until the turn says it is
   over. A room asked for meanwhile waits for it (`pendingRoom`).
-- Between rooms, `src/ui/PageTurn.ts` grabs the last frame and cuts it into vertical strips of
-  paper. CSS places the strips in 3D along a curling page; the geometry is in `pageCurl.ts`,
-  which is tested. Every motion is a Web Animation on transform and opacity, so the compositor
-  runs it while the next room is built. The turn goes forward from right to left, and back the
-  other way.
+- Between rooms, `src/ui/PageTurn.ts` grabs the last frame and turns it over as a page, drawn
+  on one 2D canvas every frame. The page's foot is picked up first, the paper goes over a tight
+  roll and stands up toward the hand, and then it is turned away past the spine.
+  - The paper beyond the fold is drawn in thin bands from the fold out. Each band has its own
+    perspective and light and lies a little over the last, so no seam shows.
+  - The roll is lit from the upper right, dark in its crease and hatched in its shade. The back
+    is a warmer paper with the print showing faintly through, mirrored. The lifted paper throws
+    a soft shadow on the room beneath.
+  - The geometry is in `pageCurl.ts`, which is tested. A unit test keeps the lifted paper under
+    30% of the screen.
+  - The turn goes forward from right to left, and back the other way.
+  - The transition's clock (`WarpScene.update`) moves at most 100 ms a frame, so a device that
+    draws slowly stretches the turn rather than skipping it.
+  - In headless software rendering, a frame took about 40 ms during the lift and 220 ms during
+    the turn at 1280 × 720. It has not been measured on a real device. If it is slow on
+    low-end phones, draw coarser bands (`ARC_STEP`, `RISE_STEP`) or a lower-resolution shadow.
+- Lines asked for while a chapter page is up wait until it opens (`Dialogue.ts`).
 - Under the page the next room's cards stand up from lying flat, far to near, with a spring
   (`src/paper/popUp.ts`): each plane's camera is squashed upright about its floor line.
 - Gorti's screen glow flies over the turn into his screen (`PageBits.ts`).
