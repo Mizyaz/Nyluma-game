@@ -16,12 +16,14 @@ import {
   glowDisc,
   holed,
   ink,
+  leafPart,
   lightOf,
   LINE,
   lining,
   page,
   poly,
   Rng,
+  shard,
   slab,
   smooth,
   tuft,
@@ -30,15 +32,17 @@ import {
 } from './doorKit';
 
 // The fossil-root chamber's way on: the tunnel mouth in the far wall. A
-// mouth of old stones set in an arch, overgrown by the roots, and closed by
-// them: a curtain of root strands hangs across it, knotted in the middle
-// round a sleepy eye. While it is shut the strands shiver as Gorti comes
-// and the knot opens its eye to look at him; when the whales' song wakes
-// the way on, the strands draw aside like curtains, the knot slips up into
-// the arch, and the light of the crystal chamber spills out. Inside, rings
-// of stone and root run down to a glimpse of that chamber: its grey-lilac
-// stones, the moon carved in one of them, teal crystals and the tail of a
-// whale sticking up out of its floor, which waves at Gorti.
+// mouth of old stones set in an arch, overgrown by the roots, and shut by
+// them: they have woven themselves into a gate, two leaves of lattice
+// (rails, a root bound round each edge, sprouting leaves, a crystal caught
+// here and there) clasped in the middle by a knot of root round a sleepy
+// eye. As Gorti comes the knot opens its eye and watches him. When the
+// whales' song wakes the way on, the knot lets go and climbs into the crown
+// of the arch, the two leaves swing back into the tunnel, and the light of
+// the crystal chamber spills out. Inside, rings of stone and root run down
+// to a glimpse of that chamber: its grey-lilac stones, the moon carved in
+// one of them, teal crystals and the tail of a whale sticking up out of its
+// floor, which waves at Gorti.
 
 const C = {
   mortar: '#77678c',
@@ -154,10 +158,13 @@ function wall(): string {
   s += barkRoot([[-92, -610], [-40, -560], [10, -575], [60, -520], [70, -500]], 14, 9, C.barkDark, 4);
   s += barkRoot([[-70, -330], [-46, -296], [-20, -282], [6, -288]], 11, 4, C.bark, 5);
   s += barkRoot([[56, -320], [34, -296], [26, -270], [30, -252]], 9, 3, C.bark, 6);
-  for (const [x, len, cur] of [[-30, 26, 1], [-6, 18, -1], [16, 30, 1]] as const) {
-    const y0 = archTop(x) - 24;
-    s += barkRoot([[x, y0], [x + cur * 3, y0 + len * 0.5], [x - cur * 2, y0 + len], [x + cur * 3, y0 + len + 4]], 5, 2, C.bark, 7 + x);
+  // One hugging the arch over its stones, from jamb to jamb.
+  const hug: Pt[] = [];
+  for (let i = 0; i <= 12; i++) {
+    const t = Math.PI - (i / 12) * Math.PI;
+    hug.push([Math.cos(t) * (W / 2 + 31), -(H - RISE) - Math.sin(t) * (RISE + 31) + Math.sin(i * 1.9) * 2]);
   }
+  s += barkRoot([[-W / 2 - 34, -(H - RISE) + 46], ...hug, [W / 2 + 36, -(H - RISE) + 62]], 9, 6, C.barkDark, 9, { grooves: 1 });
   s += leaf([-72, -360], -2.6, 16, C.leaf) + leaf([60, -300], -0.6, 14, C.leaf) + leaf([-40, -296], -2.2, 12, C.leaf);
   // Crystals in the cracks and at its foot; moss on the stones.
   s += crystals(-80, 0, 34, [C.crystal, C.crystal2, C.crystal], 11);
@@ -167,73 +174,84 @@ function wall(): string {
   return s;
 }
 
-/** One root strand of the curtain, hanging `len` from its top (0,0). */
-function strand(len: number, seed: number, w0: number, curl: number, leaves: number): string {
+/** A leaf of the gate: half the mouth, from its hinge (x 0) to the seam, its top at y 0. */
+const LEAF_W = W / 2 - 1;
+const LEAF_H = H - 2;
+const LEAF_RISE = RISE - 2;
+
+/** The top of a leaf at x (in its own frame, hinge at 0). */
+function leafTop(x: number): number {
+  const u = Math.max(0, Math.min(1, (LEAF_W - x) / LEAF_W));
+  return LEAF_RISE - LEAF_RISE * Math.sqrt(1 - u * u);
+}
+
+/**
+ * The roots woven into a leaf of the gate: a lattice of roots crossing
+ * slantwise, two rails across it, a root bound round its edge, the seam
+ * post thick where the two leaves meet, leaves sprouting and a crystal or
+ * two caught in it. `mirror`: the hinge on the right (the right leaf from
+ * before, the left one from behind); `dark`: its back, in the tunnel's shade.
+ */
+function gateLeaf(seed: number, mirror: boolean, dark: boolean): string {
+  const w = LEAF_W;
+  const h = LEAF_H;
   const rng = new Rng(seed);
-  const pts: Pt[] = [];
-  const amp = rng.range(2.5, 4.5);
-  const ph = rng.range(0, Math.PI * 2);
-  const k = rng.range(1.2, 2);
-  for (let i = 0; i <= 10; i++) {
-    const y = (len * i) / 10;
-    pts.push([amp * Math.sin((y / len) * Math.PI * k + ph) - amp * Math.sin(ph), y]);
+  const mx = (x: number): number => (mirror ? w - x : x);
+  const M = (pts: readonly Pt[]): Pt[] => pts.map(([x, y]) => [mx(x), y] as Pt);
+  const ma = (a: number): number => (mirror ? Math.PI - a : a);
+  const tone = (c: string): string => (dark ? darkOf(c, 0.14) : c);
+  // Its outline: from the hinge's foot up, over the arch to the seam's top, down the seam.
+  const outline: Pt[] = [[0, h]];
+  for (let i = 0; i <= 24; i++) {
+    const x = (i / 24) * w;
+    outline.push([x, leafTop(x)]);
   }
-  // A curl at the bottom, lying on the floor.
-  const end = pts[pts.length - 1]!;
-  pts.push([end[0] + curl * 5, end[1] + 1], [end[0] + curl * 8, end[1] - 3], [end[0] + curl * 6, end[1] - 6]);
-  // Rootlets off its sides, under it.
-  let s = '';
-  for (let i = 0; i < 3; i++) {
-    const at = pts[2 + i * 3]!;
-    const side = (i + seed) % 2 ? 1 : -1;
-    const l = rng.range(7, 12);
-    s += barkRoot([[at[0], at[1]], [at[0] + side * l * 0.6, at[1] + l * 0.4], [at[0] + side * l, at[1] + l * 0.9]], 3, 1, C.barkDark, seed * 7 + i, { grooves: 0 });
-  }
-  s += barkRoot(pts, w0, 3.5, C.bark, seed, { grooves: 2 });
-  for (let i = 0; i < leaves; i++) {
-    const at = pts[3 + i * 3]!;
-    s += leaf([at[0] + (i % 2 ? 2 : -2), at[1]], i % 2 ? -0.3 : Math.PI + 0.3, 11, C.leaf);
-  }
-  return s;
-}
-
-/** A tie-back: a young green root wound twice round a bunch of strands, a leaf and a curl (its pivot in the middle). */
-function tie(): string {
-  const green = '#9cc994';
-  let s = '';
-  for (const [y, w] of [[-3.5, 4], [2.5, 4.4]] as const) s += barkRoot([[-12, y + 1.5], [-4, y - 1], [5, y - 0.5], [12, y + 1.6]], w, w, green, 500 + y, { grooves: 0 });
-  s += barkRoot([[11, 1], [16, 4], [18, 10], [14, 13], [12, 9]], 3, 1.6, green, 503, { grooves: 0 });
-  s += leaf([-11, -1], Math.PI + 0.6, 10, C.leaf) + leaf([10, -3], -0.5, 9, C.leaf);
-  return s;
-}
-
-/** Roots grown together behind the strands, lacing the mouth shut (its pivot at the top of the mouth). */
-function tangle(): string {
-  const rng = new Rng(hashSeed('door.root.tangle'));
-  let s = '';
-  // Across, from jamb to jamb, sagging, one under another.
-  for (let i = 0; i < 9; i++) {
-    const y = 26 + i * 21 + rng.range(-4, 4);
-    const sag = rng.range(4, 10);
-    const half = W / 2 + 6;
-    const pts: Pt[] = [];
-    for (let j = 0; j <= 8; j++) {
-      const u = j / 8;
-      pts.push([-half + u * half * 2, y + Math.sin(u * Math.PI) * sag + Math.sin(u * 9 + i) * 1.6]);
+  outline.push([w, h]);
+  // The lattice: roots crossing slantwise, one way and then the other over it.
+  let lattice = '';
+  for (const dir of [1, -1]) {
+    for (let c = -h; c < w + h; c += rng.range(15, 19)) {
+      const pts: Pt[] = [];
+      const ph = rng.range(0, 6);
+      for (let t = 0; t <= 12; t++) {
+        const y = h + 6 - (t / 12) * (h + 12);
+        const x = c + dir * (h - y) + Math.sin(t * 1.3 + ph) * 1.8 + rng.range(-0.8, 0.8);
+        pts.push([x, y]);
+      }
+      if (pts.every(([x]) => x < -8 || x > w + 8)) continue;
+      const thick = rng.range(4, 5.6);
+      lattice += barkRoot(M(pts), thick, thick * 0.8, tone(dir > 0 ? C.barkDark : C.bark), seed * 50 + Math.round(c * 3) + dir, { grooves: 1 });
     }
-    s += barkRoot(i % 2 ? pts : [...pts].reverse(), rng.range(4.5, 7), 2.5, i % 3 ? C.tangle : darkOf(C.tangle, 0.12), 300 + i, { grooves: 1 });
   }
-  // A few down and slanting, through them.
-  for (let i = 0; i < 5; i++) {
-    const x0 = -40 + i * 20 + rng.range(-5, 5);
+  // Two rails across it.
+  for (const y of [h * 0.47, h - 26]) {
     const pts: Pt[] = [];
-    for (let j = 0; j <= 6; j++) pts.push([x0 + Math.sin(j * 1.3 + i) * 6 + (j - 3) * (i % 2 ? 2 : -2), 10 + j * 32]);
-    s += barkRoot(pts, 5, 3, darkOf(C.tangle, 0.06), 320 + i, { grooves: 1 });
+    for (let i = 0; i <= 6; i++) pts.push([-4 + (i / 6) * (w + 8), y + Math.sin(i * 1.7 + seed) * 1.6]);
+    lattice += barkRoot(M(pts), 7, 6, tone(C.bark), seed * 50 + y, { grooves: 2 });
   }
+  const clip = `rdg${seed}${mirror ? 'm' : ''}${dark ? 'd' : ''}`;
+  let s = `<g><clipPath id="${clip}"><path d="${poly(M(outline))}"/></clipPath><g clip-path="url(#${clip})">${lattice}</g></g>`;
+  // The root bound round its edge, and the seam post.
+  const rim: Pt[] = [[3.5, h + 3]];
+  for (let i = 0; i <= 14; i++) {
+    const x = 3.5 + (i / 14) * (w - 7);
+    rim.push([x, leafTop(x) + 3.5 + (i === 0 ? 0 : Math.sin(i * 2.1 + seed) * 0.8)]);
+  }
+  s += barkRoot(M(rim), 8, 6.5, tone(C.bark), seed * 50 + 1, { grooves: 2 });
+  s += barkRoot(M([[w - 4.5, h + 3], [w - 4, h * 0.6], [w - 4.8, h * 0.3], [w - 4.5, 4]]), 10, 8, tone(C.bark), seed * 50 + 2, { grooves: 2 });
+  s += barkRoot(M([[2, h + 2], [3.5, h * 0.5], [3, leafTop(3) + 6]]), 7, 6, tone(C.barkDark), seed * 50 + 3, { grooves: 1 });
+  // Leaves sprouting from it, a crystal or two caught in it.
+  for (let i = 0; i < 4; i++) {
+    const x = rng.range(10, w - 12);
+    const y = rng.range(Math.max(leafTop(x) + 22, 40), h - 40);
+    s += leaf([mx(x), y], ma(rng.pick([-0.5, -2.6, -1.2, -2])), rng.range(9, 12), tone(C.leaf));
+  }
+  s += shard(mx(rng.range(14, w - 18)), rng.range(70, 100), 10, 4.4, ma(-1.2), tone(C.crystal));
+  s += shard(mx(rng.range(14, w - 18)), rng.range(150, 175), 8, 3.6, ma(-2), tone(C.crystal3));
   return s;
 }
 
-/** The knot in the middle of the curtain: loops of root round a sleepy eye. */
+/** The knot clasping the gate shut: loops of root round a sleepy eye. */
 function knot(): string {
   const loop = (rx: number, ry: number, rot: number, w: number, seed: number, from = 0, to = 1): string => {
     const pts: Pt[] = [];
@@ -397,24 +415,17 @@ function tail(): string {
   return s;
 }
 
-/** The mouth of the root tunnel, closed until the song. */
+/** The mouth of the root tunnel, shut by the roots' gate until the song. */
 export function rootDoor(): DoorArt {
-  const xs = [-42, -30, -18, -6, 6, 18, 30, 42];
-  const strands: { x: number; len: number; w: number; curl: number; leaves: number }[] = xs.map((x, i) => ({
-    x,
-    len: -archTop(x) - 2,
-    w: 12 - Math.abs(i - 3.5) * 0.5,
-    curl: x < 0 ? -1 : 1,
-    leaves: i % 3 === 1 ? 2 : 1,
-  }));
   const parts = [
     doorPart('door.root.wall', { x0: LEFT - 10, y0: TOP - 4, x1: RIGHT + 4, y1: 8 }, wall()),
     doorPart('door.root.knot', { x0: -36, y0: -34, x1: 36, y1: 30 }, knot()),
     doorPart('door.root.knot.eye', { x0: -14, y0: -10, x1: 14, y1: 9 }, knotEye()),
     doorPart('door.root.knot.iris', { x0: -5, y0: -5, x1: 5, y1: 5 }, knotIris()),
-    doorPart('door.root.tangle', { x0: -60, y0: 0, x1: 60, y1: H + 4 }, tangle()),
-    doorPart('door.root.tie', { x0: -22, y0: -12, x1: 22, y1: 16 }, tie()),
-    ...strands.map((s, i) => doorPart(`door.root.strand${i}`, { x0: -14, y0: -4, x1: 14, y1: s.len + 6 }, strand(s.len, 70 + i, s.w, s.curl, s.leaves))),
+    leafPart('door.root.gateL', LEAF_W, LEAF_H, gateLeaf(1, false, false)),
+    leafPart('door.root.gateL.back', LEAF_W, LEAF_H, gateLeaf(1, true, true)),
+    leafPart('door.root.gateR', LEAF_W, LEAF_H, gateLeaf(2, true, false)),
+    leafPart('door.root.gateR.back', LEAF_W, LEAF_H, gateLeaf(2, false, true)),
     doorPart('door.root.in0', { x0: -100, y0: -246, x1: 100, y1: 10 }, in0()),
     doorPart('door.root.in1', { x0: -120, y0: -250, x1: 120, y1: 20 }, in1()),
     doorPart('door.root.in2', { x0: -140, y0: -250, x1: 140, y1: 30 }, in2()),
@@ -422,43 +433,16 @@ export function rootDoor(): DoorArt {
     doorPart('door.root.beyond', { x0: -170, y0: -250, x1: 170, y1: 91 }, beyond()),
     doorPart('door.root.tail', { x0: -24, y0: -46, x1: 24, y1: 6 }, tail()),
   ];
-  const pieces: DoorPiece[] = strands.map((s, i) => {
-    const side = s.x < 0 ? -1 : 1;
-    // Its place in the bunch it is drawn into at the jamb (0: outermost).
-    const k = side < 0 ? i : strands.length - 1 - i;
-    const top = archTop(s.x) + 4;
-    const nx = side * (W / 2 - 5 - k * 4.2);
-    const ny = archTop(nx) + 4;
-    return {
-      key: `door.root.strand${i}`,
-      x: s.x,
-      y: top,
-      dz: 2 + (i % 2) * 0.5,
-      // Hanging tangled across the mouth; drawn aside like curtains to the jambs.
-      shut: { angle: (i % 2 ? 1 : -1) * (2 + (i % 3)) },
-      open: { x: nx - s.x, y: ny - top, angle: -side * (3 + k * 1.5), sy: ((-ny - 2) / s.len) * 0.97 },
-      lag: 0.05 + (3 - k) * 0.07,
-      // While shut they shiver as Gorti comes; once open they sway a little.
-      sway: { angle: 1.4, ms: 2100 + i * 230 },
-      wake: { angle: -side * 2.5 },
-      wakeShut: true,
-    };
-  });
-  // The knot climbs into the crown of the arch as the strands part, and
-  // keeps watching from there; its eye opens as Gorti comes, follows him
-  // and blinks.
+  // The knot lets go first and climbs into the crown of the arch, where it
+  // keeps watching; its eye opens as Gorti comes, follows him and blinks.
   const knotUp = { y: archTop(0) + 20 - -112, sx: 0.66, sy: 0.66 };
   const knotSway = { angle: 2, y: 1.2, ms: 2600 };
-  pieces.unshift({ key: 'door.root.tangle', inside: true, x: 0, y: -H - 2, dz: -3, order: 50, shut: {}, open: { sy: 0.12, y: -6, alpha: 0 }, lag: 0, sway: { y: 0.8, ms: 3100 } });
-  pieces.push(
-    { key: 'door.root.knot', x: 0, y: -112, dz: 3, shut: {}, open: knotUp, lag: 0.15, sway: knotSway, wake: { y: -3 }, wakeShut: true },
-    { key: 'door.root.knot.eye', x: 0, y: -112, dz: 3, shut: { alpha: 0 }, open: { ...knotUp, alpha: 0 }, lag: 0.15, wake: { y: -3, alpha: 1 }, wakeShut: true, sway: knotSway, blink: true },
-    { key: 'door.root.knot.iris', x: 0, y: -112, dz: 3, shut: { alpha: 0 }, open: { ...knotUp, alpha: 0 }, lag: 0.15, wake: { y: -3, alpha: 1 }, wakeShut: true, sway: knotSway, blink: true, look: { x: 3.6, y: 0.8 } },
+  const pieces: DoorPiece[] = [
+    { key: 'door.root.knot', x: 0, y: -112, dz: 3, shut: {}, open: knotUp, sway: knotSway, wake: { y: -3 }, wakeShut: true },
+    { key: 'door.root.knot.eye', x: 0, y: -112, dz: 3, shut: { alpha: 0 }, open: { ...knotUp, alpha: 0 }, wake: { y: -3, alpha: 1 }, wakeShut: true, sway: knotSway, blink: true },
+    { key: 'door.root.knot.iris', x: 0, y: -112, dz: 3, shut: { alpha: 0 }, open: { ...knotUp, alpha: 0 }, wake: { y: -3, alpha: 1 }, wakeShut: true, sway: knotSway, blink: true, look: { x: 3.6, y: 0.8 } },
     { key: 'door.root.tail', inside: true, x: 46, y: 0, dz: -128, order: 1, sway: { angle: 5, ms: 2400 }, peek: { y: -10, angle: -8 } },
-    // Once drawn aside, the bunches tie themselves back.
-    { key: 'door.root.tie', x: -47, y: -78, dz: 3, shut: { alpha: 0, sx: 0.2, sy: 0.2 }, open: {}, lag: 0.72 },
-    { key: 'door.root.tie', x: 47, y: -80, dz: 3, flipX: true, shut: { alpha: 0, sx: 0.2, sy: 0.2 }, open: {}, lag: 0.78 },
-  );
+  ];
   return {
     parts,
     opening: OPEN,
@@ -474,7 +458,11 @@ export function rootDoor(): DoorArt {
     backdrop: 0x2f2a3d,
     shutDim: 0.45,
     pieces,
-    leaves: [],
+    // The two leaves swing back into the tunnel, against its sides.
+    leaves: [
+      { front: 'door.root.gateL', back: 'door.root.gateL.back', hinge: 'left', x: -LEAF_W, y: -LEAF_H, dz: -1, shutAngle: 0, restAngle: -96, wideAngle: -104, strips: 10, inside: true },
+      { front: 'door.root.gateR', back: 'door.root.gateR.back', hinge: 'right', x: LEAF_W, y: -LEAF_H, dz: -1, shutAngle: 0, restAngle: -96, wideAngle: -104, strips: 10, inside: true },
+    ],
     light: { color: 0xa8f0e0, radius: 340, intensity: 1, y: 96 },
     glow: { color: 0x9fe6da, pool: 0xb6f2e2 },
     sparks: { colors: [0x9ff0de, 0xd8fff6, 0xc9b8f2], frame: 'fx.dot', rate: 1.6, size: 0.32 },
