@@ -174,6 +174,10 @@ Conventions:
   them. Haptic ticks only after a first tap and never with reduced motion; reduced motion also
   drops the springs and pops for quick fades.
 - The e2e touch bot walks by touching the stick's sides and presses the buttons' middles.
+  The stick walks at full speed past its dead zone, and on a slow page the bot reads the game
+  only a few times a second, so to stop on a spot (`walkTo`) it lets go within 90 px, waits for
+  Gorti to stand and closes in with short presses sized to the distance left. Holding the stick
+  that close paced Gorti to and fro over the spot until the step timed out.
 
 ### Characters as paper puppets (`src/render/2d/rig/RigView.ts`)
 

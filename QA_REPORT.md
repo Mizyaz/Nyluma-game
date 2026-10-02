@@ -5,7 +5,115 @@ listeler. Ölçümler aşağıdaki test ortamında alınmıştır; gerçek cihaz
 performansını temsil etmez. İlk bölüm bu sürümün kontrolleridir. Sonraki
 bölümlerdeki sonuçlar önceki sürümlerin oyun kodu içindir.
 
-## Bu sürüm: 14. Oda'nın ortasındaki kök kemer kaldırıldı
+## Bu sürüm: yükleme ekranı açılır bir kâğıt tiyatrosu oldu
+
+Bu sürümde değişenler:
+
+- Yükleme ekranı yeniden çizildi. Artık ilerledikçe kendini kuran, açılır bir kâğıt
+  tiyatrosu:
+  - Önce sahne çerçevesi açılıyor. Gorti sahnede duruyor, TV ekranı yüzdeyi sayıyor.
+  - İlerleme arttıkça sırayla açılıyorlar: gece göğü, iplere asılı yıldızlar ve
+    balina, Ay ile Güneş, tepeler ve zemin.
+  - Kristaller tek tek çıkıyor ve Gorti her birine bakıyor.
+  - %100'de perdeler açılıyor ve kâğıt konfeti saçılıyor. Sonra ekran oyuna karışarak
+    kayboluyor.
+  - İmleç katmanları derinliklerine göre birbirine karşı kaydırıyor (2.5D).
+  - Azaltılmış hareket ayarında kaydırma, sallanma ve göz kırpma yok. Parçalar sırası
+    gelince yalnızca beliriyor.
+  - Önceki yükleme ekranında köşelerde Ay ile Güneş, ortada başlık ve büyüyen bir
+    kristal öbeği vardı.
+- Yükleme ekranı, oyunun kendi çizimlerini hazırlamasını az yavaşlatacak biçimde
+  yazıldı:
+  - Büyük resimleri ayrı bir iş parçacığı (worker) bit eşlem olarak boyuyor
+    (`src/ui/loadingPaint.ts`).
+  - Yükleme ekranı oyunu örterken oyunun tuvali çizilmiyor (`styles.css`'teki `#game`
+    kuralı). Kural `:has()` seçicisini kullanıyor. Bu seçiciyi tanımayan eski
+    tarayıcılarda tuval yalnızca çizilmeye devam eder.
+  - %90'dan sonra küçük hareketler duruyor.
+- Geliştirme sunucusunda `dev/loading.html` yükleme ekranını ekranda tutuyor
+  (`?p=0.42`, `?err=1`, `?rm=1`). Bu sayfa üretim derlemesine girmiyor.
+- Test botunun (e2e) dokunarak yürümesi düzeltildi. Bot önceden hedefin etrafında
+  gidip geliyordu. Artık hedefe 90 pikselden yakınken Gorti'yi durduruyor ve kalan
+  mesafeye göre kısa dokunuşlarla ilerliyor. Klavyeyle yürüme değişmedi.
+
+Son commit (`2fcc954`) üzerinde koşulan kontroller:
+
+| Kontrol | Sonuç |
+| --- | --- |
+| `npm run typecheck` | Hatasız |
+| `npx vitest run` | 21 dosya, 198 test geçti |
+| `npm run kd -- check` | Tamam: 6 bölüm, 4 oda dosyası, 12 TS oda, 8 metin dosyası |
+| `npm run build`, `npm run build:e2e` | Başarılı |
+| `npx playwright test --grep-invert @campaign --workers=1` | 25 geçti, 13 atlandı, 0 kaldı, 12.1 dk |
+| `npx playwright test --grep @campaign --workers=1` | 2 geçti, 13.3 dk |
+
+İki tam kampanya da geçti: klavyeyle tam oyun 6.3 dk, telefonda yalnız dokunmayla tam
+oyun 6.9 dk. Atlanan 13 test önceki sürümdekilerle aynı. İki açılış testi 25.1 ve
+18.7 saniyede, dokunmatik ilk oda testi 58.1 saniyede geçti.
+
+Test botu düzeltmesinin denetimi: telefonda yalnız dokunmayla ilk oda testi,
+düzeltmeyle (`09a80c7`) arka arkaya dört kez koşuldu ve dördü de geçti. r01'in yolu
+her seferinde 17–18 saniye sürdü; önceki koşularda 20–60 saniye sürüyordu.
+
+Açılış süresi ölçüldü: yayındaki sürüm (`b538e4a`) ile bu sürüm, sırayla.
+
+- Ortam: WebGL, yazılımla çizen başsız tarayıcı (SwiftShader), 1280×720.
+- Yük ortalaması 0.7–5.4.
+- Süreler saniye cinsinden.
+
+Sayfa açılışından "Yeni Oyun" düğmesinin görünmesine kadar:
+
+| Sürüm | Ölçümler | Ortanca |
+| --- | --- | --- |
+| Yayındaki | 4.8, 4.7, 4.8, 5.0, 5.2, 4.5 | 4.8 |
+| Bu sürüm | 4.4, 5.5, 5.7, 6.0, 4.5, 4.8 | 5.2 |
+
+"Yeni Oyun"dan HUD'un görünmesine kadar, düğmeye menü görünür görünmez basınca. e2e
+açılış testi de böyle basıyor:
+
+| Sürüm | Ölçümler | Ortanca |
+| --- | --- | --- |
+| Yayındaki | 12.0, 7.9, 8.5, 7.8, 7.7, 6.5 | 7.8 |
+| Bu sürüm | 9.5, 9.0, 9.6, 13.5, 9.8, 8.3 | 9.6 |
+
+Aynı süre, düğmeye menü göründükten 0.8 saniye sonra basınca:
+
+| Sürüm | Ölçümler | Ortanca |
+| --- | --- | --- |
+| Yayındaki | 11.7, 9.0, 8.7 | 9.0 |
+| Bu sürüm | 8.4, 8.1, 8.7 | 8.4 |
+
+Sonuçlar:
+
+- Menüye kadar geçen süre iki sürümde yakın.
+- Yükleme ekranı solarken (0.45 saniye) "Yeni Oyun"a basılırsa oyuna geçiş bu ortamda
+  1–2 saniye uzuyor. Solma bittikten sonra basılınca fark yok.
+- Ölçümlerin hiçbirinde sayfada hata yok.
+- Menü açıldıktan sonra sayfada yükleme ekranından bir şey kalmıyor. Öğe sayısı ve
+  kare hızı iki sürümde aynı: menüde saniyede 10.5–11.5 kare, oyunda 4.7–5 kare.
+
+Görsel kontrol, geliştirme sunucusunda `dev/loading.html` ile:
+
+- 1280×720'de %30 ve %72.
+- Telefon yan tutulmuş (844×390): %60.
+- Telefon dik tutulmuş (390×844): %73.
+- Azaltılmış hareket: %70.
+- Hata durumu: %40'ta "Çizimler yüklenemedi. Sayfayı yenilemeyi deneyin." yazıyor.
+- Hepsinde tiyatro ekrana sığıyor, yazılar okunuyor ve sayfada hata yok.
+- %100, 1280×720 ve 844×390: perdeler açılmış, konfeti saçılıyor, Gorti'nin ekranı
+  gülüyor.
+
+Bilinen sorunlar:
+
+- Yükleme ekranı solarken "Yeni Oyun"a basılırsa geçiş yavaşlıyor (yukarıda).
+- Önceki sürümün bilinen sorunları sürüyor (aşağıda).
+
+Henüz denenmeyenler:
+
+- Gerçek telefon ve gerçek GPU'lu cihaz.
+- Yükleme ekranının `:has()` seçicisini tanımayan eski tarayıcılarda görünüşü.
+
+## Önceki sürüm: 14. Oda'nın ortasındaki kök kemer kaldırıldı
 
 Bu sürümde değişenler:
 
@@ -72,7 +180,7 @@ Bilinen sorunlar:
 
 Henüz denenmeyenler önceki sürümdekilerle aynı.
 
-## Önceki sürüm: Güneş ile Ay karakter oldu, hikâye metni JSON'da, yeni kapılar
+## Eski sürüm: Güneş ile Ay karakter oldu, hikâye metni JSON'da, yeni kapılar
 
 Bu sürümde değişenler:
 
