@@ -1,3 +1,5 @@
+import { GAMEPAD, KEYS, LETTERS } from '../../tuning';
+
 export type Action =
   | 'left'
   | 'right'
@@ -18,41 +20,29 @@ export type Action =
 /** Who currently owns the keyboard/touch input. */
 export type InputContext = 'menu' | 'gameplay' | 'dialogue' | 'song' | 'puzzle' | 'cutscene' | 'none';
 
-const CODE_MAP: Record<string, Action[]> = {
-  ArrowLeft: ['left', 'note1'],
-  ArrowRight: ['right', 'note3'],
-  ArrowDown: ['down', 'note2'],
-  ArrowUp: ['up'],
-  KeyA: ['left', 'note1'],
-  KeyD: ['right', 'note3'],
-  KeyS: ['down', 'note2'],
-  KeyW: ['up'],
-  Space: ['jump'],
-  KeyE: ['action'],
-  KeyQ: ['focus'],
-  KeyR: ['form'],
-  KeyF: ['song'],
-  Escape: ['pause'],
-  KeyM: ['journal'],
-  Enter: ['confirm'],
-  NumpadEnter: ['confirm'],
-};
-
-// Letter keys are matched by the produced character first so that the
-// on-screen labels (A, D, E, Q…) stay true on non-QWERTY layouts.
-const KEY_MAP: Record<string, Action[]> = {
-  a: ['left', 'note1'],
-  d: ['right', 'note3'],
-  s: ['down', 'note2'],
-  w: ['up'],
-  e: ['action'],
-  q: ['focus'],
-  r: ['form'],
-  f: ['song'],
-  m: ['journal'],
-};
+// The bindings themselves (keys, letters, gamepad) are in src/tuning.ts.
+const CODE_MAP = KEYS;
+const KEY_MAP = LETTERS;
 
 const EDGE_TTL_MS = 150;
+
+/** A gamepad as the input system reads it (the browser's Gamepad, or a test's stand-in). */
+export interface PadLike {
+  readonly index: number;
+  readonly connected: boolean;
+  readonly buttons: readonly { readonly pressed: boolean; readonly value: number }[];
+  readonly axes: readonly number[];
+}
+
+/**
+ * The key a gamepad button stands for in the key hooks (menus, document
+ * pages): south confirms, east and start go back, the d-pad moves the focus.
+ */
+const PAD_KEYS: Readonly<Record<number, string>> = { 0: 'Enter', 1: 'Escape', 9: 'Escape', 12: 'ArrowUp', 13: 'ArrowDown', 14: 'ArrowLeft', 15: 'ArrowRight' };
+
+function browserPads(): readonly (PadLike | null)[] {
+  return typeof navigator !== 'undefined' && typeof navigator.getGamepads === 'function' ? navigator.getGamepads() : [];
+}
 
 interface Source {
   actions: Set<Action>;
@@ -64,8 +54,8 @@ interface Source {
 
 export function actionsForKey(code: string, key: string): Action[] {
   const k = key.length === 1 ? key.toLocaleLowerCase('en-US') : '';
-  if (k && KEY_MAP[k]) return KEY_MAP[k]!;
-  return CODE_MAP[code] ?? [];
+  if (k && KEY_MAP[k]) return [...KEY_MAP[k]!];
+  return [...(CODE_MAP[code] ?? [])];
 }
 
 function isEditable(t: EventTarget | null): boolean {
@@ -97,9 +87,13 @@ export class InputSystem {
   private blurListeners = new Set<() => void>();
   private attached = false;
   private now: () => number;
+  private pads: () => readonly (PadLike | null)[];
+  /** Gamepad buttons and sticks held down (source id), so a hold presses once. */
+  private padHeld = new Set<string>();
 
-  constructor(now: () => number = () => performance.now()) {
+  constructor(now: () => number = () => performance.now(), pads: () => readonly (PadLike | null)[] = browserPads) {
     this.now = now;
+    this.pads = pads;
   }
 
   get context(): InputContext {
@@ -178,6 +172,70 @@ export class InputSystem {
   beginFrame(): void {
     this.frame++;
     for (const [a, f] of this.taps) if (this.frame - f > 1) this.taps.delete(a);
+    this.pollPads();
+  }
+
+  /**
+   * Gamepads, read once per update and routed like keys: a button press goes
+   * to the key hooks first (menus, document pages), then becomes a press of
+   * its actions (tuning.ts GAMEPAD); the left stick walks like the arrows.
+   */
+  private pollPads(): void {
+    let list: readonly (PadLike | null)[];
+    try {
+      list = this.pads();
+    } catch {
+      return;
+    }
+    const held = new Set<string>();
+    const ctx = this.context;
+    const play = ctx !== 'menu' && ctx !== 'none';
+    for (const pad of list) {
+      if (!pad || !pad.connected) continue;
+      for (const [k, actions] of Object.entries(GAMEPAD.buttons)) {
+        const b = pad.buttons[Number(k)];
+        if (!b || !(b.pressed || b.value > 0.5)) continue;
+        const id = `pad:${pad.index}:b${k}`;
+        held.add(id);
+        if (this.padHeld.has(id)) continue;
+        this.padHeld.add(id);
+        this.padPress(id, Number(k), actions);
+      }
+      const x = pad.axes[0] ?? 0;
+      const y = pad.axes[1] ?? 0;
+      const walk: Action[] = [];
+      if (x <= -GAMEPAD.deadZone) walk.push('left');
+      else if (x >= GAMEPAD.deadZone) walk.push('right');
+      if (y <= -GAMEPAD.depthZone) walk.push('up');
+      else if (y >= GAMEPAD.depthZone) walk.push('down');
+      const id = `pad:${pad.index}:stick`;
+      if (walk.length && play) {
+        held.add(id);
+        this.padHeld.add(id);
+        this.sourceDown(id, walk);
+      }
+    }
+    // Let go (or unplugged): released like a key.
+    for (const id of [...this.padHeld]) {
+      if (held.has(id)) continue;
+      this.padHeld.delete(id);
+      this.sourceUp(id);
+    }
+  }
+
+  private padPress(id: string, button: number, actions: readonly Action[]): void {
+    const key = PAD_KEYS[button] ?? '';
+    // What the key hooks read of a key press (no DOM event: tests run without one).
+    const ev = { key, code: `Gamepad${button}`, repeat: false, target: null, preventDefault: () => undefined } as unknown as KeyboardEvent;
+    for (const fn of this.listeners) if (fn(ev, [...actions])) return;
+    const ctx = this.context;
+    if (ctx === 'menu') {
+      // The focused menu button, as Enter would press it.
+      if (key === 'Enter' && typeof document !== 'undefined') (document.activeElement as HTMLElement | null)?.click?.();
+      return;
+    }
+    if (ctx === 'none') return;
+    this.sourceDown(id, actions);
   }
 
   /**

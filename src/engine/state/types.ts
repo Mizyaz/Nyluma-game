@@ -1,4 +1,5 @@
 import story from '../../content/chapters/chapters.json';
+import { TOUCH } from '../../tuning';
 
 /** Every room, in story order (src/content/chapters/chapters.json). */
 export const ROOM_IDS: readonly string[] = story.chapters.flatMap((c) => c.rooms);
@@ -13,6 +14,8 @@ export const ABILITIES: readonly Ability[] = ['pulse', 'reach', 'song', 'focus',
 export type Note = 'low' | 'mid' | 'high';
 export type TextSpeed = 'slow' | 'normal' | 'fast' | 'instant';
 export type TouchMode = 'auto' | 'on' | 'off';
+/** Which thumb jumps on the touch controls: 'right' (the stick on the left) or 'left' (mirrored). */
+export type TouchHand = 'right' | 'left';
 
 export function isRoomId(v: unknown): v is RoomId {
   return typeof v === 'string' && ROOM_IDS.includes(v);
@@ -51,6 +54,7 @@ export interface Settings {
   screenShake: boolean;
   textSpeed: TextSpeed;
   touch: TouchMode;
+  touchHand: TouchHand;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -61,4 +65,5 @@ export const DEFAULT_SETTINGS: Settings = {
   screenShake: true,
   textSpeed: 'normal',
   touch: 'auto',
+  touchHand: TOUCH.hand,
 };

@@ -130,7 +130,7 @@ export class Bot {
     return true;
   }
 
-  /** The d-pad and jump button never move during play: cache their rects. */
+  /** The stick and the jump button never move during play: cache their rects. */
   private rects = new Map<Control, { r: Rect; at: number }>();
 
   private async controlRect(c: Control): Promise<Rect | null> {
@@ -144,10 +144,8 @@ export class Bot {
 
   private async lookupRect(c: Control): Promise<Rect | null> {
     return this.page.evaluate((name) => {
-      const el =
-        name === 'left' || name === 'right'
-          ? document.querySelectorAll('.tc-pad .half')[name === 'left' ? 0 : 1]
-          : document.querySelector(`.tc[data-key="${name}"]`);
+      // Walking is the stick's dial; the rest are the round buttons.
+      const el = name === 'left' || name === 'right' ? document.querySelector('#touch .tc-stick') : document.querySelector(`#touch .tc[data-key="${name}"]`);
       if (!el) return null;
       const b = (el as HTMLElement).getBoundingClientRect();
       return b.width && b.height ? { x: b.left, y: b.top, w: b.width, h: b.height } : null;
@@ -176,7 +174,11 @@ export class Bot {
       this.note(`touch: control ${control} not visible`);
       return;
     }
-    await this.pointDown(k, r.x + r.w / 2, r.y + r.h / 2);
+    // A thumb on the stick's left or right side walks that way (past its
+    // dead zone, level with its middle so it never walks in depth); the
+    // buttons are pressed in their middle.
+    const fx = control === 'left' ? 0.18 : control === 'right' ? 0.82 : 0.5;
+    await this.pointDown(k, r.x + r.w * fx, r.y + r.h / 2);
   }
 
   private async touchUp(k: Key): Promise<void> {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { actionsForKey, InputSystem } from '../../src/engine/systems/InputSystem';
+import { actionsForKey, InputSystem, type PadLike } from '../../src/engine/systems/InputSystem';
 
 describe('input contexts', () => {
   const mk = (): { i: InputSystem; t: { now: number } } => {
@@ -70,17 +70,18 @@ describe('input contexts', () => {
     expect(i.consume('action')).toBe(true);
   });
 
-  it('supports simultaneous touch pointers and sliding on the pad', () => {
+  it('supports simultaneous touch pointers and sliding on the stick', () => {
     const { i } = mk();
     i.setContext('gameplay');
-    i.sourceDown('touch:pad:1', ['left']);
+    i.sourceDown('touch:stick:1', ['left']);
     i.sourceDown('touch:jump:2', ['jump']);
     expect(i.axisX()).toBe(-1);
     expect(i.consume('jump')).toBe(true);
-    i.sourceDown('touch:pad:1', ['right']);
+    i.sourceDown('touch:stick:1', ['right', 'up']);
     expect(i.axisX()).toBe(1);
+    expect(i.axisY()).toBe(-1);
     expect(i.held('left')).toBe(false);
-    i.sourceUp('touch:pad:1');
+    i.sourceUp('touch:stick:1');
     i.sourceUp('touch:jump:2');
     expect(i.sourceCount()).toBe(0);
   });
@@ -114,5 +115,81 @@ describe('input contexts', () => {
     expect(i.context).toBe('gameplay');
     i.popContext();
     expect(i.context).toBe('gameplay');
+  });
+});
+
+describe('gamepad', () => {
+  /** A standard-layout pad with these buttons down and the sticks at `axes`. */
+  const pad = (down: number[] = [], axes: number[] = [0, 0, 0, 0]): PadLike => ({
+    index: 0,
+    connected: true,
+    buttons: Array.from({ length: 17 }, (_, k) => ({ pressed: down.includes(k), value: down.includes(k) ? 1 : 0 })),
+    axes,
+  });
+  const mk = (): { i: InputSystem; pads: (PadLike | null)[] } => {
+    const pads: (PadLike | null)[] = [];
+    return { i: new InputSystem(() => 0, () => pads), pads };
+  };
+
+  it('jumps with the south button, once per press, like Space', () => {
+    const { i, pads } = mk();
+    i.setContext('gameplay');
+    pads[0] = pad([0]);
+    i.beginFrame();
+    expect(i.consume('jump')).toBe(true);
+    expect(i.held('jump')).toBe(true);
+    i.beginFrame();
+    expect(i.consume('jump')).toBe(false);
+    pads[0] = pad();
+    i.beginFrame();
+    expect(i.held('jump')).toBe(false);
+    expect(i.sourceCount()).toBe(0);
+  });
+
+  it('walks with the left stick past its dead zone, in depth past a firmer one, and with the d-pad', () => {
+    const { i, pads } = mk();
+    i.setContext('gameplay');
+    pads[0] = pad([], [0.2, 0.2]);
+    i.beginFrame();
+    expect([i.axisX(), i.axisY()]).toEqual([0, 0]);
+    pads[0] = pad([], [-0.8, 0.4]);
+    i.beginFrame();
+    expect([i.axisX(), i.axisY()]).toEqual([-1, 0]);
+    pads[0] = pad([], [0, -0.9]);
+    i.beginFrame();
+    expect([i.axisX(), i.axisY()]).toEqual([0, -1]);
+    pads[0] = pad([15]);
+    i.beginFrame();
+    expect(i.axisX()).toBe(1);
+    // Unplugged mid-walk: nothing stays held.
+    pads.length = 0;
+    i.beginFrame();
+    expect(i.axisX()).toBe(0);
+    expect(i.sourceCount()).toBe(0);
+  });
+
+  it('goes to the menus first: south is Enter, east is Escape, and nothing is held in the game', () => {
+    const { i, pads } = mk();
+    i.setContext('menu');
+    const keys: string[] = [];
+    i.onKey((e) => {
+      keys.push(e.key);
+      return true;
+    });
+    pads[0] = pad([0]);
+    i.beginFrame();
+    pads[0] = pad([1]);
+    i.beginFrame();
+    expect(keys).toEqual(['Enter', 'Escape']);
+    expect(i.sourceCount()).toBe(0);
+  });
+
+  it('does nothing while the hands are off (a page turning)', () => {
+    const { i, pads } = mk();
+    i.setContext('none');
+    pads[0] = pad([0], [1, 0]);
+    i.beginFrame();
+    expect(i.consume('jump')).toBe(false);
+    expect(i.axisX()).toBe(0);
   });
 });

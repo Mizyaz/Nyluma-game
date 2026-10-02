@@ -143,6 +143,7 @@ export class UI {
 
   applySettings(s: Settings): void {
     this.touch.setMode(s.touch);
+    this.touch.setHand(s.touchHand);
     document.documentElement.classList.toggle('reduced-motion', s.reducedMotion);
   }
 

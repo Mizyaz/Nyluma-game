@@ -14,6 +14,7 @@ import {
   SUIT_MOVE,
   type MoveTuning,
 } from '../engine/constants';
+import { JUMP } from '../tuning';
 import type { RigDef } from '../render/2d/rig/rigTypes';
 import { humanRigFor, rootRigFor, RIG_GORTI_SUIT } from '../content/characters/gorti';
 import { RIG_COWARD, RIG_MECH } from '../content/characters/forms';
@@ -296,10 +297,10 @@ export class Player {
       // Visual only (the physics above already left the ground): the body
       // snaps into a crouch and springs open, squashed then stretched.
       this.jumpT = 0;
-      this.sq = 0.86;
-      this.sqV = 6;
+      this.sq = JUMP.takeoffSquash;
+      this.sqV = JUMP.takeoffKick;
       this.rig.snapTo('crouch');
-      app.audio.sfx('jump');
+      app.audio.sfx('jump', { vol: JUMP.hopVolume, pitch: t.hopPitch });
       this.scene.events.emit('player-jump', this.x, this.feetY);
     }
     if (this.jumping && !input.jumpHeld && b.velocity.y < 0) {
@@ -369,10 +370,13 @@ export class Player {
       this.landImpact = i;
       this.landDur = 0.14 + 0.2 * i;
       this.landT = this.landDur;
-      this.sq = 1 - (0.06 + 0.14 * i);
+      this.sq = 1 - (JUMP.landSquash + JUMP.landSquashHard * i);
       this.sqV = -1.2 * i;
       if (i > 0.55) this.emote('effort', 380);
-      app.audio.sfx('land', { vol: Math.min(1, this.maxFallVy / 700) });
+      // A soft thud, and the floor's own sound under his feet.
+      const floor = (this.scene as unknown as { stepSound?: () => 'step' | 'stepWood' | 'stepMetal' }).stepSound?.() ?? 'step';
+      app.audio.sfx('land', { vol: Math.min(1, this.maxFallVy / 700) * JUMP.landVolume, pitch: 0.9 + 0.2 * (this.tuning.hopPitch - 1) });
+      app.audio.sfx(this.kind === 'mech' ? 'stepMetal' : floor, { vol: 0.7 + 0.3 * i, pitch: 0.92 });
       this.scene.events.emit('player-land', this.x, this.feetY, this.maxFallVy);
     }
     this.jumpT = -1;
