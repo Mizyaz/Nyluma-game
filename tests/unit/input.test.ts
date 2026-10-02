@@ -184,7 +184,7 @@ describe('gamepad', () => {
     expect(i.sourceCount()).toBe(0);
   });
 
-  it('does nothing while the hands are off (a page turning)', () => {
+  it('does nothing while the hands are off (the scene changing)', () => {
     const { i, pads } = mk();
     i.setContext('none');
     pads[0] = pad([0], [1, 0]);

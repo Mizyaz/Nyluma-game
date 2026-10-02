@@ -36,7 +36,7 @@ export class EndingScene extends Phaser.Scene {
         const quest = new Quest(chapterStartProgress(1), app.profile);
         app.quest = quest;
         persist();
-        // From the start again: the last page turns onto chapter I's.
+        // From the start again: the curtain comes down on chapter I's title card.
         this.scene.launch('warp', {
           chapter: opensChapter(null, 'r01', 'r01_start', quest) ? 1 : null,
           dir: 1,

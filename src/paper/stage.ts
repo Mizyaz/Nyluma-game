@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { Lens, type Framing } from './lens';
 import { Planes, type PlaneCamera } from './planes';
 import { MAX_SHADOWS, PaperBox, type BoxSpec } from './box';
+import { PaperWalls } from './walls';
 import type { Press } from './press';
 import { Lighting, WHIMSICAL, type Mood } from './light';
 import { RoomAir } from './air';
@@ -26,6 +27,8 @@ export class PaperStage {
   readonly lighting: Lighting;
   /** Motes in the air (air.ts), when the mood has them. */
   readonly air: RoomAir | null;
+  /** The walls with doorways, and the walls across the room (walls.ts). */
+  readonly walls: PaperWalls;
   /** Draws the inside of the box (behind everything), and its torn front (before the box's inside planes). */
   private readonly insideCam: PlaneCamera;
   private readonly frontCam: PlaneCamera;
@@ -43,7 +46,7 @@ export class PaperStage {
   /** A world point at depth z kept inside the picture (the head of a figure in the air), or null. */
   private keep: { x: number; y: number; z: number } | null = null;
   zoom = 1;
-  /** While the room arrives through a page turn: its cards standing up (null once all stand). */
+  /** While the room arrives through a scene change: its cards standing up (null once all stand). */
   popUp: PopUp | null = null;
   private shakeT = 0;
   private shakeK = 0;
@@ -70,6 +73,7 @@ export class PaperStage {
     this.frontCam = this.planes.layer(spec.front + 0.5);
     this.planes.placeOn(this.box.inside, this.insideCam);
     this.planes.placeOn(this.box.frontFace, this.frontCam);
+    this.walls = new PaperWalls(scene, this.planes, this.lens, this.box, spec, this.insideCam);
     this.air = mood.air ? new RoomAir(scene, this.planes, spec, mood.air) : null;
     this.frame(0);
     scene.events.on(Phaser.Scenes.Events.PRE_RENDER, this.preRender, this);
@@ -274,6 +278,7 @@ export class PaperStage {
     this.writeShadows();
     this.box.inkWidth = Math.max(2, Math.round(this.lens.scale(0) * 1.7));
     this.box.update(lens);
+    this.walls.update();
   }
 
   /** The lamps for the box's shader, and every card and figure part lit where it stands. */
@@ -307,6 +312,7 @@ export class PaperStage {
     this.shadowed.clear();
     this.casters.clear();
     this.hung = [];
+    this.walls.destroy();
     this.box.destroy();
   }
 }

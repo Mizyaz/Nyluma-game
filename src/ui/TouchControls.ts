@@ -373,7 +373,7 @@ export class TouchControls {
     if (on !== this.on) {
       this.on = on;
       this.root.classList.toggle('off', !on);
-      // Hidden (a dialogue, a page turn): nothing stays pressed under it.
+      // Hidden (a dialogue, a scene change): nothing stays pressed under it.
       if (!on) this.releaseAll();
     }
     const a = this.avail;

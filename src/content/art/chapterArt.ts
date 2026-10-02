@@ -2,22 +2,21 @@ import { darkOf, lightOf, lineFor, LINE, PASTEL, SHADE } from '../../render/2d/s
 import { ellipsePath, nextId, Rng, smooth, taper, type Pt } from '../../render/2d/svg';
 import { comic, hatchLines, ink, roundPoly } from '../characters/kit';
 
-// The chapter pages of the storybook (ui/ChapterPage.ts): each chapter's
-// colours, its numeral painted with a brush, the torn sheet it is printed
-// on, the endpaper round it, and a little picture of what the chapter holds.
-// Drawn by hand in the game's comic manner: pastel fills, contours in each
-// fill's own darker tone, cel shadows low on the left and glints high on the
-// right (the light comes from the upper right), light hatching in the shade.
+// The chapters' title cards (src/paper/theatre.ts hangs them in the paper
+// theatre as a chapter begins): each chapter's colours, its numeral painted
+// with a brush, the torn sheet the card is cut from, and a little picture of
+// what the chapter holds, standing on the card's ledge. Drawn by hand in the
+// game's comic manner: pastel fills, contours in each fill's own darker
+// tone, cel shadows low on the left and glints high on the right (the light
+// comes from the upper right), light hatching in the shade. Every picture is
+// seen straight on, as a card facing the viewer: no depth painted in it.
 //
-// The pictures move a little (`data-mv` on a group names how: ChapterPage
-// plays it), so the page is alive while it is read.
+// The parts of a picture that could move are grouped and named (`data-mv`);
+// the theatre prints the picture still.
 
 const r2 = (n: number): string => (Math.round(n * 100) / 100).toString();
 
 export interface ChapterLook {
-  /** The endpaper round the page, and the little things printed on it. */
-  ground: string;
-  pattern: string;
   /** The numeral's paint. */
   paint: string;
   /** The title's words take these in turn. */
@@ -26,14 +25,14 @@ export interface ChapterLook {
   accent: string;
 }
 
-/** Each chapter's colours: pastels on the night of its endpaper. */
+/** Each chapter's colours. */
 export const LOOKS: Readonly<Record<number, ChapterLook>> = {
-  1: { ground: '#3b2f57', pattern: '#54457a', paint: PASTEL.pink, words: [PASTEL.pink, PASTEL.butter], accent: '#8a5a8c' },
-  2: { ground: '#2f4038', pattern: '#43594d', paint: PASTEL.mintDeep, words: [PASTEL.mint, PASTEL.butter, PASTEL.pink], accent: '#4f7a68' },
-  3: { ground: '#3a2b52', pattern: '#4f3d6e', paint: PASTEL.lilac, words: [PASTEL.lilac, PASTEL.butter, PASTEL.apricot, PASTEL.butter], accent: '#7a5a9c' },
-  4: { ground: '#2b2f52', pattern: '#3f4470', paint: PASTEL.periwinkle, words: [PASTEL.periwinkle, PASTEL.blush], accent: '#5a64a0' },
-  5: { ground: '#4a2a3a', pattern: '#633b4f', paint: PASTEL.apricot, words: [PASTEL.apricot, PASTEL.butter], accent: '#9a5a4a' },
-  6: { ground: '#363b47', pattern: '#4b5160', paint: PASTEL.sand, words: [PASTEL.sand, PASTEL.aqua], accent: '#7a6a58' },
+  1: { paint: PASTEL.pink, words: [PASTEL.pink, PASTEL.butter], accent: '#8a5a8c' },
+  2: { paint: PASTEL.mintDeep, words: [PASTEL.mint, PASTEL.butter, PASTEL.pink], accent: '#4f7a68' },
+  3: { paint: PASTEL.lilac, words: [PASTEL.lilac, PASTEL.butter, PASTEL.apricot, PASTEL.butter], accent: '#7a5a9c' },
+  4: { paint: PASTEL.periwinkle, words: [PASTEL.periwinkle, PASTEL.blush], accent: '#5a64a0' },
+  5: { paint: PASTEL.apricot, words: [PASTEL.apricot, PASTEL.butter], accent: '#9a5a4a' },
+  6: { paint: PASTEL.sand, words: [PASTEL.sand, PASTEL.aqua], accent: '#7a6a58' },
 };
 
 export function lookOf(chapter: number): ChapterLook {
@@ -205,21 +204,6 @@ export function wash(box: { x: number; y: number; w: number; h: number }, paint:
   );
 }
 
-/**
- * The little brush that paints the numeral: wet bristles in the paint, a
- * tin ferrule, a painted handle; its tip at (0, 0), the handle up to the
- * right (as a hand holds it).
- */
-export function paintbrush(paint: string): string {
-  const handle = PASTEL.coral;
-  const art =
-    comic(taper([[50, 0], [34, 0], [21, 0]], 5.2, 6.4), handle, { line: LINE.small, rim: [0, 1.6], glint: [0, -1], over: ink('M46 -0.6L28 -1', 0.8, lightOf(handle, 0.7)) }) +
-    comic(roundPoly([[13, -3.4], [21, -3.6], [21, 3.6], [13, 3.4]], 1.2), PASTEL.stone, { line: LINE.small, rim: [0, 1.4], glint: [0, -1], over: ink('M15 -3.4V3.4M18 -3.6V3.6', 0.6, darkOf(PASTEL.stone, 0.3)) }) +
-    comic('M13 -3.6Q5 -4.4 0 0Q5 4.4 13 3.6Z', lightOf(paint, 0.15), { line: LINE.small, ink: lineFor(paint), rim: [0, 1.6], over: ink('M12 -1.6Q6 -1.4 2 0M12 1.4Q7 1.6 3 0.6', 0.6, darkOf(paint, 0.25)) }) +
-    comic('M7 -2.8Q3 -2.4 0 0Q3 2.4 7 2.8Z', paint, { line: 0 });
-  return `<g transform="rotate(-52) scale(1.3)">${art}</g>`;
-}
-
 // ------------------------------------------------------------ the sheet
 
 /**
@@ -257,37 +241,12 @@ export function tornSheet(x: number, y: number, w: number, h: number, seed: numb
   return { outer: d(outer), inner: d(inner) };
 }
 
-/** The endpaper's printed pattern: little crystals and stars in a lighter tone (a CSS tile). */
-export function endpaperTile(look: ChapterLook, seed: number): string {
-  const rng = new Rng(seed);
-  const s = 140;
-  let body = '';
-  for (let i = 0; i < 7; i++) {
-    const x = rng.range(8, s - 8);
-    const y = rng.range(8, s - 8);
-    if (i % 3 === 0) {
-      const r = rng.range(3, 5);
-      body += `<path d="M${r2(x)} ${r2(y - r)}Q${r2(x)} ${r2(y)} ${r2(x + r)} ${r2(y)}Q${r2(x)} ${r2(y)} ${r2(x)} ${r2(y + r)}Q${r2(x)} ${r2(y)} ${r2(x - r)} ${r2(y)}Q${r2(x)} ${r2(y)} ${r2(x)} ${r2(y - r)}Z" fill="${look.pattern}"/>`;
-    } else {
-      const a = rng.range(-0.5, 0.5);
-      const h = rng.range(7, 11);
-      const w = h * 0.45;
-      const c = Math.cos(a);
-      const sn = Math.sin(a);
-      const P = (u: number, v: number): string => `${r2(x + u * c - v * sn)} ${r2(y + u * sn + v * c)}`;
-      body += `<path d="M${P(0, -h)}L${P(w, -h * 0.3)}L${P(w * 0.7, h * 0.6)}L${P(0, h)}L${P(-w * 0.7, h * 0.6)}L${P(-w, -h * 0.3)}Z" fill="none" stroke="${look.pattern}" stroke-width="1.3" stroke-linejoin="round"/>`;
-      body += `<path d="M${P(0, -h)}L${P(0, h)}" stroke="${look.pattern}" stroke-width="0.8"/>`;
-    }
-  }
-  return `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}">${body}</svg>`)}")`;
-}
-
 // ------------------------------------------------------------ the pictures
 
 /** The pictures' measure (user units). */
 export const PICTURE = { w: 320, h: 240 } as const;
 
-/** A group that moves (ChapterPage plays `mv`): `o` is its turning point in its own box. */
+/** A group of a picture that could move, named (`o`: its turning point in its own box). */
 const mv = (name: string, body: string, o = '50% 50%', phase = 0): string =>
   `<g data-mv="${name}" data-ph="${phase}" style="transform-box:fill-box;transform-origin:${o}">${body}</g>`;
 
@@ -323,7 +282,7 @@ function card(fill: string, seed: number, body: string, edge = fill): Picture {
   };
 }
 
-/** I · 14. Oda: the door of the fourteenth room, ajar, and Gorti peeking out of its pink light. */
+/** I · 14. Oda: the door of the fourteenth room standing open, and Gorti peeking out of its pink light. */
 function picture1(): Picture {
   const wall = '#e7dcef';
   const frame = PASTEL.sand;
@@ -364,8 +323,8 @@ function picture1(): Picture {
   // The frame round the doorway, in front of him.
   s += comic('M132 44H242V182H232V54H142V182H132Z', frame, { line: LINE.body, rim: [3, -2], glint: [-1.2, 1.4], hatch: 2.6 });
   s += ink('M137 50H237', LINE.fine, darkOf(frame, 0.35));
-  // The door itself, swung open toward us on its hinges, its panels and its number.
-  const leaf = 'M142 54L96 40L96 196L142 182Z';
+  // The door itself, swung all the way open on its hinges and lying flat on the wall beside the doorway (face on, as every card): its panels, its number, its knob.
+  const leaf = 'M46 56H132V182H46Z';
   s += mv(
     'swing',
     comic(leaf, door, {
@@ -374,13 +333,13 @@ function picture1(): Picture {
       glint: [-1.4, 1.2],
       hatch: 2.5,
       over:
-        `<path d="M104 56L134 64L134 104L104 100Z" fill="${darkOf(door, 0.12)}" stroke="${lineFor(door)}" stroke-width="${LINE.detail}"/>` +
-        `<path d="M104 116L134 118L134 166L104 174Z" fill="${darkOf(door, 0.12)}" stroke="${lineFor(door)}" stroke-width="${LINE.detail}"/>` +
+        `<path d="M54 66H124V108H54Z" fill="${darkOf(door, 0.12)}" stroke="${lineFor(door)}" stroke-width="${LINE.detail}"/>` +
+        `<path d="M54 120H124V172H54Z" fill="${darkOf(door, 0.12)}" stroke="${lineFor(door)}" stroke-width="${LINE.detail}"/>` +
         // The plaque: 14.
-        comic('M108 76L128 80L128 94L108 92Z', PASTEL.cream, { line: LINE.detail }) +
-        ink('M113 82L115 80.5L115 91.5', 1.5, '#5d4a6a') +
-        ink('M124 81.5L119 88.5L126 89M123.5 85V93', 1.5, '#5d4a6a') +
-        comic(ellipsePath(135, 122, 3.4, 3.4), PASTEL.butter, { line: LINE.fine, glint: [-0.8, 0.8] }),
+        comic('M78 78H100V93H78Z', PASTEL.cream, { line: LINE.detail }) +
+        ink('M83 82.5L85 81L85 91', 1.5, '#5d4a6a') +
+        ink('M95 81.5L90 88L97 88.5M94.5 84.5V92', 1.5, '#5d4a6a') +
+        comic(ellipsePath(52, 122, 3.4, 3.4), PASTEL.butter, { line: LINE.fine, glint: [-0.8, 0.8] }),
     }),
     '100% 50%',
   );
@@ -761,32 +720,24 @@ function picture6(): Picture {
   }
   s += steps;
   const paper = PASTEL.sand;
-  // An open-fronted box (one of the game's rooms), lit from the upper right: its taped corner, its number tag.
+  // An open-fronted box (one of the game's rooms), seen straight on as every card is: its back wall
+  // filling the opening, shaded along the top and the right where the front's cut edge keeps the
+  // light (from the upper right) off it, its floor a strip along the foot; its taped corner, its number tag.
   const box = (x0: number, y0: number, w: number, h: number, inner: string, label: string): string => {
     const x1 = x0 + w;
     const y1 = y0 + h;
-    const d = w * 0.2;
-    const bx0 = x0 + d;
-    const by0 = y0 + d * 0.7;
-    const bx1 = x1 - d * 0.9;
-    const by1 = y1 - d * 0.6;
     const lw = Math.max(0.8, LINE.small * (w / 100));
     const q = (pts: Pt[]): string => 'M' + pts.map((p) => `${r2(p[0])} ${r2(p[1])}`).join('L') + 'Z';
     let b = '';
     // Its shadow on the floor, low on the left, hatched.
-    const sh = q([[x0 - w * 0.12, y1 + 2], [x1 - w * 0.1, y1 + 2], [x1 - w * 0.2, y1 + h * 0.14], [x0 - w * 0.28, y1 + h * 0.14]]);
-    b += `<path d="${sh}" fill="${darkOf(floor, 0.3)}" opacity="0.5"/>`;
-    b += hatchLines({ x0: x0 - w * 0.26, y0: y1 + 2, x1: x1 - w * 0.12, y1: y1 + h * 0.13 }, 3.4, darkOf(floor, 0.4), 0.45);
-    // Inside: back wall, the left wall (toward the light, pale), the right (shaded), ceiling and floor.
-    b += `<path d="${q([[bx0, by0], [bx1, by0], [bx1, by1], [bx0, by1]])}" fill="${lightOf(paper, 0.3)}"/>`;
-    b += `<path d="${q([[x0, y0], [bx0, by0], [bx0, by1], [x0, y1]])}" fill="${lightOf(paper, 0.5)}"/>`;
-    b += `<path d="${q([[x1, y0], [bx1, by0], [bx1, by1], [x1, y1]])}" fill="${darkOf(paper, 0.2)}"/>`;
-    b += hatchLines({ x0: bx1, y0: y0, x1: x1, y1: y1 }, 3, darkOf(paper, 0.4), 0.5);
-    b += `<path d="${q([[x0, y0], [x1, y0], [bx1, by0], [bx0, by0]])}" fill="${darkOf(paper, 0.28)}"/>`;
-    b += hatchLines({ x0: x0, y0: y0, x1: x1, y1: by0 }, 3.2, darkOf(paper, 0.45), 0.45);
-    b += `<path d="${q([[x0, y1], [x1, y1], [bx1, by1], [bx0, by1]])}" fill="${lightOf(paper, 0.15)}"/>`;
-    b += ink(`M${r2(bx0)} ${r2(by0)}H${r2(bx1)}V${r2(by1)}H${r2(bx0)}Z`, lw * 0.6, darkOf(paper, 0.35));
-    b += ink(`M${x0} ${y0}L${r2(bx0)} ${r2(by0)}M${x1} ${y0}L${r2(bx1)} ${r2(by0)}M${x0} ${y1}L${r2(bx0)} ${r2(by1)}M${x1} ${y1}L${r2(bx1)} ${r2(by1)}`, lw * 0.6, darkOf(paper, 0.35));
+    b += `<path d="${q([[x0 - w * 0.12, y1], [x1 - w * 0.16, y1], [x1 - w * 0.16, y1 + h * 0.08], [x0 - w * 0.12, y1 + h * 0.08]])}" fill="${darkOf(floor, 0.3)}" opacity="0.5"/>`;
+    b += hatchLines({ x0: x0 - w * 0.12, y0: y1, x1: x1 - w * 0.16, y1: y1 + h * 0.08 }, 3.4, darkOf(floor, 0.4), 0.45);
+    // Inside: the back wall, its floor strip, the shade the cut edge throws on them.
+    b += `<path d="${q([[x0, y0], [x1, y0], [x1, y1], [x0, y1]])}" fill="${lightOf(paper, 0.3)}"/>`;
+    b += `<path d="${q([[x0, y1 - h * 0.16], [x1, y1 - h * 0.16], [x1, y1], [x0, y1]])}" fill="${lightOf(paper, 0.12)}"/>`;
+    b += ink(`M${r2(x0)} ${r2(y1 - h * 0.16)}H${r2(x1)}`, lw * 0.6, darkOf(paper, 0.35));
+    b += `<path d="${q([[x0, y0], [x1, y0], [x1, y1], [x1 - w * 0.1, y1], [x1 - w * 0.1, y0 + h * 0.13], [x0, y0 + h * 0.13]])}" fill="${darkOf(paper, 0.2)}" opacity="0.55"/>`;
+    b += hatchLines({ x0: x1 - w * 0.1, y0: y0, x1: x1, y1: y1 }, 3, darkOf(paper, 0.4), 0.5);
     b += inner;
     // The cut edge of the cardboard round the opening, its fluting showing along the top.
     const t = Math.max(2, w * 0.035);
@@ -833,17 +784,17 @@ function picture6(): Picture {
     ink('M224 168.4L232 167M224 169.6L231.4 171.4', 0.5, '#6d6474') +
     mv('blink', `<ellipse cx="219.6" cy="163" rx="1.5" ry="1.9" fill="#2e2734"/><circle cx="220.1" cy="162.4" r="0.5" fill="#fff"/>`);
   s += `<g transform="translate(216 172) scale(1.35) translate(-216 -172)">${mv('peek', mouse, '0% 100%')}</g>`;
-  // The middle room: a little door at its back, ajar, light behind it; a ball of paper left on its floor.
+  // The middle room: a little door at its back standing open (flat against the wall), light behind it; a ball of paper left on its floor.
   const middle =
     comic('M164 136H178V158H164Z', '#6f6a82', { line: LINE.fine, inner: `<path d="M166 138H172V158H166Z" fill="#fff4c6" opacity="0.7"/>` }) +
-    mv('swing', comic('M164 136L158 132V161L164 158Z', PASTEL.sandLight, { line: LINE.fine, glint: [-0.5, 0.5] }), '100% 50%') +
+    mv('swing', comic('M151 136H164V158H151Z', PASTEL.sandLight, { line: LINE.fine, glint: [-0.5, 0.5], over: comic(ellipsePath(153.4, 148, 1, 1), PASTEL.butter, { line: 0 }) }), '100% 50%') +
     comic(ellipsePath(186, 163, 4.4, 3.8), '#fffaf1', { line: LINE.fine, over: ink('M183.4 162L186 163.6L188.4 161.4M184.6 165L187.6 164.6', 0.5, '#a9a3b4') });
   s += box(136, 118, 72, 56, middle, '13');
   // The first room: a little chair, a rug, a picture on its back wall, all just as they were left.
   const first =
     comic('M46 120H64V134H46Z', PASTEL.butter, { line: LINE.fine, over: comic('M49 123H61V131H49Z', PASTEL.aqua, { line: 0, over: ink('M49 130L54 125L57 128L61 124', 0.6, darkOf(PASTEL.aqua, 0.4)) }) }) +
-    `<ellipse cx="74" cy="164" rx="22" ry="4.4" fill="${PASTEL.pink}" stroke="${lineFor(PASTEL.pink)}" stroke-width="0.6"/>` +
-    ink('M58 164H90M62 162H86M62 166H86', 0.5, lightOf(PASTEL.pink, 0.5)) +
+    `<path d="M52 163H96V167H52Z" fill="${PASTEL.pink}" stroke="${lineFor(PASTEL.pink)}" stroke-width="0.6"/>` +
+    ink('M56 165H92', 0.5, lightOf(PASTEL.pink, 0.5)) +
     comic('M58 166V138H63V156H80V166Z', PASTEL.bark, { line: LINE.small, rim: [1.4, -1] }) +
     ink('M60 166V176M78 166V176', LINE.small, darkOf(PASTEL.bark, 0.3));
   s += box(22, 104, 98, 80, first, '12');

@@ -66,7 +66,7 @@ const rgb = (c: number): [number, number, number] => [((c >> 16) & 255) / 255, (
 const MAX_GAPS = 6;
 export const MAX_SHADOWS = 24;
 
-const HEADER = (deriv: boolean): string => `${deriv ? '#extension GL_OES_standard_derivatives : enable\n#define DERIV 1\n' : ''}
+export const HEADER = (deriv: boolean): string => `${deriv ? '#extension GL_OES_standard_derivatives : enable\n#define DERIV 1\n' : ''}
 #ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
 #else
@@ -137,22 +137,8 @@ vec3 paper(vec3 base, vec2 uv, float k) {
 }
 `;
 
-const INSIDE_FRAG = (deriv: boolean): string => `${HEADER(deriv)}
-uniform vec3 uBack;
-uniform vec3 uFloor;
-uniform vec3 uSide;
-uniform vec3 uCeil;
-uniform vec3 uEdge;
-uniform vec3 uLid;
-uniform vec3 uOutside;
-uniform vec3 uInk;
-uniform vec3 uPit;
-uniform vec4 uSeg[8];
-uniform vec4 uGap[${MAX_GAPS}];
-uniform float uGaps;
-uniform vec4 uShadow[${MAX_SHADOWS}];
-uniform float uShadows;
-uniform float uInkW;
+/** The lamps, the air and the inked lines, as the inside of the box has them (shared with the walls, walls.ts). */
+export const LIGHT_GLSL = `
 // Lamps: position and reach; colour times strength.
 uniform vec4 uLightPos[${MAX_LIGHTS}];
 uniform vec4 uLightCol[${MAX_LIGHTS}];
@@ -192,6 +178,25 @@ float segDist(vec2 p, vec4 s) {
   float t = clamp(dot(p - a, ab) / max(dot(ab, ab), 1e-6), 0.0, 1.0);
   return length(p - a - ab * t);
 }
+`;
+
+const INSIDE_FRAG = (deriv: boolean): string => `${HEADER(deriv)}
+uniform vec3 uBack;
+uniform vec3 uFloor;
+uniform vec3 uSide;
+uniform vec3 uCeil;
+uniform vec3 uEdge;
+uniform vec3 uLid;
+uniform vec3 uOutside;
+uniform vec3 uInk;
+uniform vec3 uPit;
+uniform vec4 uSeg[8];
+uniform vec4 uGap[${MAX_GAPS}];
+uniform float uGaps;
+uniform vec4 uShadow[${MAX_SHADOWS}];
+uniform float uShadows;
+uniform float uInkW;
+${LIGHT_GLSL}
 
 void main() {
   vec2 q = vec2(outTexCoord.x * uView.x, (1.0 - outTexCoord.y) * uView.y);
@@ -371,7 +376,8 @@ export class PaperBox {
   private readonly flat: { inside: Phaser.GameObjects.Graphics; front: Phaser.GameObjects.Graphics } | null = null;
   readonly shadows = new Float32Array(MAX_SHADOWS * 4);
   shadowCount = 0;
-  private readonly seg = new Float32Array(32);
+  /** The box's eight inside corners on the screen (segments, device px). */
+  readonly seg = new Float32Array(32);
   private readonly gap = new Float32Array(MAX_GAPS * 4);
   /** Ink width of the box's edges, device px. */
   inkWidth = 4;

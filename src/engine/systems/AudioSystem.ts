@@ -58,9 +58,7 @@ export type Sfx =
   | 'bloom'
   | 'ray'
   | 'flutter'
-  | 'brush'
   | 'chapter'
-  | 'leaf'
   | 'pop'
   | 'skyChime'
   | 'giggle';
@@ -371,21 +369,9 @@ export class AudioSystem {
         for (let i = 0; i < 5; i++) this.noiseBurst(t + i * 0.05 + Math.random() * 0.03, 0.08, 0.04 * v, out, { type: 'bandpass', f0: 2800 + Math.random() * 1500, q: 1 });
         break;
       case 'flutter':
-        // A page picked up by its edge: a breath of air and the paper's crackle.
+        // A sheet of paper caught by its edge (a curtain going): a breath of air and the paper's crackle.
         this.noiseBurst(t, 0.34, 0.05 * v, out, { type: 'bandpass', f0: 900 * p, f1: 2600 * p, q: 0.8 }, 0.08);
         for (let i = 0; i < 4; i++) this.noiseBurst(t + 0.02 + i * 0.045 + Math.random() * 0.02, 0.05, 0.03 * v, out, { type: 'bandpass', f0: (3200 + Math.random() * 1800) * p, q: 1.4 });
-        break;
-      case 'leaf':
-        // The page turned over: the air it pushes, its crackle, and a soft slap as it lands.
-        this.noiseBurst(t, 0.7, 0.11 * v, out, { type: 'bandpass', f0: 2400 * p, f1: 520 * p, q: 0.7 }, 0.18);
-        this.noiseBurst(t + 0.05, 0.45, 0.04 * v, out, { type: 'highpass', f0: 3600 * p }, 0.1);
-        for (let i = 0; i < 3; i++) this.noiseBurst(t + i * 0.05 + Math.random() * 0.03, 0.05, 0.025 * v, out, { type: 'bandpass', f0: (3000 + Math.random() * 1500) * p, q: 1.2 });
-        this.noiseBurst(t + 0.62, 0.12, 0.06 * v, out, { type: 'lowpass', f0: 900 * p }, 0.004);
-        break;
-      case 'brush':
-        // A loaded brush drawn across paper: the bristles' hiss, rising and falling.
-        this.noiseBurst(t, 0.2, 0.05 * v, out, { type: 'bandpass', f0: 1500 * p, f1: 2600 * p, q: 1.1 }, 0.07);
-        this.noiseBurst(t + 0.02, 0.14, 0.018 * v, out, { type: 'highpass', f0: 5200 * p }, 0.05);
         break;
       case 'chapter':
         // A chapter begins: a little music-box phrase, rising.

@@ -247,82 +247,161 @@ Conventions:
 - `dev/loading.html` (dev server only, not in the build) holds it on screen: no query loops
   0→100%, `?p=0.42` holds a progress, `?err=1` shows the failure, `?rm=1` reduced motion.
 
-### Transitions: the game as a pop-up book
+### Scene changes: the paper theatre (`WarpScene`, `src/paper/stagecraft.ts`, `theatre.ts`)
 
 - `WorldScene.goToRoom` launches `WarpScene` with `{chapter, dir, glow, onPeak}`. `onPeak`
-  still restarts the world exactly once, behind the page, and passes it an `Arrival` handshake
-  (`WorldData.arrive`). The world freezes play (input context `none`) until the turn says it is
-  over. A room asked for meanwhile waits for it (`pendingRoom`).
-- Between rooms, `src/ui/PageTurn.ts` grabs the last frame and turns it over as a page, drawn
-  on one 2D canvas every frame. The page's foot is picked up first, the paper goes over a tight
-  roll and stands up toward the hand, and then it is turned away past the spine.
-  - The paper beyond the fold is drawn in thin bands from the fold out. Each band has its own
-    perspective and light and lies a little over the last, so no seam shows.
-  - The roll is lit from the upper right, dark in its crease and hatched in its shade. The back
-    is a warmer paper with the print showing faintly through, mirrored. The lifted paper throws
-    a soft shadow on the room beneath.
-  - The geometry is in `pageCurl.ts`, which is tested. A unit test keeps the lifted paper under
-    30% of the screen.
-  - The turn goes forward from right to left, and back the other way.
-  - The transition's clock (`WarpScene.update`) moves at most 100 ms a frame, so a device that
-    draws slowly stretches the turn rather than skipping it.
-  - In headless software rendering, a frame took about 40 ms during the lift and 220 ms during
-    the turn at 1280 × 720. It has not been measured on a real device. If it is slow on
-    low-end phones, draw coarser bands (`ARC_STEP`, `RISE_STEP`) or a lower-resolution shadow.
-- Lines asked for while a chapter page is up wait until it opens (`Dialogue.ts`).
-- Under the page the next room's cards stand up from lying flat, far to near, with a spring
-  (`src/paper/popUp.ts`): each plane's camera is squashed upright about its floor line.
-- Gorti's screen glow flies over the turn into his screen (`PageBits.ts`).
-- Between chapters the page turns onto a chapter page (`src/ui/ChapterPage.ts`, art in
-  `src/content/art/chapterArt.ts`):
-  - a torn sheet taped onto the chapter's endpaper;
-  - "BÖLÜM", with the numeral painted on by a brush;
-  - the title from `CHAPTER_TITLES`, letter by letter;
-  - a small moving pop-up picture.
-- The chapter page opens like a gatefold onto the first room. The HUD's chapter card
-  (`areaTitle`) is shown only when no chapter page was. `opensChapter` (GameState) decides
-  when a page is due: new game, chapter select, a save at a chapter start and the ending's
-  replay come in through it too.
-- Reduced motion: a cross-fade through paper (through the chapter page between chapters).
-- No frame could be grabbed: paper is wiped in instead.
-- Everything ends within 8 s whatever happens.
-- To hold a transition on screen in dev, open `/dev/transitions.html`
-  (`?mode=room|chapter&ch=1..6&dir=-1&reduced=1&portrait=1`).
-- `CrystalWarp` in `crystalFx.ts` is no longer used by the transitions. The rooms' background
-  tunnels still use the shared gem-tunnel code.
+  restarts the world exactly once, while the old room is out of sight, and passes it an
+  `Arrival` handshake (`WorldData.arrive`). The world freezes play (input context `none`)
+  until the change says it is over. A room asked for meanwhile waits for it (`pendingRoom`).
+  The cutscenes' room changes (r03, r06, r07, r09, r10, r11) go the same way.
+- The room is never flattened into a picture, and nothing is laid over the game in screen
+  space: the change happens on the paper stage. Every piece is a sheet of paper facing the
+  viewer at a real depth in front of the box's torn front (z 170), drawn through the stage's
+  own lens (`theatreLens`: `FRAMING`, the actor scale, the eye over x = 0), with its cut
+  edge's white core and the shadow it throws low and left.
+  - `stagecraft.ts` (no Phaser, tested): the depths (`STAGE_DEPTH`: the curtain 300, the
+    flats 330 and 338, the title card 400, its picture 432), the timings (`STAGE_TIMES`), the
+    timeline (`pose(plan, t)`), where the flats and the curtain stand (`flatPlace`,
+    `curtainFoot`) and the title card's layout (`cardLayout`, `bestSplit`).
+  - `theatre.ts` places the sheets every frame: a few images and tile sprites, and one
+    Graphics for the threads and the ledge. The flats and the curtain are printed once, at
+    boot (`printStagecraft`, at the scale their depths show at). The title card and its
+    picture are printed when a chapter's change starts (`Theatre.printCard`), while the
+    curtain comes down.
+  - The art: `src/content/art/stagecraftArt.ts` (the flats' painted canvas on its battens,
+    their cut edge and its shadow, the curtain's pleats, its hem with braid and tassels, the
+    eyelets) and `chapterArt.ts` (each chapter's picture and its words, the brush numeral,
+    the torn sheet the title is written on).
+- Between rooms two flats roll in from the wings and meet over Gorti (where his screen glowed,
+  kept within the middle 30–70% of the screen), the right one lapping over the left: 0.42 s
+  and a soft bump. The room is swapped as they meet. They stay shut at least 0.1 s and until
+  the new room has run three frames, then roll back out (0.62 s); 0.08 s after they start to
+  go, the room's cards stand up off its floor, far ones first (`popUp.ts`). Play begins
+  0.85 s after they start to go, about 1.4 s in all. Sounds: a whoosh, the flats' slap as
+  they meet, a whoosh, three pops.
+- Between chapters a drop curtain comes down (0.55 s, a little hop on its hem), and the room
+  is swapped as it lands. The chapter's title card comes down in front of it on two threads
+  ("BÖLÜM", the numeral painted with a brush, the title from `CHAPTER_TITLES`), and 0.32 s
+  later its picture stands up on the card's ledge. It is shown at least 2.15 s; then the
+  picture lies down, the card goes up ahead of the curtain, the curtain rises (0.86 s), and
+  0.26 s after it starts the room's cards stand up. About 3.2 s in all.
+- `opensChapter` (GameState) decides when a title card is due: a new game, chapter select, a
+  save at a chapter's start and the ending's replay come in through it too. The HUD's chapter
+  card (`areaTitle`) is shown only when no title card was. While a change runs, `#stage` has
+  `pt-room` or `pt-chapter`: the HUD's texts go, and lines asked for while a chapter is shown
+  wait until it opens (`Dialogue.ts`).
+- Reduced motion: the flats, or the curtain with its card, only fade in where they stand
+  (0.26 s) and out again (0.3 s); nothing rolls, drops, sways or stands up. A chapter is
+  shown 1.5 s.
+- The clock (`WarpScene.update`) moves at most 100 ms a frame, so a device that draws slowly
+  stretches the change rather than skipping it. Whatever happens, it is over by 8 s
+  (`STAGE_TIMES.limit`). In dev and e2e builds `window.__kdWarpClock = {t}` holds it at a
+  moment (for frame-by-frame screenshots).
+- The Canvas renderer draws the same sheets (they are plain images).
+- r09's "close your eyes": the eye leans in (zoom 1.25) and the flats close; the strip wipe
+  laid over the screen is gone.
+- `/dev/transitions.html` (`?mode=room|chapter&ch=1..6&dir=-1&reduced=1&canvas=1`) holds a
+  change over a made-up room; `kdSeek(s)` steps it to a moment.
+- Tests: `tests/unit/stagecraft.test.ts`. The room is swapped only once it is hidden and stays
+  hidden until the stage opens (a laptop, an upright phone's band and a phone on its side);
+  the stage is open at the start and the end; the lengths; less motion only fades; the card
+  never hangs in front of the room; the card's layout fits every screen.
+- Measured against the page turn (bee0b9f) in WebGL on SwiftShader (headless, a software GPU,
+  so only the comparison means anything):
+  - New Game to the HUD: median 5.5 s against 8.6 s (6 runs each, 1280 × 720); page open to
+    the menu 5.6 s against 6.0 s.
+  - A frame in r01 by its doorway: median 783 ms against 900 ms at 1280 × 720 (8 s), 233 ms
+    against 267 ms at 844 × 390, dpr 2 (20 s after settling). r05 by its gate: 583 against
+    633 ms at 1280 × 720.
+  - At about a frame a second the clock's 100 ms cap stretches every change; a change also
+    waits for the next room to draw 3 frames. At 1280 × 720 a room change took 55 frames
+    against the page turn's 26, a chapter 134 against 84 (one run each).
+  - Both builds stall now and then for 7–10 s in SwiftShader, with the main thread free
+    (the GPU process); an 8 s window can catch no frame at all.
+- Gone with the page turn: `PageTurn.ts`, `pageCurl.ts`, `ChapterPage.ts`, `PageBits.ts`,
+  their CSS, `tests/unit/transitions.test.ts`, and the `brush` and `leaf` sounds.
 
-### Doorways (`src/render/2d/fx/doorway.ts`, `src/content/doors.ts`, `doorSpecs.ts`)
+### Doorways (`src/paper/walls.ts`, `opening.ts`, `src/content/doors.ts`, `doorSpecs.ts`)
 
-- Every way on is a doorway built like a tunnel book. A frame of cards stands just behind
-  the actors' plane. Behind its opening a few cut-out pages recede into the depth, the last
-  of them a glimpse of the room it leads to.
-  - The inside stands on one camera clipped to the opening. Each page is moved and scaled
-    every frame as the eye would see it at its depth, so the pages slide past each other as
-    the camera follows Gorti.
-  - The art is in `src/content/art/doors/` (`doorKit.ts` and one file per door), printed once.
-- A door only reads the condition that was already there (`doorSpecs.ts`: an exit, a solid
-  or a flag). Exit boxes, conditions, targets, checkpoints and room widths did not change.
-  - Shut, pieces or a leaf close its opening. When the condition comes true and the door is
-    on screen, it opens with a short animation. A leaf turns in true perspective, drawn as
-    vertical strips by depth.
-  - Gorti near wakes it: the light swells, the pages draw apart, someone peeks out, a sound.
-- The doors: r01 paper door (`tunnel`); r02 root lattice (the
-  `roots` solid, the song); r04 tree door; r05 stone gate (`gate`) and moon gate; r08 stage
-  door; b01 form door (`gate:kapi`) and hedge arch; b02 moon door (`gate:gece`) and hill
-  wheel; b03 block door; r12 office door (the `r12.door` flag). The room changes in r03,
-  r06, r07, r09, r10 and r11 are cutscenes, with no door to walk through.
-- A doorway stands only where there is a way on. r01 had an always-open root gate in the
-  middle of the room; the user found it meaningless and in the way, so it was removed.
-- Reduced motion: nothing idles; opening, a leaf's swing and a peek are 260 ms fades.
-- Per frame the doors only move and fade printed cards. The inside's camera is hidden while
-  the door is off screen.
-- Phaser 4's default quad submitter picks each quad's texture by an exact float compare,
-  which SwiftShader breaks across a rotated quad: half of a turning piece vanished now and
-  then. The doors draw with a single-texture submitter (`singleSubmitter` in `doorway.ts`).
-  Other rotating sprites may have the same problem.
-- Tests: `tests/unit/doors.test.ts`.
-- Known: at 844 × 390 the Moon on top of b02's crystal gate is cut off at the top. The old
-  `prop.officedoor` art is still in `props.ts`, used only by the props preview.
+- Everything upright is a wall or a sheet of paper, and a door is one with its wall: it is
+  cut into a wall of the paper box, flush with it and slanted with it in true perspective.
+  - A way out is cut into the room's right side wall (every exit is at the room's right end).
+    Beyond it a passage runs on in depth: its own floor and far wall, frames standing in it
+    parallel to the wall like a tunnel book's pages, a paper figure that peeks out round
+    them, and at its end the light of where it leads.
+  - A gate in the middle of a room stands in a wall across the room, a slab from the back
+    wall forward to z 100 (past where Gorti walks), so he goes through it, not past it.
+- `walls.ts` draws the walls with a shader that casts a ray through each device pixel, as the
+  box's does: the wall's paper grain and its art lie on it and recede with it, and the lamps
+  light it. The opening is cut into the wall's own plane, so its jambs stay upright, the near
+  one taller, and its lintel and sill run toward the eye point.
+  - The side wall and its passage are drawn on the camera behind every card (with the box's
+    inside): all it hides lies beyond it.
+  - A cross wall is drawn in slices: each plane's camera draws the part of the wall between
+    its own depth and the next camera's, after its cards, so a card is covered by exactly the
+    part of the wall nearer than it. Its near end and the jambs show the paper's core.
+  - The leaf turns on its hinge through the same lens, or slides, lifts, sinks or rolls into
+    the wall. Shut, it is flush with the wall. Across the room a leaf never swings (it would
+    stand in his way).
+  - Without WebGL (the Canvas renderer) the walls, the opening and the leaf are flat colours
+    (`flat` in the door's art), and the doors still open and steer.
+- `opening.ts` (no Phaser): the opening's shape (`Hole`, `holeTop`) and the steering
+  (`depthRange`). Near a wall with a doorway the depths Gorti may walk at narrow to the
+  opening, gently (`STEER`: from 300 px before the side wall, and from about 270 px either
+  side of a cross wall's middle), so he goes through the doorway and never through the wall;
+  he keeps 26 px from the jambs. Keys, the stick and the bots all walk the same way. A wall
+  without an opening stands where no one walks.
+- A doorway in the right side wall is small on a narrow screen, by geometry: the camera stops
+  at the room's end, the eye is never more than half a screen from the wall, and a hole from
+  z −250 to −70 shows at most about 16% of the half-screen wide (the lens, dist 900). That is
+  about 100 px at 1280 × 720, 60 CSS px at 844 × 390 and 25–30 CSS px held upright
+  (390 × 844), where the doorway is a sliver at the band's right edge. On phones the
+  Rezonans/Zıpla buttons cover its foot. A deeper hole, or a stronger lens, would widen it.
+- Leaving through the side wall (`WorldScene.walkIn`): he walks on into the passage while the
+  flats close, seen only through the opening (his plane's camera is cut at the near jamb,
+  `PlaneCamera.clipRight`), his shadow on the passage's floor, and the leaf shuts behind him.
+- The art is in `src/content/art/doors/`: `wallArt.ts` (what a doorway is made of: the
+  opening, the wall's face round it, the leaf, the passage, the peeking figure, the light,
+  sounds, life and flat colours), `wallKit.ts` (drawing kit for elevations: bands, frames,
+  stones, planks, hatching, in the comic manner) and one file per door. Every piece is an
+  elevation, drawn flat as its surface looks seen square on, and the lens lays it on the
+  wall. A room's pieces are printed into one texture while it loads (`printDoors`), each at
+  the density it shows at (narrower across than up, as a slanted wall shows).
+- A door only reads the condition that was already there (`doorSpecs.ts`: an exit, a solid or
+  a flag). Exit boxes, conditions, targets, checkpoints and room widths did not change. When
+  the condition comes true the door opens (its sound, its light warming in the opening).
+  Gorti near wakes it: the light swells, the leaf opens a little wider, someone peeks out of
+  the passage, and small paper life comes out (`doorLife.ts`: fireflies, petals, leaves,
+  confetti, or paper stars on threads before the wall).
+- The doors (wall; how it opens):
+  - r01 `tunnel`: a page cut into the paper room's wall, onion-topped; a mint flap swings
+    on its near jamb. The passage goes down into the lilac underground; a paper whale peeks.
+  - r02 `mouth`: a low mouth in the cave's stone wall, roots woven across it; when the song is
+    sung they sink into the ground. A root sprout peeks.
+  - r04 `tree`: a wall of old trunks; a round green door swings into the hollow of the tree
+    (its exit has no condition, so it stands open). A raccoon peeks.
+  - r05 `stones` (across): a rock face with a low arch; crystal bars sink into the sill when
+    the stones rest on their plates. r05 `moon`: a moon gate in the hill's flank, always open;
+    a moth flutters out.
+  - r08 `stage`: a wing of the painted set; a painted roller cloth rolls up when the room is
+    done. A sparrow hops out.
+  - b01 `form` (across): a clipped hedge; a garden door slides into it while Gorti is human,
+    and back. b01 `hedge`: a hedge clipped into a bunny over an arch; a picket gate swings.
+  - b02 `moon` (across): a board fence; a shutter painted with the night lifts into the lintel
+    when the Moon is up. b02 `hill`: the hill's flank; a wheel rolls aside along its groove.
+  - b03 `blocks`: a wall of toy blocks; the barricade sinks into the floor. A jester bobs out.
+  - r12 `office` (across): the office's own panelled wall; the door slides into the wall when
+    the script sets `r12.door`.
+  - The room changes in r03, r06, r07, r09, r10 and r11 are cutscenes, with no door.
+- Reduced motion: nothing idles, nothing comes out, the stars hang still; a leaf fades open
+  instead of moving, and a peek fades.
+- Per frame a door sets a few uniforms and moves a few small cards. The wall's shader runs
+  over the part of the screen the wall covers; a cross wall draws one quad per plane camera
+  it spans.
+- Tests: `tests/unit/doors.test.ts` (doors stand at real exits and gates and open with them;
+  openings Gorti fits through, art covering them, leaves flush when shut; the steering never
+  lets him through a wall and never jerks; the print jobs and the atlas packing).
+- Known: the old `prop.officedoor` art is still in `props.ts`, used only by the props preview.
 
 ### The story text in JSON (`src/content/text/`)
 
@@ -360,8 +439,9 @@ Conventions:
   as it goes and comes back the same way. Its lamp and halo stay at home, so the room's light
   does not move. The big Sun behind the card in the user's screenshot was r03's world Sun
   (`new Face(w, 'sun', T + 90, 540, …)`), now hidden while its card shows.
-- A new page's faces wait until the page turn is over (`WorldScene.transitioning`), then drop
-  in; the old page's faces are only on the turning sheet. Reduced motion: a fade.
+- A new room's faces wait until the scene change is over (`WorldScene.transitioning`), then
+  drop in; until then the flats or the curtain stand over the old ones (`WarpScene` is
+  brought to the top). Reduced motion: a fade.
 - Sizes: the Moon 0.68 and the Sun 0.56 of their parts (were 0.5 and 0.4), in the top corners
   of what shows; the ancient Moon, the taller crescent, hangs 18 px lower. Sideways the HUD's
   pause and full-screen buttons sit at the top middle, with the skip hint and the chapter card

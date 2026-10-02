@@ -120,7 +120,7 @@ export class MenuScene extends Phaser.Scene {
     app.ui.menus.closeAll();
     const def = roomDef(progress.room);
     const cp = def.checkpoints.find((c) => c.id === progress.checkpoint) ?? def.checkpoints[0]!;
-    // Into the world through a page turn: onto the chapter's page when the chapter opens here.
+    // Into the world through a scene change: the chapter's title card when the chapter opens here.
     const quest = app.quest;
     this.scene.launch('warp', {
       chapter: opensChapter(null, progress.room, cp.id, quest) ? def.chapter : null,

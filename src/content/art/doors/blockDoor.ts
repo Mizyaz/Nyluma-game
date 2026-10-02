@@ -1,251 +1,163 @@
-import type { DoorArt, DoorPiece } from '../../../render/2d/fx/doorway';
-import { ellipsePath, hashSeed, rrect } from '../../../render/2d/svg';
-import { archPts, circleP, comic, crescent, darkOf, doorPart, fillP, glowDisc, ink, lightOf, LINE, page, poly, Rng, smooth, softStar, tuft, twinkle, type Pt } from './doorKit';
+import type { Hole } from '../../../paper/opening';
+import { darkOf, lightOf, LINE, lineFor } from '../../../render/2d/style';
+import { comic, ink } from '../../characters/kit';
+import { Rng, type Pt } from '../../../render/2d/svg';
+import type { FaceArt, WallDoorArt } from './wallArt';
+import { holeRing } from './wallArt';
+import { at, figure, frameSheet, leafArt, passageWall, r2, stoneCourses } from './wallKit';
+import { glowDisc, twinkle } from './doorKit';
 
-// b03, "Kırık Oda": the room of toy blocks and a crystal, and its way on
-// is built of them: two columns of big painted blocks (they read KA and
-// PI, "kapı"), an arch block across, and on top a jack-in-the-box. Until
-// the crystal is broken a barricade of little blocks fills the doorway;
-// then it tumbles down and bounces about the floor. Once it is open and
-// Gorti comes near, the box's lid flips and the jester springs out to
-// bob at him. Through the arch: the next room, an empty hill at night.
+// b03, "Kırık Oda": the room of toy blocks, and its right wall is built of
+// them, course on course of big painted blocks. The way on is a doorway in
+// it between two columns of letter blocks (they read KA and PI, "kapı"),
+// and until the crystal is broken a barricade of little blocks fills it;
+// then the barricade sinks into the floor block by block. Through it: the
+// next room, an empty hill at night, and a jester on a spring bobs out at
+// Gorti from his box.
 
-const C = {
-  pink: '#f4b6c2',
-  mint: '#bfe3d0',
-  butter: '#f9e3a1',
-  lilac: '#c9c0ef',
-  peach: '#f9d0a8',
-  sky: '#b8d6f2',
-  aqua: '#a8d8e0',
-  side: '#d9c6a6',
-  jester: '#f6d7c0',
-  hatA: '#f08fa6',
-  hatB: '#9fd2c6',
-  pompom: '#f9e3a1',
-  // The empty hill beyond.
-  night: '#3f3d5c',
-  nightLow: '#5a5778',
-  hill: '#6e7a8c',
-  hillNear: '#8ea294',
-  stoneTree: '#77737f',
-  trunk: '#7c5a78',
-  moon: '#eef2f8',
-  floorIn: '#6f6a80',
-} as const;
+const T = {
+  blocks: ['#f2c46b', '#f7a8c4', '#8fc4e8', '#a8d890', '#c8b8ea', '#f4a87c'],
+  gap: '#6d6280',
+  floor: '#55605a',
+  wall: '#5a5f78',
+  night: '#9aa3d0',
+};
 
-const f = (n: number): number => Math.round(n * 100) / 100;
+const HOLE: Hole = { z0: -240, z1: -74, spring: 140, rise: 38 };
 
-/** A big block's side, the opening between the columns, how high the columns stand. */
-const B = 46;
-const W = 92;
-const COL = 3 * B;
-const RISE = 38;
-const H = COL + RISE;
-const OPEN = archPts(W, H, { rise: RISE, n: 26 });
-/** The top of the arch block, and the jack-in-the-box on it. */
-const TOP = -COL - 52;
-const BOX = 34;
-
-/** A letter painted in thick strokes (K, A, P, I), about 22 px high, centred at cx, cy. */
-function letter(ch: string, cx: number, cy: number, color: string): string {
-  const P = (x: number, y: number): string => `${f(cx + x)} ${f(cy + y)}`;
-  const d: Record<string, string> = {
-    K: `M${P(-6, -11)}V${P(-6, 11).split(' ')[1]}M${P(7, -11)}L${P(-5, 1)}M${P(-2, -2)}L${P(8, 11)}`,
-    A: `M${P(-8, 11)}L${P(0, -11)}L${P(8, 11)}M${P(-4.6, 3)}H${f(cx + 4.6)}`,
-    P: `M${P(-6, 11)}V${f(cy - 11)}H${f(cx + 1)}Q${P(9, -11)} ${P(9, -4)}Q${P(9, 2)} ${P(1, 2)}H${f(cx - 6)}`,
-    I: `M${P(0, -11)}V${f(cy + 11)}M${P(-5, -11)}H${f(cx + 5)}M${P(-5, 11)}H${f(cx + 5)}`,
-  };
-  const path = d[ch] ?? '';
-  return ink(path, 6.4, '#fffaf2') + ink(path, 3.8, color);
+/** A big toy block seen square on: its colour, a bevel, a letter or a dot. */
+function block(x: number, y: number, w: number, h: number, fill: string, mark: string): string {
+  const d = `M${r2(x + 3)} ${r2(y)}L${r2(x + w - 3)} ${r2(y)}Q${r2(x + w)} ${r2(y)} ${r2(x + w)} ${r2(y + 3)}L${r2(x + w)} ${r2(y + h - 3)}Q${r2(x + w)} ${r2(y + h)} ${r2(x + w - 3)} ${r2(y + h)}L${r2(x + 3)} ${r2(y + h)}Q${r2(x)} ${r2(y + h)} ${r2(x)} ${r2(y + h - 3)}L${r2(x)} ${r2(y + 3)}Q${r2(x)} ${r2(y)} ${r2(x + 3)} ${r2(y)}Z`;
+  const inner = `<rect x="${r2(x + 6)}" y="${r2(y + 6)}" width="${r2(w - 12)}" height="${r2(h - 12)}" rx="3" fill="none" stroke="${lightOf(fill, 0.45)}" stroke-width="2"/>`;
+  return comic(d, fill, { line: LINE.small, rim: [3, -1.6], glint: [-1.2, 1.2], hatch: 2.4, hatchWidth: 0.5, over: inner + mark });
 }
 
-/** A big painted block (its front face), x0,y0 its top left corner: a letter, a star or a moon on it. */
-function block(x0: number, y0: number, fill: string, mark: string): string {
-  const cx = x0 + B / 2;
-  const cy = y0 + B / 2;
-  let inner = comic(rrect(x0 + 6, y0 + 6, B - 12, B - 12, 4), lightOf(fill, 0.22), { line: LINE.fine, ink: darkOf(fill, 0.2) });
-  const tone = darkOf(fill, 0.42);
-  if (mark === '*') inner += comic(softStar(cx, cy + 1, 13, 0.5, -Math.PI / 2), tone, { line: LINE.detail });
-  else if (mark === ')') inner += comic(crescent(cx - 2, cy, 12, 1.32), tone, { line: LINE.detail });
-  else inner += letter(mark, cx, cy, tone);
-  return comic(rrect(x0, y0, B, B, 5), fill, { line: LINE.limb, rim: [3.6, -1.6], glint: [-1, 1], hatch: 2.4, hatchWidth: 0.5, inner });
+function letter(x: number, y: number, ch: string, fill: string): string {
+  return `<text x="${r2(x)}" y="${r2(y)}" font-family="Georgia, serif" font-weight="700" font-size="26" text-anchor="middle" fill="${darkOf(fill, 0.35)}" stroke="#fffaf2" stroke-width="0.8">${ch}</text>`;
 }
 
-/** The doorway: the two columns, the arch block across them. */
-function frame(): string {
-  let s = '';
-  const left: [string, string][] = [
-    [C.butter, '*'],
-    [C.mint, 'A'],
-    [C.pink, 'K'],
-  ];
-  const right: [string, string][] = [
-    [C.sky, ')'],
-    [C.peach, 'I'],
-    [C.lilac, 'P'],
-  ];
-  left.forEach(([fill, m], i) => (s += block(-W / 2 - B, -(i + 1) * B, fill, m)));
-  right.forEach(([fill, m], i) => (s += block(W / 2, -(i + 1) * B, fill, m)));
-  // The arch block: a long block with a round bite out of its bottom, dots painted on it.
-  const outer: Pt[] = [
-    [-W / 2 - B - 4, TOP],
-    [W / 2 + B + 4, TOP],
-    [W / 2 + B + 4, -COL],
-    [W / 2, -COL],
-    ...OPEN.filter((p) => p[1] < -COL + 0.5)
-      .slice()
-      .reverse()
-      .map(([x, y]) => [x, y] as Pt),
-    [-W / 2, -COL],
-    [-W / 2 - B - 4, -COL],
-  ];
-  let dots = '';
-  for (const [x, y, c] of [
-    [-110, -168, C.pink],
-    [-80, -178, C.butter],
-    [80, -176, C.mint],
-    [108, -166, C.lilac],
-    [-62, -160, C.sky],
-    [62, -158, C.peach],
-  ] as const)
-    dots += comic(circleP(x * 0.92, y, 4.6), c, { line: LINE.fine });
-  s += comic(poly(outer), C.aqua, { line: LINE.limb, rim: [4, -1.8], glint: [-1, 1], hatch: 2.4, hatchWidth: 0.5, inner: dots, over: ink(smooth(OPEN.filter((p) => p[1] < -COL + 0.5).map(([x, y]) => [x * 1.12, y - 5] as Pt), 1, false), 0.8, darkOf(C.aqua, 0.25)) });
-  return s;
-}
-
-/** A little block of the barricade, centred at 0,0. */
-function cube(fill: string, k: number): string {
-  const r = 15;
-  let inner = comic(rrect(-r + 4, -r + 4, 2 * r - 8, 2 * r - 8, 3), lightOf(fill, 0.22), { line: LINE.fine, ink: darkOf(fill, 0.2) });
-  const tone = darkOf(fill, 0.42);
-  if (k % 3 === 0) inner += comic(circleP(0, 0, 4.4), tone, { line: LINE.fine });
-  else if (k % 3 === 1) for (const [x, y] of [[-4, -4], [4, 4], [0, 0]] as const) inner += fillP(circleP(x, y, 2), tone);
-  else inner += comic(softStar(0, 0.6, 6.4, 0.5, -Math.PI / 2), tone, { line: LINE.fine });
-  return comic(rrect(-r, -r, 2 * r, 2 * r, 4), fill, { line: LINE.small, rim: [2.6, -1.2], glint: [-0.8, 0.8], inner });
-}
-
-// ---------------------------------------------------------------- the jack-in-the-box
-
-function jackBox(): string {
-  let s = comic(rrect(-BOX / 2, -BOX, BOX, BOX, 3), C.pink, { line: LINE.small, rim: [3, -1.4], glint: [-0.8, 0.8], inner: comic(rrect(-BOX / 2 + 5, -BOX + 5, BOX - 10, BOX - 10, 3), lightOf(C.pink, 0.2), { line: LINE.fine }) });
-  s += comic('M0 -10C-4 -16 -10 -12 -7 -7L0 -1L7 -7C10 -12 4 -16 0 -10Z', C.butter, { line: LINE.detail });
-  // The crank on its side.
-  s += ink(`M${BOX / 2} -18h6v-8`, 2, darkOf(C.peach, 0.3)) + comic(ellipsePath(BOX / 2 + 6, -28, 3, 4), C.peach, { line: LINE.fine });
-  return s;
-}
-
-/** The lid, hinged at its left end (0,0), lying along the box's top. */
-function jackLid(): string {
-  return comic(rrect(-1, -4, BOX + 2, 5, 1.5), darkOf(C.pink, 0.06), { line: LINE.small, rim: [1.4, -0.6], glint: [-0.5, 0.5] }) + comic(circleP(BOX / 2, -5.6, 2.4), C.butter, { line: LINE.fine });
-}
-
-/** The jester on his spring (the spring's foot at 0,0, deep in the box). */
-function jester(): string {
-  let spring = 'M0 30';
-  for (let y = 26; y > -14; y -= 6) spring += `L${y % 12 === 2 ? 6 : -6} ${y}`;
-  spring += 'L0 -14';
-  let s = ink(spring, 2.2, darkOf(C.lilac, 0.25));
-  // The collar, the face, the two-tailed hat with its bells.
-  s += comic('M-12 -14Q-6 -20 0 -15Q6 -20 12 -14Q8 -10 0 -12Q-8 -10 -12 -14Z', C.hatB, { line: LINE.detail });
-  s += comic(circleP(0, -26, 11.5), C.jester, { line: LINE.small, rim: [2.2, -1], glint: [-0.6, 0.6], tone: '#e7c4c6' });
-  s += comic('M-11 -30Q-16 -44 -24 -40Q-14 -42 -10 -34Z', C.hatA, { line: LINE.detail }) + comic('M11 -30Q16 -44 24 -40Q14 -42 10 -34Z', C.hatB, { line: LINE.detail });
-  s += comic('M-11 -30Q0 -40 11 -30Q0 -34 -11 -30Z', C.hatA, { line: LINE.detail });
-  s += comic(circleP(-24, -40, 3), C.pompom, { line: LINE.fine }) + comic(circleP(24, -40, 3), C.pompom, { line: LINE.fine });
-  const line = darkOf(C.jester, 0.55);
-  for (const x of [-4.2, 4.2]) s += fillP(ellipsePath(x, -27, 1.6, 2.2), '#4a3550') + fillP(circleP(x + 0.5, -27.8, 0.5), '#ffffff');
-  for (const x of [-7.6, 7.6]) s += fillP(ellipsePath(x, -22.6, 2.2, 1.3), C.hatA, 0.7);
-  s += comic('M-5 -21Q0 -15 5 -21Q0 -19 -5 -21Z', '#e98a9c', { line: LINE.fine, ink: line });
-  s += fillP(circleP(0, -24, 2.2), '#f08fa6');
-  return s;
-}
-
-// ---------------------------------------------------------------- inside: the blocks' thickness, then the empty hill
-
-function in0(): string {
-  // The columns' inner faces, block after block, and the arch block's underside.
-  let over = '';
-  for (let i = 1; i < 3; i++) over += ink(`M-120 ${-i * B}H120`, 0.9, darkOf(C.side, 0.2));
-  return page(OPEN, -100, 100, -200, 10, C.side, darkOf(C.side, 0.25), { wallOver: over, rim: 3 });
-}
-
-/** The next room, empty: a night hill, one stone tree, the moon, nothing else. */
-function beyond(): string {
-  const rng = new Rng(hashSeed('door.block.beyond'));
-  let s = `<linearGradient id="blsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${C.night}"/><stop offset="1" stop-color="${C.nightLow}"/></linearGradient>`;
-  s += `<rect x="-170" y="-240" width="340" height="242" fill="url(#blsky)"/>`;
-  for (let i = 0; i < 14; i++) s += fillP(circleP(rng.range(-160, 160), rng.range(-230, -90), rng.range(0.6, 1.3)), '#efeaff', rng.range(0.4, 0.85));
-  s += glowDisc(70, -170, 34, '#dfe6ff', 0.3);
-  s += comic(crescent(76, -170, 17, 1.3), C.moon, { line: LINE.small, rim: [1.6, -0.8], over: ink('M63 -172q2.4 2.4 4.8 0', 0.8, darkOf(C.moon, 0.5)) });
-  s += twinkle(20, -200, 2.6, '#fff7d6', 0.5);
-  s += comic(smooth([[-180, -60], [-90, -84], [0, -74], [90, -92], [180, -70], [180, 4], [-180, 4]]), C.hill, { line: LINE.small, rim: [3, -1.4] });
-  s += comic(rrect(56, -122, 8, 46, 3), C.trunk, { line: LINE.detail });
-  s += comic(smooth([[36, -116], [40, -150], [62, -162], [86, -150], [88, -118], [60, -108]]), C.stoneTree, { line: LINE.small, rim: [3, -1.4], over: ink('M50 -134q5 4 10 0M64 -146q5 4 10 0', 0.8, darkOf(C.stoneTree, 0.35)) });
-  s += comic(smooth([[-180, -22], [-80, -34], [20, -28], [180, -38], [180, 92], [-180, 92]]), C.hillNear, { line: LINE.small, rim: [3, -1.4] });
-  for (let i = 0; i < 6; i++) s += tuft(rng.range(-150, 150), rng.range(-14, 30), rng.range(6, 9), lightOf(C.hillNear, 0.12), 90 + i);
-  return s;
-}
-
-/** The toy-block doorway of b03. */
-export function blockDoor(): DoorArt {
-  const fills = [C.pink, C.mint, C.butter, C.lilac, C.peach, C.sky];
-  const parts = [
-    doorPart('door.block.frame', { x0: -W / 2 - B - 8, y0: TOP - 4, x1: W / 2 + B + 8, y1: 4 }, frame()),
-    doorPart('door.block.in0', { x0: -100, y0: -200, x1: 100, y1: 10 }, in0()),
-    doorPart('door.block.beyond', { x0: -170, y0: -240, x1: 170, y1: 92 }, beyond()),
-    doorPart('door.block.box', { x0: -BOX / 2 - 4, y0: -BOX - 4, x1: BOX / 2 + 12, y1: 3 }, jackBox()),
-    doorPart('door.block.lid', { x0: -3, y0: -10, x1: BOX + 3, y1: 3 }, jackLid()),
-    doorPart('door.block.jester', { x0: -29, y0: -46, x1: 29, y1: 33 }, jester()),
-    ...fills.map((fill, i) => doorPart(`door.block.cube${i}`, { x0: -17, y0: -17, x1: 17, y1: 17 }, cube(fill, i))),
-  ];
-  // The barricade: three columns of four little blocks, the top ones falling first.
-  const rng = new Rng(hashSeed('door.block.barricade'));
-  const cubes: DoorPiece[] = [];
-  for (let row = 0; row < 4; row++) {
-    for (let col = 0; col < 3; col++) {
-      const x = (col - 1) * 30 + rng.range(-1.5, 1.5);
-      const y = -15 - row * 30;
-      const side = col === 1 ? (row % 2 ? 1 : -1) : col - 1;
-      const land = side * (W / 2 + B + 18 + rng.range(0, 40) + row * 12);
-      cubes.push({
-        key: `door.block.cube${(row * 3 + col * 2) % 6}`,
-        x,
-        y,
-        dz: 2 + row * 0.1,
-        shut: { angle: rng.range(-3, 3) },
-        open: { x: land - x, y: -15 - y, angle: side * (90 * (1 + Math.floor(rng.range(0, 3))) + rng.range(-10, 10)) },
-        lag: (3 - row) * 0.12 + rng.range(0, 0.05),
-        wake: { y: -1 },
-        wakeShut: 'only',
-        sway: { x: 0.5, ms: 160 + col * 23, byWake: true },
-      });
-    }
+function face(): FaceArt {
+  const f = { u0: -300, u1: 170, h: 560 };
+  const h = HOLE;
+  const P = (u: number, v: number): Pt => at(f, u, v);
+  let s = stoneCourses(f, { row: 46, len: [46, 92], fills: T.blocks.map((c) => lightOf(c, 0.12)), mortar: T.gap, seed: 33, gap: 4, round: 4 });
+  // Dots and stars painted on the blocks here and there.
+  const rng = new Rng(19);
+  for (let i = 0; i < 26; i++) {
+    const x = rng.range(10, f.u1 - f.u0 - 10);
+    const y = rng.range(10, f.h - 40);
+    s += rng.chance(0.5) ? `<circle cx="${r2(x)}" cy="${r2(y)}" r="4" fill="#fffaf2" opacity="0.75"/>` : twinkle(x, y, 5, '#fffaf2', 0.4);
   }
-  const jackY = TOP;
+  // The two columns of letter blocks, and the beam across.
+  const col = (z: number, letters: string[]): void => {
+    letters.forEach((ch, i) => {
+      const [x, y] = P(z, 46 * (i + 1));
+      const fill = T.blocks[(i + (z > -100 ? 2 : 0)) % T.blocks.length]!;
+      s += block(x, y, 40, 46, fill, ch ? letter(x + 20, y + 32, ch, fill) : `<circle cx="${r2(x + 20)}" cy="${r2(y + 23)}" r="6" fill="#fffaf2"/>`);
+    });
+  };
+  col(h.z0 - 40, ['', 'A', 'K', '']);
+  col(h.z1, ['', 'I', 'P', '']);
+  {
+    const [x, y] = P(h.z0 - 40, h.spring + h.rise + 44);
+    const [x1] = P(h.z1 + 40, 0);
+    s += block(x, y, x1 - x, 40, '#f4a87c', [0.25, 0.5, 0.75].map((k) => `<circle cx="${r2(x + (x1 - x) * k)}" cy="${r2(y + 20)}" r="5" fill="#fffaf2"/>`).join(''));
+  }
+  return { ...f, body: s };
+}
+
+/** The barricade of little blocks (only the blocks: the hill shows where they are not). */
+function barricade(): FaceArt {
+  const h = HOLE;
+  const W = h.z1 - h.z0;
+  const H = h.spring + h.rise;
+  const rng = new Rng(7);
+  let body = '';
+  let y = H;
+  let row = 0;
+  while (y > H - 150) {
+    const bh = rng.range(24, 30);
+    let x = (row % 2) * -14;
+    while (x < W) {
+      const bw = rng.range(26, 36);
+      const fill = rng.pick(T.blocks);
+      body += block(x + rng.range(-1.5, 1.5), y - bh, bw, bh, fill, rng.chance(0.4) ? `<circle cx="${r2(x + bw / 2)}" cy="${r2(y - bh / 2)}" r="3.4" fill="#fffaf2"/>` : '');
+      x += bw + 1;
+    }
+    y -= bh + 1;
+    row++;
+  }
+  // A few on top, tumbled.
+  for (const [x, ang, c] of [[30, -12, '#f7a8c4'], [96, 8, '#8fc4e8'], [140, -4, '#f2c46b']] as const) body += `<g transform="rotate(${ang} ${x + 14} ${r2(y - 12)})">${block(x, y - 26, 28, 26, c, '')}</g>`;
+  return leafArt(h, T.blocks[0]!, body, { bare: true });
+}
+
+function far(): FaceArt {
+  const L = 240;
+  const H = 230;
+  let s = `<rect x="0" y="0" width="${L}" height="${H}" fill="#4f5584"/>`;
+  const rng = new Rng(9);
+  for (let i = 0; i < 16; i++) s += twinkle(rng.range(8, L - 8), rng.range(8, H * 0.55), rng.range(2, 4), '#fff7d6', 0.4);
+  s += glowDisc(180, 50, 30, '#e6e8ff', 0.6) + `<circle cx="180" cy="50" r="12" fill="#fff1b8" stroke="${lineFor('#fff1b8')}" stroke-width="1"/>`;
+  s += `<path d="M0 ${H - 70}Q${L * 0.45} ${H - 120} ${L} ${H - 76}L${L} ${H}L0 ${H}Z" fill="#6f7f6c" stroke="${lineFor('#6f7f6c')}" stroke-width="1"/>`;
+  return passageWall(L, H, T.wall, s);
+}
+
+/** An arch of blocks across the way (a tunnel book's page). */
+function blockArch(inset: number, fill: string, seed: number): FaceArt {
+  const h = HOLE;
+  const f = { u0: h.z0 - 2, h: 240 };
+  const inner: Hole = { z0: h.z0 + inset, z1: h.z1 - inset, spring: h.spring - inset * 0.6, rise: Math.max(4, h.rise - inset * 0.3) };
+  const ring = holeRing(inner, f, 0, 20);
+  let studs = '';
+  const rng = new Rng(seed);
+  ring.forEach((p, i) => {
+    if (i % 2 || i === 0 || i === ring.length - 1) return;
+    studs += `<circle cx="${r2(p[0])}" cy="${r2(p[1])}" r="5" fill="${rng.pick(T.blocks)}" stroke="${lineFor(fill)}" stroke-width="0.8"/>`;
+  });
+  return frameSheet(h, 240, inset, fill, { over: studs });
+}
+
+function jester(): FaceArt {
+  const body =
+    // The box he springs from, and his spring.
+    comic('M-18 0L-18 -24L18 -24L18 0Z', '#8fc4e8', { line: LINE.small, rim: [2.4, -1.4], glint: [-1, 1], over: `<circle cx="0" cy="-12" r="5" fill="#fffaf2"/>` }) +
+    ink('M0 -24q-8 -4 0 -8q8 -4 0 -8q-8 -4 0 -8q8 -4 0 -8', 2, '#9a9aa8') +
+    comic('M-12 -56Q-14 -78 0 -80Q14 -78 12 -56Q8 -50 0 -50Q-8 -50 -12 -56Z', '#fbe6d4', { line: LINE.small, rim: [2, -1.2], glint: [-1, 1] }) +
+    comic('M-14 -74Q-26 -96 -30 -84Q-20 -80 -10 -76Z', '#f7a8c4', { line: LINE.small }) +
+    comic('M14 -74Q26 -96 30 -84Q20 -80 10 -76Z', '#a8d890', { line: LINE.small }) +
+    `<circle cx="-30" cy="-86" r="3.4" fill="#f2c46b" stroke="${lineFor('#f2c46b')}" stroke-width="0.6"/><circle cx="30" cy="-86" r="3.4" fill="#f2c46b" stroke="${lineFor('#f2c46b')}" stroke-width="0.6"/>` +
+    `<circle cx="-5" cy="-66" r="2" fill="#2a2430"/><circle cx="5" cy="-66" r="2" fill="#2a2430"/>` +
+    ink('M-5 -58Q0 -54 5 -58', 1.1, '#9a5a5a') +
+    `<circle cx="-9" cy="-60" r="2.4" fill="#f5a6a0" opacity="0.7"/><circle cx="9" cy="-60" r="2.4" fill="#f5a6a0" opacity="0.7"/>` +
+    comic('M-12 -50L-6 -44L0 -50L6 -44L12 -50L10 -40L-10 -40Z', '#f2c46b', { line: LINE.fine });
+  return figure(70, 100, body);
+}
+
+export function blockDoor(): WallDoorArt {
   return {
-    parts,
-    opening: OPEN,
-    frame: [{ key: 'door.block.frame', x: 0, y: 0, dz: 0 }],
-    inside: [
-      { key: 'door.block.beyond', x: 0, y: 0, dz: -140, order: 0 },
-      { key: 'door.block.in0', x: 0, y: 0, dz: -22, order: 2 },
-    ],
-    backdrop: 0x2e2c40,
-    shutDim: 0.45,
-    front: [],
-    pieces: [
-      ...cubes,
-      // The jester behind the box (it hides him), the lid, the box: he wants out while the way is shut.
-      { key: 'door.block.jester', x: 0, y: jackY - 10, dz: -0.6, shut: { y: 30 }, open: { y: 30 }, peek: { y: -68 }, sway: { y: 3, angle: 4, ms: 620 } },
-      { key: 'door.block.box', x: 0, y: jackY, dz: 0.4, shut: {}, open: {}, wakeShut: 'only', sway: { angle: 3, ms: 170, byWake: true } },
-      { key: 'door.block.lid', x: -BOX / 2, y: jackY - BOX, dz: 0.6, shut: {}, open: {}, peek: { angle: -118, x: -2 }, wakeShut: 'only', sway: { angle: -6, ms: 170, byWake: true } },
-    ],
-    leaves: [],
-    light: { color: 0xd9dcff, radius: 300, intensity: 0.75, y: 80 },
-    glow: { color: 0xc9d0ff, pool: 0xe6e0ff },
-    sparks: { colors: [0xfff1a0, 0xf8c8d8, 0xc8f0e0], frame: 'fx.spark', rate: 1, size: 0.36 },
-    sounds: { wake: ['click', 0.2, 1.4], peek: ['chirp', 0.32, 1.7], open: [['clunk', 0.45, 1.2], ['crystal', 0.25, 1.6]] },
-    openMs: 1700,
-    openEase: 'Bounce.easeOut',
+    wall: { color: lightOf(T.blocks[2]!, 0.12), edge: '#fffaf2' },
+    hole: HOLE,
+    face: face(),
+    leaf: { kind: 'sink', color: T.blocks[0]!, back: T.blocks[1]!, art: barricade(), shut: 0, open: 1 },
+    passage: {
+      length: 240,
+      reveal: 14,
+      floor: T.floor,
+      wall: T.wall,
+      end: T.night,
+      art: far(),
+      frames: [
+        { x: 24, art: blockArch(10, '#f2c46b', 4) },
+        { x: 58, art: blockArch(22, '#8fc4e8', 6) },
+      ],
+    },
+    peek: { art: jester(), z: -158, hidden: 150, shown: 30 },
+    light: { color: '#fff0c0', radius: 320, intensity: 0.85, y: 90 },
+    glow: '#ffe9c8',
+    sounds: { wake: ['click', 0.2, 1.4], peek: ['giggle', 0.32, 1.2], open: [['clunk', 0.45, 1.2], ['crystal', 0.25, 1.6]], shut: ['clunk', 0.35, 1] },
+    openMs: 1500,
+    life: { kind: 'confetti', colors: ['#f2c46b', '#f7a8c4', '#8fc4e8', '#a8d890'], rate: 1.3 },
+    flat: { wall: lightOf(T.blocks[2]!, 0.12), hole: T.floor, frame: '#f4a87c' },
   };
 }
