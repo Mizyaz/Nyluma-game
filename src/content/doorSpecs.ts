@@ -9,7 +9,6 @@ import { moonDoor, stoneGate } from './art/doors/crystalGate';
 import { blockDoor } from './art/doors/blockDoor';
 import { hedgeArch } from './art/doors/hedgeArch';
 import { hillDoor } from './art/doors/hillDoor';
-import { rootArch } from './art/doors/rootArch';
 import { officeDoor } from './art/doors/officeDoor';
 
 // Every way on gets a doorway true to its room (src/render/2d/fx/doorway.ts
@@ -37,11 +36,7 @@ export interface DoorSpec {
 
 /** The doors of each room. */
 export const DOORS: Readonly<Record<string, readonly DoorSpec[]>> = {
-  r01: [
-    { id: 'r01.tunnel', art: paperDoor, x: 2085, open: { exit: 'tunnel' } },
-    // The root gate the way on runs through, and the tunnel it opens on (it never shuts).
-    { id: 'r01.roots', art: rootArch, x: 1735, z: 0, open: 'always' },
-  ],
+  r01: [{ id: 'r01.tunnel', art: paperDoor, x: 2085, open: { exit: 'tunnel' } }],
   r02: [{ id: 'r02.mouth', art: rootDoor, x: 1532, open: { solid: 'roots' } }],
   r04: [{ id: 'r04.tree', art: treeDoor, x: 3392, open: { exit: 'east' } }],
   r05: [

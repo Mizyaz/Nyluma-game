@@ -271,11 +271,13 @@ Conventions:
     on screen, it opens with a short animation. A leaf turns in true perspective, drawn as
     vertical strips by depth.
   - Gorti near wakes it: the light swells, the pages draw apart, someone peeks out, a sound.
-- The doors: r01 root gate (always open) and paper door (`tunnel`); r02 root lattice (the
+- The doors: r01 paper door (`tunnel`); r02 root lattice (the
   `roots` solid, the song); r04 tree door; r05 stone gate (`gate`) and moon gate; r08 stage
   door; b01 form door (`gate:kapi`) and hedge arch; b02 moon door (`gate:gece`) and hill
   wheel; b03 block door; r12 office door (the `r12.door` flag). The room changes in r03,
   r06, r07, r09, r10 and r11 are cutscenes, with no door to walk through.
+- A doorway stands only where there is a way on. r01 had an always-open root gate in the
+  middle of the room; the user found it meaningless and in the way, so it was removed.
 - Reduced motion: nothing idles; opening, a leaf's swing and a peek are 260 ms fades.
 - Per frame the doors only move and fade printed cards. The inside's camera is hidden while
   the door is off screen.
