@@ -23,7 +23,13 @@ import { comicTitle } from './Menus';
 // drawn to be cheap to paint: no masks, filters or blend modes (a shape's
 // comic shading is cut by one clip, in tones worked out here), shadows are
 // soft gradients, repeated marks are single paths, every card is painted
-// once, and nothing moves inside an SVG.
+// once, and nothing moves inside an SVG. The big still pictures stand as
+// canvases (`picture`), painted off the page's thread (loadingPaint.ts), and
+// so do the little ones that only show for a moment (sparkles, confetti,
+// Gorti's joy), which a software GPU would otherwise draw just then.
+//
+// Everything has come up by 84%: from 90% the game finishes its pictures in
+// one long stretch, and the theatre holds still for it (LoadingView).
 
 export type StageKind = 'wide' | 'mid' | 'tall';
 
@@ -95,6 +101,22 @@ const pc = (v: number, of: number): string => `${+((v / of) * 100).toFixed(3)}%`
 /** Inline style laying box `b` in box `rel`. */
 const place = (b: Box, rel: Box): string => `left:${pc(b[0] - rel[0], rel[2])};top:${pc(b[1] - rel[1], rel[3])};width:${pc(b[2], rel[2])};height:${pc(b[3], rel[3])}`;
 const svg = (b: Box, body: string, attrs = ''): string => `<svg viewBox="${b.map(r1).join(' ')}"${attrs} aria-hidden="true">${body}</svg>`;
+
+/** The still pictures of the stage being built, by their canvas's data-k. */
+let stills: string[] | null = null;
+
+/**
+ * A big still picture. It stands as a canvas, painted off the page's thread
+ * (LoadingView, loadingPaint.ts), with its SVG kept for where it cannot be.
+ */
+function picture(b: Box, body: string, attrs = ''): string {
+  const s = svg(b, body, attrs);
+  if (!stills) return s;
+  stills.push(s);
+  const cls = attrs.includes(' class="') ? attrs.replace(' class="', ' class="ld-wait ') : ` class="ld-wait"${attrs}`;
+  return `<canvas data-k="${stills.length - 1}"${cls} aria-hidden="true"></canvas>`;
+}
+
 /** A plain fill (its opacity goes on the paint, so it needs no layer of its own). */
 const fill = (d: string, color: string, o = 1): string => `<path d="${d}" fill="${color}"${o !== 1 ? ` fill-opacity="${o}"` : ''}/>`;
 /** A line in one colour (its opacity on the paint). */
@@ -514,13 +536,15 @@ function crystals(list: readonly Crystal[]): string {
 
 /**
  * A crystal that sprouts at `when`, its tip sparkling; Gorti looks at it
- * from `eye`. It stands in its layer in front of its card.
+ * from `eye`. It stands in its layer in front of its card. The sparkle is
+ * painted at its largest (it shows at up to 2/3 of that), so that it never
+ * has to be drawn again bigger as it swells.
  */
 function sprout(g: Geo, cx: number, base: number, w: number, h: number, color: string, when: number, eye: Pt): string {
   const b: Box = [cx - w / 2 - 4, base - h - 4, w + 8, h + 6];
   const at = `${Math.round(cx - eye[0])},${Math.round(base - h * 0.7 - eye[1])}`;
-  const spark: Box = [cx + w * 0.05 - 16, base - h - 16, 32, 32];
-  return `<div class="ld-cr" data-at="${when}" data-g="${at}" style="${place(b, g.box)}">${svg(b, crystals([{ cx, base, w, h, color }]))}</div><i class="ld-spark" style="${place(spark, g.box)};--sd:${((cx / g.W) * 0.5).toFixed(2)}s">${svg([-10, -10, 20, 20], fill(twinkleD([0, 0], 10), '#fff8d8'))}</i>`;
+  const spark: Box = [cx + w * 0.05 - 24, base - h - 24, 48, 48];
+  return `<div class="ld-cr" data-at="${when}" data-g="${at}" style="${place(b, g.box)}">${svg(b, crystals([{ cx, base, w, h, color }]))}</div><i class="ld-spark" style="${place(spark, g.box)};--sd:${((cx / g.W) * 0.5).toFixed(2)}s">${picture([-24, -24, 48, 48], fill(twinkleD([0, 0], 24), '#fff8d8'))}</i>`;
 }
 
 /** A little cluster of crystals on a slope. */
@@ -571,7 +595,7 @@ function room(g: Geo): Layer[] {
   const zf = Z.frame - 3;
   const zb = FLOOR[1];
   const p = (x: number, y: number, z: number): Pt => g.proj(x, y, z);
-  const flat = (b: Box, s: string): string => svg(b, s, ` class="ld-flat" style="${place(b, g.box)}"`);
+  const flat = (b: Box, s: string): string => picture(b, s, ` class="ld-flat" style="${place(b, g.box)}"`);
   const out: Layer[] = [];
 
   // The floor; as it slides it shears, each line across it at its own depth.
@@ -689,7 +713,7 @@ function backdrop(g: Geo, moon: Pt, sun: Pt, rMoon: number, rSun: number): Layer
   s += `<rect x="${r1(x)}" y="${r1(y + h * 0.55)}" width="${r1(w)}" height="${r1(h * 0.45)}" fill="url(#${id}h)"/>`;
   // The whale's wire, across.
   s += ink(`M${r1(x)} ${r1(g.whaleY - 26)}L${r1(x + w)} ${r1(g.whaleY - 26)}`, 1.1, C.thread, 0.3);
-  return piece(Z.sky, 0.03, card(g, b, svg(b, s)));
+  return piece(Z.sky, 0.03, card(g, b, picture(b, s)));
 }
 
 /** A paper star let down on a thread, swinging. */
@@ -757,7 +781,7 @@ function farHills(g: Geo): Layer {
   s += fill(roof, '#a083ba') + fill(polyD([[hx, hy - 28], [hx + 14, hy - 14], [hx + 12, hy - 14], [hx - 1, hy - 27]]), lightOf('#a083ba')) + ink(roof, L.fine, lineFor('#a083ba'));
   s += fill(ellipsePath(hx + 1, hy - 8, 11, 11), '#ff9ad6', 0.28) + fill(polyD([[hx - 3, hy - 11], [hx + 4, hy - 11], [hx + 4, hy - 4], [hx - 3, hy - 4]]), '#ffc8e8');
   // The mist lies low over them: far things are hazier.
-  return piece(Z.far, 0.28, card(g, b, svg(b, s) + '<i class="ld-haze"></i>'));
+  return piece(Z.far, 0.28, card(g, b, picture(b, s) + '<i class="ld-haze"></i>'));
 }
 
 /** Rolling moonlit hills, teal and periwinkle, with crystal outcrops, tufts and flowers; three crystals sprout on them, fireflies wander over them. */
@@ -785,9 +809,9 @@ function midHills(g: Geo, eye: Pt): Layer {
     flowers[Math.floor(rng.next() * cols.length)] += ellipsePath(g.x(f), y, 2.6, 2.6);
   }
   cols.forEach((c, i) => (s += flowers[i] ? fill(flowers[i]!, c, 0.9) : ''));
-  let more = sprout(g, g.x(0.14), base - 156 * k, 26, 54, GEMS[1], 0.4, eye) + sprout(g, g.x(0.84), base - 120 * k, 22, 46, GEMS[2], 0.47, eye) + sprout(g, g.x(0.3), base - 112 * k, 18, 36, GEMS[5], 0.54, eye);
+  let more = sprout(g, g.x(0.14), base - 156 * k, 26, 54, GEMS[1], 0.4, eye) + sprout(g, g.x(0.84), base - 120 * k, 22, 46, GEMS[2], 0.46, eye) + sprout(g, g.x(0.3), base - 112 * k, 18, 36, GEMS[5], 0.52, eye);
   for (const [f, h, d] of [[0.2, 200, 0], [0.38, 150, 2.6], [0.58, 120, 5.1], [0.76, 190, 1.4], [0.92, 160, 3.8]] as const) more += `<i class="ld-fly" style="left:${pc(g.x(f), g.W)};top:${pc(base - h * k, g.H)};--d:${-d}s"></i>`;
-  return piece(Z.mid, 0.36, card(g, b, svg(b, s)) + more);
+  return piece(Z.mid, 0.36, card(g, b, picture(b, s)) + more);
 }
 
 /** The mossy mound the big crystals grow from, and a low ground across. */
@@ -825,9 +849,9 @@ function mound(g: Geo, eye: Pt): Layer {
   big.forEach(([f, w, h, c], i) => {
     const x = cx + f * mw;
     const top = base - 56 + Math.abs(f) * 60;
-    sp += sprout(g, x, top, w, h * kh, GEMS[c]!, [0.5, 0.58, 0.66, 0.74, 0.82][i]!, eye);
+    sp += sprout(g, x, top, w, h * kh, GEMS[c]!, [0.49, 0.55, 0.61, 0.67, 0.73][i]!, eye);
   });
-  return piece(Z.mound, 0.44, card(g, b, svg(b, s)) + sp);
+  return piece(Z.mound, 0.44, card(g, b, picture(b, s)) + sp);
 }
 
 // ------------------------------------------------------------ Gorti
@@ -914,14 +938,14 @@ function gorti(g: Geo): { layer: Layer; eye: Pt } {
   const screen: Box = [-33, -181, 72, 66];
   const b: Box = [gx + local[0], base + local[1], local[2], local[3]];
   const neck = `transform-origin:${pc(0 - headBox[0], headBox[2])} ${pc(-104 - headBox[1], headBox[3])}`;
-  const joy = svg([0, 0, 72, 66], ink('M10 26L19 16L28 26M44 26L53 16L62 26', 4.5, '#ff9ad6'));
+  const joy = picture([0, 0, 72, 66], ink('M10 26L19 16L28 26M44 26L53 16L62 26', 4.5, '#ff9ad6'));
   const face = `<div class="ld-screen" style="${place(screen, headBox)}"><div class="ld-snow"></div><div class="ld-eyes"><i></i><i></i></div><div class="ld-joy">${joy}</div><b class="ld-digits">%0</b><div class="ld-scan"></div></div>`;
-  const head = `<div class="ld-head" style="${place(headBox, local)};${neck}">${svg(headBox, gortiHead())}${face}</div>`;
+  const head = `<div class="ld-head" style="${place(headBox, local)};${neck}">${picture(headBox, gortiHead())}${face}</div>`;
   // A spotlight from the upper right, its pool of light at his feet.
   const sx = gx + (g.tall ? 110 : 150);
   const lb: Box = [gx - 100, g.top - 40, sx - gx + 130, base - g.top + 64];
   const id = nextId('lsp');
-  const light = svg(
+  const light = picture(
     lb,
     `<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3c8" stop-opacity="0"/><stop offset="1" stop-color="#fff3c8" stop-opacity=".24"/></linearGradient><radialGradient id="${id}p"><stop offset="0" stop-color="#fff6d6" stop-opacity=".75"/><stop offset="1" stop-color="#fff6d6" stop-opacity="0"/></radialGradient>` +
       fill(polyD([[sx - 14, g.top - 40], [sx + 14, g.top - 40], [gx + 86, base], [gx - 86, base]]), `url(#${id})`) +
@@ -929,7 +953,7 @@ function gorti(g: Geo): { layer: Layer; eye: Pt } {
   );
   // His shadow falls behind him, down and to the left, soft; it stays when he hops.
   const shade = softShadow(-66, -134, 28, 58, 0.42) + softShadow(-38, -44, 20, 50, 0.32) + fill(ellipsePath(0, 1, 44, 7), '#1b1030', 0.32);
-  const html = card(g, lb, `<div class="ld-beam">${light}</div>`) + card(g, b, `${svg(local, shade)}<div class="ld-gorti">${svg(local, gortiBody())}${head}</div>`);
+  const html = card(g, lb, `<div class="ld-beam">${light}</div>`) + card(g, b, `${picture(local, shade)}<div class="ld-gorti">${picture(local, gortiBody())}${head}</div>`);
   return { layer: piece(Z.gorti, -0.01, html), eye: [gx + 3, base - 160] };
 }
 
@@ -968,8 +992,8 @@ function lip(g: Geo, eye: Pt): Layer {
     spiral.push([sx - 2 + Math.cos(a) * (16 - i * 0.62), sy - 16 + Math.sin(a) * (15 - i * 0.6)]);
   }
   s += paper(ellipsePath(sx - 2, sy - 16, 16, 15), C.apricot, { line: L.detail, rim: [4, -2], glint: [-1.2, 1.2], hatch: 3.2, hatchWidth: 0.7, over: ink(smooth(spiral, 1, false), L.fine, darkOf(C.apricot, 0.45)) });
-  const sp = sprout(g, g.x(0.5), base - 10, 20, 40, GEMS[5], 0.9, eye) + sprout(g, g.x(g.tall ? 0.9 : 0.82), base - 12, 24, 50, GEMS[0], 0.96, eye);
-  return piece(Z.lip, 0.6, card(g, b, svg(b, s)) + sp);
+  const sp = sprout(g, g.x(0.5), base - 10, 20, 40, GEMS[5], 0.78, eye) + sprout(g, g.x(g.tall ? 0.9 : 0.82), base - 12, 24, 50, GEMS[0], 0.84, eye);
+  return piece(Z.lip, 0.6, card(g, b, picture(b, s)) + sp);
 }
 
 /**
@@ -1002,7 +1026,7 @@ function lamps(g: Geo): Layer {
     const art =
       chip(`M${r1(x - 12)} ${r1(y - 9)}Q${r1(x - 11)} ${r1(y - 23)} ${r1(x)} ${r1(y - 23)}Q${r1(x + 11)} ${r1(y - 23)} ${r1(x + 12)} ${r1(y - 9)}Z`, '#fff6d2', L.detail, ink(`M${r1(x + 3)} ${r1(y - 20)}Q${r1(x + 8)} ${r1(y - 18)} ${r1(x + 9)} ${r1(y - 13)}`, 1.6, '#ffffff'), '#c9a85a') +
       chip(`M${r1(x - 15)} ${r1(y - 10)}L${r1(x + 15)} ${r1(y - 10)}L${r1(x + 11)} ${r1(y + 2)}L${r1(x - 11)} ${r1(y + 2)}Z`, '#8e7f5c', L.detail, fill(`M${r1(x - 15)} ${r1(y - 10)}L${r1(x - 6)} ${r1(y - 10)}L${r1(x - 4)} ${r1(y + 2)}L${r1(x - 11)} ${r1(y + 2)}Z`, darkOf('#8e7f5c', 0.25)) + ink(`M${r1(x - 13)} ${r1(y - 8)}L${r1(x + 13)} ${r1(y - 8)}`, 1.1, lightOf('#8e7f5c', 0.5)));
-    out += `<div class="ld-lamp" data-at="${+(0.06 + (i / n) * 0.86).toFixed(3)}" style="${place(b, g.box)};--sd:${((i / n) * 0.45).toFixed(2)}s"><i></i>${svg(b, art)}</div>`;
+    out += `<div class="ld-lamp" data-at="${+(0.06 + (i / n) * 0.78).toFixed(3)}" style="${place(b, g.box)};--sd:${((i / n) * 0.45).toFixed(2)}s"><i></i>${svg(b, art)}</div>`;
   }
   return fixed(Z.lamps, out);
 }
@@ -1070,7 +1094,7 @@ function frame(g: Geo): Layer {
   deco[0] += fill(stars, C.butter, 0.9) + fill(moons, '#fff1c6', 0.85);
   const art = strips.map((b, i) => {
     const hb: Rect = { x0: b[0], y0: b[1], x1: b[0] + b[2], y1: b[1] + b[3] };
-    return svg(b, paper(d, C.frame, { line: L.body, rim: [10, -6], glint: [-3.5, 3.5], hatch: 5.5, hatchWidth: 1, hatchBox: hb, over: border + deco[i] }), ` class="ld-fs" style="${place(b, g.box)}"`);
+    return picture(b, paper(d, C.frame, { line: L.body, rim: [10, -6], glint: [-3.5, 3.5], hatch: 5.5, hatchWidth: 1, hatchBox: hb, over: border + deco[i] }), ` class="ld-fs" style="${place(b, g.box)}"`);
   });
   return piece(Z.frame, -0.05, card(g, g.box, art.join('')));
 }
@@ -1114,7 +1138,7 @@ function drape(g: Geo, side: -1 | 1): Layer {
   art += chip(`M${r1(tx - 6)} ${r1(ty + 6)}L${r1(tx + 6)} ${r1(ty + 6)}L${r1(tx + 9)} ${r1(ty + 40)}L${r1(tx - 9)} ${r1(ty + 40)}Z`, C.butter, L.detail, ink(`M${r1(tx - 4)} ${r1(ty + 18)}L${r1(tx - 5)} ${r1(ty + 39)}M${r1(tx)} ${r1(ty + 18)}V${r1(ty + 39)}M${r1(tx + 4)} ${r1(ty + 18)}L${r1(tx + 5)} ${r1(ty + 39)}`, L.fine, darkOf(C.butter, 0.4)));
   art += chip(ellipsePath(tx, ty + 10, 7, 6), lightOf(C.butter, 0.2), L.detail, fill(ellipsePath(tx + 2.4, ty + 8, 2.4, 1.8), '#fffdf0'));
   const b: Box = side < 0 ? [o - 6, top - 4, dw + 20, g.F + 10 - top] : [g.W - o - dw - 14, top - 4, dw + 20, g.F + 10 - top];
-  return piece(Z.drape, -0.04, card(g, b, `<div class="ld-drape ld-${side < 0 ? 'l' : 'r'}">${svg(b, art)}</div>`));
+  return piece(Z.drape, -0.04, card(g, b, `<div class="ld-drape ld-${side < 0 ? 'l' : 'r'}">${picture(b, art)}</div>`));
 }
 
 /** The valance: velvet swags across the top, butter tassels between. */
@@ -1143,7 +1167,7 @@ function valance(g: Geo): Layer {
   }
   art += chip(tassels, C.butter, L.detail, ink(cords, L.fine, darkOf(C.butter, 0.4))) + chip(knots, lightOf(C.butter, 0.2), L.detail, fill(shine, '#fffdf0'));
   const b: Box = [x0 - 10, y - 14, x1 - x0 + 20, 92];
-  return piece(Z.valance, -0.03, card(g, b, `<div class="ld-val">${svg(b, art)}</div>`));
+  return piece(Z.valance, -0.03, card(g, b, `<div class="ld-val">${picture(b, art)}</div>`));
 }
 
 /** The title on a paper banner with folded tails, and the room's tag hanging under it. */
@@ -1176,7 +1200,7 @@ function banner(g: Geo): Layer {
   const html =
     `<div class="ld-title${g.tall ? ' ld-2' : ''}" style="${place([l + 18, y, bw - 36, bh], b)};--tf:${g.tall ? 56 : 46}">${title}</div>` +
     `<div class="ld-tag" style="${place(tagBox, b)}">${svg(tagBox, tagArt)}<span style="font-size:calc(var(--u) * ${g.tall ? 26 : 21})">14. Oda</span></div>`;
-  return piece(Z.banner, -0.02, card(g, b, svg(b, art) + html, ' ld-ban'));
+  return piece(Z.banner, -0.02, card(g, b, picture(b, art) + html, ' ld-ban'));
 }
 
 /** Paper confetti for the ta-da: strips, stars, little gems and dots flung up from the stage, fluttering down. */
@@ -1189,7 +1213,8 @@ function confetti(g: Geo): Layer {
     const v = rng.range(0.16, 0.52);
     const col = rng.pick(CONFETTI);
     const art = chip(shapes[i % 4]!, col, 1.7, ink('M1.5 -2.5h4', 1.8, '#ffffff', 0.75), darkOf(col, 0.42));
-    out += `<i class="ld-cf" style="--x:${r1(Math.cos(a) * v * g.ow)};--y:${r1(Math.sin(a) * v * g.H * 0.78)};--f:${r1(rng.range(0.28, 0.6) * g.H)};--r:${Math.round(rng.range(-1, 1) * 1000)}deg;--d:${rng.range(0, 0.1).toFixed(2)}s">${svg([-14, -14, 28, 28], art)}</i>`;
+    // Drawn in a 28-unit box; a piece shows 34 units wide (.ld-cf).
+    out += `<i class="ld-cf" style="--x:${r1(Math.cos(a) * v * g.ow)};--y:${r1(Math.sin(a) * v * g.H * 0.78)};--f:${r1(rng.range(0.28, 0.6) * g.H)};--r:${Math.round(rng.range(-1, 1) * 1000)}deg;--d:${rng.range(0, 0.1).toFixed(2)}s">${picture([-17, -17, 34, 34], `<g transform="scale(${(34 / 28).toFixed(4)})">${art}</g>`)}</i>`;
   }
   return fixed(Z.confetti, `<div class="ld-burst" style="left:50%;top:${pc(g.top + (g.F - g.top) * 0.56, g.H)}">${out}</div>`);
 }
@@ -1200,10 +1225,22 @@ export interface StageArt {
   html: string;
   /** The eye's height (perspective origin), percent of the theatre's height. */
   oy: string;
+  /** The still pictures (SVG) for the canvases in `html`, by their data-k. */
+  stills: string[];
 }
 
 /** Builds the theatre for a screen shape. */
 export function buildStage(kind: StageKind): StageArt {
+  const list: string[] = [];
+  stills = list;
+  try {
+    return { ...stage(kind), stills: list };
+  } finally {
+    stills = null;
+  }
+}
+
+function stage(kind: StageKind): Omit<StageArt, 'stills'> {
   const g = new Geo(kind);
   const sz = Math.min(g.tall ? 150 : 132, g.ow * 0.2);
   const moon: Pt = [g.x(g.tall ? 0.28 : 0.21), g.top + (g.tall ? 116 : 92)];

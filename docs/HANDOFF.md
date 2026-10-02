@@ -159,16 +159,36 @@ Conventions:
   trunk, the crystal, the roses at the branch tips, the birds coming out of them, the roots, the
   mist). It is drawn in the painting's measure and scaled down, so its contours and hatching use
   their own widths (`L`, `HATCH`) rather than the kit's defaults.
-- `src/ui/LoadingView.ts` is the loading screen: a pop-up paper theatre on a CSS 3D stage that
-  builds itself with the progress. The art is in `src/ui/loadingStage.ts`, drawn in the comic
-  manner (the faces are `skyFaceSvg`; its `'shut'` part lays the blink over them). Each card
-  stands at its depth (`--z`) and is scaled back to its drawn size (`--c`), so the picture
-  composes in 2D while the sway and the pointer turn it with true parallax; the box's floor,
-  walls and ceiling are true 3D and hide the cards' ends. Pieces come up one per beat once the
-  progress reaches their `data-at`; crystals sprout and Gorti glances at each (`data-g`). At
-  100% the ta-da (the curtains part, confetti, twinkles) plays, also during `close()`'s fade,
-  as the game closes it at once. Only transform and opacity move; the one rAF loop eases the
-  pointer parallax and stops when it settles. Reduced motion: no sway, parallax or bobbing.
+- `src/ui/LoadingView.ts` is the loading screen: a pop-up paper theatre that builds itself
+  with the progress. The art is in `src/ui/loadingStage.ts`, drawn in the comic manner (the
+  faces are `skyFaceSvg`; its `'shut'` part lays the blink over them). It is a stack of flat
+  layers, one per depth, each drawn as it shows through the proscenium; the pointer slides
+  them against each other by their depth (`data-p`), and the box's floor and walls shear as
+  they slide. Cards are hinged at the floor and pop up, a beat apart, once the progress
+  reaches their `data-at`; crystals sprout and Gorti glances at each (`data-g`). At 100% the
+  ta-da (the curtains part, confetti, twinkles) plays, also during `close()`'s fade, as the
+  game closes it at once. Reduced motion: no parallax, bobbing or blinking, and nothing fades:
+  pieces just appear in their turns.
+- The loading screen runs while the game rasterizes its atlases, and must cost it little even
+  where a software GPU draws the page (as in the e2e runs, SwiftShader), which pays several
+  times more for vector art than a software canvas does. There the frames are drawn late: what
+  they composite is drawn when the game next reads pixels back, at the end of the boot, so every
+  frame the theatre causes is paid then. So its pictures, the big still ones and the little ones
+  that show only for a moment (sparkles, confetti, Gorti's joy), are painted as bitmaps by a
+  worker (`src/ui/loadingPaint.ts`, a reader for the small part of SVG the stage is drawn in)
+  and stand as canvases (`picture()`); a piece comes up once its pictures are there, and any
+  picture the worker cannot paint is shown as SVG. The worker is made once and kept for the
+  page's life: ending it waits on the GPU process, which at the end of the boot is busy with the
+  game's pictures. While the theatre covers the game, the game's canvas is hidden (`#game` in
+  `styles.css`): the game repaints it every frame, and each of those had the whole screen, the
+  theatre included, composited again. Cards are not drawn until their turn; nothing moves
+  inside an SVG, only transform and opacity animate, no picture is scaled up past the size it
+  is painted at, and layers stay flat (perspective only while a card pops). `set()` changes
+  the page only when what shows changes (the digits, the words, a piece, the drapes' next
+  step). A piece waits at most 200 ms for its turn (`MAX_LAG`), and the last is due at 84%;
+  from 90% on (`ld-hush`) the small life holds still and whatever is still coming up is set in
+  place, so nothing moves while the game finishes its pictures in one long task. The one rAF
+  loop eases the pointer parallax and stops when it settles.
 - `dev/loading.html` (dev server only, not in the build) holds it on screen: no query loops
   0→100%, `?p=0.42` holds a progress, `?err=1` shows the failure, `?rm=1` reduced motion.
 

@@ -1662,6 +1662,15 @@ a {
   pointer-events: none;
 }
 
+/* While the theatre covers the game, the game's canvas is not drawn under
+   it. The game repaints its canvas on every frame, and the page is then
+   composited anew over the whole screen, the theatre included: where a
+   software GPU draws the page, that held up the game's own pictures. The
+   canvas shows again as the theatre starts to fade. */
+#app:has(> #stage > .loading:not(.done)) > #game {
+  visibility: hidden;
+}
+
 .ld-box {
   position: relative;
   flex: none;
@@ -1679,34 +1688,24 @@ a {
   background: radial-gradient(closest-side, rgba(8, 4, 16, 0.6), transparent);
 }
 
-.ld-box svg {
+.ld-box svg,
+.ld-box canvas {
   display: block;
   width: 100%;
   height: 100%;
 }
 
-/* The layers. Each slides with the pointer by its depth (LoadingView); its
-   cards pop up toward the eye. Closing, the theatre comes a little nearer as
-   it fades. */
+/* The layers. Each slides with the pointer by its depth (LoadingView). They
+   stay flat: a layer drawn in perspective costs a software compositor a full
+   redraw of it whenever anything over it moves. */
 .ld-look,
 .ld-z {
   position: absolute;
   inset: 0;
 }
 
-.ld-look {
-  transform-origin: 50% var(--oy);
-  transition: scale 0.45s cubic-bezier(0.55, 0, 0.85, 0.3);
-}
-
-.done .ld-look {
-  scale: 1.1;
-}
-
 .ld-z {
   transform-origin: 0 0;
-  perspective: calc(1500 * var(--u));
-  perspective-origin: 50% var(--oy);
 }
 
 .ld-card,
@@ -1747,20 +1746,24 @@ a {
   will-change: opacity;
 }
 
-/* A card lies folded on the floor until its turn, then springs up past upright and settles. */
+/* A card lies folded on the floor until its turn, then springs up past
+   upright and settles: in perspective while it moves, flat once it stands. A
+   card already up when the theatre is redrawn (.ld-up) does not pop again.
+   Until its turn it is not drawn at all. */
 .ld-card {
   transform-origin: 50% 100%;
-  transform: rotateX(82deg);
   opacity: 0;
-  transition:
-    transform 0.8s cubic-bezier(0.3, 1.5, 0.55, 1),
-    opacity 0.25s ease-out;
+  transition: opacity 0.25s ease-out;
 }
 
 .ld-z.on > .ld-card {
-  transform: none;
   opacity: 1;
   transition-delay: var(--w, 0s);
+  animation: ld-pop 0.8s var(--w, 0s) backwards;
+}
+
+.ld-z.ld-up > .ld-card {
+  animation: none;
 }
 
 /* Hanging things are let down on their threads, and swing there. */
@@ -1769,6 +1772,11 @@ a {
   transition:
     transform 1s cubic-bezier(0.25, 1.6, 0.5, 1),
     opacity 0.35s ease-out;
+}
+
+.ld-z.on > .ld-card.ld-drop {
+  transform: none;
+  animation: none;
 }
 
 .ld-bob {
@@ -1954,6 +1962,22 @@ a {
   top: 17%;
   width: 14%;
   height: 25%;
+}
+
+/* Near the end the game finishes its pictures in one long stretch, and the
+   theatre holds still for it: the small life pauses, and the drapes settle
+   at once, so that there is nothing left to redraw (LoadingView's HUSH). */
+.ld-hush .ld-z.on .ld-bob,
+.ld-hush .ld-z.on .ld-blink,
+.ld-hush .ld-z.on > .ld-whale,
+.ld-hush .ld-z.on > .ld-whale > .ld-fish,
+.ld-hush .ld-z.on > .ld-fly,
+.ld-hush .ld-eyes i {
+  animation-play-state: paused;
+}
+
+.ld-hush:not(.ld-tada) .ld-drape {
+  transition: none;
 }
 
 .ld-digits {
@@ -2142,8 +2166,14 @@ a {
   transition: none !important;
 }
 
-/* Reduced motion: no parallax or bobbing; the pieces simply fade in, and the whale waits in the sky. */
+/* Reduced motion: no parallax, bobbing or blinking, and the whale waits in
+   the sky. Nothing moves or fades: each piece just appears in its turn, a
+   beat apart (each frame of a fade would have the theatre composited again
+   while the game draws its pictures). */
+.ld-still .ld-z.on > .ld-card,
 .ld-still .ld-z.on .ld-bob,
+.ld-still .ld-z.on .ld-blink,
+.ld-still .ld-eyes i,
 .ld-still .ld-z.on > .ld-whale,
 .ld-still .ld-z.on > .ld-whale > .ld-fish,
 .ld-still .ld-z.on > .ld-fly,
@@ -2163,11 +2193,31 @@ a {
 .ld-still .ld-card,
 .ld-still .ld-cr,
 .ld-still .ld-drape,
-.ld-still .ld-val,
-.ld-still .ld-look {
+.ld-still .ld-val {
   transform: none;
-  scale: none;
-  transition: opacity 0.6s ease var(--w, 0s);
+}
+
+/* What changes there changes at once, once its wait (--w) is over. */
+.ld-still .ld-box * {
+  transition-duration: 0s;
+}
+
+@keyframes ld-pop {
+  from {
+    transform: perspective(calc(1500 * var(--u))) rotateX(82deg);
+    animation-timing-function: cubic-bezier(0.25, 0.7, 0.55, 1);
+  }
+  46% {
+    transform: perspective(calc(1500 * var(--u))) rotateX(-11deg);
+    animation-timing-function: ease-in-out;
+  }
+  76% {
+    transform: perspective(calc(1500 * var(--u))) rotateX(3deg);
+    animation-timing-function: ease-in-out;
+  }
+  to {
+    transform: perspective(calc(1500 * var(--u))) rotateX(0deg);
+  }
 }
 
 @keyframes ld-bob {
@@ -2235,6 +2285,8 @@ a {
   }
 }
 
+/* A sparkle is painted at its largest (loadingStage's sprout), so it only
+   ever shrinks from there. */
 @keyframes ld-spark {
   0% {
     opacity: 0;
@@ -2243,11 +2295,11 @@ a {
   }
   30% {
     opacity: 1;
-    scale: 1.3;
+    scale: 0.87;
   }
   100% {
     opacity: 0;
-    scale: 0.2;
+    scale: 0.13;
     rotate: 120deg;
   }
 }
@@ -2262,19 +2314,21 @@ a {
   }
 }
 
+/* The banner hops and rocks (it is not scaled up: that would draw it all
+   again, bigger, just as the game opens). */
 @keyframes ld-hooray {
   0%,
   100% {
-    scale: 1;
+    translate: 0 0;
     rotate: 0deg;
   }
   35% {
-    scale: 1.07;
-    rotate: -1.6deg;
+    translate: 0 calc(-7 * var(--u));
+    rotate: -1.8deg;
   }
   70% {
-    scale: 0.98;
-    rotate: 0.8deg;
+    translate: 0 calc(1.5 * var(--u));
+    rotate: 0.9deg;
   }
 }
 
@@ -2310,11 +2364,11 @@ a {
   }
   35% {
     opacity: 1;
-    scale: 1.5;
+    scale: 1;
   }
   100% {
     opacity: 0;
-    scale: 0.3;
+    scale: 0.2;
     rotate: 140deg;
   }
 }
