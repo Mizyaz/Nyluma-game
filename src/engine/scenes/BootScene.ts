@@ -5,6 +5,8 @@ import { buildAtlases } from '../../render/2d/TextureFactory';
 import { actorScale } from '../../paper/press';
 import { makeFxTextures } from '../../render/2d/fxArt';
 import { GemArt } from '../../render/2d/fx/gemArt';
+import { printStagecraft } from '../../paper/theatre';
+import { FRAMING } from '../../content/stage';
 
 /** Rasterizes all authored artwork once, then opens the menu. */
 export class BootScene extends Phaser.Scene {
@@ -20,7 +22,10 @@ export class BootScene extends Phaser.Scene {
     // Printed at the device's own scale for the actors' plane (see paper/press.ts):
     // one texel of a figure is one pixel of the screen.
     const s = actorScale();
+    // The theatre's flats and curtain are printed alongside (src/paper/theatre.ts).
+    const stagecraft = printStagecraft(this.textures, this.scale.width, this.scale.height, FRAMING, s);
     buildAtlases(this.textures, allParts(), 'atlas', (d, t) => app.ui.loading(d / t), (p) => ((p.scale ?? 2) / 2) * s)
+      .then(() => stagecraft)
       .then(() => {
         (window as unknown as { __kdBootMs?: number }).__kdBootMs = performance.now() - started;
         app.ui.loading(null);

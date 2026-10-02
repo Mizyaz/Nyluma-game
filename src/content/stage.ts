@@ -144,7 +144,8 @@ function themeColors(room: RoomDef, floor: number): BoxColors {
   };
 }
 
-const FRAMING: Framing = { span: 480, dist: 900, height: 300, feet: 0.8 };
+/** How every room is shot (and the theatre's stagecraft in front of it, src/paper/theatre.ts). */
+export const FRAMING: Framing = { span: 480, dist: 900, height: 300, feet: 0.8 };
 
 export function staging(room: RoomDef): RoomStaging {
   const floor = mainFloor(room);

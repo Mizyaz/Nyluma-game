@@ -26,6 +26,12 @@ export class PlaneCamera extends Phaser.Cameras.Scene2D.Camera {
   lead = 0;
   /** It carries a figure walking in depth (lit to stay readable: `Lighting.apply`). */
   figure = false;
+  /**
+   * Draws only left of this screen x (device px; null: all of it). What
+   * walks into a doorway in the right side wall is cut at the wall's near
+   * jamb: past it the wall stands between it and the eye.
+   */
+  clipRight: number | null = null;
 
   constructor(x: number, y: number, width: number, height: number) {
     super(x, y, width, height);
@@ -244,7 +250,9 @@ export class Planes {
     const cover = Math.max(W / SCREEN_W, H / SCREEN_H);
     for (const c of this.scene.cameras.cameras) {
       const cam = c as PlaneCamera;
-      if (cam.width !== W || cam.height !== H) cam.setSize(W, H);
+      // Cut at its right (see `clipRight`): a narrower viewport, scrolled so the plane stays where the lens puts it.
+      const vw = cam.clipRight === null || cam.screen ? W : Math.max(1, Math.min(W, Math.round(cam.clipRight)));
+      if (cam.width !== vw || cam.height !== H) cam.setSize(vw, H);
       if (cam.screen) {
         if (cam === this.screen) {
           cam.setZoom(cover);
@@ -257,7 +265,8 @@ export class Planes {
       }
       const s = lens.scale(cam.z);
       cam.setZoom(s);
-      cam.setScroll(lens.eye.x - W / 2 - (lens.cx - W / 2) / s, lens.eye.y - H / 2 - (lens.cy - H / 2) / s);
+      // The camera shows world x at width/2 + s·(x − scrollX − width/2): the eye's x lands at lens.cx.
+      cam.setScroll(lens.eye.x - vw / 2 - (lens.cx - vw / 2) / s, lens.eye.y - H / 2 - (lens.cy - H / 2) / s);
     }
     const all = this.mask();
     const list = this.scene.children.list as GO[];

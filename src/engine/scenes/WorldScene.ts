@@ -23,6 +23,7 @@ import { CHAPTER_TITLES, chapterOf, impliedAbilities, opensChapter, roomIndex, t
 import type { FormId, RoomId } from '../state/types';
 import { RoomRuntime } from '../world/RoomRuntime';
 import { createScript } from '../../content/scripts';
+import { printDoors, type ExitDoor, type RoomDoors } from '../../content/doors';
 import type { ExtraInteract, RoomScript } from '../../content/scripts/types';
 import type { Interactable } from '../world/Interactable';
 import { PaintingGallery } from '../world/PaintingGallery';
@@ -56,7 +57,7 @@ const partArt = (key: string): PartArt | undefined => (partsByKey ??= new Map(al
 export interface WorldData {
   room: RoomId;
   checkpoint: string;
-  /** Arriving through a page turn (WarpScene): the room pops up when told, and play waits for it. */
+  /** Arriving through a scene change (WarpScene): the room pops up when told, and play waits for it. */
   arrive?: Arrival;
 }
 
@@ -87,10 +88,16 @@ export class WorldScene extends Phaser.Scene {
   script!: RoomScript;
   paused = false;
   transitioning = false;
-  /** The page turn this room is arriving through (null once it is played). */
+  /** The scene change this room is arriving through (null once it is played). */
   private arrival: Arrival | null = null;
   /** A room asked for while this one was still arriving. */
   private pendingRoom: RoomId | null = null;
+  /** This room's doorways (content/doors.ts), once its script has set them up. */
+  doors: RoomDoors | null = null;
+  /** The depths Gorti may walk at in this room, before the doorways steer him (see fixedStep). */
+  private depthBase = { min: -200, max: 70 };
+  /** Gorti walking on into the doorway in the right side wall as the room is left (see `walkIn`). */
+  private leaving: { door: ExitDoor; t: number; z: number } | null = null;
   private hintGlyph!: Phaser.GameObjects.Image;
   private particles!: Phaser.GameObjects.Particles.ParticleEmitter;
   /** Colour bursts: the Rezonans moves and the bombardment that comes now and then. */
@@ -154,6 +161,8 @@ export class WorldScene extends Phaser.Scene {
     // A turn that is already over (it gave up waiting) brings nothing to wait for.
     this.arrival = data.arrive && !data.arrive.over ? data.arrive : null;
     this.pendingRoom = null;
+    this.doors = null;
+    this.leaving = null;
     this.target = null;
     this.actionWait = 0;
     this.armed = new Set();
@@ -180,6 +189,8 @@ export class WorldScene extends Phaser.Scene {
       .filter((p) => partArt(p.key))
       .map((p) => ({ key: p.key, scale: printScaleAt(actor, dist, propZ(p as Parameters<typeof propZ>[0]), p.scale ?? 1) }));
     waitFor(this.load, `prints:${def.id}`, this.press.print(jobs));
+    // The doorways' walls are printed too, so they stand dressed from the first frame.
+    waitFor(this.load, `doors:${def.id}`, printDoors(this.textures, def.id, (z) => printScaleAt(actor, dist, z)));
   }
 
   /** Registers something Gorti can inspect that handles itself. */
@@ -227,7 +238,8 @@ export class WorldScene extends Phaser.Scene {
     // He walks in depth over the floor, from well before the back wall to
     // short of the torn front.
     const box = this.paper.spec;
-    this.player.depthRange = { min: Math.min(0, box.back + DEPTH_ROOM), max: Math.max(0, box.front - DEPTH_ROOM) };
+    this.depthBase = { min: Math.min(0, box.back + DEPTH_ROOM), max: Math.max(0, box.front - DEPTH_ROOM) };
+    this.player.depthRange = { ...this.depthBase };
     // The scene is reused room after room: its planes go with the stage.
     this.cleanups.push(() => {
       this.hisPlane = this.hisFx = this.standsOn = this.fxOn = null;
@@ -313,8 +325,8 @@ export class WorldScene extends Phaser.Scene {
     this.paper.setTarget(this.player.x, this.player.zone.y);
     this.paper.snap();
     if (this.arrival) {
-      // Arriving through a page turn: the cards lie flat until the page is
-      // turned off them, then stand up (popUp.ts); nothing is played until then.
+      // Arriving through a scene change: the cards lie flat until the stage
+      // opens on them, then stand up (popUp.ts); nothing is played until then.
       this.transitioning = true;
       if (!app.settings.reducedMotion) this.paper.popUp = new PopUp();
     } else this.paper.screen.fadeIn(500, 15, 13, 24);
@@ -422,6 +434,8 @@ export class WorldScene extends Phaser.Scene {
     const floor = under !== null && Math.abs(under - this.paper.spec.floor) < 3;
 
     this.stepInput = { axis, jumpPressed, jumpHeld, depth, floor };
+    // Near a wall's doorway the way narrows to the opening, gently: he never walks through a wall.
+    p.depthRange = this.paper.walls.depthAt(p.x, this.depthBase.min, this.depthBase.max);
     if (p.state !== 'hidden') p.fixed(dt, this.stepInput);
 
     // Contextual actions
@@ -757,16 +771,59 @@ export class WorldScene extends Phaser.Scene {
     const chapter = opensChapter(this.def.id, to, cp, this.quest) ? next.chapter : null;
     this.quest.setCheckpoint(to, cp);
     persist();
+    // Leaving by the doorway in the right side wall: he walks on into it.
+    const door = this.doors?.exitDoor() ?? null;
+    if (door && this.player.state !== 'hidden' && this.player.x > this.paper.spec.x1 - 260) this.walkIn(door);
     app.input.freeze();
     // Hands off from here until the next room is played (the touch controls go too).
     app.input.pushContext('none');
-    // The page is turned: forward through the story from right to left, back the other way.
+    // The stage changes (WarpScene): the flats close over the room, or a chapter's curtain comes down.
     this.scene.launch('warp', {
       chapter,
       dir: roomIndex(to) >= roomIndex(this.def.id) ? 1 : -1,
       glow: this.faceOnScreen(),
       onPeak: (arrive) => this.scene.restart({ room: to, checkpoint: cp, arrive } satisfies WorldData),
     } satisfies WarpData);
+  }
+
+  /**
+   * Gorti walks on through the doorway in the right side wall, into the
+   * passage beyond it, as the stage closes for the next room: past the
+   * wall's face he is seen only through the opening (his plane is cut at
+   * the near jamb), his shadow goes along the passage's floor, and the
+   * leaf shuts behind him.
+   */
+  private walkIn(door: ExitDoor): void {
+    const p = this.player;
+    const b = p.body;
+    b.setCollideWorldBounds(false);
+    b.checkCollision.none = true;
+    b.setVelocityX(p.tuning.speed * 0.8);
+    p.setFacing(1);
+    this.leaving = { door, t: 0, z: door.wall.mid };
+  }
+
+  /** Each frame of the walk into the doorway (see `walkIn`). */
+  private walking(dt: number): void {
+    const l = this.leaving!;
+    const p = this.player;
+    const b = p.body;
+    l.t += dt / 1000;
+    const x1 = this.paper.spec.x1;
+    // Over the passage's floor there is no ground of the room: he walks on level.
+    if (p.x > x1 - 24 || p.onGround) {
+      b.setAllowGravity(false);
+      b.setVelocityY(0);
+    }
+    b.setVelocityX(p.tuning.speed * 0.8);
+    p.z += (l.z - p.z) * Math.min(1, dt / 160);
+    if (Math.abs(p.z) < 0.5) p.z = l.z < 0 ? -0.5 : 0.5;
+    const cam = this.standsOn;
+    if (cam) cam.clipRight = l.door.cutAt(p.z);
+    const past = p.x - x1;
+    l.door.wall.shade = past > -30 ? { x: p.x, z: p.z, r: 30, a: 0.8 * Math.max(0, 1 - past / 160) } : null;
+    // Once he is well inside, it shuts behind him.
+    if (past > 70) l.door.shut();
   }
 
   /** Where Gorti's screen glows on the canvas (device px), when he shows. */
@@ -779,7 +836,7 @@ export class WorldScene extends Phaser.Scene {
     return { x: s.x, y: s.y };
   }
 
-  /** While arriving through a page turn: the cards stand up when told, and play begins when it is over. */
+  /** While arriving through a scene change: the cards stand up when told, and play begins when it is over. */
   private arriving(dt: number): void {
     const a = this.arrival!;
     a.frames++;
@@ -791,7 +848,7 @@ export class WorldScene extends Phaser.Scene {
     if (a.over) this.arrived();
   }
 
-  /** The page has turned: play begins (and a room asked for meanwhile is gone to). */
+  /** The stage has opened: play begins (and a room asked for meanwhile is gone to). */
   private arrived(): void {
     if (!this.arrival) return;
     this.arrival = null;
@@ -860,6 +917,7 @@ export class WorldScene extends Phaser.Scene {
       }
     }
     if (this.paused) return;
+    if (this.leaving) this.walking(dt);
     // Gorti's brows talk along with his lines; listening, they react less.
     const dlg = app.ui.dialogue;
     if (dlg.isOpen) this.player.emote(dlg.speaker === NAMES.gorti ? (dlg.typing ? 'talk' : 'worry') : 'listen', 260);

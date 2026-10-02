@@ -38,11 +38,11 @@ test.describe('reference screenshots', () => {
     expect(errors).toEqual([]);
   });
 
-  test('page turn transition', async ({ page }) => {
+  test('scene change transition', async ({ page }) => {
     await page.goto(`${GAME}&room=r05`);
-    await waitState(page, (s) => s.scenes.includes('warp'), 120_000, 'page turn');
+    await waitState(page, (s) => s.scenes.includes('warp'), 120_000, 'scene change');
     await page.waitForTimeout(450);
-    await shot(page, '08-page-turn');
+    await shot(page, '08-scene-change');
   });
 
   test('root Gorti in the forest', async ({ page }) => {

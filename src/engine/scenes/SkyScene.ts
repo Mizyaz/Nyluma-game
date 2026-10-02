@@ -142,7 +142,7 @@ export class SkyScene extends Phaser.Scene {
       this.homes[who].look = look;
       setPageLook(who, look);
     }
-    // Arriving through a page turn: they come in once it is over.
+    // Arriving through a scene change: they come in once it is over.
     this.waiting = !!world?.transitioning;
     this.set(data.sky ?? NONE, false);
     this.place();

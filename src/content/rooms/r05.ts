@@ -20,7 +20,8 @@ export const R05: RoomDef = {
   ],
   solids: [
     { x: 0, y: 1100, w: 3900, h: 200, style: 'moss' },
-    { x: 2480, y: 0, w: 260, h: 840, style: 'stone' },
+    // The stone over the gate: the rock face of the gate's wall (doorSpecs.ts) is drawn in its place.
+    { id: 'lintel', x: 2480, y: 0, w: 260, h: 840, style: 'stone' },
     { id: 'gate', x: 2500, y: 840, w: 50, h: 260, style: 'crystal', unless: 'r05.plateB' },
   ],
   memories: [{ id: 'm4', x: 1790, y: 1100 }],

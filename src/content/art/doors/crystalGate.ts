@@ -1,205 +1,197 @@
-import type { DoorArt, DoorPiece } from '../../../render/2d/fx/doorway';
-import { ellipsePath, hashSeed } from '../../../render/2d/svg';
-import { circleP, comic, crescent, crystals, darkOf, doorPart, fillP, glowDisc, ink, leafPart, lightOf, LINE, Rng, shard, smooth, twinkle, type Pt } from './doorKit';
+import type { Hole } from '../../../paper/opening';
+import { darkOf, lightOf, LINE, lineFor } from '../../../render/2d/style';
+import { comic, ink } from '../../characters/kit';
+import { Rng, type Pt } from '../../../render/2d/svg';
+import type { FaceArt, WallDoorArt } from './wallArt';
+import { archBand, at, closed, hedge, ivy, leafArt, planks, r2, stoneCourses, voussoirs } from './wallKit';
+import { crescent, crystals, face as faceOf, glowDisc, shard, tuft, twinkle } from './doorKit';
 
-// A crystal gate turned across the path, so Gorti walks through it: two
-// crystal pillars (one behind him, one before him), an arch of crystal
-// along the depth between their tops, and while it is shut a row of
-// crystal bars standing across the way, humming and trembling as Gorti
-// comes near. When its condition comes true the bars shrink back into the
-// ground one after another, down to little stubs he steps over.
+// The crystal gates, each in a wall standing across the room (so Gorti
+// walks through them, not past them).
 //
-// "Ay Kapısı" (b02) wears the Moon over its arch: asleep in a dark disc
-// while the Sun is out, a bright crescent wide awake once the Moon rises.
-// In r05 the gate stands under the stone; the two memory stones resting on
-// their plates opened it long ago, and their sign glows in its arch.
+// r05: the field ends in a rock face (the stone that hung over the old
+// gate is its top), and through it runs a low arch of big stones. While
+// the gate is shut, bars of crystal stand across the arch, humming as Gorti
+// comes; the two memory stones resting on their plates open it, and their
+// sign, two pebbles side by side, glows in the keystone. Open, the bars
+// sink into the sill.
+//
+// b02, "Ay Kapısı": a tall fence of old boards with a round-topped gate,
+// crystals grown all round its arch. The gate is shut by a shutter painted
+// with the night, the Moon asleep low on it; when the Moon is up, the
+// shutter rises into the lintel and the painted Moon rises with it.
 
-const C = {
+const R = {
+  rock: ['#a9a1bd', '#b3abc6', '#9f97b5', '#bab2cc'],
+  mortar: '#5f5878',
+  arch: ['#c2b9d2', '#b7aec8', '#cbc3da'],
+  moss: '#8fb47a',
+  ivy: '#7fa87a',
   teal: '#a6dcd5',
   lilac: '#c8b8ea',
   blue: '#b5d2f2',
   pale: '#e3f3f4',
-  night: '#4f5584',
-  nightDeep: '#3d416b',
-  moon: '#fff1b8',
-  moonDim: '#c9c6dc',
-  stone: '#b9b1c9',
-  stoneGlow: '#e9e2ff',
-} as const;
+  pink: '#f0b2cf',
+};
 
-/** The pillars stand on the diagonal: the back one at (-D, dz -D), the near one at (D, dz +D). */
-const D = 32;
-
-export interface CrystalGateOpts {
-  /** Its parts' names (each gate prints its own). */
-  id: string;
-  /** How tall the pillars stand (the arch rests on them). */
-  tall: number;
-  /** What its arch wears: the Moon (over it), or the two stones' sign (in it). */
-  sign: 'moon' | 'stones';
+/** A crystal bar standing from the floor up to `top` (SVG y), `w` wide, its point on top. */
+function bar(x: number, foot: number, top: number, w: number, fill: string): string {
+  const d = closed([[x - w / 2, foot + 4], [x - w / 2, top + w * 0.7], [x, top], [x + w / 2, top + w * 0.7], [x + w / 2, foot + 4]]);
+  const facet = `M${r2(x - w * 0.12)} ${r2(foot)}L${r2(x - w * 0.12)} ${r2(top + w * 0.6)}L${r2(x)} ${r2(top + 2)}`;
+  return comic(d, fill, {
+    line: LINE.small,
+    rim: [Math.max(1.6, w * 0.28), -0.6],
+    glint: [-1, 1],
+    over: ink(facet, 1, lightOf(fill, 0.6)) + `<path d="M${r2(x + w * 0.22)} ${r2(top + w)}L${r2(x + w * 0.22)} ${r2(foot - 6)}" stroke="#ffffff" stroke-width="1.4" opacity="0.55"/>`,
+  });
 }
 
-/**
- * A crystal pillar: a long shard with others leaning out from it (to the
- * left: the near pillar is flipped, so the way between them stays clear).
- */
-function pillar(tall: number, seed: number): string {
-  const rng = new Rng(seed);
-  let s = '';
-  s += shard(-12, 0, tall * 0.56, 12, -Math.PI / 2 - 0.22, C.lilac);
-  s += shard(-7, 2, tall * 0.8, 14, -Math.PI / 2 - 0.08, C.blue);
-  s += shard(0, 2, tall, 20, -Math.PI / 2 + rng.range(-0.02, 0.02), C.teal);
-  s += crystals(-14, 0, 28, [C.blue, C.lilac, C.teal], seed + 1, 1.3);
-  s += crystals(6, 0, 13, [C.lilac, C.teal], seed + 2, 0.9);
-  return s;
-}
+const STONES: Hole = { z0: -170, z1: 30, spring: 168, rise: 78 };
 
-/** The arch between the pillars' tops, seen along the depth (a leaf that never moves). */
-function arch(w: number, h: number, sign: 'moon' | 'stones'): string {
-  const rng = new Rng(hashSeed(`door.crystal.arch.${sign}`));
-  const band: Pt[] = [];
-  for (let i = 0; i <= 16; i++) {
-    const u = i / 16;
-    band.push([u * w, h - 14 - Math.sin(u * Math.PI) * (h - 40)]);
+function stoneFace(): FaceArt {
+  const f = { u0: -300, u1: 110, h: 560 };
+  const h = STONES;
+  const P = (u: number, v: number): Pt => at(f, u, v);
+  let s = stoneCourses(f, { row: 56, len: [64, 136], fills: R.rock, mortar: R.mortar, seed: 52, gap: 4, round: 16 });
+  // Moss along the top of the rock and over the arch, ivy hanging down it.
+  s += hedge({ u0: f.u0, u1: f.u1, h: 70 }, { leaf: [R.moss, darkOf(R.moss, 0.08), lightOf(R.moss, 0.12)], deep: darkOf(R.moss, 0.3), seed: 9 }).replace(/^<rect[^>]*>/, '');
+  for (const [u, v, len] of [[-270, 500, 150], [-220, 520, 90], [60, 510, 170], [95, 490, 110], [h.z0 - 30, 330, 120]] as const) s += ivy(...P(u, v), len, R.ivy, u + v);
+  // The arch of big pale stones, its keystone with the two stones' sign.
+  s += voussoirs(h, f, 36, R.arch, 28);
+  {
+    const [x, y] = P((h.z0 + h.z1) / 2, h.spring + h.rise + 20);
+    s += comic(`M${r2(x - 20)} ${r2(y + 22)}L${r2(x - 25)} ${r2(y - 26)}L${r2(x + 25)} ${r2(y - 26)}L${r2(x + 20)} ${r2(y + 22)}Z`, '#d3cbe0', { line: LINE.small, rim: [2.6, -1.6], glint: [-1, 1], hatch: 2.4, hatchWidth: 0.5 });
+    s += glowDisc(x, y - 2, 26, R.teal, 0.5);
+    s += comic(`M${r2(x - 15)} ${r2(y - 2)}a6.5 6 0 1 0 13 0a6.5 6 0 1 0 -13 0Z`, R.teal, { line: LINE.fine, rim: [1.4, -1], glint: [-0.8, 0.8] });
+    s += comic(`M${r2(x + 2)} ${r2(y - 2)}a6.5 6 0 1 0 13 0a6.5 6 0 1 0 -13 0Z`, R.pink, { line: LINE.fine, rim: [1.4, -1], glint: [-0.8, 0.8] });
+    s += twinkle(x + 18, y - 18, 4, '#fff7d6', 0.5);
   }
-  let s = '';
-  // Shards sprouting from the top of the band, leaning out from its middle; icicles under it.
-  for (let i = 1; i < 16; i++) {
-    const u = i / 16;
-    const p = band[i]!;
-    const lean = (u - 0.5) * 1.3;
-    const len = rng.range(13, 22) * (1 - Math.abs(u - 0.5) * 0.9) * (i % 2 ? 1 : 0.7);
-    s += shard(p[0], p[1] - 2, len, 7, -Math.PI / 2 + lean, rng.pick([C.teal, C.lilac, C.blue]));
-  }
-  for (let i = 3; i < 14; i += 2) {
-    const p = band[i]!;
-    s += shard(p[0], p[1] + 4, rng.range(6, 11), 4.4, Math.PI / 2 + (i / 16 - 0.5) * 0.6, rng.pick([C.pale, C.blue]));
-  }
-  const top = band.map(([x, y]) => [x, y - 7] as Pt);
-  const bottom = [...band].reverse().map(([x, y]) => [x, y + 7] as Pt);
-  let facets = '';
-  for (let i = 2; i < 16; i += 2) {
-    const p = band[i]!;
-    facets += ink(`M${p[0] - 2} ${p[1] - 6}L${p[0] + 2} ${p[1] + 6}`, 0.6, darkOf(C.pale, 0.18));
-  }
-  s += comic(smooth([...top, ...bottom], 0.8), C.pale, { line: LINE.small, ink: darkOf(C.teal, 0.3), rim: [2.6, -1.3], glint: [-0.8, 0.8], inner: facets, over: ink(smooth(band.map(([x, y]) => [x, y - 2.6] as Pt), 1, false), 0.8, '#ffffff', 0.8) });
-  if (sign === 'stones') {
-    // The two memory stones resting side by side.
-    const cx = w / 2;
-    const cy = h - 14 - (h - 40);
-    s += comic(ellipsePath(cx - 7.4, cy + 0.6, 6.8, 5.8), C.stone, { line: LINE.detail, rim: [1.4, -0.6], glint: [-0.5, 0.5] });
-    s += comic(ellipsePath(cx + 7.4, cy + 1, 6.2, 5.4), lightOf(C.stone, 0.08), { line: LINE.detail, rim: [1.4, -0.6], glint: [-0.5, 0.5] });
-  }
-  return s;
+  // Crystals grown from the cracks, and at the jambs' feet.
+  s += crystals(...P(h.z0 - 22, 0), 30, [R.teal, R.lilac, R.blue], 4);
+  s += crystals(...P(h.z1 + 22, 0), 26, [R.lilac, R.teal], 8);
+  s += crystals(...P(-250, 300), 16, [R.blue, R.pale], 11, 1.4);
+  s += crystals(...P(70, 220), 14, [R.teal, R.pale], 13, 1.4);
+  for (const u of [-286, -230, -120, 70, 100]) s += tuft(...P(u, 2), 12, R.moss, u);
+  return { ...f, body: s };
 }
 
-/** A bar: one tall clean crystal on a little cluster (its pivot at its foot: it shrinks into the ground). */
-function bar(len: number, seed: number): string {
-  const rng = new Rng(seed);
-  let s = shard(0, 2, len, 11, -Math.PI / 2 + rng.range(-0.03, 0.03), rng.pick([C.teal, C.blue]));
-  s += shard(-3, 1, len * 0.16, 6, -Math.PI / 2 - 0.5, C.lilac) + shard(3, 1, len * 0.13, 5, -Math.PI / 2 + 0.5, C.blue);
-  return s;
-}
-
-/** The Moon's medallion: asleep in a dark disc by day. */
-function moonDay(): string {
-  let s = comic(circleP(0, 0, 25), C.pale, { line: LINE.small, ink: darkOf(C.teal, 0.3), rim: [2.6, -1.2], glint: [-0.8, 0.8] });
-  s += comic(circleP(0, 0, 19.5), C.nightDeep, { line: LINE.detail });
-  s += comic(crescent(-2.4, 0, 13.5, 1.32), C.moonDim, { line: LINE.detail, rim: [1.6, -0.7] });
-  const line = darkOf(C.moonDim, 0.5);
-  s += ink('M-9 -1.6Q-6.6 0.8 -4.2 -1.4', 1, line);
-  s += ink('M8 -9h3.4l-3.4 3.4h3.4M11.6 -14.4h2.4l-2.4 2.4h2.4', 0.8, '#e6e2f6');
-  return s;
-}
-
-/** The Moon's medallion at night: a bright crescent, wide awake, a star beside her. */
-function moonNight(): string {
-  let s = comic(circleP(0, 0, 25), lightOf(C.pale, 0.2), { line: LINE.small, ink: darkOf(C.teal, 0.25), rim: [2.6, -1.2], glint: [-0.8, 0.8] });
-  s += comic(circleP(0, 0, 19.5), C.night, { line: LINE.detail, inner: glowDisc(-2, 0, 17, '#8f96d8', 0.7) });
-  s += comic(crescent(-2.4, 0, 13.5, 1.32), C.moon, { line: LINE.detail, rim: [1.6, -0.7], glint: [-0.6, 0.6] });
-  const line = darkOf(C.moon, 0.55);
-  s += comic(ellipsePath(-7.6, -2.2, 2.3, 2.8), '#ffffff', { line: 0.65, ink: line }) + fillP(circleP(-7.9, -2, 1.35), '#4a3f6a') + fillP(circleP(-7.4, -2.7, 0.45), '#ffffff');
-  s += ink('M-10.8 5.4Q-8.2 8 -5.6 5.6', 1, line) + fillP(ellipsePath(-10, 2.4, 1.7, 1), '#f2a6b6', 0.8);
-  s += twinkle(9.6, -7.4, 3.8, '#fff7d6', 0.5) + twinkle(6, 9, 2.2, '#fff7d6', 0.5);
-  return s;
-}
-
-/** Light: the bars' hum, the Moon's glow (drawn additive). */
-function hum(): string {
-  return glowDisc(0, 0, 60, '#bfe6f0', 0.55);
-}
-function moonGlow(): string {
-  return glowDisc(0, 0, 40, '#e6e8ff', 0.8);
-}
-
-export function crystalGate(o: CrystalGateOpts): DoorArt {
-  const k = (name: string): string => `door.crystal.${o.id}.${name}`;
-  const LW = 2 * Math.SQRT2 * D + 14;
-  const LH = 68;
-  const at = D + 7 / Math.SQRT2;
-  const BAR = o.tall * 0.78;
-  const parts = [
-    doorPart(k('pillar'), { x0: -46, y0: -o.tall - 6, x1: 22, y1: 4 }, pillar(o.tall, hashSeed(k('pillar')))),
-    doorPart(k('pillar.near'), { x0: -46, y0: -o.tall - 6, x1: 22, y1: 4 }, pillar(o.tall, hashSeed(k('pillar.near')))),
-    leafPart(k('arch'), LW, LH, arch(LW, LH, o.sign)),
-    leafPart(k('arch.back'), LW, LH, arch(LW, LH, o.sign)),
-    doorPart(k('bar.a'), { x0: -14, y0: -BAR - 4, x1: 14, y1: 4 }, bar(BAR, hashSeed(k('bar.a')))),
-    doorPart(k('bar.b'), { x0: -14, y0: -BAR * 0.9 - 4, x1: 14, y1: 4 }, bar(BAR * 0.9, hashSeed(k('bar.b')))),
-    doorPart(k('hum'), { x0: -62, y0: -62, x1: 62, y1: 62 }, hum()),
-  ];
-  // The bars across the way, from the back pillar to the near one.
-  const bars: DoorPiece[] = [-0.62, -0.21, 0.21, 0.62].map((t, i) => ({
-    key: k(i % 2 ? 'bar.b' : 'bar.a'),
-    x: t * D,
-    y: 0,
-    dz: t * D + (Math.abs(t * D) < 1 ? 1.5 : 0),
-    flipX: i === 2,
-    shut: {},
-    open: { sy: 0.07, sx: 0.8, alpha: 0.85 },
-    lag: i * 0.14,
-    // Humming as Gorti comes: a tremble, a little lift.
-    wake: { y: -1.2 },
-    wakeShut: 'only',
-    sway: { x: 0.7, ms: 140 + i * 17, byWake: true },
-  }));
-  const pieces: DoorPiece[] = [
-    { key: k('hum'), x: 0, y: -o.tall * 0.42, dz: -3, additive: true, shut: { alpha: 0.14, sx: 0.5, sy: 1.9 }, open: { alpha: 0, sx: 0.5, sy: 0.4 }, wake: { alpha: 0.3 }, wakeShut: 'only', sway: { alpha: 0.12, ms: 420, byWake: true } },
-    ...bars,
-  ];
-  if (o.sign === 'moon') {
-    const my = -o.tall - 36;
-    parts.push(
-      doorPart(k('moon'), { x0: -27, y0: -27, x1: 27, y1: 27 }, moonDay()),
-      doorPart(k('moon.night'), { x0: -27, y0: -27, x1: 27, y1: 27 }, moonNight()),
-      doorPart(k('moon.glow'), { x0: -42, y0: -42, x1: 42, y1: 42 }, moonGlow()),
-    );
-    pieces.push(
-      { key: k('moon.glow'), x: 0, y: my, dz: 0.5, additive: true, shut: { alpha: 0, sx: 0.5, sy: 0.5 }, open: { alpha: 0.55 }, wake: { alpha: 0.25, sx: 1.15, sy: 1.15 }, sway: { alpha: 0.08, ms: 2100 } },
-      { key: k('moon'), x: 0, y: my, dz: 1, shut: {}, open: { alpha: 0 }, sway: { angle: 3, ms: 3400 } },
-      { key: k('moon.night'), x: 0, y: my, dz: 1.2, shut: { alpha: 0, angle: -40, sx: 0.8, sy: 0.8 }, open: {}, sway: { angle: 3, ms: 3400 }, wake: { angle: -6, sx: 1.06, sy: 1.06 } },
-    );
-  } else {
-    parts.push(doorPart(k('stones.glow'), { x0: -30, y0: -30, x1: 30, y1: 30 }, glowDisc(0, 0, 28, C.stoneGlow, 0.8)));
-    pieces.push({ key: k('stones.glow'), x: 0, y: -o.tall - 18, dz: 0.5, additive: true, shut: { alpha: 0 }, open: { alpha: 0.35 }, wake: { alpha: 0.3 }, sway: { alpha: 0.08, ms: 2600 } });
+/** The bars across the arch (the leaf is cut to them: the field beyond shows between). */
+function stoneBars(): FaceArt {
+  const h = STONES;
+  const W = h.z1 - h.z0;
+  const H = h.spring + h.rise;
+  const fills = [R.teal, R.lilac, R.blue, R.pale, R.teal, R.lilac];
+  let body = '';
+  // Two rods of crystal across, behind the bars.
+  for (const v of [70, 158]) body += comic(`M-4 ${r2(H - v - 3.5)}L${r2(W + 4)} ${r2(H - v - 3)}L${r2(W + 4)} ${r2(H - v + 3.5)}L-4 ${r2(H - v + 3)}Z`, R.pale, { line: LINE.fine, rim: [1.2, -0.6] });
+  for (let i = 0; i < 6; i++) {
+    const x = 20 + (i * (W - 40)) / 5;
+    const u = (x / W) * 2 - 1;
+    const top = H - (h.spring + h.rise * Math.sqrt(Math.max(0, 1 - u * u))) + 12 + (i % 2) * 10;
+    body += bar(x, H, top, 15, fills[i]!);
   }
+  body += glowDisc(W * 0.5, H * 0.45, 60, '#e6fbff', 0.35);
+  return leafArt(h, R.pale, body, { bare: true });
+}
+
+export function stoneGate(): WallDoorArt {
   return {
-    parts,
-    opening: [],
-    frame: [{ key: k('pillar'), x: -D, y: 0, dz: -D }],
-    inside: [],
-    front: [{ key: k('pillar.near'), x: D, y: 0, dz: D, flipX: true }],
-    pieces,
-    leaves: [{ front: k('arch'), back: k('arch.back'), hinge: 'left', x: -at, y: -o.tall - LH + 24, dz: -at, shutAngle: 45, restAngle: 45, wideAngle: 45, strips: 10, still: true }],
-    light: { color: 0xc4dcff, radius: 300, intensity: 0.8, y: o.tall * 0.5 },
-    glow: { color: 0xd8e6ff, pool: 0xd8e6ff },
-    sparks: { colors: [0xd8f0ff, 0xe6dcff, 0xffffff], frame: 'fx.spark', rate: 1.1, size: 0.36 },
-    sounds: { wake: ['crystal', 0.18, 1.5], open: [['shard', 0.4, 1.3], ['noteHigh', 0.3, 1.05]] },
+    wall: { color: R.rock[0], edge: '#e4def0', half: 16, end: 100 },
+    hole: STONES,
+    face: stoneFace(),
+    leaf: { kind: 'sink', color: R.pale, back: R.teal, art: stoneBars(), shut: 0, open: 1 },
+    light: { color: '#bfe6f0', radius: 300, intensity: 0.8, y: 120 },
+    glow: '#bfe6f0',
+    sounds: { wake: ['crystal', 0.18, 1.5], open: [['shard', 0.4, 1.3], ['noteHigh', 0.3, 1.05]], shut: ['crystal', 0.3, 0.9] },
     openMs: 1500,
-    openEase: 'Cubic.easeInOut',
+    flat: { wall: R.rock[0], frame: R.arch[0] },
   };
 }
 
-/** b02's "Ay Kapısı": opens only when the Moon is out. */
-export const moonDoor = (): DoorArt => crystalGate({ id: 'moon', tall: 236, sign: 'moon' });
-/** r05's gate under the stone, opened by the memory stones on their plates. */
-export const stoneGate = (): DoorArt => crystalGate({ id: 'stones', tall: 212, sign: 'stones' });
+const MOON: Hole = { z0: -176, z1: 24, spring: 140, rise: 100 };
+const M = {
+  wood: ['#c9b49a', '#bfa98f', '#d3bfa5', '#c4ad92'],
+  gap: '#6d5d58',
+  night: '#4f5584',
+  nightDeep: '#3d416b',
+  moon: '#fff1b8',
+};
+
+function moonFace(): FaceArt {
+  const f = { u0: -300, u1: 110, h: 560 };
+  const h = MOON;
+  const P = (u: number, v: number): Pt => at(f, u, v);
+  let s = planks(f, { fills: M.wood, gap: M.gap, width: 30, top: 640, seed: 14 });
+  // Two rails across the boards, and stars cut from tin nailed on them.
+  for (const v of [70, 420]) s += comic(`M-4 ${r2(f.h - v - 9)}L${r2(f.u1 - f.u0 + 4)} ${r2(f.h - v - 11)}L${r2(f.u1 - f.u0 + 4)} ${r2(f.h - v + 8)}L-4 ${r2(f.h - v + 10)}Z`, '#b39c82', { line: LINE.small, rim: [2.4, -1], glint: [-1, 1] });
+  for (const [u, v, r] of [[-262, 330, 9], [-232, 470, 6], [70, 360, 8], [40, 480, 6], [-60, 500, 7]] as const) {
+    const [x, y] = P(u, v);
+    s += comic(closed(Array.from({ length: 10 }, (_, i) => {
+      const a = (i * Math.PI) / 5 - Math.PI / 2;
+      const rr = i % 2 ? r * 0.45 : r;
+      return [x + Math.cos(a) * rr, y + Math.sin(a) * rr] as Pt;
+    })), '#d8dcef', { line: LINE.fine, rim: [1.2, -0.8], glint: [-0.6, 0.6] });
+    s += `<circle cx="${r2(x)}" cy="${r2(y)}" r="1" fill="#6a6f88"/>`;
+  }
+  // The gate's frame of pale moonstone, crystals grown all round it.
+  s += archBand(h, f, 0, 16, '#d9d6ea');
+  const ring = (by: number): Pt[] => {
+    const g: Hole = { z0: h.z0 - by, z1: h.z1 + by, spring: h.spring + by * 0.6, rise: h.rise + by * 0.4 };
+    const pts: Pt[] = [];
+    for (let i = 0; i <= 16; i++) {
+      const z = g.z0 + ((g.z1 - g.z0) * i) / 16;
+      const u = ((z - (g.z0 + g.z1) / 2) / ((g.z1 - g.z0) / 2));
+      pts.push(P(z, g.spring + g.rise * Math.sqrt(Math.max(0, 1 - u * u))));
+    }
+    return pts;
+  };
+  const cx = P((h.z0 + h.z1) / 2, 0)[0];
+  const cy = P(0, h.spring)[1];
+  const rng = new Rng(5);
+  for (const [x, y] of ring(16)) {
+    const ang = Math.atan2(y - cy, x - cx);
+    s += shard(x, y, rng.range(14, 24), rng.range(6, 9), ang + rng.range(-0.2, 0.2), rng.pick([R.teal, R.lilac, R.blue]));
+  }
+  for (const v of [0, 50, 100]) {
+    s += shard(...P(h.z0 - 18, v + 10), 20, 7, Math.PI + 0.3, R.lilac);
+    s += shard(...P(h.z1 + 18, v + 10), 20, 7, -0.3, R.teal);
+  }
+  for (const u of [-290, -240, -200, 50, 90]) s += tuft(...P(u, 2), 13, '#9cbf7f', u);
+  return { ...f, body: s };
+}
+
+/** The shutter: the night, the Moon asleep low on it (it rises as the shutter does). */
+function moonShutter(): FaceArt {
+  const h = MOON;
+  const W = h.z1 - h.z0;
+  const H = h.spring + h.rise;
+  let body = `<rect x="0" y="0" width="${r2(W)}" height="${r2(H)}" fill="${M.night}"/>`;
+  body += `<rect x="0" y="0" width="${r2(W)}" height="${r2(H * 0.4)}" fill="${M.nightDeep}" opacity="0.5"/>`;
+  for (let i = 1; i < 6; i++) body += `<path d="M${r2((i * W) / 6)} 0L${r2((i * W) / 6)} ${r2(H)}" stroke="${darkOf(M.night, 0.25)}" stroke-width="1"/>`;
+  const rng = new Rng(3);
+  for (let i = 0; i < 14; i++) body += twinkle(rng.range(10, W - 10), rng.range(10, H * 0.7), rng.range(2.4, 5), '#fff7d6', 0.5);
+  // The Moon, low, asleep in her crescent.
+  const mx = W * 0.5;
+  const my = H - 70;
+  body += glowDisc(mx, my, 56, '#e6e8ff', 0.45);
+  body += comic(crescent(mx - 6, my, 30, 1.3), M.moon, { line: LINE.small, rim: [3, -1.6], glint: [-1.2, 1.2] });
+  body += faceOf(mx - 22, my + 2, 12, '#8a7a4a', false, { cheeks: '#f5b6c0', mouth: 'smile' });
+  // Clouds along the foot.
+  for (const [x, r] of [[20, 22], [60, 18], [110, 24], [160, 20], [196, 18]] as const) body += `<circle cx="${x}" cy="${r2(H - 6)}" r="${r}" fill="#c9cbe8" stroke="${lineFor('#c9cbe8')}" stroke-width="1"/>`;
+  return leafArt(h, M.night, body);
+}
+
+export function moonDoor(): WallDoorArt {
+  return {
+    wall: { color: M.wood[0], edge: '#efe4d4', half: 12, end: 100 },
+    hole: MOON,
+    face: moonFace(),
+    leaf: { kind: 'lift', color: M.night, back: M.nightDeep, art: moonShutter(), shut: 0, open: 1 },
+    light: { color: '#e6e8ff', radius: 320, intensity: 0.85, y: 130 },
+    glow: '#dfe3ff',
+    sounds: { wake: ['crystal', 0.18, 1.6], open: [['whoosh', 0.35, 0.8], ['noteHigh', 0.3, 1.05]], shut: ['clunk', 0.3, 0.9] },
+    openMs: 1700,
+    life: { kind: 'stars', colors: ['#fff1b8', '#ffe28a', '#fff8e0'], rate: 1 },
+    flat: { wall: M.wood[0], frame: '#d9d6ea' },
+  };
+}
