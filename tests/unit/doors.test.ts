@@ -16,6 +16,8 @@ import { HULL_H, HULL_W } from '../../src/engine/constants';
 import { artOf, doorJobs, packShelves, wallSpecOf } from '../../src/content/doors';
 import type { FaceArt, WallDoorArt } from '../../src/content/art/doors/wallArt';
 import { depthRange, holeHeight, holeTop, type WallWay } from '../../src/paper/opening';
+import { Lens } from '../../src/paper/lens';
+import { tearSides } from '../../src/paper/box';
 
 /** The depths Gorti walks at in a room before the doors steer him (WorldScene: the box's back + 100 to its front − 100). */
 const walkable = (box: { back: number; front: number }): { min: number; max: number } => ({ min: Math.min(0, box.back + 100), max: Math.max(0, box.front - 100) });
@@ -181,6 +183,35 @@ describe('doorways', () => {
       expect(art.face.u0, `${spec.id} nothing behind the back wall`).toBeGreaterThanOrEqual(box.back);
       const [a, b] = BEFORE[spec.id]!;
       expect(shows(h.z0, h.z1) / shows(a, b), spec.id).toBeGreaterThanOrEqual(1.5);
+    }
+  });
+
+  it("are not hidden by the torn front at the room's end, on a phone held upright too", () => {
+    // Pictures from the narrowest the stage frames (a 16:9 band on a phone
+    // held upright: span 300) to a desktop, the eye stopped at the room's end.
+    const pictures: [number, number, number][] = [
+      [1170, 658, 300],
+      [1688, 780, 390],
+      [1280, 720, 480],
+    ];
+    for (const { roomId, spec, art } of all().filter(({ spec }) => spec.wall === 'side')) {
+      const { box, zoom } = staging(ROOMS[roomId]!);
+      for (const [w, h, span] of pictures) {
+        const lens = new Lens();
+        lens.frame(w, h, { ...FRAMING, span }, box.floor, zoom);
+        lens.eye.x = box.x1 - lens.halfWidth(0);
+        const [, right] = tearSides(box, lens);
+        const at = (x: number, z: number): number => lens.project(x, box.floor, z).x;
+        // The tear, at its farthest in, lands on or past the picture's right edge…
+        expect(at(box.x1 - right - box.tear.wander, box.front), `${spec.id} ${w}×${h}`).toBeGreaterThanOrEqual(w - 1e-6);
+        // …so the whole doorway is in the picture, from its far jamb to its near one.
+        expect(at(box.x1, art.hole.z0)).toBeGreaterThan(w / 2);
+        expect(at(box.x1, art.hole.z1)).toBeLessThanOrEqual(w + 1e-6);
+      }
+      // A wide picture keeps the room's own tear.
+      const wide = new Lens();
+      wide.frame(2340, 1080, { ...FRAMING, span: 480 }, box.floor, zoom);
+      expect(tearSides(box, wide)).toEqual([box.tear.left, box.tear.right]);
     }
   });
 

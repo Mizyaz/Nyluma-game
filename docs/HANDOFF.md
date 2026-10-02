@@ -359,11 +359,12 @@ Conventions:
   dist/(dist − z1) − dist/(dist − z0) of the half-screen wide (the lens, dist 900). That is
   24% here, 1.6–1.8 times the old holes (about −245 to −70, 13–15%): 151 px at 1280 × 720
   (was 84–93) and 100 CSS px at 844 × 390 (was 56–61; r08, a room narrower than the view
-  there, 82, was 49). Held upright (390 × 844) it is 46 CSS px (was 26–28), but the torn
-  front's right margin (`tear.right` in `stage.ts`) hides the wall nearer than about
-  z −80 to −110 there, so 25–30 CSS px of it show (was 20–26; r08, shot wider, shows all 46):
-  still a sliver at the band's right edge. A narrower margin on that side would show the
-  rest. On phones the Rezonans/Zıpla buttons cover its foot.
+  there, 82, was 49). Held upright (390 × 844) it is 46 CSS px (was 26–28), all of it in
+  sight: the front is torn no farther in from the sides than lets the side wall show at the
+  room's end (`tearSides` in `box.ts`: halfWidth(0) · front / eye.z − wander, at most the
+  room's own `tear.left`/`right`; 28 px upright, 59 at 1280 × 720, 70 on a phone held
+  sideways). Before that, the 70 px margin hid all but 25–30 CSS px of it upright. Sideways
+  on a phone, the Rezonans/Zıpla buttons over it turn see-through (`TouchControls.keepClear`).
 - Leaving through the side wall (`WorldScene.walkIn`): he walks on into the passage while the
   flats close, seen only through the opening (his plane's camera is cut at the near jamb,
   `PlaneCamera.clipRight`), his shadow on the passage's floor, and the leaf shuts behind him.

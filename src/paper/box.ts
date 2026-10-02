@@ -54,7 +54,7 @@ export interface BoxSpec {
    * The torn opening in the front face, as insets from the box's edges
    * (world px): how far below the top and above the floor line it is torn,
    * and how far in from each side (at most: a narrow picture keeps the
-   * side walls in sight, see `PaperBox.sides`). The tear wanders by `wander` and is
+   * side walls in sight, see `tearSides`). The tear wanders by `wander` and is
    * jagged by `jag`; `seed` picks its shape.
    */
   tear: { top: number; bottom: number; left: number; right: number; wander: number; jag: number; seed: number };
@@ -368,6 +368,19 @@ void main() {
 let shaderSeq = 0;
 
 /** The box of one room: its two shader faces and what they need each frame. */
+/**
+ * How far in from the left and right edges the front is torn, for this
+ * lens. At a room's end the eye stops with the side wall on the picture's
+ * edge; a wider tear would hide the near part of that wall, and on a narrow
+ * picture (a phone held upright) the doorway in it. Never more than the
+ * room's own tear.
+ */
+export function tearSides(box: Pick<BoxSpec, 'tear' | 'front'>, lens: Pick<Lens, 'halfWidth' | 'eye'>): [number, number] {
+  const t = box.tear;
+  const fit = Math.max(0, (lens.halfWidth(0) * box.front) / lens.eye.z - t.wander);
+  return [Math.min(t.left, fit), Math.min(t.right, fit)];
+}
+
 export class PaperBox {
   /** The inside of the box (and what is outside it), behind everything. */
   readonly inside: Phaser.GameObjects.Shader | Phaser.GameObjects.Graphics;
@@ -473,7 +486,7 @@ export class PaperBox {
             common(set);
             set('uOuter', rgb(c.outer));
             set('uCore', rgb(c.core));
-            const [left, right] = this.sides(this.lens);
+            const [left, right] = tearSides(spec, this.lens);
             set('uTear', [t.top, t.bottom, left, right]);
             set('uTear2', [t.wander, t.jag, (t.seed % 101) * 1.37, 0]);
             set('uBottom', spec.bottom);
@@ -520,19 +533,6 @@ export class PaperBox {
     });
   }
 
-  /**
-   * How far in from the left and right edges the front is torn, for this
-   * lens. At a room's end the eye stops with the side wall on the picture's
-   * edge; a wider tear would hide the near part of that wall, and on a
-   * narrow picture (a phone held upright) the doorway in it. Never more than
-   * the room's own tear.
-   */
-  private sides(lens: Lens): [number, number] {
-    const t = this.spec.tear;
-    const fit = Math.max(0, (lens.halfWidth(0) * this.spec.front) / lens.eye.z - t.wander);
-    return [Math.min(t.left, fit), Math.min(t.right, fit)];
-  }
-
   /** The box in flat colours (no grain, no tear): for the Canvas renderer. */
   private drawFlat(lens: Lens, g: Phaser.GameObjects.Graphics, f: Phaser.GameObjects.Graphics): void {
     const s = this.spec;
@@ -576,7 +576,7 @@ export class PaperBox {
     }
     // The front face around its hole.
     const t = s.tear;
-    const [left, right] = this.sides(lens);
+    const [left, right] = tearSides(s, lens);
     const o0 = P(x0, top, front);
     const o1 = P(x1, s.bottom, front);
     const h0 = P(x0 + left, top + t.top, front);
