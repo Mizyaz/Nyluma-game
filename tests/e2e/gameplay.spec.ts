@@ -21,21 +21,26 @@ async function freshPage(page: Page): Promise<void> {
   await page.evaluate(() => localStorage.clear());
 }
 
-/** Jumping is off (JUMPING): Space held for a while leaves Gorti standing on the floor at `floorY`. */
-async function spaceDoesNotJump(page: Page, floorY: number): Promise<void> {
-  expect(JUMPING).toBe(false);
+/**
+ * Jumping is on (JUMPING): Space lifts Gorti well clear of the floor at
+ * `floorY`, and he comes down on it again where he jumped (nothing in the
+ * rooms needs a jump; see tests/unit/walk.test.ts).
+ */
+async function spaceJumps(page: Page, floorY: number): Promise<void> {
+  expect(JUMPING).toBe(true);
+  const s0 = await probe(page);
+  expect(s0.player!.onGround).toBe(true);
   await page.keyboard.down('Space');
-  for (let i = 0; i < 8; i++) {
-    await page.waitForTimeout(80);
-    const s = await probe(page);
-    expect(s.player!.onGround).toBe(true);
-    expect(Math.abs(s.player!.y - floorY)).toBeLessThan(4);
-  }
+  const up = await waitState(page, (s) => !s.player!.onGround && s.player!.y < floorY - 60, 3000, 'up in the air');
+  expect(up.player!.z).toBeCloseTo(s0.player!.z, 0);
   await page.keyboard.up('Space');
+  const down = await waitState(page, (s) => s.player!.onGround, 4000, 'landed');
+  expect(Math.abs(down.player!.y - floorY)).toBeLessThan(4);
+  expect(Math.abs(down.player!.x - s0.player!.x)).toBeLessThan(40);
 }
 
 test.describe('gameplay', () => {
-  test('walks, passes the furniture and inspects in the first room; the jump key does nothing', async ({ page }) => {
+  test('walks, jumps, passes the furniture and inspects in the first room', async ({ page }) => {
     const errors = watchErrors(page);
     await freshPage(page);
     await startNewGame(page, GAME);
@@ -46,8 +51,8 @@ test.describe('gameplay', () => {
     const s1 = await probe(page);
     expect(s1.player!.x).toBeGreaterThan(s0.player!.x + 60);
 
-    // No jumping: the room is one floor, and Space leaves Gorti on it.
-    await spaceDoesNotJump(page, 660);
+    // The room is one floor: Space hops him off it and back onto it.
+    await spaceJumps(page, 660);
 
     // Contextual interaction: the toy whale.
     await bot.walkTo(620, 10);
@@ -296,15 +301,14 @@ test.describe('colour bombardment', () => {
     expect(s1.bursts!.count).toBe(1);
     await expect(storm).toHaveClass(/\bon\b/);
     await expect(storm).toBeVisible();
-    // Visual only: Gorti keeps control and walks through it (and, jumping
-    // being off, stays on the floor when Space is held).
+    // Visual only: Gorti keeps control, walks and jumps through it.
     expect(s1.context).toBe('gameplay');
     expect(s1.player!.state).toBe('normal');
     await hold(page, 'KeyD', 600);
     const s2 = await probe(page);
     expect(s2.bursts!.active).toBe(true);
     expect(s2.player!.x).toBeGreaterThan(s1.player!.x + 60);
-    await spaceDoesNotJump(page, 660);
+    await spaceJumps(page, 660);
     await hold(page, 'KeyA', 400);
     expect((await probe(page)).player!.x).toBeLessThan(s2.player!.x - 30);
     // It passes, and the next one comes by itself.

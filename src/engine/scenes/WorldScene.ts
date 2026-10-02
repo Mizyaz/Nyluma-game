@@ -1,6 +1,8 @@
 import * as Phaser from 'phaser';
 import { app, persist } from '../App';
 import { DEPTH, HULL_H, HULL_W, JUMPING, PULSE_RADIUS, PULSE_WINDUP_MS, VIEW_W, VIEW_H, CAMERA_ZOOM } from '../constants';
+import { JUMP } from '../../tuning';
+import { overlaps, sweptHull } from '../world/geometry';
 import { allParts } from '../../content/art/manifest';
 import { propZ, staging, type RoomStaging } from '../../content/stage';
 import { PaperStage, PopUp, Press, actorScale, printScaleAt, waitFor } from '../../paper';
@@ -100,6 +102,10 @@ export class WorldScene extends Phaser.Scene {
   private press: Press | null = null;
   private ambient: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private target: ActionTarget | null = null;
+  /** Inspecting or Rezonans pressed in the air: seconds it may still wait for the landing. */
+  private actionWait = 0;
+  /** Triggers met in the air: they fire as he lands (the story's scenes start with him on his feet). */
+  private armed = new Set<string>();
   private pulseWind = 0;
   private camLook = 0;
   /** This room's resting camera zoom (cutscenes zoom relative to it). */
@@ -149,6 +155,8 @@ export class WorldScene extends Phaser.Scene {
     this.arrival = data.arrive && !data.arrive.over ? data.arrive : null;
     this.pendingRoom = null;
     this.target = null;
+    this.actionWait = 0;
+    this.armed = new Set();
     this.cleanups = [];
     this.camMode = 'player';
     this.elapsed = 0;
@@ -339,12 +347,12 @@ export class WorldScene extends Phaser.Scene {
     this.events.on('player-land', (x: number, y: number, v: number) => this.atHim(() => {
       if (v > 560) this.comic.pop(x, y - 36, pick(WORDS.land), 'land');
       if (v > 500) this.shake(0.003, 90);
-      this.dust(x, y, 6);
+      this.dust(x, y, JUMP.landDust + Math.round(4 * Math.min(1, Math.max(0, (v - 300) / 600))));
       if (v > 260) this.steps?.land(...this.onMain(x, y), Math.min(1, (v - 260) / 600));
     }));
     this.events.on('player-jump', (x: number, y: number) => this.atHim(() => {
       this.comic.pop(x - this.player.facing * 30, y - 70, pick(WORDS.jump), 'jump');
-      this.dust(x, y, 4);
+      this.dust(x, y, JUMP.takeoffDust);
       this.steps?.step(...this.onMain(x, y));
     }));
     this.events.on('player-step', (x: number, y: number) => this.atHim(() => {
@@ -402,9 +410,12 @@ export class WorldScene extends Phaser.Scene {
     const gameplay = i.context === 'gameplay';
     const p = this.player;
     const axis = gameplay ? i.axisX() : 0;
-    // With jumping off a press is still consumed (so it never lingers), then dropped.
-    const jumpPressed = gameplay && i.consume('jump') && JUMPING;
-    const jumpHeld = JUMPING && gameplay && i.held('jump');
+    // A jump press is taken only by what can jump with it: Gorti in play, or
+    // what he rides (r07). Otherwise it is left to whoever listens: Space
+    // wakes him in r01, and in other contexts closes a dialogue or skips a scene.
+    const jumper = JUMPING && gameplay && p.canJump && (p.state === 'normal' || p.state === 'hidden');
+    const jumpPressed = jumper && i.consume('jump');
+    const jumpHeld = jumper && i.held('jump');
     // Up and down walk in depth, over the room's floor only.
     const depth = gameplay ? i.axisY() : 0;
     const under = this.room.groundBelow(p.x, p.feetY);
@@ -416,7 +427,12 @@ export class WorldScene extends Phaser.Scene {
     // Contextual actions
     if (gameplay && p.controllable) {
       this.target = this.resolveTarget();
-      if (i.consume('action')) this.doAction();
+      // Pressed in the air, inspecting or Rezonans happens as he lands.
+      if (i.consume('action')) this.actionWait = JUMP.actionBufferMs / 1000;
+      if (this.actionWait > 0 && p.onGround) {
+        this.actionWait = 0;
+        this.doAction();
+      } else this.actionWait = Math.max(0, this.actionWait - dt);
       if (this.laughHold >= 0) {
         if (!i.held('action')) this.laughHold = -1;
         else if ((this.laughHold += dt) >= KAHKAHA_S) {
@@ -427,7 +443,10 @@ export class WorldScene extends Phaser.Scene {
       // R: Gorti changes form (root ⇄ human) once it has learned how.
       if (i.consume('form') && p.kind === 'gorti' && p.state !== 'transform' && this.quest.hasAbility('form')) this.transform(p.form === 'root' ? 'human' : 'root');
       this.glance();
-    } else if (!gameplay) this.target = null;
+    } else {
+      this.actionWait = 0;
+      if (!gameplay) this.target = null;
+    }
     if (this.pulseWind > 0) {
       this.pulseWind -= dt * 1000;
       if (this.pulseWind <= 0) this.firePulse();
@@ -439,7 +458,12 @@ export class WorldScene extends Phaser.Scene {
 
   private checkWorld(): void {
     const p = this.player;
-    const box = { x: p.x - HULL_W / 2, y: p.feetY - HULL_H, w: HULL_W, h: HULL_H };
+    const hull = { x: p.x - HULL_W / 2, y: p.feetY - HULL_H, w: HULL_W, h: HULL_H };
+    // In the air he meets what lies on his way all the way down to the ground
+    // below him, as if he walked under his jump: a jump never skips a
+    // trigger, an exit or a memory.
+    const box = p.onGround ? hull : sweptHull(hull, this.room.groundBelow(p.x, p.feetY));
+    const low = box.y + box.h;
     // Falling out of the room: back to the last checkpoint (costs nothing).
     if (p.feetY > this.killY && p.state !== 'reform') this.reform();
     // Checkpoints
@@ -449,13 +473,15 @@ export class WorldScene extends Phaser.Scene {
     // Memories
     for (const m of this.room.memories) {
       if (m.taken) continue;
-      if (Math.abs(p.x - m.def.x) < 34 && p.feetY > m.def.y - 90 && p.feetY < m.def.y + 20) this.collectMemory(m.def.id);
+      if (Math.abs(p.x - m.def.x) < 34 && low > m.def.y - 90 && p.feetY < m.def.y + 20) this.collectMemory(m.def.id);
     }
-    // Triggers
+    // Triggers (met in the air, they fire as he lands)
     for (const t of this.room.triggers) {
       if (t.fired || !t.active) continue;
       const d = t.def;
-      if (box.x < d.x + d.w && box.x + box.w > d.x && box.y < d.y + d.h && box.y + box.h > d.y) {
+      if (overlaps(box, d)) this.armed.add(d.id);
+      if (this.armed.has(d.id) && (p.onGround || p.state !== 'normal')) {
+        this.armed.delete(d.id);
         t.fired = true;
         this.script.onTrigger?.(d.id);
       }
@@ -463,9 +489,8 @@ export class WorldScene extends Phaser.Scene {
     // Exits
     for (const e of this.room.exits) {
       if (!e.active) continue;
-      const d = e.def;
-      if (box.x < d.x + d.w && box.x + box.w > d.x && box.y < d.y + d.h && box.y + box.h > d.y) {
-        this.goToRoom(d.to);
+      if (overlaps(box, e.def)) {
+        this.goToRoom(e.def.to);
         return;
       }
     }
@@ -505,11 +530,13 @@ export class WorldScene extends Phaser.Scene {
 
   private resolveTarget(): ActionTarget | null {
     const p = this.player;
+    // In the air he is measured from the ground below him: a hop keeps what he stands by.
+    const feet = p.onGround ? p.feetY : (this.room.groundBelow(p.x, p.feetY) ?? p.feetY);
     // 1) Interaction prompts
     let best: ExtraInteract | null = null;
     let bestD = Infinity;
     for (const it of this.interactList()) {
-      const d = Math.hypot(p.x - it.x, p.feetY - it.y);
+      const d = Math.hypot(p.x - it.x, feet - it.y);
       if (d <= it.r && d < bestD) {
         best = it;
         bestD = d;
@@ -706,6 +733,7 @@ export class WorldScene extends Phaser.Scene {
         p.body.setAllowGravity(true);
         p.body.checkCollision.none = false;
         p.teleport(cp.x, cp.y, cp.facing ?? 1);
+        this.armed.clear();
         p.focus.refill();
         p.state = 'normal';
         this.script.onRespawn?.();
@@ -858,8 +886,9 @@ export class WorldScene extends Phaser.Scene {
     if (!p || p.state === 'hidden' || !p.rig.container.visible) return null;
     const ground = this.room.groundBelow(p.x, p.feetY);
     if (ground === null) return null;
-    const k = Math.max(0, 1 - Math.max(0, ground - p.feetY) / 320);
-    return { x: p.x, z: p.z, r: 34 * (0.55 + 0.45 * k), a: 0.9 * k };
+    // At his depth (z), on the floor: it shrinks and fades as he rises (tuning.ts JUMP).
+    const k = Math.max(0, 1 - Math.max(0, ground - p.feetY) / JUMP.shadowFade);
+    return { x: p.x, z: p.z, r: 34 * (JUMP.shadowMin + (1 - JUMP.shadowMin) * k), a: 0.9 * k };
   }
 
   /**
