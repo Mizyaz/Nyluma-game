@@ -75,12 +75,16 @@
     },
     "c6": {
       "sun": {
-        "mood": "curious",
-        "wear": ["freckles"],
+        "mood": "proud",
+        "wear": ["crown"],
+        "place": "inward",
+        "tilt": 6,
         "lines": ["Bu sayfa bomboş! Bir şey çiz.", { "text": "Burası henüz yazılmamış.", "answer": "Ben yazarım." }]
       },
       "moon": {
-        "mood": "delighted",
+        "mood": "calm",
+        "wear": ["scarf"],
+        "tilt": -8,
         "lines": ["Boş odalar en çok yankı yapar.", "Kahkaha at, yer değiştirelim!"]
       }
     }
