@@ -114,7 +114,7 @@ Conventions:
 
 ### Walking in depth
 
-- Up and down (W/S, the arrows; on the touch pad, sliding the thumb up or down) walk Gorti away
+- Up and down (W/S, the arrows, a gamepad's stick; on the touch stick, pushing it up or down) walk Gorti away
   from the viewer and toward them over the room's floor: `Player.z`, from 100 px short of the
   back wall to 100 px short of the torn front (`DEPTH_ROOM` in WorldScene). The world stays flat:
   physics, scripts, triggers and interactions see x and y only.
@@ -129,6 +129,48 @@ Conventions:
 - A figure on a free camera takes only 30% of the silhouettes' darkening before the actors'
   plane (`FIGURE_FRONT` in light.ts): the player stays readable.
 - His art is printed for the actors' plane, so off it the parts are drawn a little scaled.
+
+### Jumping
+
+- Space, the touch Zıpla button and a gamepad's south button jump; nothing in any room needs a
+  jump. Coyote time, a jump buffer, a variable height (letting go cuts the rise), squash and
+  stretch on take-off and landing, dust, a hop and a thud pitched per body (`Player.ts`; the
+  rig poses crouch / takeoff / rise / apex / fall / land exist for every body: the child, the
+  youth, the warrior, the amca with any head, the coward and the mech; the suit cannot jump).
+- Never a shortcut: a closed gate (an `unless` solid standing on the floor) is a body up to the
+  room's top (`geometry.ts` `bodyTop`, used by `RoomRuntime`); in the air Gorti meets triggers,
+  exits and memories down to the ground below him (`sweptHull`); a trigger met in the air fires
+  as he lands (`WorldScene.armed`); E pressed in the air waits for the landing
+  (`JUMP.actionBufferMs`) and what he can reach is measured from the ground. A jump press is
+  only taken by something that can jump, so Space still wakes him in r01 and closes dialogue.
+- In depth his figure rises on its free camera; his shadow stays on the floor at his depth,
+  shrinking and fading as he rises (`JUMP.shadowFade`, `JUMP.shadowMin`).
+- `tests/unit/walk.test.ts` checks that every room is walked without jumping, the gates, the
+  paper box's lid and the swept hull; `gameplay.spec.ts` jumps with Space and by touch.
+
+### Touch controls (`src/ui/TouchControls.ts`)
+
+- Left thumb: a paper dial with a knob that follows the thumb and springs back. Left and right
+  walk past `TOUCH.stick.walkOn`, up and down (in depth) past the firmer `depthOn`; each turns
+  off again under its `…Off` (hysteresis). Right thumb: Zıpla in the corner, the action button
+  beside it (its drawing follows the prompt: a star for Rezonans, a magnifier for İncele, a
+  speech balloon for Konuş, a split crystal for Yık), and the chips Biçim / Şarkı / Nefes on two
+  rings around Zıpla (`TOUCH.arc`).
+- Where they go is a pure function of the screen (`src/ui/touchLayout.ts`, unit-tested at many
+  sizes): upright under the game view and `clearBelowView` of subtitles; sideways in the
+  corners, beside the subtitle column and below `topClear` (the Sun, the Moon and the HUD
+  buttons keep the top); inside the safe areas; every target ≥ 44 px; it shrinks only when a
+  small screen needs it. `#touch` carries the safe-area insets as padding for it to read.
+- The drawings (`src/ui/touchArt.ts`) use the characters' kit (`comic`): pastel discs with
+  contours in their own dark tone, a cel shadow low-left, a glint high-right. Their CSS is one
+  marked block in `styles.css` ("touch controls"): the grain, the shadow on the page, the press.
+- Shown only on touch devices (setting "Dokunmatik kontroller") and only in gameplay and
+  cutscenes (holding a button skips a scene); they fade away for dialogue, menus and page
+  turns, and let go of every finger when they do. Every pointer has pointer capture; a cancelled
+  or lost touch, a blur or hiding releases it. "Dokunmatik düzen" (Sağlak / Solak) mirrors
+  them. Haptic ticks only after a first tap and never with reduced motion; reduced motion also
+  drops the springs and pops for quick fades.
+- The e2e touch bot walks by touching the stick's sides and presses the buttons' middles.
 
 ### Characters as paper puppets (`src/render/2d/rig/RigView.ts`)
 
@@ -192,6 +234,24 @@ Conventions:
   (`?mode=room|chapter&ch=1..6&dir=-1&reduced=1&portrait=1`).
 - `CrystalWarp` in `crystalFx.ts` is no longer used by the transitions. The rooms' background
   tunnels still use the shared gem-tunnel code.
+
+## Tuning (`src/tuning.ts`)
+
+Every number worth changing by hand is in `src/tuning.ts`; save it and the dev server reloads.
+World px and seconds for the game; CSS px on a phone 390 px wide for the touch controls.
+
+- `JUMP`: on or off (`enabled`: off hides Zıpla and Space does nothing), gravity, the fastest
+  fall, coyote time, the jump buffer, the in-air action buffer, squash, dust, sound volumes, the
+  shadow's shrink and fade.
+- `BODIES`: each body's walking and jumping: speed, acceleration, air control, take-off speed
+  (apex = v² / 2g), how much letting go cuts the rise, the hop's pitch. `suit` has 0: it cannot jump.
+- `KEYS` and `LETTERS`: the keyboard (physical codes; letters by the character they type first,
+  so other layouts keep their names).
+- `GAMEPAD`: standard-layout buttons to actions, the stick's dead zones. In menus and document
+  pages south is Enter, east and start are Escape, the d-pad moves the focus.
+- `TOUCH`: sizes, margins, the space kept for the subtitles and the top, the stick's dead zones
+  and travel, the rings and angles of the right thumb's buttons, haptics, the default hand and
+  the colours.
 
 ## Other pending work
 

@@ -38,7 +38,7 @@ npm run dev                  # sonra tarayıcıda ?room=b01
 }
 ```
 
-Yer düzdür; zıplama yok. Bulmacalar **form değiştirme**, konuşma, **kahkaha** (Güneş ⇄ Ay), **yıkma** ve bayraklarla kurulur.
+Yer düzdür; Gorti zıplayabilir ama hiçbir şey zıplamayı gerektirmemeli (kapalı bir kapı tavana kadar duvar sayılır, havada geçilen tetik inişte çalışır). Bulmacalar **form değiştirme**, konuşma, **kahkaha** (Güneş ⇄ Ay), **yıkma** ve bayraklarla kurulur.
 
 ## Gorti'nin fiilleri
 

@@ -77,7 +77,7 @@ function hop(bg: string): string {
     g += `<rect x="${x - 1.6}" y="-26.2" width="3.2" height="4" rx="0.6" fill="${CHILD.neon}"/>`;
     g += `<rect x="${x - 0.6}" y="-25.4" width="1.2" height="1.6" fill="${CHILD.core}"/>`;
   }
-  s += `<g transform="translate(3 -1) scale(1.16) rotate(9 2 0)">${g}</g>`;
+  s += `<g transform="translate(3 2) scale(1.1) rotate(9 2 0)">${g}</g>`;
   return s;
 }
 
