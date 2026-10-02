@@ -150,7 +150,7 @@ test.describe('mobile (touch only)', () => {
       await ROUTES[room]!(bot);
       console.log(`touch ${room}: ${((Date.now() - t0) / 1000).toFixed(0)} s`);
     }
-    await expect(page.locator('.ending .final-line')).toHaveText('Gorti, içindeki tüm ruhların sahipliğini kaybetmişti.');
+    await expect(page.locator('.ending .final-line')).toHaveText('Kâğıt üstünde, Gorti’nin içindeki ruhların hiçbiri artık onun değildi.');
     const menu = page.getByRole('button', { name: 'Ana menü' });
     await expect(menu).toBeVisible({ timeout: 15_000 });
     await menu.tap();

@@ -47,7 +47,7 @@ test.describe('experience', () => {
     const card = page.locator('.doc.painting .painting-card');
     await expect(card).toBeVisible();
     await expect(card.locator('figcaption b')).toHaveText('House of The Stranger');
-    await expect(card.locator('.line')).toHaveText('Gorti geleceğine ve geçmişine bakış attı.');
+    await expect(card.locator('.line')).toHaveText('Gorti önce geçmişine, sonra geleceğine baktı.');
     // The artwork itself has loaded.
     await expect.poll(() => card.locator('img').evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
 

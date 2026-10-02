@@ -1,63 +1,63 @@
 {
   "$schema": "./dialogue.schema.json",
   "whale": [
-    { "text": "Hatıraların arasında yalnızca insanlar yoktu; başka hayvanlarınkiler de vardı." },
-    { "text": "En tuhafı, mavi balinalarla kurduğu duygusal bağdı." },
-    { "text": "Balina üç sesle konuştu: derin, orta, yüksek. Gorti, Ulu Balina Dili ile tanıştı." }
+    { "text": "Toprağın sakladığı anılar yalnızca insanlara ait değildi; hayvanların anıları da oradaydı." },
+    { "text": "En tuhafı da Gorti’nin mavi balinalarla arasındaki o sıcacık bağdı." },
+    { "text": "Balina üç sesle konuştu: derin, orta ve yüksek. Böylece Gorti, Ulu Balina Dili’yle tanıştı." }
   ],
   "moon": [
-    { "who": "gorti", "text": "Bir sonraki değişim ne zamandır?" },
-    { "who": "babyMoon", "text": "Sen tepeye çıkınca, yükseklere, daha yükseklere, algın kadar yükseklere.", "whisper": true }
+    { "who": "gorti", "text": "Bir sonraki değişim ne zaman olacak?" },
+    { "who": "babyMoon", "text": "Tepeye çıkınca… Yükseğe, daha yükseğe, hayal edebildiğin kadar yükseğe.", "whisper": true }
   ],
   "sun": [
-    { "who": "gorti", "text": "Bu yolda benim umudum nedir? Neden var oluşum var?" },
-    { "who": "gorti", "text": "Sebebimin oluşu ve gizemi, varlığın ayrık sebeplerinden bir başkası mı?" },
-    { "who": "sun", "text": "Umudun bende değil, daha uzak yıldızlarda, belki de en küçük ama en uzak yıldızda." }
+    { "who": "gorti", "text": "Bu yolun sonunda beni ne bekliyor? Ben neden varım?" },
+    { "who": "gorti", "text": "Benim var olma sebebim de herkesinki gibi mi, yoksa bambaşka bir sır mı?" },
+    { "who": "sun", "text": "Umudun bende değil, küçük kök. Daha uzaklarda… Belki de en küçük ama en uzak yıldızda." }
   ],
   "pool": [
-    { "text": "Havuzun yüzeyinde, hafızasındaki yüzler birbirinin içinden geçiyordu." },
-    { "text": "Hareketsizliği, onu hafızasındaki kişiler arasından en çok yaşlı bir Sivaslı amcaya benzetiyordu." },
-    { "text": "Sivas… Belki de asla nerede olduğunu bilemeyeceği, ama ruhunun bir parçasının kesinlikle oradan geldiğini bildiği bir yer." },
-    { "who": "gorti", "text": "Kim bilir kaç bölge daha böyleydi? Hangi hayvanlar bu insanlarla karşılaşmıştı?" },
-    { "who": "gorti", "text": "Bu insanların toplam bilgisi, bireysel toplamları kadar mı, yoksa çok daha fazlası mı?" }
+    { "text": "Havuzun yüzeyinde, aklındaki yüzler birbirinin içinden geçip gidiyordu." },
+    { "text": "Kıpırtısız duruşuyla en çok birine benziyordu: yaşlı bir Sivaslı amcaya." },
+    { "text": "Sivas… Nerede olduğunu belki hiç bilemeyecekti; ama ruhunun bir parçasının oradan geldiğinden emindi." },
+    { "who": "gorti", "text": "Kim bilir daha kaç yer böyledir? Bu insanlarla hangi hayvanlar karşılaşmıştı acaba?" },
+    { "who": "gorti", "text": "Bu insanlar bir araya gelince, tek tek bildiklerinden daha fazlasını mı bilirler?" }
   ],
   "oldMoon": [
-    { "who": "gorti", "text": "Ben neyim? Bu hep ait olduğum form muydu?" },
-    { "text": "Ay ona baktı ve güldü." },
-    { "who": "oldMoon", "text": "Yalanlar sadece doğrular varken oluşur." },
-    { "who": "oldMoon", "text": "Sen artık insanlık gözünde bir doğruluksun. Yalanını da kendin bulmalısın." }
+    { "who": "gorti", "text": "Ben neyim? Hep bu hâlde miydim?" },
+    { "text": "Ulu Ay ona baktı ve hafifçe güldü." },
+    { "who": "oldMoon", "text": "Yalan dediğin, ancak bir doğru varken doğar." },
+    { "who": "oldMoon", "text": "Artık insanların gözünde sen bir doğrusun. Yalanını da kendin bulacaksın." }
   ],
   "shout": [
-    { "text": "Dallarından gelen kükürt kokusunu değil, mor gözlerinin sıvısını kanına katmak istiyordu. Bu, onu gerçekten mutlu ediyordu." },
-    { "text": "Yaşlı, şişman bacaklarıyla geri bir adım attı ve son sesiyle bağırdı:" },
+    { "text": "Dallarındaki kükürt kokusunu değil, mor gözlerindeki ışığı içine çekmek istiyordu. Bu, onu gerçekten mutlu ediyordu." },
+    { "text": "Yaşlı, tombul bacaklarıyla bir adım geri attı ve var sesiyle bağırdı:" },
     { "who": "gorti", "text": "Yalanlar!" }
   ],
   "horse": [
     { "who": "horse", "text": "Yhvan Est Polita, Nokra Pretalit!" },
-    { "text": "Sözlerini hiçbir hayvan anlamamıştı, ama Gorti tüm kanıyla hissetti." },
-    { "text": "Dünya değişim istiyordu ve bu at, ona bütün değişimi sağlayacaktı." }
+    { "text": "Bu sözleri hiçbir hayvan anlamadı; ama Gorti onları iliklerine kadar hissetti." },
+    { "text": "Dünya değişmek istiyordu ve bu at, o değişimi ona getirecekti." }
   ],
   "sunCall": [
-    { "text": "Gorti, yalanlarını benimsemiş haliyle bir kez daha nefesini tuttu ve bağırdı:" },
+    { "text": "Yalanlarıyla barışan Gorti bir kez daha nefesini tuttu ve bağırdı:" },
     { "who": "gorti", "text": "Güneş!" }
   ],
   "selfLine": [
-    { "text": "Gecenin olaylarından ve keşiflerinden kendini sıyıramamıştı; ama çok mutluydu." },
-    { "text": "Milyonlarca ruh arasından kendi kişiliğini oluşturmak üzereydi ve başaracağını biliyordu." },
-    { "who": "gorti", "text": "Dönüşmek yanlış değil, dönüşmeliyiz, herkes dönüşmeli. En çok ben dönüşmeliyim." },
-    { "text": "Yine de ruhunun farklı parçalara bölünme isteğini engelleyemiyordu." }
+    { "text": "Gecenin olayları ve keşifleri hâlâ aklındaydı; ama Gorti çok mutluydu." },
+    { "text": "Milyonlarca ruhun arasından kendi kişiliğini bulmak üzereydi ve başaracağını biliyordu." },
+    { "who": "gorti", "text": "Dönüşmek kötü bir şey değil. Hepimiz dönüşmeliyiz… En çok da ben!" },
+    { "text": "Yine de ruhunun parça parça dağılmak isteyen yanını durduramıyordu." }
   ],
   "closeEyes": [
-    { "text": "Beynindeki geveze ruhları zihninin yüzeye yakın bir köşesine topladı." },
-    { "text": "Gözlerini bir kez daha gerginlikle kapattı." }
+    { "text": "Kafasındaki geveze ruhları, aklının kolayca ulaşabileceği bir köşeye topladı." },
+    { "text": "Sonra gözlerini sımsıkı kapattı." }
   ],
   "ward": [
-    { "who": "coward", "text": "Konuşun!" }
+    { "who": "coward", "text": "Konuşsanıza!" }
   ],
   "late": [
-    { "who": "voice", "text": "Saat öğleden sonra 1 olmuş!" },
+    { "who": "voice", "text": "Saat öğleden sonra bir olmuş!" },
     { "who": "forms", "text": "Geç kaldın! İşe geç kaldın!" },
-    { "who": "coward", "text": "Geri dönmek mümkün!" }
+    { "who": "coward", "text": "Hâlâ geri dönebiliriz!" }
   ],
   "table": [
     { "who": "one", "text": "Gelmedi." },

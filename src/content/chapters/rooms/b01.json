@@ -49,17 +49,17 @@
         },
         {
           "who": "gorti",
-          "text": "Ne yapmam lazım?"
+          "text": "Peki ne yapmalıyım?"
         },
         {
           "who": "moonMan",
-          "text": "İnsan ol. R tuşu formunu değiştirir."
+          "text": "İnsana dönüşmelisin. Biçimini değiştirmek için R’ye bas."
         }
       ],
       "again": [
         {
           "who": "moonMan",
-          "text": "R: form değiştir. Kapı insana açılır."
+          "text": "R’ye bas, insan ol. Bu kapı yalnızca insanlara açılır."
         }
       ],
       "then": [
@@ -75,7 +75,7 @@
       "x": 1500,
       "open": "form:human",
       "look": "wood",
-      "hint": "Bu kapı yalnızca insan formuna açılıyor. (R)"
+      "hint": "Bu kapı yalnızca insanlara açılır. (R)"
     }
   ],
   "triggers": [

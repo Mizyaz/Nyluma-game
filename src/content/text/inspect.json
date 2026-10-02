@@ -1,24 +1,24 @@
 {
   "$schema": "./dialogue.schema.json",
   "toywhale": [
-    { "text": "Tahtadan bir balina. Sırtında sayısız küçük parmağın izi." },
-    { "text": "Dokununca, içinde uzak bir şarkı kıpırdadı." }
+    { "text": "Tahtadan oyulmuş bir balina. Sırtında bir sürü minik parmak izi var." },
+    { "text": "Dokununca içinde uzak bir şarkı kıpırdandı." }
   ],
   "marks": [
-    { "text": "Duvarda on dört çentik. On üçünün yanı boş." },
-    { "text": "Kendi hesaplarına göre, onun gibi on üç varlık daha oluşmuştu. Kaderleri bilinmiyordu." },
+    { "text": "Duvarda on dört çentik var. On üçünün yanı boş." },
+    { "text": "Gorti’nin hesaplarına göre, onun gibi on üç varlık daha doğmuştu. Hiçbirinden haber yoktu." },
     { "text": "On dördüncünün yanında tek bir ad: Gorti Evaskinan." }
   ],
   "window": [
-    { "text": "Telden sarkan kırık bir çerçeve. İçinde turkuaz bir amblem: bir kule, iki yanında kanatlar." },
+    { "text": "Bir telden sarkan kırık bir çerçeve. İçinde turkuaz bir amblem var: bir kule ve iki yanında kanatlar." },
     { "text": "Tuvalin kenarları kopmuş ama amblemin tek bir çizgisi bile eksik değil." }
   ],
   "bed": [
-    { "text": "Hiç uyunmamış bir yatak. Yastıkta toprak kokusu." }
+    { "text": "Hiç uyunmamış bir yatak. Yastık mis gibi toprak kokuyor." }
   ],
   "tree": [
     { "text": "Kabuğu mor, uçları kristal bir ağaç." },
-    { "text": "Toprağın bu kadar altında bile yaprakları yeşil; dallarında yapraktan kuşlar uyuyor." }
+    { "text": "Toprağın bu kadar altında bile yaprakları yemyeşil; dallarında yapraktan kuşlar uyuyor." }
   ],
   "gift": [
     { "text": "Pembe, mavi, sarı kâğıtlara sarılmış bir hediye. Kimden geldiği yazmıyor." },
@@ -26,14 +26,14 @@
   ],
   "starfolk": [
     { "text": "Kristalden küçük bir yıldız, kollarını Gorti’ye doğru uzatmış." },
-    { "text": "Dokunmaya bir türlü cesaret edemiyor." }
+    { "text": "Ama ona dokunmaya bir türlü cesaret edemiyor." }
   ],
   "eyeleaf": [
     { "text": "Yerde bir yarık açılmış. İçinden bir göz bakıyor; bütün çatlaklar ona varıyor." },
-    { "text": "Göz kırpmıyor. Gorti nereye gitse ardından bakıyor." }
+    { "text": "Hiç göz kırpmıyor. Gorti nereye gitse merakla ardından bakıyor." }
   ],
   "picture": [
-    { "text": "Duvarda yeşil bir yaratığın portresi." },
+    { "text": "Duvarda yeşil, tuhaf bir yaratığın portresi." },
     { "text": "Gorti onu bir yerden tanır gibi oldu." }
   ]
 }

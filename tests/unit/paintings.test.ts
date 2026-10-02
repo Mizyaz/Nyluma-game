@@ -12,7 +12,7 @@ const FRAME = 24;
 
 describe('paintings', () => {
   it('shows what Gorti sees in front of every painting', () => {
-    expect(PAINTING_LINE).toBe('Gorti geleceğine ve geçmişine bakış attı.');
+    expect(PAINTING_LINE).toBe('Gorti önce geçmişine, sonra geleceğine baktı.');
   });
 
   it('has the four artworks in the order of his life, each titled and captioned', () => {

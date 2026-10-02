@@ -1,10 +1,10 @@
 {
   "$schema": "./paintings.schema.json",
-  "line": "Gorti geleceğine ve geçmişine bakış attı.",
+  "line": "Gorti önce geçmişine, sonra geleceğine baktı.",
   "paintings": {
     "stranger": { "title": "House of The Stranger", "caption": "Yer altındaki 14. Oda." },
-    "moon": { "title": "Ay Hali", "caption": "Sivaslı amcanın Güneş’te ve Ay’da değişen biçimi, ay hâliyle." },
-    "youth": { "title": "Late to Work", "caption": "Gorti’nin ergenliği: milleti kırbaçlayıp robotlaştırdığı günler." },
+    "moon": { "title": "Ay Hali", "caption": "Sivaslı amca Güneş’in altında başka, Ay’ın altında başka biri olur. Bu, onun ay hâli." },
+    "youth": { "title": "Late to Work", "caption": "Gorti’nin gençliği: herkesi saate uydurup küçük robotlara çevirdiği günler." },
     "warrior": { "title": "Savaşçı", "caption": "Gorti artık bir savaşçı." }
   }
 }

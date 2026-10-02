@@ -28,7 +28,7 @@ test('@campaign full playthrough with normal inputs from New Game to the ending'
     times.push(line);
     console.log(line);
   }
-  await expect(page.locator('.ending .final-line')).toHaveText('Gorti, içindeki tüm ruhların sahipliğini kaybetmişti.');
+  await expect(page.locator('.ending .final-line')).toHaveText('Kâğıt üstünde, Gorti’nin içindeki ruhların hiçbiri artık onun değildi.');
   await expect(page.getByRole('button', { name: 'Yeniden oyna' })).toBeVisible({ timeout: 15_000 });
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('kristaller-dunyasi:save') ?? '{}') as { profile?: { endingSeen?: boolean; chaptersReached?: number[]; memories?: string[] } });
   expect(saved.profile?.endingSeen).toBe(true);

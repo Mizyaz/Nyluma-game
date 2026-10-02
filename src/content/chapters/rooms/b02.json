@@ -21,7 +21,7 @@
         },
         {
           "who": "gorti",
-          "text": "Göbeğimi tutup bir gülsem..."
+          "text": "Şöyle göbeğimi tutup bir kahkaha atsam…"
         }
       ]
     }
@@ -56,13 +56,13 @@
         },
         {
           "who": "coward",
-          "text": "Ama o kapı yalnızca Ay çıkınca açılır. Sen kahkahayı basarsan Ay çıkar, ben de kaçarım."
+          "text": "Ama o kapı yalnızca Ay çıkınca açılıyor. Sen kahkahayı basarsan Ay çıkar… ben de tabanları yağlarım!"
         }
       ],
       "again": [
         {
           "who": "coward",
-          "text": "Gülme sakın! ...Peki peki: E'yi basılı tut."
+          "text": "Sakın gülme! …Peki, peki: E’yi basılı tut."
         }
       ]
     }
@@ -73,7 +73,7 @@
       "x": 1450,
       "open": "sky:moon",
       "look": "crystal",
-      "hint": "Bu kapı yalnızca Ay çıkınca açılır. (E'yi basılı tut: kahkaha)"
+      "hint": "Bu kapı yalnızca Ay çıkınca açılır. (Kahkaha için E’yi basılı tut)"
     }
   ],
   "triggers": [

@@ -1,8 +1,8 @@
 {
   "$schema": "./documents.schema.json",
   "portraits": {
-    "title": "EK-3 · Devredilen Varlıkların Görüntüleri",
-    "note": "Her görüntünün altında bir sayı var. Hiçbirinin altında bir ad yok."
+    "title": "EK-3 · Devredilen Varlıkların Resimleri",
+    "note": "Her resmin altında bir numara var. Hiçbirinin altında bir ad yok."
   },
   "russian": {
     "lines": [
@@ -15,14 +15,14 @@
   "clause": {
     "title": "ULUSAL KRİSTAL KOMİTESİ — HAK AKTARIMI ANLAŞMASI",
     "articles": [
-      "Madde 7. Devreden, bünyesinde taşıdığı tüm ruhların, anıların ve bunlardan doğacak her türlü meyvenin sahipliğini, işbu anlaşmanın damgalandığı andan itibaren Komite’ye devreder.",
-      "Madde 8. Devredenin toplantıda hazır bulunmaması, devrin geçerliliğini etkilemez."
+      "Madde 7. Devreden, içinde taşıdığı bütün ruhları, anıları ve bunlardan yetişecek her türlü meyveyi, bu anlaşma damgalandığı andan itibaren Komite’ye devreder.",
+      "Madde 8. Devreden toplantıya gelmese bile devir geçerlidir."
     ],
     "signature": "Devreden: Gorti Evaskinan · İmza yeri boş bırakılmıştır."
   },
   "final": {
     "title": "SON SAYFA",
-    "lines": ["Devredilen: bünyedeki tüm ruhlar.", "Devralan: Ulusal Kristal Komitesi."],
+    "lines": ["Devredilen: içerideki bütün ruhlar.", "Devralan: Ulusal Kristal Komitesi."],
     "stamp": "SATILDI"
   }
 }

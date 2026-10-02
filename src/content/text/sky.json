@@ -7,7 +7,8 @@
         "Işığım biraz yorgun, ama burada.",
         "Öhö… Bir şey yok, bir şey yok.",
         { "text": "Bana bu kadar yakından bakma, gözlerin kamaşır.", "answer": "Benim ekranım var." },
-        "Uzak yıldızlara selam söyle."
+        "Uzak yıldızlara selam söyle.",
+        "Sana bir avuç ışık ayırdım."
       ]
     },
     "moon": {
@@ -15,7 +16,8 @@
       "lines": [
         "Şşş… Dünya uyuyor.",
         "Yükseklere bak. Daha yükseklere.",
-        { "text": "Gece seni izliyor, küçük kök.", "answer": "Ben de geceyi izliyorum." }
+        { "text": "Gece seni izliyor, küçük kök.", "answer": "Ben de geceyi izliyorum." },
+        "Yıldızları sayıyorum. Sakın beni şaşırtma."
       ]
     }
   },
@@ -70,7 +72,7 @@
       },
       "moon": {
         "mood": "teary",
-        "lines": ["Satıldı… Ruhlar satılır mı?", "Kâğıtlar ağlamaz, ben ağlarım."]
+        "lines": ["Satıldı mı? Ruhlar satılır mı hiç?", "Kâğıtlar ağlamaz, ben ağlarım."]
       }
     },
     "c6": {
@@ -150,7 +152,7 @@
         "wear": ["crown"],
         "tilt": -4,
         "lines": [
-          "Tepeye çık. Algın kadar yükseğe.",
+          "Tepeye çık. Hayal edebildiğin kadar yükseğe.",
           { "text": "Bu taç kristal ağaçtan.", "answer": "Bana da yakışır mı?" },
           "Bir yıldız doğacak; acele etme."
         ]
@@ -261,7 +263,7 @@
       },
       "moon": {
         "mood": "curious",
-        "lines": ["Serçe saatini mi kesti?", "Ağaçlar varlıklarını hissediyor."]
+        "lines": ["Serçe saatinin kayışını mı kopardı?", "Ağaçlar varlıklarını hissediyor."]
       }
     },
     "r10": {
@@ -306,7 +308,7 @@
       },
       "moon": {
         "mood": "teary",
-        "lines": ["Gelmedi… Keşke gelseydi.", "Bütün ruhların sahipliği… Ne ağır bir cümle."]
+        "lines": ["Gelmedi… Keşke gelseydi.", "Bütün ruhlar bir kâğıda sığar mı?"]
       }
     }
   }
