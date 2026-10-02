@@ -5,7 +5,74 @@ listeler. Ölçümler aşağıdaki test ortamında alınmıştır; gerçek cihaz
 performansını temsil etmez. İlk bölüm bu sürümün kontrolleridir. Sonraki
 bölümlerdeki sonuçlar önceki sürümlerin oyun kodu içindir.
 
-## Bu sürüm: Güneş ile Ay karakter oldu, hikâye metni JSON'da, yeni kapılar
+## Bu sürüm: 14. Oda'nın ortasındaki kök kemer kaldırıldı
+
+Bu sürümde değişenler:
+
+- r01'in ortasındaki lila kök kemer kaldırıldı. Kemer hep açıktı ve ardında bir yol
+  yoktu; anlamsızdı ve odanın görüntüsünü bozuyordu.
+- Odanın tek kapısı artık sondaki gökkuşaklı kâğıt kapı. r02'ye giden tünele açılıyor.
+- Kodda: `src/content/doorSpecs.ts`'den `r01.roots` girişi, `src/content/art/doors/`
+  altından da kemerin çizimi (`rootArch.ts`) silindi. `docs/HANDOFF.md`'de kapı listesi
+  güncellendi ve bir kural eklendi: kapı yalnız ardında bir yol olan yerde durur.
+- Çıkışlar, zemin, koşullar ve kayıt noktaları değişmedi.
+
+Son commit (`97f248d`) üzerinde koşulan kontroller:
+
+| Kontrol | Sonuç |
+| --- | --- |
+| `npm run typecheck` | Hatasız |
+| `npx vitest run` | 21 dosya, 198 test geçti |
+| `npm run kd -- check` | Tamam: 6 bölüm, 4 oda dosyası, 12 TS oda, 8 metin dosyası |
+| `npm run build`, `npm run build:e2e` | Başarılı |
+| `npx playwright test --grep-invert @campaign --workers=1` | 24 geçti, 13 atlandı, 1 kaldı, 13.3 dk |
+| `npx playwright test --grep @campaign --workers=1` | 2 geçti, 13.3 dk |
+
+İki tam kampanya da geçti: klavyeyle tam oyun 6.3 dk, telefonda yalnız dokunmayla tam
+oyun 6.9 dk. Dokunmayla tam oyun da r01'den geçiyor.
+
+Atlanan 13 test önceki sürümdekilerle aynı.
+
+Kalan test "the first room is playable with touch alone". Bu test telefon boyutunda,
+yalnız dokunarak r01'i oynuyor ve r02'ye geçiyor. 2 dakikalık süre sınırını aştı; o
+sırada yük ortalaması 4.4–4.6 idi. Hatanın ayrıntıları kayboldu, çünkü sonraki koşu
+`test-results/` klasörünü temizledi.
+
+Testin kemerle ilgisi olup olmadığını görmek için test, makine sakinken (yük
+ortalaması 0.8–1.8) tek başına koşuldu. Kemerli sürüm (`63d6450`) ile kemersiz sürüm
+(`97f248d`) sırayla üçer kez koşuldu:
+
+| Sürüm | 1. koşu | 2. koşu | 3. koşu |
+| --- | --- | --- | --- |
+| Kemerli (`63d6450`) | Kaldı, süre aşıldı | Kaldı, süre aşıldı | Geçti, 1.9 dk |
+| Kemersiz (`97f248d`) | Geçti, 1.4 dk | Geçti, 1.8 dk | Geçti, 1.6 dk |
+
+Bundan önce kemersiz sürüm üç kez daha tek başına koşuldu ve üçü de geçti (toplam
+3.9 dk).
+
+Takılmanın nedeni kemer değil, test botunun dokunarak yürümesi:
+
+- Bot bir eşyanın önünde durmaya çalışırken hedefi aşıp geri dönüyor, sonra yine
+  aşıyor. Bu, adımın 40 saniyelik sınırı dolana kadar sürüyor. Çoğu kez pencerenin
+  önünde (x 1580) oldu, bir kez de balina oyuncağının önünde (x 620).
+- İki sürümde de oluyor: 9 koşunun 6'sında.
+- Sınır dolunca bot adımı yeniden deniyor ve geçiyor. Ama kaybedilen 40 saniye testi
+  2 dakikalık sınıra yaklaştırıyor; makine yüklüyken sınır aşılıyor.
+- Botun yürüyüşü ayrıca düzeltilecek.
+
+Görsel kontrol (son derleme, r01):
+
+- Telefon (844×390, dokunmatik kontrollerle) ve 1280×720: kemer yok. Zemindeki göz,
+  sondaki kâğıt kapı, Ay ve Güneş görünüyor; odanın ortası açık.
+
+Bilinen sorunlar:
+
+- Dokunmatik ilk oda testi kararsız (yukarıda).
+- Önceki sürümün bilinen sorunları sürüyor (aşağıda).
+
+Henüz denenmeyenler önceki sürümdekilerle aynı.
+
+## Önceki sürüm: Güneş ile Ay karakter oldu, hikâye metni JSON'da, yeni kapılar
 
 Bu sürümde değişenler:
 
@@ -119,7 +186,7 @@ Bilinen sorunlar:
 Henüz denenmeyenler: gerçek telefon ve gerçek GPU'lu cihaz. Güneş ve Ay'ın çan sesi
 kodda bağlı, ama kulakla dinlenmedi.
 
-## Önceki sürüm: sayfa çevirme yeniden çizildi, V. ve VI. bölüm sayfaları zenginleşti
+## Eski sürüm: sayfa çevirme yeniden çizildi, V. ve VI. bölüm sayfaları zenginleşti
 
 Bu sürümde değişenler:
 
