@@ -804,6 +804,13 @@ a {
   pointer-events: none;
 }
 
+/* `#stage > *` would make the whole HUD take every touch over the game:
+   only its own buttons do, the rest goes through to the Sun's and the
+   Moon's faces under it. */
+#stage > .hud {
+  pointer-events: none;
+}
+
 .hud > * {
   pointer-events: auto;
 }
