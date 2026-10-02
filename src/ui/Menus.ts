@@ -2,7 +2,7 @@ import { app, persistSettings } from '../engine/App';
 import { CHAPTER_TITLES } from '../engine/state/GameState';
 import { MEMORIES } from '../content/data/memories';
 import { OPEN_ALL, SCENES, chapterTitle, type SceneEntry } from '../content/data/scenes';
-import type { Settings, TextSpeed, TouchMode } from '../engine/state/types';
+import type { Settings, TextSpeed, TouchHand, TouchMode } from '../engine/state/types';
 import { memoryArtUrl } from '../content/art/memoryArt';
 import { focusables, h } from './dom';
 import { ALLOWED_LICENSES } from '../music/library';
@@ -337,6 +337,7 @@ export class Menus {
       ...onoff('Ekran sarsıntısı', s.screenShake, (v) => apply({ screenShake: v })),
       ...seg<TextSpeed>('Metin hızı', [['slow', 'Yavaş'], ['normal', 'Normal'], ['fast', 'Hızlı'], ['instant', 'Anında']], s.textSpeed, (v) => apply({ textSpeed: v })),
       ...seg<TouchMode>('Dokunmatik kontroller', [['auto', 'Otomatik'], ['on', 'Açık'], ['off', 'Kapalı']], s.touch, (v) => apply({ touch: v })),
+      ...seg<TouchHand>('Dokunmatik düzen', [['right', 'Sağlak'], ['left', 'Solak']], s.touchHand, (v) => apply({ touchHand: v })),
     );
     const reset = this.btn('Kaydı sıfırla', () =>
       this.confirm('Tüm ilerleme, anılar ve açılan bölümler silinecek. Emin misiniz?', () => {

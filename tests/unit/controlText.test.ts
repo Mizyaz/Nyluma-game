@@ -7,13 +7,13 @@ describe('touch wording of instructions', () => {
     expect(forTouch('Tomurcuğun yanında F’ye bas. Deseni dinle, sonra aynı sırayla söyle: ← derin, ↓ orta, → yüksek (A, S, D).')).toBe(
       'Tomurcuğun yanında Şarkı’ya dokun. Deseni dinle, sonra aynı sırayla söyle: derin, orta ve yüksek nota düğmeleriyle.',
     );
-    expect(forTouch('Konsolda E’ye bas; ← → ile gözü çevir, iz ile örtüşünce E.')).toBe('Konsolda Eylem’e dokun; yön düğmeleriyle gözü çevir, iz ile örtüşünce Eylem.');
-    expect(forTouch('A / D ya da ← →: yürü   ·   Boşluk: zıpla   ·   E: incele')).toBe('Yön düğmeleri: yürü   ·   Zıpla düğmesi: zıpla   ·   Eylem: incele');
+    expect(forTouch('Konsolda E’ye bas; ← → ile gözü çevir, iz ile örtüşünce E.')).toBe('Konsolda Eylem’e dokun; yön koluyla gözü çevir, iz ile örtüşünce Eylem.');
+    expect(forTouch('A / D ya da ← →: yürü   ·   Boşluk: zıpla   ·   E: incele')).toBe('Yön kolu: yürü   ·   Zıpla düğmesi: zıpla   ·   Eylem: incele');
     expect(forTouch('Nefesini tut (Q): kristal basamaklar belirir.')).toBe('Nefesini tut (Nefes): kristal basamaklar belirir.');
     expect(forTouch('Kapının ötesindeki dairede kök bedene dön (R), sonra düğümlere E ile uzan.')).toBe(
       'Kapının ötesindeki dairede kök bedene dön (Biçim), sonra düğümlere Eylem ile uzan.',
     );
-    expect(forTouch('← →: anahtar gözünü çevir  ·  E: hizala  ·  Esc / Boşluk: bırak')).toBe('Yön düğmeleri: anahtar gözünü çevir  ·  Eylem: hizala  ·  Zıpla: bırak');
+    expect(forTouch('← →: anahtar gözünü çevir  ·  E: hizala  ·  Esc / Boşluk: bırak')).toBe('Yön kolu: anahtar gözünü çevir  ·  Eylem: hizala  ·  Zıpla: bırak');
     expect(forTouch('Bacakların yanında E’yi basılı tut.')).toBe('Bacakların yanında Eylem’i basılı tut.');
   });
 

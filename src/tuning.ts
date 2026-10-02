@@ -207,22 +207,44 @@ export const TOUCH = {
   side: 18,
   bottom: 20,
   /** Upright, the controls keep this far below the game view's bottom (room for the subtitles). */
-  clearBelowView: 128,
+  clearBelowView: 112,
 
   /**
-   * The right thumb's arc around the jump button: gap between buttons, and
-   * angles in degrees (0 = toward the screen's middle, 90 = straight up).
-   * The action button comes first, then the chips in order: Biçim, Şarkı, Nefes.
+   * The right thumb's buttons around Zıpla, each on a ring and at an angle
+   * in degrees (0 = toward the screen's middle, 90 = straight up). Ring 1
+   * hugs Zıpla; ring 2 lies outside the action button's ring. `gap` is the
+   * room between neighbours.
    */
-  gap: 10,
+  gap: 12,
   arc: {
-    upright: { action: 52, chips: [112, 152, 186] },
-    sideways: { action: 36, chips: [98, 140, 182] },
-  },
+    upright: { action: [1, 32], form: [1, 102], song: [2, 64], focus: [2, 94] },
+    sideways: { action: [1, 28], form: [1, 98], song: [2, 56], focus: [2, 88] },
+  } as Record<'upright' | 'sideways', Record<'action' | 'form' | 'song' | 'focus', readonly [1 | 2, number]>>,
+  /** Sideways, the controls stay below this share of the screen's height (the Sun, the Moon and the HUD buttons keep the top). */
+  topClear: 0.3,
 
   /** Light haptic ticks (ms; 0 = off), never more often than `minGapMs`. Off with reduced motion. */
   haptics: { press: 8, turn: 5, minGapMs: 70 },
 
   /** Which thumb holds the stick by default ('right' hand: stick on the left). The settings can mirror it. */
   hand: 'right' as 'right' | 'left',
+
+  /**
+   * The pastel each control is printed in. Contours, cel shadows and
+   * glints are drawn from it (in its own darker and paler tones).
+   */
+  look: {
+    stick: '#f7eddc', // cream paper dial
+    knob: '#b6dcc6', // mint knob
+    walk: '#8fc4ad', // the dial's left/right marks while walking
+    depth: '#c3a3dc', // its up/down marks while walking in depth
+    jump: '#bfdcd8', // aqua: the air
+    move: '#dccdf0', // lavender, with a butter star: Rezonans
+    inspect: '#f3e08e', // butter, with a magnifier: İncele
+    talk: '#f7dbf2', // blush, with a speech balloon: Konuş
+    break: '#f4b27c', // apricot, with a split crystal: Yık
+    form: '#b6dcc6',
+    song: '#f0b2cf',
+    focus: '#bfdcd8',
+  },
 };

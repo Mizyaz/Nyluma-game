@@ -323,53 +323,77 @@ test.describe('colour bombardment', () => {
 test.describe('touch', () => {
   test.use({ hasTouch: true, isMobile: false });
 
-  test('two simultaneous touches move and act; cancelling releases everything', async ({ page }) => {
+  test('two thumbs at once: the stick walks (also in depth) while the buttons act and jump; a cancelled touch releases everything', async ({ page }) => {
     await freshPage(page);
     await startNewGame(page, GAME);
     const bot = new Bot(page);
     await bot.settle();
-    // Past the sign: nothing to inspect for a while, so Eylem makes the
-    // Rezonans move. (Zıpla stays hidden: jumping is off.)
+    // Past the sign: nothing to inspect for a while, so the action button
+    // makes the Rezonans move.
     await bot.walkTo(1720, 10);
-    await expect(page.locator('.tc[data-key="jump"]')).toBeHidden();
-    const pad = await page.locator('.tc-pad').boundingBox();
-    const act = await page.locator('.tc[data-key="action"]').boundingBox();
-    expect(pad && act).toBeTruthy();
+    const action = page.locator('#touch .tc[data-key="action"]');
+    await expect(action).toHaveAttribute('aria-label', 'Eylem: Rezonans');
+    await expect(page.locator('#touch .tc[data-key="jump"]')).toBeVisible();
+    const stick = await page.locator('#touch .tc-stick').boundingBox();
+    const act = await action.boundingBox();
+    const jump = await page.locator('#touch .tc[data-key="jump"]').boundingBox();
+    expect(stick && act && jump).toBeTruthy();
     const cdp = await page.context().newCDPSession(page);
-    const right = { x: pad!.x + pad!.width * 0.8, y: pad!.y + pad!.height / 2, id: 1 };
+    const cx = stick!.x + stick!.width / 2;
+    const cy = stick!.y + stick!.height / 2;
+    const R = stick!.width / 2;
+    const thumb = (dx: number, dy: number): { x: number; y: number; id: number } => ({ x: cx + dx * R, y: cy + dy * R, id: 1 });
     const a = { x: act!.x + act!.width / 2, y: act!.y + act!.height / 2, id: 2 };
+    const j = { x: jump!.x + jump!.width / 2, y: jump!.y + jump!.height / 2, id: 3 };
     const x0 = (await probe(page)).player!.x;
     const moves0 = (await probe(page)).moves!.count;
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [right] });
+    // The thumb lands in the dial's middle (its dead zone: nothing yet)…
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [thumb(0, 0)] });
     await page.waitForTimeout(250);
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [right, a] });
+    expect((await probe(page)).heldSources).toBe(0);
+    await expect(page.locator('#touch .tc-stick')).toHaveClass(/held/);
+    // …and slides right: he walks right; the dial lights its right side.
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [thumb(0.7, 0)] });
+    await waitState(page, (s) => s.player!.vx > 50, 3000, 'walking right');
+    await expect(page.locator('#touch .tc-stick')).toHaveAttribute('data-dir', 'r');
+    // The other thumb presses the action button meanwhile.
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [thumb(0.7, 0), a] });
     await waitState(page, (s) => s.moves!.count > moves0, 3000, 'a move while walking');
     const mid = await probe(page);
     expect(mid.heldSources).toBe(2);
     expect(mid.player!.vx).toBeGreaterThan(50);
     // Lift the action finger (touchEnd lists the fingers that lift); the
-    // movement finger keeps moving.
+    // walking thumb keeps walking.
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [a] });
     await page.waitForTimeout(300);
     const one = await probe(page);
     expect(one.heldSources).toBe(1);
     expect(one.player!.x).toBeGreaterThan(x0 + 40);
-    // Slide the movement finger to the left half: direction flips.
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ ...right, x: pad!.x + pad!.width * 0.2 }] });
-    await waitState(page, (s) => s.player!.vx < -50, 3000, 'moving left');
-    // Slid up over the pad's middle he walks away from the viewer; slid down, toward them.
+    // Slid over to the left: the direction flips.
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [thumb(-0.7, 0)] });
+    await waitState(page, (s) => s.player!.vx < -50, 3000, 'walking left');
+    // Slid up he walks away from the viewer; slid down, toward them.
     const z0 = (await probe(page)).player!.z;
-    const mid0 = pad!.x + pad!.width / 2;
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ ...right, x: mid0, y: pad!.y - 12 }] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [thumb(0, -0.8)] });
     await waitState(page, (s) => s.player!.z < z0 - 30 && Math.abs(s.player!.vx) < 5, 3000, 'walking away');
+    await expect(page.locator('#touch .tc-stick')).toHaveAttribute('data-dir', 'u');
     const z1 = (await probe(page)).player!.z;
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ ...right, x: mid0, y: pad!.y + pad!.height + 12 }] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [thumb(0, 0.8)] });
     await waitState(page, (s) => s.player!.z > z1 + 30, 3000, 'walking toward the viewer');
-    // The system cancels the touch: nothing stays held.
+    // A jump with the right thumb while the left one walks (in depth): up
+    // and down again, at his depth.
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [thumb(0, 0.8), j] });
+    const air = await waitState(page, (s) => !s.player!.onGround && s.player!.y < 660 - 60, 3000, 'jumping');
+    expect(air.heldSources).toBe(2);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [j] });
+    const landed = await waitState(page, (s) => s.player!.onGround, 4000, 'landed');
+    expect(Math.abs(landed.player!.y - 660)).toBeLessThan(4);
+    // The system cancels the touch: nothing stays held, the knob goes home.
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
     await waitState(page, (s) => s.heldSources === 0, 3000, 'released');
     await page.waitForTimeout(400);
     expect(Math.abs((await probe(page)).player!.vx)).toBeLessThan(5);
+    await expect(page.locator('#touch .tc-stick')).not.toHaveClass(/held/);
   });
 });
 

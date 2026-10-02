@@ -70,17 +70,18 @@ describe('input contexts', () => {
     expect(i.consume('action')).toBe(true);
   });
 
-  it('supports simultaneous touch pointers and sliding on the pad', () => {
+  it('supports simultaneous touch pointers and sliding on the stick', () => {
     const { i } = mk();
     i.setContext('gameplay');
-    i.sourceDown('touch:pad:1', ['left']);
+    i.sourceDown('touch:stick:1', ['left']);
     i.sourceDown('touch:jump:2', ['jump']);
     expect(i.axisX()).toBe(-1);
     expect(i.consume('jump')).toBe(true);
-    i.sourceDown('touch:pad:1', ['right']);
+    i.sourceDown('touch:stick:1', ['right', 'up']);
     expect(i.axisX()).toBe(1);
+    expect(i.axisY()).toBe(-1);
     expect(i.held('left')).toBe(false);
-    i.sourceUp('touch:pad:1');
+    i.sourceUp('touch:stick:1');
     i.sourceUp('touch:jump:2');
     expect(i.sourceCount()).toBe(0);
   });

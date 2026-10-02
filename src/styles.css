@@ -1768,140 +1768,294 @@ a {
   }
 }
 
-/* ------------------------------------------------------------ touch */
+/* ============================================================ touch controls
+   The on-screen controls (src/ui/TouchControls.ts). Every rule for them is
+   in this block. Their sizes and places come from src/tuning.ts (TOUCH),
+   worked out by src/ui/touchLayout.ts and set inline in px; the drawings
+   are inline SVG in the comic manner (src/ui/touchArt.ts). CSS adds the
+   paper: the grain, each disc's shadow on the page, and the press (the
+   disc sinks into the page and its shadow shrinks). */
 
 #touch {
+  --tk: 1;
+  --tc-shadow: rgba(74, 65, 82, 0.3);
   position: fixed;
   inset: 0;
-  pointer-events: none;
   z-index: 5;
+  pointer-events: none;
+  /* The safe-area insets, read back by the layout (the controls are
+     placed absolutely, so this padding moves nothing by itself). */
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  transition: opacity 0.16s ease;
 }
 
+/* Away while someone speaks, a page turns or a menu is open: a quick
+   fade, and no touch reaches them meanwhile. */
 #touch.off {
-  display: none;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.16s ease,
+    visibility 0s linear 0.16s;
 }
 
-/* Paper discs and pads; a pastel fills them while held. */
-.tc {
+#touch.off * {
+  pointer-events: none !important;
+}
+
+#touch .tc,
+#touch .tc-stick {
   position: absolute;
+  isolation: isolate;
   pointer-events: auto;
   touch-action: none;
-  border: var(--lw) solid var(--line);
-  background: var(--grain), rgba(251, 246, 234, 0.8);
-  box-shadow: 2px 3px 0 var(--shade);
-  color: var(--ink);
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  font-family: var(--sans);
-  font-weight: 700;
-  font-size: 13px;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.tc.held {
-  background: var(--pencil), var(--pastel-periwinkle);
-  translate: 1px 2px;
-  box-shadow: 0 1px 0 var(--shade);
-}
-
-.tc svg {
-  width: 44%;
-  height: 44%;
-  pointer-events: none;
-}
-
-.tc span {
-  position: absolute;
-  bottom: -1.55em;
-  padding: 0 0.4em;
-  font-size: 12px;
-  line-height: 1.35;
+#touch .tc {
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
   color: var(--ink);
-  background: rgba(251, 246, 234, 0.9);
-  border-radius: 3px;
-  white-space: nowrap;
-  pointer-events: none;
+  font: inherit;
+  cursor: pointer;
+  animation: tc-pop 0.34s cubic-bezier(0.3, 1.45, 0.5, 1) both;
 }
 
-.tc-pad {
+/* A drawing: the disc itself. */
+#touch .tc-face,
+#touch .tc-dial,
+#touch .tc-knob {
   position: absolute;
-  pointer-events: auto;
-  touch-action: none;
-  display: flex;
-  gap: calc(10px * var(--tk, 1));
+  inset: 0;
+  border-radius: 50%;
+  transition:
+    translate 0.07s ease,
+    scale 0.07s ease;
 }
 
-.tc-pad .half {
-  width: calc(78px * var(--tk, 1));
-  height: calc(78px * var(--tk, 1));
-  border: var(--lw) solid var(--line);
-  background: var(--grain), rgba(251, 246, 234, 0.8);
-  box-shadow: 2px 3px 0 var(--shade);
-  color: var(--ink);
-  border-radius: 20px 12px 22px 10px / 12px 20px 10px 22px;
-  display: grid;
-  place-items: center;
+#touch .tc svg,
+#touch .tc-stick svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* The page's grain over the drawing. */
+#touch .tc-face::after,
+#touch .tc-dial::after,
+#touch .tc-knob::after {
+  content: '';
+  position: absolute;
+  inset: 4%;
+  border-radius: 50%;
+  background: var(--grain);
+  opacity: 0.75;
+  mix-blend-mode: multiply;
   pointer-events: none;
+  transition: background-color 0.07s ease;
 }
 
-.tc-pad .half + .half {
-  border-radius: 12px 20px 10px 22px / 20px 12px 22px 10px;
+/* Each disc's shadow on the page, low and to the left like the drawings'. */
+#touch .tc::before,
+#touch .tc-dial::before,
+#touch .tc-knob::before {
+  content: '';
+  position: absolute;
+  inset: 1%;
+  z-index: -1;
+  border-radius: 50%;
+  background: var(--tc-shadow);
+  translate: calc(var(--tk) * -2.5px) calc(var(--tk) * 4.5px);
+  transition: translate 0.07s ease;
 }
 
-.tc-pad .half.held {
-  background: var(--pencil), var(--pastel-mint);
-  translate: 1px 2px;
-  box-shadow: 0 1px 0 var(--shade);
+#touch .tc-dial,
+#touch .tc-knob {
+  isolation: isolate;
 }
 
-.tc-pad svg {
-  width: 42%;
-  height: 42%;
+/* Pressed: the paper sinks into the page and its shadow shrinks. */
+#touch .tc.held .tc-face {
+  translate: calc(var(--tk) * -1.5px) calc(var(--tk) * 3px);
+  scale: 0.97;
 }
 
-/* Sliding up or down from the pad walks in depth: small marks show it. */
-.tc-pad .depth {
+#touch .tc.held::before {
+  translate: calc(var(--tk) * -0.5px) calc(var(--tk) * 1px);
+}
+
+#touch .tc.held .tc-face::after,
+#touch .tc-stick.held .tc-knob::after {
+  background-color: rgba(74, 65, 82, 0.08);
+}
+
+/* The label: a little paper tag pinned over the disc's lower edge, edged
+   in the disc's own contour colour. */
+#touch .tc-tag {
   position: absolute;
   left: 50%;
-  width: calc(30px * var(--tk, 1));
-  height: calc(24px * var(--tk, 1));
-  margin-left: calc(-15px * var(--tk, 1));
-  border: var(--lw) solid var(--line);
-  background: var(--grain), rgba(251, 246, 234, 0.8);
-  box-shadow: 1px 2px 0 var(--shade);
+  top: calc(100% - 1em);
+  translate: -50% 0;
+  rotate: -3deg;
+  padding: 0.04em 0.5em 0.1em;
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: max(10.5px, calc(var(--tk) * 11.5px));
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
   color: var(--ink);
-  border-radius: 10px 8px 11px 7px / 8px 11px 7px 10px;
-  display: grid;
-  place-items: center;
+  background: var(--grain), var(--paper);
+  border: 1.25px solid var(--edge, var(--line));
+  border-radius: 7px 9px 6px 8px / 8px 6px 9px 7px;
+  box-shadow: -1px 2px 0 var(--shade);
   pointer-events: none;
+  transition: translate 0.07s ease;
 }
 
-.tc-pad .depth.up {
-  top: calc(-16px * var(--tk, 1));
+#touch .tc-jump .tc-tag {
+  font-size: max(11.5px, calc(var(--tk) * 13px));
 }
 
-.tc-pad .depth.down {
-  bottom: calc(-16px * var(--tk, 1));
+#touch .tc-chip .tc-tag {
+  font-size: max(10px, calc(var(--tk) * 10.5px));
+  top: calc(100% - 1.1em);
 }
 
-.tc-pad .depth svg {
-  width: 62%;
-  height: 62%;
+#touch .tc.held .tc-tag {
+  translate: calc(-50% - var(--tk) * 1.5px) calc(var(--tk) * 3px);
 }
 
-.tc-pad .depth.up svg {
-  rotate: 90deg;
+#touch .tc:focus {
+  outline: none;
 }
 
-.tc-pad .depth.down svg {
-  rotate: -90deg;
+#touch .tc:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
 }
 
-.tc-pad .depth.held {
-  background: var(--pencil), var(--pastel-mint);
+/* The walking stick: a dial with a knob. Its touch area reaches a little
+   past the dial (--reach) for a thumb that lands near the edge. */
+#touch .tc-stick::before {
+  content: '';
+  position: absolute;
+  inset: calc(-1 * var(--reach, 0px));
+  border-radius: 50%;
 }
+
+#touch .tc-knob {
+  inset: auto;
+  left: calc(50% - var(--knob, 0.44) * 50%);
+  top: calc(50% - var(--knob, 0.44) * 50%);
+  width: calc(var(--knob, 0.44) * 100%);
+  height: calc(var(--knob, 0.44) * 100%);
+  /* Let go: it springs back to the middle. */
+  transition:
+    translate 0.36s cubic-bezier(0.3, 1.75, 0.55, 1),
+    scale 0.07s ease;
+}
+
+#touch .tc-stick.held .tc-knob {
+  transition: scale 0.07s ease;
+  scale: 0.96;
+}
+
+#touch .tc-stick.held .tc-knob::before {
+  translate: calc(var(--tk) * -0.5px) calc(var(--tk) * 1.5px);
+}
+
+/* The dial lights the way the thumb points: left and right in the walking
+   green, up and down (in depth) in lilac. */
+#touch .tc-dial .wedge {
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+#touch .tc-dial .mark {
+  stroke: var(--mark);
+  opacity: 0.7;
+  transition: opacity 0.1s ease;
+}
+
+#touch .tc-stick[data-dir~='l'] .wedge.l,
+#touch .tc-stick[data-dir~='r'] .wedge.r,
+#touch .tc-stick[data-dir~='u'] .wedge.u,
+#touch .tc-stick[data-dir~='d'] .wedge.d {
+  opacity: 0.9;
+}
+
+#touch .tc-stick[data-dir~='l'] .mark.l,
+#touch .tc-stick[data-dir~='r'] .mark.r {
+  stroke: var(--mark-walk);
+  opacity: 1;
+}
+
+#touch .tc-stick[data-dir~='u'] .mark.u,
+#touch .tc-stick[data-dir~='d'] .mark.d {
+  stroke: var(--mark-depth);
+  opacity: 1;
+}
+
+/* A button that comes (Biçim once it is learnt) pops onto the page. */
+@keyframes tc-pop {
+  from {
+    opacity: 0;
+    scale: 0.5;
+  }
+  65% {
+    opacity: 1;
+    scale: 1.07;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@keyframes tc-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Reduced motion: no springs and no pops, only quick fades. */
+.reduced-motion #touch .tc {
+  animation: tc-fade 0.15s ease both;
+}
+
+.reduced-motion #touch .tc-face,
+.reduced-motion #touch .tc-dial,
+.reduced-motion #touch .tc-knob,
+.reduced-motion #touch .tc-tag,
+.reduced-motion #touch .tc::before,
+.reduced-motion #touch .tc-knob::before {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #touch .tc {
+    animation: tc-fade 0.15s ease both;
+  }
+  #touch .tc-face,
+  #touch .tc-dial,
+  #touch .tc-knob,
+  #touch .tc-tag,
+  #touch .tc::before,
+  #touch .tc-knob::before {
+    transition: none;
+  }
+}
+
+/* ============================================================ end of touch controls */
 
 @media (prefers-reduced-motion: reduce) {
   .dialogue,

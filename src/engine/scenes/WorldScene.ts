@@ -976,9 +976,11 @@ export class WorldScene extends Phaser.Scene {
     const t = this.target;
     const gameplay = app.input.context === 'gameplay';
     let actionLabel = '';
+    let inspect = false;
     this.hintGlyph.setVisible(false);
     if (gameplay && t && p.controllable) {
       actionLabel = t.label;
+      inspect = t.kind === 'interact';
       if (t.kind === 'interact') {
         prompts.push({ key: 'E', label: t.label });
         this.hintGlyph.setVisible(true).setPosition(t.x, t.y - 95 + Math.sin(time / 240) * 4).setRotation(time / 900);
@@ -986,7 +988,7 @@ export class WorldScene extends Phaser.Scene {
     }
     hud.setPrompts(prompts);
     const canForm = p.kind === 'gorti' && this.quest.hasAbility('form');
-    app.ui.touch.setAvail({ focus: false, form: canForm, song: false, actionLabel, jump: JUMPING && p.canJump });
+    app.ui.touch.setAvail({ focus: false, form: canForm, song: false, actionLabel, inspect, jump: JUMPING && p.canJump });
   }
 
   // ------------------------------------------------------------ fx helpers
