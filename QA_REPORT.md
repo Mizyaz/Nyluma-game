@@ -5,7 +5,84 @@ listeler. Ölçümler aşağıdaki test ortamında alınmıştır; gerçek cihaz
 performansını temsil etmez. İlk bölüm bu sürümün kontrolleridir. Sonraki
 bölümlerdeki sonuçlar önceki sürümlerin oyun kodu içindir.
 
-## Bu sürüm: daha doğal hikâye metni, kapıyı örtmeyen dokunmatik düğmeler
+## Bu sürüm: daha geniş yan kapılar, telefonda tamamen görünüyor
+
+Bu sürümde değişenler:
+
+- Sağ yan duvardaki sekiz kapı artık duvarın arka köşesinden odanın sonuna kadar oyuluyor: r01,
+  r02, r04, r05 Ay kapısı, r08, b01 çit kemeri, b02 tepe kapısı ve b03 blok kapısı. Açıklık
+  z −282'den −2'ye uzanıyor; önce yaklaşık −250'den −70'e uzanıyordu.
+  - Uzak pervazın yanındaki süsler kemerin üstüne ya da yakın omzuna taşındı.
+  - Kanatlar gerilmedi, daha çok parçayla yeniden kuruldu: daha çok tahta, kalp, yıldız ve
+    çit.
+  - Menteşede dönen üç kanadın (r01, r04, b01) geçidi 310 derinliğe çıktı. Açık kanat
+    geçidin sonundan taşmıyor.
+  - Geçitten bakan figür artık açıklığın ortasında duruyor.
+- Kutunun yırtık önü dar ekranda yanlardan daha az içeri giriyor.
+  - Odanın sonunda yan duvar ekranın kenarına denk geliyor. Bu yüzden 70 px'lik yırtık, dik
+    tutulan telefonda kapının yakın yarısını örtüyordu.
+  - Artık yanlardaki yırtık en çok, odanın sonunda yan duvarı açıkta bırakacak kadar içeri
+    giriyor (`tearSides`, `src/paper/box.ts`). Dik telefonda 28 px, 1280×720'de 59 px, yan
+    tutulan telefonda yine 70 px.
+  - Canvas çizicisinin düz önü de aynı payı kullanıyor.
+- Yeni birim testleri:
+  - Her yan kapı eskisinin en az 1,5 katı genişlikte görünüyor.
+  - Sekiz kapının hiçbiri yırtık önün arkasında kalmıyor. Bu, sahnenin çizdiği en dar
+    görüntüde (dik telefon), yan tutulan telefonda ve masaüstünde denetleniyor.
+
+Kapının ekrandaki genişliği, kamera odanın sağ ucundayken (CSS px). Kapı ajanı her odada
+`lens.project` ile ölçtü:
+
+| Boyut | Önce | Şimdi |
+| --- | --- | --- |
+| 1280×720 | 84–93 | 151 |
+| 844×390 | 56–61 (r08: 49) | 100 (r08: 82) |
+| 390×844 dik, kapının tamamı | 26–28 | 46 |
+| 390×844 dik, yırtığın örtmediği kısım | 20–26 | 46 |
+
+Dik telefondaki son satırı r01'de ben ölçtüm. Ekran 1170 cihaz pikseli genişliğinde. Kapı
+1030. ile 1169. pikseller arasında duruyor. Yırtığın kenarı 1229. pikselde, yani ekranın
+dışında; önce 1117. pikseldeydi. Öbür yedi kapıyı birim testi denetliyor.
+
+Kontroller `2e5f0b5` üzerinde koşuldu:
+
+| Kontrol | Sonuç |
+| --- | --- |
+| `npm run typecheck` | Hatasız |
+| `npx vitest run` | 22 dosya, 202 test geçti |
+| `npm run kd -- check` | Tamam: 6 bölüm, 4 oda dosyası, 12 TS oda, 8 metin dosyası |
+| `npm run build`, `npm run build:e2e` | Başarılı |
+| `npm run test:e2e` (kampanyalar hariç) | 25 geçti, 13 atlandı, 0 kaldı (10,9 dk) |
+| `npx playwright test --grep @campaign` | 2 geçti (12,9 dk: klavye 6,3 dk, dokunmatik 6,6 dk) |
+
+Kapı ajanı da kendi dalında (`70e144c`) aynı testleri koştu: 25 geçti, 13 atlandı, 0 kaldı;
+iki kampanya da geçti. Yan telefonda dokunarak r01'den (dönen kanat), b02'den (kayan kanat) ve
+b03'ten (batan kanat) geçti; üçünde de oda değişti.
+
+Görsel olarak bakılanlar:
+
+- Kapı ajanı her kapıyı uzaktan, kapalı ve açık görüntüledi: 1280×720'de, 844×390'da (dpr 2,
+  dokunmatik), 390×844 dik ekranda (dpr 3, dokunmatik) ve Canvas'ta. Önce ve sonra
+  görüntülerini yan yana koydu.
+- Ben bunların içinden r01'i (1280×720 ve dik), r04'ün yakın planını (1280×720) ve b02'yi
+  (844×390) açıp baktım.
+- r01'in sonunu dik telefonda ve 1280×720'de, yırtık değişikliğinden önce ve sonra kendim
+  görüntüledim. Dik telefonda kapının tamamı görünüyor; 1280×720'de görüntü neredeyse aynı.
+  Dik telefonda Canvas'ta da baktım.
+- Birleştirmeden sonra b02'de (844×390, dokunmatik) düğmeleri denetledim.
+  - Kapıdan uzaktayken çubuk ve üç düğme de tam görünüyor.
+  - Kapının önünde Zıpla ve Biçim düğmeleri yarı saydam oluyor (`opacity(0.4)`); eylem
+    düğmesi tam kalıyor. Kapı, saydam düğmelerin arkasından görünüyor.
+  - Konsolda hata yok.
+
+Bilinen sorunlar (kapı ajanının raporundan, bu sürümden önce de vardı):
+
+- Canvas'ta b02'nin kayan kanadı yalnızca kemerin başladığı yere kadar çiziliyor.
+- Ay kapısının eğrelti yaprakları ve tepe kapısının toprak halkasının saçağı oyukta
+  kesiliyor.
+- Gerçek bir telefonda denenmedi.
+
+## Önceki sürüm: daha doğal hikâye metni, kapıyı örtmeyen dokunmatik düğmeler
 
 Bu sürümde değişenler:
 
@@ -54,7 +131,7 @@ Görsel olarak bakılanlar (ekran görüntüleri tek tek açıldı):
   altlarında Gorti ve kapı görünüyor. Kapıdan uzakta düğmeler tam görünür.
 - Dikey telefonda düğmeler oyun görüntüsünün altında kalıyor; orada hiç saydamlaşmıyorlar.
 
-## Önceki sürüm: kapılar duvarın içinde, geçişler kâğıt sahnede
+## Eski sürüm: kapılar duvarın içinde, geçişler kâğıt sahnede
 
 Bu sürümde değişenler:
 
