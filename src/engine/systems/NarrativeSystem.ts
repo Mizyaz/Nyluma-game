@@ -88,7 +88,8 @@ export class Cutscene {
       this.waits.delete(w);
       w.done();
     }
-    if (app.ui.dialogue.isOpen) app.ui.dialogue.finish();
+    // Closes what is said, and forgets lines still waiting for a chapter page to open.
+    app.ui.dialogue.finish();
     FaceDialogue.end(this.scene);
     app.ui.hud.clearCaption();
   }

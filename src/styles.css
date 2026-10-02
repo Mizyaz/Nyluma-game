@@ -2178,9 +2178,9 @@ a {
 /* ------------------------------------------------------------ page turns */
 
 /* The transitions (WarpScene, src/ui/PageTurn.ts): the frame just shown
-   turns over as a page of the storybook, in CSS 3D over the canvas, and the
-   next room pops up under it. Over the game view and under the HUD; nothing
-   in it takes pointer events. */
+   turns over as a page of the storybook, drawn on a canvas of its own over
+   the game view, and the next room pops up under it. Over the game view and
+   under the HUD; nothing in it takes pointer events. */
 .pt {
   position: absolute;
   inset: 0;
@@ -2195,133 +2195,15 @@ a {
   background: var(--grain), var(--pencil), radial-gradient(ellipse at 60% 40%, #fbf6ea 0%, #efe5d2 70%, #e3d6bf 100%);
 }
 
-.pt-book {
-  position: absolute;
-  perspective-origin: 50% 50%;
-}
-
 .pt-leaf {
   position: absolute;
-  inset: 0;
-  transform-style: preserve-3d;
-}
-
-.pt-strip {
-  position: absolute;
-  top: 0;
-  transform-style: preserve-3d;
-  will-change: transform;
-}
-
-.pt-face {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-}
-
-.pt-front canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-/* A page with nothing printed on it (no frame could be taken). */
-.pt-plain {
-  background: var(--grain), var(--pencil), #f7f0e1;
-}
-
-/* The back of the page: paper, its edges inked in its own darker tone, the
-   print showing faintly through, mirrored. */
-.pt-back {
-  transform: rotateY(180deg);
-  background: var(--grain), var(--pencil), #f4ebd9;
-  box-shadow:
-    inset 0 2px 0 #c8b79f,
-    inset 0 -2px 0 #c8b79f;
-}
-
-.pt-ghost {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0.11;
-  transform: scaleX(-1);
-}
-
-.pt-sh,
-.pt-gl {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  will-change: opacity;
-}
-
-/* Shadow on the print: a cool plum tone, lightly hatched, and the paper's
-   edge inked as it rises off the page beneath. */
-.pt-front .pt-sh {
-  background:
-    repeating-linear-gradient(-58deg, rgba(59, 50, 69, 0.3) 0 1px, transparent 1px 5px),
-    rgba(59, 50, 69, 0.48);
-  box-shadow:
-    inset 0 2px 0 #6f6178,
-    inset 0 -2px 0 #6f6178;
-}
-
-.pt-back .pt-sh {
-  background:
-    repeating-linear-gradient(-58deg, rgba(104, 82, 100, 0.45) 0 1px, transparent 1px 4.5px),
-    rgba(96, 74, 98, 0.5);
-}
-
-/* The glint riding the curl. */
-.pt-gl {
-  background: rgba(255, 251, 241, 0.92);
-}
-
-/* The paper's cut edge along the free side of the page's back: a pale
-   bevel inked in the paper's own darker tone. */
-.pt-rim {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 3px;
-  background: linear-gradient(90deg, #b5a184 0 1.2px, #fffaf0 1.2px);
-}
-
-.pt-rim.r {
-  left: auto;
-  right: 0;
-  background: linear-gradient(270deg, #b5a184 0 1.2px, #fffaf0 1.2px);
-}
-
-/* The paper's thickness at the free edge. */
-.pt-edge {
-  position: absolute;
   left: 0;
   top: 0;
-  transform-origin: 50% 50% 0;
-  background: linear-gradient(90deg, #b9a78f, #fffaf0 35%, #fffaf0 65%, #b9a78f);
-  backface-visibility: visible;
+  pointer-events: none;
 }
 
-/* The outline of the roll where the paper turns out of sight. */
-.pt-ink {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 2px;
-  height: 100%;
-  opacity: 0;
-  background: linear-gradient(90deg, #9d8a6c 0 1.2px, rgba(157, 138, 108, 0.35) 1.2px);
-  transform-origin: 50% 50%;
-}
-
-/* The shadows the lifted page throws on the page beneath: drawn 200px wide
-   (PageTurn's SHADOW_W) and scaled to size, darkest against the paper. */
+/* The shadows the chapter page's doors throw on the room beneath as they
+   swing open: drawn 200px wide and scaled to size, darkest against the paper. */
 .pt-gs {
   position: absolute;
   left: 0;
