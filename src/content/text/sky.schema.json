@@ -55,7 +55,7 @@
               "description": "Boyu: 1 olağan",
               "type": "number",
               "minimum": 0.7,
-              "maximum": 1.4
+              "maximum": 1.25
             },
             "place": {
               "description": "Köşedeki yeri: corner köşede, peek kenardan bakıyor, high yukarıda, low aşağıda, inward içeri doğru",
@@ -149,7 +149,7 @@
               "description": "Boyu: 1 olağan",
               "type": "number",
               "minimum": 0.7,
-              "maximum": 1.4
+              "maximum": 1.25
             },
             "place": {
               "description": "Köşedeki yeri: corner köşede, peek kenardan bakıyor, high yukarıda, low aşağıda, inward içeri doğru",
@@ -256,7 +256,7 @@
                 "description": "Boyu: 1 olağan",
                 "type": "number",
                 "minimum": 0.7,
-                "maximum": 1.4
+                "maximum": 1.25
               },
               "place": {
                 "description": "Köşedeki yeri: corner köşede, peek kenardan bakıyor, high yukarıda, low aşağıda, inward içeri doğru",
@@ -350,7 +350,7 @@
                 "description": "Boyu: 1 olağan",
                 "type": "number",
                 "minimum": 0.7,
-                "maximum": 1.4
+                "maximum": 1.25
               },
               "place": {
                 "description": "Köşedeki yeri: corner köşede, peek kenardan bakıyor, high yukarıda, low aşağıda, inward içeri doğru",
@@ -457,7 +457,7 @@
                 "description": "Boyu: 1 olağan",
                 "type": "number",
                 "minimum": 0.7,
-                "maximum": 1.4
+                "maximum": 1.25
               },
               "place": {
                 "description": "Köşedeki yeri: corner köşede, peek kenardan bakıyor, high yukarıda, low aşağıda, inward içeri doğru",
@@ -551,7 +551,7 @@
                 "description": "Boyu: 1 olağan",
                 "type": "number",
                 "minimum": 0.7,
-                "maximum": 1.4
+                "maximum": 1.25
               },
               "place": {
                 "description": "Köşedeki yeri: corner köşede, peek kenardan bakıyor, high yukarıda, low aşağıda, inward içeri doğru",

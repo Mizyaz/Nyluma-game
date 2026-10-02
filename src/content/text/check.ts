@@ -334,7 +334,7 @@ export interface SkyText {
 }
 
 export const TILT_MAX = 25;
-export const SIZE_RANGE = [0.7, 1.4] as const;
+export const SIZE_RANGE = [0.7, 1.25] as const;
 
 function checkSkyLine(v: unknown, r: Report, key: string): SkyLine | null {
   if (typeof v === 'string') return isText(v) ? { text: v } : (r.error(key, 'boş bir söz'), null);

@@ -81,7 +81,11 @@ export class RigPortrait implements Portrait {
   }
 }
 
-/** The Moon or the Sun: their own animated faces. */
+/**
+ * The Moon or the Sun: their own animated faces, dressed for the page. The
+ * card is where the character shows while it speaks: its face in the sky or
+ * in the room steps aside meanwhile (Celestial's `presence`).
+ */
 export class FacePortrait implements Portrait {
   readonly root: Phaser.GameObjects.Container;
   private readonly face: Face;
@@ -89,7 +93,7 @@ export class FacePortrait implements Portrait {
 
   constructor(scene: Phaser.Scene, kind: 'baby' | 'old' | 'sun', win: PortraitWindow) {
     this.root = scene.add.container(0, 0);
-    this.face = new Face(scene, kind, win.cx, win.cy + win.size * 0.04, 0);
+    this.face = new Face(scene, kind, win.cx, win.cy + win.size * 0.04, 0, 'card');
     const size = kind === 'sun' ? 360 : kind === 'old' ? 300 : 260;
     this.face.setScale((win.size * 0.92) / size);
     this.face.lookAt(win.cx - win.facing * 400, win.cy);

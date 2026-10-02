@@ -10,6 +10,7 @@ import { EndingView } from './EndingView';
 import { Hud } from './Hud';
 import { Menus } from './Menus';
 import { TouchControls } from './TouchControls';
+import { SkyTouch } from './SkyTouch';
 import { LoadingView } from './LoadingView';
 
 /** Root of all DOM overlays; keeps #stage aligned with the letterboxed canvas. */
@@ -21,6 +22,8 @@ export class UI {
   readonly doc: DocView;
   readonly ending: EndingView;
   readonly touch: TouchControls;
+  /** The Sun and the Moon under a finger (under the HUD, the texts, the menus and the controls). */
+  readonly skyTouch: SkyTouch;
   readonly colorStorm: ColorStorm;
   private loadingView: LoadingView | null = null;
   private game: Phaser.Game;
@@ -33,6 +36,7 @@ export class UI {
     this.game = game;
     this.stage = document.getElementById('stage')!;
     this.hud = new Hud(this.stage);
+    this.skyTouch = new SkyTouch(this.stage, this.hud.el);
     this.dialogue = new Dialogue(this.stage);
     this.balloon = this.stage.querySelector<HTMLElement>('.dialogue');
     this.doc = new DocView(this.stage);
@@ -96,6 +100,7 @@ export class UI {
     const scale = Math.min(1.4, Math.max(0.5, Math.min(W / 1280, H / 720)));
     document.documentElement.style.setProperty('--s', scale.toFixed(3));
     this.touch.layout();
+    this.skyTouch.layout();
     this.aimTail(true);
   }
 

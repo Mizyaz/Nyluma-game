@@ -8,8 +8,10 @@ import type { SkyScene } from './SkyScene';
 // comes from where the face shows. The one that is out lights the room and
 // throws the figures' shadows (Gorti's kahkaha swings them to the other
 // side); the other only glows. They shine with their faces: they breathe,
-// blink, laugh and talk. Under the Sun the room's air warms and lifts; under
-// the Moon it turns cold blue and darker. A daylight mood takes none of it.
+// blink, laugh and talk, and swell softly when touched. Under the Sun the
+// room's air warms and lifts; under the Moon it turns cold blue and darker.
+// A daylight mood takes none of it. While a face shows elsewhere (in the
+// room, in a dialogue card) its lamp stays at its home in the corner.
 
 /** How far before the actors' plane the lamps hang (world px; the box's front is at about 170). */
 const LAMP_Z = 300;
@@ -23,6 +25,8 @@ const LAMP: Record<'sun' | 'baby' | 'old', { color: number; intensity: number; r
 const LOW = 0.12;
 /** How far `shining` goes with neither out (the room's light is then shared). */
 const EVEN = 0.39;
+/** A touch swells a lamp by this much of its full strength, softly (out or not: SkyTouch). */
+const TOUCHED = 0.3;
 /**
  * The room's air under each, all the way out: the colour the ambient and
  * the fog lean to (and how far), the ambient's strength, and how much of
@@ -75,7 +79,7 @@ export class SkyLamps {
     const glow = app.settings.reducedMotion ? 1 + (at.glow - 1) * 0.25 : at.glow;
     lamp.color = look.color;
     lamp.radius = look.radius;
-    lamp.intensity = look.intensity * (LOW + (1 - LOW) * at.out) * glow;
+    lamp.intensity = look.intensity * ((LOW + (1 - LOW) * at.out) * glow + TOUCHED * at.touch);
     return this.paper.lens.unproject(at.x, at.y, LAMP_Z);
   }
 
