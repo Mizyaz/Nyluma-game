@@ -29,6 +29,24 @@ export interface Disc {
   d: number;
 }
 
+/** A part of the picture to keep in sight: its edges. */
+export interface ClearBox {
+  l: number;
+  t: number;
+  r: number;
+  b: number;
+}
+
+/** Whether a round control lies over any of these boxes. */
+export function covers(c: Disc, boxes: readonly ClearBox[]): boolean {
+  const r = c.d / 2;
+  return boxes.some((b) => {
+    const dx = Math.max(b.l - c.x, 0, c.x - b.r);
+    const dy = Math.max(b.t - c.y, 0, c.y - b.b);
+    return dx * dx + dy * dy < r * r;
+  });
+}
+
 export interface TouchLayout {
   /** The scale the sizes in TOUCH were drawn at (1 on a phone 390 px wide, held upright). */
   k: number;

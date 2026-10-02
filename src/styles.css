@@ -2524,6 +2524,23 @@ a {
   background-color: rgba(74, 65, 82, 0.08);
 }
 
+/* Over Gorti or the doorway he is at: see-through, so the picture shows
+   under it. It still answers, and pressed it is whole again. (A filter,
+   since the pop-in animation holds the opacity.) */
+#touch .tc,
+#touch .tc-stick {
+  transition: filter 0.25s ease;
+}
+
+#touch .clear {
+  filter: opacity(0.4);
+}
+
+#touch .clear.held {
+  filter: none;
+  transition-duration: 0.06s;
+}
+
 /* The label: a little paper tag pinned over the disc's lower edge, edged
    in the disc's own contour colour. */
 #touch .tc-tag {

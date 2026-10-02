@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TOUCH } from '../../src/tuning';
-import { CHIPS, problems, touchLayout, type Disc, type Hand, type TouchScreen } from '../../src/ui/touchLayout';
+import { CHIPS, covers, problems, touchLayout, type Disc, type Hand, type TouchScreen } from '../../src/ui/touchLayout';
 
 // Where the on-screen controls go on phones and tablets of every common
 // size, held upright and sideways, for either hand.
@@ -113,5 +113,24 @@ describe('touch controls layout', () => {
       expect(l.jump.x + l.jump.d / 2).toBeLessThanOrEqual(w - safe.r - TOUCH.side + 0.01);
       expect(l.jump.y + l.jump.d / 2).toBeLessThanOrEqual(h - safe.b - TOUCH.bottom + 0.01);
     }
+  });
+
+  it('knows which control lies over a part of the picture to keep in sight', () => {
+    const c: Disc = { x: 100, y: 100, d: 40 };
+    expect(covers(c, [])).toBe(false);
+    // Overlapping its edge, inside it, or around it.
+    expect(covers(c, [{ l: 115, t: 90, r: 200, b: 110 }])).toBe(true);
+    expect(covers(c, [{ l: 95, t: 95, r: 105, b: 105 }])).toBe(true);
+    expect(covers(c, [{ l: 0, t: 0, r: 300, b: 300 }])).toBe(true);
+    // Beside it, or only near its corner (the disc is round).
+    expect(covers(c, [{ l: 121, t: 0, r: 200, b: 300 }])).toBe(false);
+    expect(covers(c, [{ l: 116, t: 116, r: 200, b: 200 }])).toBe(false);
+    expect(covers(c, [{ l: 113, t: 113, r: 200, b: 200 }])).toBe(true);
+    // Sideways on a phone, the right thumb's buttons sit in the corner where a doorway in the right wall shows.
+    const s: TouchScreen = { w: 844, h: 390, portrait: false, viewBottom: 0, column: { left: 300, right: 544 }, safe: { l: 0, r: 0, t: 0, b: 0 } };
+    const l = touchLayout(s);
+    const door = { l: 760, t: 150, r: 844, b: 330 };
+    expect(covers(l.jump, [door])).toBe(true);
+    expect(covers(l.stick, [door])).toBe(false);
   });
 });

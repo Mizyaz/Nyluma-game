@@ -40,6 +40,7 @@ import type { SkyJson, SkyOut } from '../content/types';
 import { breakFlag } from '../content/compile';
 import { shatter } from '../../render/2d/fx/shatter';
 import { SMASH } from '../../render/2d/rig/actionPoses';
+import type { ClearBox } from '../../ui/touchLayout';
 
 /** Holding the laugh this long (s) makes it a kahkaha. */
 const KAHKAHA_S = 0.75;
@@ -1051,6 +1052,32 @@ export class WorldScene extends Phaser.Scene {
     hud.setPrompts(prompts);
     const canForm = p.kind === 'gorti' && this.quest.hasAbility('form');
     app.ui.touch.setAvail({ focus: false, form: canForm, song: false, actionLabel, inspect, jump: JUMPING && p.canJump });
+    this.clearTouch();
+  }
+
+  /** The touch controls lying over Gorti, or over a doorway he is at, turn see-through. */
+  private clearTouch(): void {
+    const touch = app.ui.touch;
+    if (!touch.showing) return;
+    const lens = this.paper.lens;
+    // The canvas is in device px; the controls are placed in CSS px.
+    const sc = this.scale;
+    const cb = sc.canvasBounds;
+    const kx = cb.width / sc.width;
+    const ky = cb.height / sc.height;
+    const boxes: ClearBox[] = [];
+    const box = (pts: readonly { x: number; y: number }[]): void => {
+      const xs = pts.map((q) => q.x);
+      const ys = pts.map((q) => q.y);
+      boxes.push({ l: cb.x - window.scrollX + Math.min(...xs) * kx, r: cb.x - window.scrollX + Math.max(...xs) * kx, t: cb.y - window.scrollY + Math.min(...ys) * ky, b: cb.y - window.scrollY + Math.max(...ys) * ky });
+    };
+    const p = this.player;
+    if (p.state !== 'hidden' && p.rig.container.visible) box([lens.project(p.x - 30, p.rig.attachPoint('eye').y - 46, p.z), lens.project(p.x + 30, p.feetY, p.z)]);
+    const floor = this.paper.spec.floor;
+    for (const o of this.doors?.nearOpenings() ?? []) {
+      box([lens.project(o.x, floor, o.z0), lens.project(o.x, floor, o.z1), lens.project(o.x, floor - o.top, o.z0), lens.project(o.x, floor - o.top, o.z1)]);
+    }
+    touch.keepClear(boxes);
   }
 
   // ------------------------------------------------------------ fx helpers

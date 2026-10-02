@@ -4,7 +4,7 @@ import type { TouchHand, TouchMode } from '../engine/state/types';
 import { TOUCH } from '../tuning';
 import { h } from './dom';
 import { buttonArt, edgeOf, knobArt, stickArt, stickInks, type ButtonArt } from './touchArt';
-import { CHIPS, touchLayout, type ChipKey, type Disc, type TouchLayout } from './touchLayout';
+import { CHIPS, covers, touchLayout, type ChipKey, type ClearBox, type Disc, type TouchLayout } from './touchLayout';
 
 export interface TouchAvail {
   focus: boolean;
@@ -347,6 +347,27 @@ export class TouchControls {
     const changed = a.focus !== p.focus || a.form !== p.form || a.song !== p.song || a.actionLabel !== p.actionLabel || !!a.inspect !== !!p.inspect || a.jump !== p.jump;
     this.avail = a;
     if (changed) this.refresh();
+  }
+
+  /** On the screen now (touch in use, during play). */
+  get showing(): boolean {
+    return this.on;
+  }
+
+  /**
+   * A control lying over one of these (Gorti, a doorway he is at; CSS px)
+   * turns see-through, so the picture shows under it; it still answers,
+   * and pressed it is whole again.
+   */
+  keepClear(boxes: readonly ClearBox[]): void {
+    const l = this.layoutNow;
+    const set = (el: HTMLElement, c: Disc | undefined): void => {
+      el.classList.toggle('clear', !!c && this.on && covers(c, boxes));
+    };
+    set(this.stick.el, l?.stick);
+    set(this.btns.jump.el, l?.jump);
+    set(this.btns.action.el, l?.action);
+    for (const c of CHIPS) set(this.btns[c].el, l?.chips[c]);
   }
 
   get enabled(): boolean {

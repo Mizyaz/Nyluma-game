@@ -450,6 +450,11 @@ export class RoomDoors {
     }
     this.doors.length = 0;
   }
+
+  /** The openings Gorti is at or coming to: the wall's face, the jambs' depths and the crown's height over the floor (world px). */
+  nearOpenings(): { x: number; z0: number; z1: number; top: number }[] {
+    return this.doors.filter((d) => d.wake > 0.3).map((d) => ({ x: d.face, z0: d.art.hole.z0, z1: d.art.hole.z1, top: holeHeight(d.art.hole) }));
+  }
 }
 
 /** Adds a room's doors to its script (set up after it, torn down with it). */
