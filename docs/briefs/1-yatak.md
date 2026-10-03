@@ -112,11 +112,11 @@ Use his existing poses and expressions. Add rig poses if you need them; the rigs
 ## Where and how to work
 
 - Read `docs/HANDOFF.md` first. It carries what earlier sessions learned about the user, the paper engine and the tests.
-- Your git worktree is `/home/user/kd-bed`, on branch `living-bed`. The lead makes it from the current `paper-engine`.
+- Your git worktree is `{ROOT}/kd-bed`, on branch `living-bed`. The lead makes it from the current `paper-engine`.
   - `node_modules` is a symlink to the main repo's; don't run `npm install`.
-  - Work and commit only there. Don't touch `/home/user/kristaller-dunyasi`, the other `/home/user/kd-*` worktrees or other branches.
+  - Work and commit only there. Don't touch `{MAIN}`, the other `{ROOT}/kd-*` worktrees or other branches.
   - Never push, merge, rebase or change remotes. The lead merges your branch.
-- Scratch files, tools, screenshots and logs go in `/home/user/kd-shots/bed/`. Never commit them.
+- Scratch files, tools, screenshots and logs go in `{ROOT}/kd-shots/bed/`. Never commit them.
 - Ports:
   - Dev server on 5451: `npx vite --port 5451 --strictPort --host 127.0.0.1`, in the background.
   - Static and e2e servers on 5611,5612,5613: `KD_E2E_PORTS=5611,5612,5613`.
@@ -127,11 +127,9 @@ Use his existing poses and expressions. Add rig poses if you need them; the rigs
   - Use Playwright with the preinstalled Chromium. Launch it with `--use-angle=swiftshader --enable-unsafe-swiftshader --ignore-gpu-blocklist` for WebGL.
   - `?room=r01` opens a room in dev and e2e builds.
   - `window.__kd` (`src/engine/testProbe.ts`) reads and steers the game: `state()`, `game()`, `world()`, `tp(x)`.
-  - Earlier agents' tools are in `/home/user/kd-shots/deep/tools/`:
-    - `snap.mjs` takes a JSON list of steps: tp, z, wait, shot, eval, key, settle.
-    - `montage.py` makes contact sheets: `python3 montage.py out.png cols label=file ...`.
-
-    Copy them, then point their Playwright import at your worktree's `node_modules` and their port at yours. If they are gone, write your own.
+  - Two helpers are in the repo:
+    - `node scripts/snap.mjs '<json>'` opens a room on your server (`"port": 5451`), steps the game and takes screenshots: tp, z, wait, frames, shot, eval, key, settle. Its header lists the options.
+    - `python3 scripts/montage.py out.png cols label=file ...` lays screenshots on one contact sheet.
 - Look at every screenshot you take (Read the PNG). The user judges by eye, so iterate until it looks genuinely good, not merely working.
 
 ## The user's taste (for all art)
@@ -162,8 +160,8 @@ Run all of these and report each exact command with its result:
 - `npm run kd -- check`
 - `npm run build`
 - `npm run build:e2e`
-- `KD_E2E_PORTS=5611,5612,5613 npx playwright test --grep-invert @campaign --output /home/user/kd-shots/bed/pw` (about 15 minutes)
-- `KD_E2E_PORTS=5611,5612,5613 npx playwright test --grep @campaign --output /home/user/kd-shots/bed/pw` (about 14 minutes; both full playthroughs)
+- `KD_E2E_PORTS=5611,5612,5613 npx playwright test --grep-invert @campaign --output {ROOT}/kd-shots/bed/pw` (about 15 minutes)
+- `KD_E2E_PORTS=5611,5612,5613 npx playwright test --grep @campaign --output {ROOT}/kd-shots/bed/pw` (about 14 minutes; both full playthroughs)
 
 If a test fails, find the real cause and fix it. Never skip, disable or weaken a test of behaviour that is kept.
 

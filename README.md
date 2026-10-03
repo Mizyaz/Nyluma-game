@@ -8,6 +8,16 @@ boş masadaki hak aktarımına.
 
 > **Oyna:** https://mizyaz.github.io/Nyluma-game/
 
+> **Geliştirmeye devam:** Yeni bir ajan ya da geliştirici önce şu dosyaları okur:
+>
+> - [`CLAUDE.md`](CLAUDE.md);
+> - [`docs/HANDOFF.md`](docs/HANDOFF.md): kod ve motor;
+> - [`docs/MEMORY.md`](docs/MEMORY.md): bugüne kadarki istekler, kararlar ve açık sorular.
+>
+> Sıradaki ajanların istemleri [`docs/briefs/`](docs/briefs/README.md) klasöründe.
+> Yeni bir ajana şunu yazmak yeter: "Bu repoda Kristaller Dünyası var. CLAUDE.md'deki
+> dosyaları oku ve kaldığımız yerden devam et."
+
 Tüm oyun içi metinler Türkçedir. Oyun tamamen statik dosyalardan çalışır:
 sunucu, hesap, çevrim içi hizmet ya da dış kaynak (CDN, yazı tipi, ses) yoktur.
 

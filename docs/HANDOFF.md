@@ -1,7 +1,11 @@
 # Handoff — Kristaller Dünyası (14. Oda)
 
 Read this first. It carries what the previous sessions knew, so that you do
-not have to re-discover it by reading the codebase.
+not have to re-discover it by reading the codebase. Then read:
+
+- `docs/MEMORY.md`, the user's side: what stands now, their rules and taste, the
+  decisions and why, the open questions, and every request in order.
+- `docs/briefs/README.md`: three agent briefs that wait for the user's "başlat".
 
 ## TL;DR
 
@@ -13,15 +17,26 @@ not have to re-discover it by reading the codebase.
 - The world is drawn by our own **paper engine** (`src/paper/`, below): every
   room is a paper box with its front torn open, and every drawing stands in
   it as a card at its own depth, printed at the exact scale it shows at.
-- **Next steps, in order:**
-  1. **Painting 1, object by object, with the user.** Ask about each object
+- **Next steps, in order (3 October 2026):**
+  1. **Wait for "başlat"**, then run the three briefs in `docs/briefs/` one after
+     another: the living bed, dynamic whales, the rascals (enemies) with Gorti's new
+     moves. For each: launch, review by eye, merge `--no-ff`, run every check and both
+     campaigns, write the QA section, publish, then the next. The user may change the
+     order. Never start them without "başlat".
+  2. **The enemy design is still being talked over.** Three questions are open: a gentle
+     tone or real combat, what a touch costs, and a test room or the story chapters. The
+     defaults are in `docs/briefs/README.md`. If the user answers, add their answers to
+     the rascals brief before launching it.
+  3. **Painting 1, object by object, with the user.** Ask about each object
      before drawing it, and show each one. The pictures on the wall matter most
      ("o duvardaki resimler aşırı önemli"). Draw every object by hand as SVG.
-     Never trace the painting, and never extract its lines or colours.
-  2. The mood. Whimsical is the default. The user asked for "Little Nightmares,
+     Never trace the painting, and never extract its lines or colours. Since
+     1 October the user wants it stylistic rather than pixel perfect ("pixel perfect
+     yerine daha stilistik git … Basit değil, stilistik").
+  4. The mood. Whimsical is the default. The user asked for "Little Nightmares,
      but more whimsical" and has not yet picked between `?mood=whimsical` and
      `?mood=nightmare`.
-  3. Optional: volume shading for the paper puppets (Phaser 4's Lighting
+  5. Optional: volume shading for the paper puppets (Phaser 4's Lighting
      component with normal maps).
 - Ask the user to re-upload painting 1 when you need it. Uploads do not survive
   between sessions. Never commit the painting or crops of it.
@@ -50,6 +65,21 @@ not have to re-discover it by reading the codebase.
   - Gorti has **no pupils, no smile and no mouth**. Its face is a screen.
   - These features are done and must be kept: realistic whales (sperm, blue, bowhead) with sounds, per-word character voices in dialogue, and debug unlock-all with a scene list.
 
+## Starting from a fresh clone
+
+- `git clone https://github.com/Mizyaz/Nyluma-game.git`, then `npm ci` (Node 22, `.nvmrc`).
+- `main` is what is published. `paper-engine` holds the same commits: it was the
+  previous lead's working branch, pushed as a backup. No other branch is on GitHub,
+  and nothing is left unmerged.
+- Playwright uses Chromium. Claude Code's cloud containers have it preinstalled
+  (`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`; never run `playwright install` there).
+  Elsewhere, run `npx playwright install chromium` once.
+- `scripts/montage.py` needs Python 3 with Pillow.
+- Of the user's paintings, only the four that hang in the game are in the repo
+  (`src/assets/paintings/`, small JPEGs). Nothing else of them goes in: no uploads, no
+  references, no crops. Ask the user for an upload when you need a painting.
+- First check, about 30 s: `npm run typecheck && npx vitest run && npm run kd -- check`.
+
 ## Environment and commands
 
 - The Bash tool resets the cwd after each call. Use `cd <repo> && …` every time.
@@ -58,6 +88,17 @@ not have to re-discover it by reading the codebase.
   e.g. `KD_E2E_PORTS=5421,5422,5423 npm run test:e2e`.
 - Screenshot: `node scripts/shot.mjs <url> <out.png> [w] [h] [selector=body[data-ready]]`.
   `?room=r02` opens a room directly in dev and e2e builds, and `window.__kd` (the test probe) can teleport and step the game.
+- In a room, step by step: `node scripts/snap.mjs '{"port":5411,"url":"room=r02","w":844,"h":390,"dpr":2,"touch":true,"steps":[["tp",2300],["frames",3],["shot","out.png"]]}'`.
+  It waits until play is free (pressing Space through scenes), then runs the steps; its header lists them.
+  Look at one contact sheet rather than many shots: `python3 scripts/montage.py sheet.png 3 a=one.png b=two.png …`.
+- The browser tests (the same as CI, and more):
+  - `KD_E2E_PORTS=5421,5422,5423 npm run test:e2e`: both builds, then every spec but the
+    campaigns. It took about 11 minutes here: 25 passed, 13 skipped, 0 failed.
+  - `KD_E2E_PORTS=5421,5422,5423 npx playwright test --grep @campaign`: two whole
+    playthroughs, by keyboard on a desktop and by touch on a phone held sideways. That
+    took about 13 minutes.
+  - Run both before a release. They use one worker and no retries
+    (`playwright.config.ts`).
 - `npm run build` is `vite build`, and it does **not** type-check. Before pushing, run:
   - `npm run typecheck` (tsc; strict, `noUnusedLocals`/`noUnusedParameters`, `!` on indexed access);
   - `npm test` (vitest).
@@ -65,6 +106,19 @@ not have to re-discover it by reading the codebase.
 - After a push, check GitHub Actions with a fresh query. Do not trust earlier output.
 - Publishing means pushing to `main`. The user asked for that in earlier sessions.
   If your session is assigned another branch, confirm with the user before pushing to `main`.
+  - `deploy.yml` checks and builds, then writes `dist/` to the `gh-pages` branch, as a
+    commit "Publish <sha>". That takes a few minutes.
+  - To check that a push went live, fetch that branch:
+    `git fetch origin +refs/heads/gh-pages:refs/remotes/origin/gh-pages`. Its head should be
+    "Publish <your sha>". Then grep its `assets/index-*.js` for something your change added.
+  - In Claude Code's cloud containers the proxy may refuse `mizyaz.github.io` itself.
+  - The previous lead worked on `paper-engine` and fast-forwarded `main` to it for each
+    release (`git push origin paper-engine:main` does the same). Then it pushed
+    `paper-engine` too.
+- After every release, add a section to the top of `QA_REPORT.md` (Turkish): what
+  changed, every check with its exact command and result, what was looked at, and the
+  known issues. Rename the old top section to "Önceki sürüm", and the one before it to
+  "Eski sürüm". Report only what was really run.
 - Phaser 4 has its own docs in `node_modules/phaser/skills/*/SKILL.md`.
 
 ## The paper engine (`src/paper/`)
@@ -500,8 +554,43 @@ World px and seconds for the game; CSS px on a phone 390 px wide for the touch c
   and travel, the rings and angles of the right thumb's buttons, haptics, the default hand and
   the colours.
 
+## Working with agents
+
+The user likes big pieces of work handed to agents with good prompts, run one after
+another. The previous lead did it like this:
+
+- One git worktree and branch per agent, next to the main clone, with
+  `node_modules` symlinked from the main clone. Screenshots and scratch go in
+  `../kd-shots/<name>/`, outside the repo.
+- Every agent has its own ports: a dev server, and three for `KD_E2E_PORTS`. Never
+  4173–4175 (Playwright's defaults).
+- The brief is self-contained: the goal in the user's words, what exists, and what
+  to build. It also says where to work, the user's taste, every check to run, the repo
+  rules and what to report. `docs/briefs/*.md` are the model to copy. Each ends with the
+  same common part, from "Where and how to work" on.
+- The lead adds its own session's two commit attribution lines at launch. They go only
+  in commit messages, never in a file.
+- Agents commit on their branch and never push, merge or rebase. The lead:
+  1. reads the report;
+  2. opens the screenshots;
+  3. merges `--no-ff`;
+  4. runs every check and both campaigns;
+  5. writes the QA section;
+  6. publishes;
+  7. tells the user in short Turkish, with a link.
+
+  An agent's report is not the user's approval.
+- One agent at a time unless the user asks otherwise: they share the CPU, and the
+  browser tests are slow on a software GPU.
+
 ## Other pending work
 
 - Adaptive, balanced line art across the game, following the rules above.
 - The DOM UI over the device-pixel canvas: check that it fits on phones.
-- Routine for every change: typecheck → vitest → build → smoke (serve.mjs + shot.mjs) → push `main` → check Actions.
+- Known issues from the last QA section:
+  - The Canvas renderer draws b02's sliding leaf only to the spring line.
+  - The moon gate's ferns and the hill door's fringe are clipped in the hollow.
+  - Nothing has been tried on a real phone yet.
+- Routine for every change: typecheck → vitest → `kd check` → build → the browser tests
+  and campaigns for anything that plays differently → push `main` → check the `gh-pages`
+  head → QA section.
